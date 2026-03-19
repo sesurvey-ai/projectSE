@@ -1,0 +1,14 @@
+{
+  "name": "se-survey",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "dev:backend": "npm -w backend run dev",
+    "dev:web": "npm -w web run dev"
+  }
+}
