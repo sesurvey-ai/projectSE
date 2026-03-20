@@ -39,6 +39,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (_token != null) {
         _socketService.connect(_token!);
+        _setupSocketCallbacks();
         await _fcmService.initialize();
       }
     } catch (e) {
@@ -48,6 +49,20 @@ class AuthProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  void _setupSocketCallbacks() {
+    _socketService.onCaseAssigned = (data) {
+      final message = data['message'] ?? 'คุณได้รับมอบหมายงานใหม่';
+      final caseId = data['case_id'];
+      _fcmService.showLocalNotification(
+        title: 'งานใหม่',
+        body: message,
+        payload: caseId?.toString(),
+      );
+      // Notify listeners so CaseProvider can refresh
+      notifyListeners();
+    };
   }
 
   Future<bool> login(String username, String password) async {
@@ -62,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
       // Connect socket and initialize FCM after login
       if (_token != null) {
         _socketService.connect(_token!);
+        _setupSocketCallbacks();
         await _fcmService.initialize();
       }
 

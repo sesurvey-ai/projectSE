@@ -10,13 +10,13 @@
 |:---:|---|:---:|:---:|
 | 1 | Project Setup & DB Design | ✅ เสร็จแล้ว | 100% |
 | 2 | Authentication & User Roles | ✅ เสร็จแล้ว | 100% |
-| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 95% |
-| 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 85% |
-| 5+6 | Unified Web (Next.js) | ✅ เสร็จส่วนใหญ่ | 90% |
-| 7 | Integration & Testing | ❌ ยังไม่ได้เริ่ม | 0% |
+| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 97% |
+| 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 90% |
+| 5+6 | Unified Web (Next.js) | ✅ เสร็จส่วนใหญ่ | 92% |
+| 7 | Integration & Testing | 🔄 เริ่มแล้ว | 30% |
 | 8 | Deployment & Go-live | ❌ ยังไม่ได้เริ่ม | 0% |
 
-**ความคืบหน้ารวม: ~70%**
+**ความคืบหน้ารวม: ~75%**
 
 ---
 
@@ -69,6 +69,8 @@
 - [x] Socket.io On-Demand Location (request_location → location_response → broadcast)
 - [x] FCM push notification service (sendNotification + sendSilentPush)
 - [x] FCM เรียกอัตโนมัติเมื่อ assign case
+- [x] Socket.io `case_assigned` event — ส่ง real-time notification ไปยัง mobile เมื่อมอบหมายงาน
+- [x] Export `getIO()` จาก socket server สำหรับใช้ใน services อื่น
 - [ ] FCM silent push fallback เมื่อ Socket disconnect — มี service แต่ยังไม่ trigger อัตโนมัติ
 
 ### File Upload
@@ -100,7 +102,7 @@
 
 - [x] API Service (Dio + JWT interceptor + timeout 30s)
 - [x] Auth Service (login, logout, token storage ด้วย SharedPreferences)
-- [x] Socket Service (on-demand GPS: listen `request_location` → ส่ง GPS กลับ)
+- [x] Socket Service (on-demand GPS: listen `request_location` → ส่ง GPS กลับ + listen `case_assigned` → แสดง notification)
 - [x] Location Service (Geolocator: high accuracy, permission handling)
 - [x] FCM Service (local notifications setup, token refresh listener)
 
@@ -115,7 +117,8 @@
 - [ ] **Firebase.initializeApp()** — ถูก comment ไว้ใน main.dart, push notification ยังไม่ทำงานจริง
 - [ ] **google-services.json** (Android) — ยังไม่มี
 - [ ] **GoogleService-Info.plist** (iOS) — ยังไม่มี
-- [ ] Platform permissions ใน AndroidManifest.xml / Info.plist (camera, location)
+- [x] ~~Platform permissions ใน AndroidManifest.xml~~ — เพิ่ม ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, CAMERA แล้ว
+- [ ] Platform permissions ใน Info.plist (iOS — camera, location)
 - [ ] Network error handling / retry logic สำหรับ upload ที่ล้มเหลว
 - [ ] Offline caching
 
@@ -165,13 +168,30 @@
 
 ---
 
-## Phase 7: Integration & Testing ❌ 0%
+## Phase 7: Integration & Testing 🔄 30%
 
+- [x] ทดสอบ Login ทุก role: callcenter01 ✅, checker01 ✅, survey01 ⚠️ (web ไม่รองรับ surveyor — ถูกต้องตาม design)
+- [x] ทดสอบ On-Demand GPS: Call Center กดเรียก → มือถือตอบกลับ → แสดง marker + ชื่อบนแผนที่ ✅
+- [x] ทดสอบ Case Assign + Socket Notification: มอบหมายงาน → mobile ได้รับ local notification + case list refresh ✅
 - [ ] ทดสอบ End-to-End: login → เรียกพิกัด → รับงาน → สำรวจ → ตรวจงาน
-- [ ] ทดสอบ Push Notification บน Emulator และอุปกรณ์จริง
-- [ ] ทดสอบ On-Demand GPS: Call Center กดเรียก → มือถือตอบกลับ → แสดงบนแผนที่
+- [ ] ทดสอบ Push Notification (FCM) บน Emulator และอุปกรณ์จริง
 - [ ] ทดสอบ File Upload จาก mobile → backend → แสดงใน web
 - [ ] แก้ Bug และปรับปรุงประสิทธิภาพ
+
+### Bug ที่พบและแก้ไขแล้ว (20 มี.ค. 2026)
+
+| Bug | ไฟล์ | สาเหตุ | วิธีแก้ |
+|---|---|---|---|
+| Android ไม่มี location permission | `AndroidManifest.xml` | ไม่มี `uses-permission` | เพิ่ม ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, CAMERA |
+| `s.latitude.toFixed is not a function` | `assign/page.tsx:148` | PostgreSQL DECIMAL ส่งเป็น string | ใช้ `Number()` wrap ก่อน `.toFixed()` |
+| Web ไม่แสดงพิกัด surveyor | `assign/page.tsx:68` | haversineDistance รับ string แทน number | ใช้ `Number()` wrap coordinates |
+| Surveyor login บนเว็บวนลูป | `auth.ts:38-44` | `getDashboardPath` ไม่มี case surveyor | ⚠️ ยังไม่แก้ — ควรแสดง error message |
+
+### สิ่งที่เพิ่มใหม่ (20 มี.ค. 2026)
+
+- Socket.io `case_assigned` event: Backend emit → Mobile receive + show local notification
+- Socket debug logs ใน mobile สำหรับ troubleshooting
+- Android platform permissions (location, camera)
 
 ---
 
@@ -191,9 +211,10 @@
 ### สำคัญสูง
 1. ตั้งค่า Firebase จริง — สร้าง project, ใส่ google-services.json, enable FCM
 2. Uncomment `Firebase.initializeApp()` ใน mobile/main.dart
-3. เพิ่ม platform permissions (camera, location) ใน Android/iOS config
-4. ทดสอบ flow ทั้งระบบ end-to-end
+3. ~~เพิ่ม platform permissions (camera, location) ใน Android/iOS config~~ ✅ Android เสร็จแล้ว (iOS ยังเหลือ)
+4. ทดสอบ flow ทั้งระบบ end-to-end (login→เรียกพิกัด→มอบหมาย ผ่านแล้ว ยังเหลือ สำรวจ→ตรวจงาน)
 5. Deploy ขึ้น Coolify (เมื่อ test ผ่าน)
+6. แก้ surveyor login บนเว็บให้แสดง error message แทนการวนลูป
 
 ### สำคัญกลาง
 6. ตัดสินใจเรื่อง Maps: ใช้ Google Maps ตาม workplan หรือ Leaflet ที่มีอยู่
@@ -219,7 +240,7 @@
 | Backend API | Node.js + Express + TypeScript | ✅ |
 | Database | PostgreSQL (Supabase) | ✅ |
 | Real-time | Socket.io | ✅ |
-| Push Notification | Firebase Cloud Messaging | ⚠️ ยังไม่ได้เชื่อมจริง |
+| Push Notification | Socket.io + Local Notifications (FCM ยังไม่ได้เชื่อม) | ✅ ผ่าน Socket.io |
 | File Storage | Multer (local disk) | ✅ |
 | Maps | Leaflet / OpenStreetMap (แทน Google Maps) | ✅ |
 | Authentication | JWT | ✅ |

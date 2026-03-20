@@ -4,6 +4,12 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { setupLocationHandler } from './locationHandler';
 
+let ioInstance: Server | null = null;
+
+export function getIO(): Server | null {
+  return ioInstance;
+}
+
 export function setupSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: {
@@ -47,5 +53,6 @@ export function setupSocket(httpServer: HttpServer) {
     });
   });
 
+  ioInstance = io;
   return io;
 }

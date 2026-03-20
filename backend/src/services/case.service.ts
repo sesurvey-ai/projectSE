@@ -1,6 +1,7 @@
 import { db } from '../config/database';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
+import { getIO } from '../socket';
 
 export const caseService = {
   async create(data: { customer_name: string; incident_location: string; incident_lat?: number; incident_lng?: number }, createdBy: number) {
@@ -41,7 +42,7 @@ export const caseService = {
       [surveyorId, caseId]
     );
 
-    // Send push notification
+    // Send push notification via FCM
     const surveyor = surveyorResult.rows[0];
     if (surveyor.fcm_token) {
       await fcmService.sendNotification(
@@ -50,6 +51,17 @@ export const caseService = {
         `คุณได้รับมอบหมายงานสำรวจ: ${caseData.customer_name}`,
         { case_id: String(caseId) }
       ).catch(err => console.error('FCM send failed:', err));
+    }
+
+    // Send real-time notification via Socket.io
+    const io = getIO();
+    if (io) {
+      io.to(`user:${surveyorId}`).emit('case_assigned', {
+        case_id: caseId,
+        customer_name: caseData.customer_name,
+        incident_location: caseData.incident_location,
+        message: `คุณได้รับมอบหมายงานสำรวจ: ${caseData.customer_name}`,
+      });
     }
 
     return updated.rows[0];

@@ -65,7 +65,7 @@ export default function AssignPage() {
           updated = data;
         } else {
           if (incidentLat !== undefined && incidentLng !== undefined) {
-            data.distance = haversineDistance(incidentLat, incidentLng, data.latitude, data.longitude);
+            data.distance = haversineDistance(incidentLat, incidentLng, Number(data.latitude), Number(data.longitude));
           }
           const idx = prev.findIndex((s) => String(s.user_id) === String(data.user_id));
           if (idx >= 0) { updated = [...prev]; updated[idx] = data; }
@@ -145,8 +145,8 @@ export default function AssignPage() {
               <div key={s.user_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <div>
                   <h3 className="font-medium text-gray-800">{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</h3>
-                  <p className="text-sm text-gray-500">พิกัด: {s.latitude.toFixed(6)}, {s.longitude.toFixed(6)}</p>
-                  {s.distance !== undefined && <p className="text-sm text-blue-600">ระยะทาง: {s.distance.toFixed(2)} กม.</p>}
+                  <p className="text-sm text-gray-500">พิกัด: {Number(s.latitude).toFixed(6)}, {Number(s.longitude).toFixed(6)}</p>
+                  {s.distance !== undefined && <p className="text-sm text-blue-600">ระยะทาง: {Number(s.distance).toFixed(2)} กม.</p>}
                 </div>
                 <button onClick={() => handleAssign(String(s.user_id))} disabled={assigning === String(s.user_id)} className="ml-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   {assigning === String(s.user_id) ? 'กำลังมอบหมาย...' : 'มอบหมาย'}
