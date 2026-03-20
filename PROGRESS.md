@@ -160,7 +160,7 @@
 
 ### สิ่งที่ยังขาด (Web)
 
-- [ ] ใช้ Leaflet/OpenStreetMap แทน Google Maps (workplan ระบุ Google Maps)
+- [x] ~~ใช้ Leaflet/OpenStreetMap แทน Google Maps~~ — ตัดสินใจใช้ Leaflet ต่อ (ฟรี, ครบฟีเจอร์ที่ต้องการ)
 - [ ] Error pages (error.tsx, not-found.tsx)
 - [ ] Pagination สำหรับรายการเคส
 - [ ] Search / Filter ในหน้า dashboard
@@ -243,7 +243,7 @@
 8. ทดสอบ E2E ผ่าน UI จริง (mobile + web)
 9. ทดสอบ File Upload จาก mobile → backend → แสดงใน web
 10. ทดสอบ FCM บนอุปกรณ์จริง
-11. ตัดสินใจเรื่อง Maps: ใช้ Google Maps ตาม workplan หรือ Leaflet ที่มีอยู่
+11. ~~ตัดสินใจเรื่อง Maps~~ ✅ ใช้ Leaflet/OpenStreetMap ต่อ (ฟรี, ครบฟีเจอร์)
 12. เพิ่ม pagination + search/filter ใน web
 13. เพิ่ม error pages (404, error boundary)
 14. ~~เพิ่ม FCM fallback เมื่อ Socket disconnect~~ ✅ FCM ทำงานคู่กับ Socket.io แล้ว
