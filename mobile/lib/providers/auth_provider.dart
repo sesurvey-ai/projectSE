@@ -52,14 +52,21 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _setupSocketCallbacks() {
-    _socketService.onCaseAssigned = (data) {
+    debugPrint('[Auth] Setting up socket callbacks');
+    _socketService.onCaseAssigned = (data) async {
+      debugPrint('[Auth] onCaseAssigned callback fired: $data');
       final message = data['message'] ?? 'คุณได้รับมอบหมายงานใหม่';
       final caseId = data['case_id'];
-      _fcmService.showLocalNotification(
-        title: 'งานใหม่',
-        body: message,
-        payload: caseId?.toString(),
-      );
+      try {
+        await _fcmService.showLocalNotification(
+          title: 'งานใหม่',
+          body: message,
+          payload: caseId?.toString(),
+        );
+        debugPrint('[Auth] Local notification shown successfully');
+      } catch (e) {
+        debugPrint('[Auth] Failed to show notification: $e');
+      }
       // Notify listeners so CaseProvider can refresh
       notifyListeners();
     };

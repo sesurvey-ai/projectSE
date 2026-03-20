@@ -1,6 +1,13 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
+
+// Top-level handler for background messages
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('Background message received: ${message.messageId}');
+}
 
 class FcmService {
   final ApiService _apiService;
@@ -32,7 +39,7 @@ class FcmService {
         onDidReceiveNotificationResponse: _onNotificationTap,
       );
 
-      // Try Firebase initialization
+      // Initialize Firebase Messaging
       await _initializeFirebase();
     } catch (e) {
       debugPrint(
@@ -42,39 +49,67 @@ class FcmService {
 
   Future<void> _initializeFirebase() async {
     try {
-      // Dynamically attempt to use Firebase Messaging.
-      // If Firebase is not configured, this will fail gracefully.
-      final dynamic messaging = _tryGetFirebaseMessaging();
-      if (messaging == null) return;
+      final messaging = FirebaseMessaging.instance;
 
-      await messaging.requestPermission(
+      // Register background message handler
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
+
+      // Request notification permissions
+      final settings = await messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
+      debugPrint(
+          'FCM permission status: ${settings.authorizationStatus}');
 
+      // Get and send FCM token to server
       final String? token = await messaging.getToken();
       if (token != null) {
+        debugPrint('FCM token obtained');
         await _sendTokenToServer(token);
       }
 
+      // Listen for token refresh
       messaging.onTokenRefresh.listen((String newToken) {
+        debugPrint('FCM token refreshed');
         _sendTokenToServer(newToken);
       });
+
+      // Handle foreground messages — show as local notification
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Foreground message received: ${message.messageId}');
+        final notification = message.notification;
+        if (notification != null) {
+          showLocalNotification(
+            title: notification.title ?? 'SE Survey',
+            body: notification.body ?? '',
+            payload: message.data['case_id'],
+          );
+        }
+      });
+
+      // Handle notification tap when app is in background
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('Notification opened app: ${message.messageId}');
+        final caseId = int.tryParse(message.data['case_id'] ?? '');
+        if (caseId != null && onNotificationTapWithCaseId != null) {
+          onNotificationTapWithCaseId!(caseId);
+        }
+      });
+
+      // Check if app was opened from a terminated state via notification
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        final caseId =
+            int.tryParse(initialMessage.data['case_id'] ?? '');
+        if (caseId != null && onNotificationTapWithCaseId != null) {
+          onNotificationTapWithCaseId!(caseId);
+        }
+      }
     } catch (e) {
       debugPrint('Firebase messaging setup failed: $e');
-    }
-  }
-
-  dynamic _tryGetFirebaseMessaging() {
-    try {
-      // This will be replaced with actual FirebaseMessaging.instance
-      // once Firebase is properly configured in the project.
-      // For now, return null to avoid crashes.
-      return null;
-    } catch (e) {
-      debugPrint('FirebaseMessaging not available: $e');
-      return null;
     }
   }
 

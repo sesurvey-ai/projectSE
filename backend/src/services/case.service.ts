@@ -44,13 +44,21 @@ export const caseService = {
 
     // Send push notification via FCM
     const surveyor = surveyorResult.rows[0];
+    console.log(`[FCM] Surveyor ${surveyor.id} fcm_token: ${surveyor.fcm_token ? 'EXISTS' : 'NULL'}`);
     if (surveyor.fcm_token) {
-      await fcmService.sendNotification(
-        surveyor.fcm_token,
-        'งานใหม่',
-        `คุณได้รับมอบหมายงานสำรวจ: ${caseData.customer_name}`,
-        { case_id: String(caseId) }
-      ).catch(err => console.error('FCM send failed:', err));
+      try {
+        const fcmResult = await fcmService.sendNotification(
+          surveyor.fcm_token,
+          'งานใหม่',
+          `คุณได้รับมอบหมายงานสำรวจ: ${caseData.customer_name}`,
+          { case_id: String(caseId) }
+        );
+        console.log('[FCM] Send success:', fcmResult);
+      } catch (err) {
+        console.error('[FCM] Send failed:', err);
+      }
+    } else {
+      console.warn('[FCM] No token — skip push notification');
     }
 
     // Send real-time notification via Socket.io

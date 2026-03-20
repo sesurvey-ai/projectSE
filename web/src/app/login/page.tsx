@@ -10,14 +10,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, logout, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.replace(getDashboardPath(user.role));
+      const path = getDashboardPath(user.role);
+      if (path) {
+        router.replace(path);
+      } else {
+        setError('บัญชีพนักงานสำรวจใช้ได้เฉพาะบนแอปมือถือเท่านั้น');
+        logout();
+      }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, logout]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

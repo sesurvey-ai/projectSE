@@ -12,7 +12,8 @@ export default function Home() {
   useEffect(() => {
     if (!loading) {
       if (isAuthenticated && user) {
-        router.replace(getDashboardPath(user.role));
+        const path = getDashboardPath(user.role);
+        router.replace(path || '/login');
       } else {
         router.replace('/login');
       }

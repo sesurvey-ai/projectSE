@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'config/app_router.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
@@ -10,11 +11,12 @@ import 'providers/case_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Try to initialize Firebase, but don't crash if not configured
+  // Initialize Firebase
   try {
-    // Firebase.initializeApp() would go here when Firebase is configured
+    await Firebase.initializeApp();
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
-    debugPrint('Firebase initialization skipped: $e');
+    debugPrint('Firebase initialization failed: $e');
   }
 
   final apiService = ApiService();

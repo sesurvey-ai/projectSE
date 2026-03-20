@@ -35,10 +35,10 @@ export function getUser(): User | null {
   return null;
 }
 
-export function getDashboardPath(role: string): string {
+export function getDashboardPath(role: string): string | null {
   switch (role) {
     case 'callcenter': return '/callcenter';
     case 'checker': return '/inspector';
-    default: return '/login';
+    default: return null;
   }
 }
