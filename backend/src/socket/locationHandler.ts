@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { locationService } from '../services/location.service';
+import { db } from '../config/database';
 
 export function setupLocationHandler(io: Server, socket: Socket) {
   const user = socket.data.user;
@@ -22,10 +23,16 @@ export function setupLocationHandler(io: Server, socket: Socket) {
         // Save to database
         await locationService.saveLocation(user.id, data.latitude, data.longitude, data.request_id);
 
-        // Forward to call center
+        // Fetch user details for the broadcast
+        const userResult = await db.query('SELECT first_name, last_name FROM users WHERE id = $1', [user.id]);
+        const userInfo = userResult.rows[0] || {};
+
+        // Forward to call center with user info
         io.to('role:callcenter').emit('location_update', {
-          user_id: user.id,
+          user_id: String(user.id),
           username: user.username,
+          first_name: userInfo.first_name,
+          last_name: userInfo.last_name,
           latitude: data.latitude,
           longitude: data.longitude,
           request_id: data.request_id,

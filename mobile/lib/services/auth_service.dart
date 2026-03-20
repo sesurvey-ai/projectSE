@@ -10,7 +10,8 @@ class AuthService {
 
   Future<User> login(String username, String password) async {
     final response = await _apiService.login(username, password);
-    final data = response.data;
+    final body = response.data;
+    final data = body['data'] as Map<String, dynamic>;
 
     final token = data['token'] as String;
     final userJson = data['user'] as Map<String, dynamic>;

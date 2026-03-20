@@ -27,6 +27,12 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  getCase: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.getById(caseId);
+    sendSuccess(res, result);
+  }),
+
   getForReview: asyncHandler(async (_req: Request, res: Response) => {
     const cases = await caseService.getForReview();
     sendSuccess(res, cases);

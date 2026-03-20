@@ -10,8 +10,17 @@ export const locationController = {
     sendSuccess(res, location);
   }),
 
-  getLatest: asyncHandler(async (_req: Request, res: Response) => {
-    const locations = await locationService.getLatest();
+  getLatest: asyncHandler(async (req: Request, res: Response) => {
+    const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+    const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+
+    let locations;
+    if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
+      locations = await locationService.getLatestNearest(lat, lng, limit);
+    } else {
+      locations = await locationService.getLatest();
+    }
     sendSuccess(res, locations);
   }),
 };

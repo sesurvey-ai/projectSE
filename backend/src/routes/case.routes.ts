@@ -36,6 +36,7 @@ const submitReviewSchema = z.object({
 router.post('/', auth, requireRole('callcenter'), validate(createCaseSchema), caseController.create);
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
+router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.getCase);
 router.get('/:id/detail', auth, requireRole('checker'), caseController.getDetail);
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
 router.post('/:id/survey', auth, requireRole('surveyor'), validate(submitSurveySchema), caseController.submitSurvey);

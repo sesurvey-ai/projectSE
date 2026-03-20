@@ -96,6 +96,12 @@ export const caseService = {
     }
   },
 
+  async getById(caseId: number) {
+    const result = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    if (result.rows.length === 0) throw new NotFoundError('Case not found');
+    return result.rows[0];
+  },
+
   async getForReview() {
     const result = await db.query(
       `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name
