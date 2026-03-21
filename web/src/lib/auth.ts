@@ -3,7 +3,7 @@ export interface User {
   username: string;
   first_name: string;
   last_name: string;
-  role: 'surveyor' | 'callcenter' | 'checker';
+  role: 'admin' | 'surveyor' | 'callcenter' | 'checker';
   [key: string]: unknown;
 }
 
@@ -37,6 +37,7 @@ export function getUser(): User | null {
 
 export function getDashboardPath(role: string): string | null {
   switch (role) {
+    case 'admin': return '/admin';
     case 'callcenter': return '/callcenter';
     case 'checker': return '/inspector';
     default: return null;

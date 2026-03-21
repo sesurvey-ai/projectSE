@@ -5,6 +5,12 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
+  admin: [
+    { label: 'แดชบอร์ด', href: '/admin' },
+    { label: 'จัดการผู้ใช้', href: '/admin/users' },
+    { label: 'จัดการเคส', href: '/admin/cases' },
+    { label: 'จัดการรีวิว', href: '/admin/reviews' },
+  ],
   callcenter: [
     { label: 'หน้าหลัก', href: '/callcenter' },
     { label: 'สร้างเคสใหม่', href: '/callcenter/cases/new' },
@@ -15,6 +21,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
 };
 
 const TITLES: Record<string, string> = {
+  admin: 'ผู้ดูแลระบบ',
   callcenter: 'Call Center',
   checker: 'ระบบตรวจสอบ',
 };

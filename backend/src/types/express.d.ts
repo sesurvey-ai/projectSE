@@ -12,4 +12,4 @@ declare global {
   }
 }
 
-export type UserRole = 'surveyor' | 'callcenter' | 'checker';
+export type UserRole = 'admin' | 'surveyor' | 'callcenter' | 'checker';

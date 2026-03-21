@@ -21,7 +21,7 @@ export const auth = (req: Request, res: Response, next: NextFunction): void => {
     req.user = {
       id: decoded.id,
       username: decoded.username,
-      role: decoded.role as 'surveyor' | 'callcenter' | 'checker',
+      role: decoded.role as 'admin' | 'surveyor' | 'callcenter' | 'checker',
     };
     next();
   } catch {

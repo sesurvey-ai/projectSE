@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 const ROLE_LABELS: Record<string, string> = {
+  admin: 'ผู้ดูแลระบบ',
   callcenter: 'พนักงานรับแจ้ง',
   checker: 'เจ้าหน้าที่ตรวจสอบ',
 };

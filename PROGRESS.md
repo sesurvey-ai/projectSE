@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 20 มีนาคม 2026 (22:00)
+**อัพเดทล่าสุด:** 21 มีนาคม 2026
 
 ---
 
@@ -10,13 +10,13 @@
 |:---:|---|:---:|:---:|
 | 1 | Project Setup & DB Design | ✅ เสร็จแล้ว | 100% |
 | 2 | Authentication & User Roles | ✅ เสร็จแล้ว | 100% |
-| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 97% |
+| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 98% |
 | 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 95% |
-| 5+6 | Unified Web (Next.js) | ✅ เสร็จส่วนใหญ่ | 92% |
+| 5+6 | Unified Web (Next.js) + Admin Panel | ✅ เสร็จส่วนใหญ่ | 95% |
 | 7 | Integration & Testing | 🔄 ดำเนินการ | 55% |
 | 8 | Deployment & Go-live | ❌ ยังไม่ได้เริ่ม | 0% |
 
-**ความคืบหน้ารวม: ~82%**
+**ความคืบหน้ารวม: ~85%**
 
 ---
 
@@ -36,10 +36,10 @@
 
 - [x] Login API ด้วย JWT (username/password → token)
 - [x] Bcrypt password hashing
-- [x] Role-based middleware: `surveyor`, `callcenter`, `checker`
+- [x] Role-based middleware: `admin`, `surveyor`, `callcenter`, `checker`
 - [x] GET `/api/users/me` — ดึงข้อมูล user ปัจจุบัน
 - [x] PUT `/api/users/me/fcm-token` — อัพเดท FCM token
-- [x] Seed data ทดสอบ (survey01, callcenter01, checker01)
+- [x] Seed data ทดสอบ (admin01, survey01, callcenter01, checker01)
 
 ---
 
@@ -63,6 +63,13 @@
 | `/api/locations/respond` | POST | surveyor | ✅ |
 | `/api/locations/latest` | GET | callcenter | ✅ |
 | `/api/upload` | POST | surveyor | ✅ |
+| `/api/admin/dashboard` | GET | admin | ✅ |
+| `/api/admin/users` | GET/POST | admin | ✅ |
+| `/api/admin/users/:id` | GET/PUT/DELETE | admin | ✅ |
+| `/api/admin/cases` | GET | admin | ✅ |
+| `/api/admin/cases/:id` | GET/PUT/DELETE | admin | ✅ |
+| `/api/admin/reviews` | GET | admin | ✅ |
+| `/api/admin/reviews/:id` | PUT/DELETE | admin | ✅ |
 
 ### Real-time & Notification
 
@@ -81,10 +88,10 @@
 
 ### สิ่งที่ยังขาด (Backend)
 
-- [ ] Pagination (limit/offset) สำหรับ list endpoints
-- [ ] Case status filtering endpoint
+- [x] ~~Pagination (limit/offset) สำหรับ list endpoints~~ ✅ มีใน Admin API แล้ว
+- [x] ~~Case status filtering endpoint~~ ✅ มีใน Admin API แล้ว
+- [x] ~~Case update endpoint (แก้ไขเคสหลังสร้าง)~~ ✅ มีใน Admin API แล้ว
 - [ ] Review rejection flow (ตอนนี้ review สถานะ approved อย่างเดียว)
-- [ ] Case update endpoint (แก้ไขเคสหลังสร้าง)
 - [ ] Rate limiting middleware
 
 ---
@@ -130,9 +137,9 @@
 
 - [x] Login page (`/login`) — username/password form
 - [x] AuthProvider — React Context + token persistence (localStorage)
-- [x] Role-based redirect (callcenter → `/callcenter`, checker → `/inspector`)
+- [x] Role-based redirect (admin → `/admin`, callcenter → `/callcenter`, checker → `/inspector`)
 - [x] API interceptor (Axios + Bearer token + auto-logout on 401)
-- [x] Protected layouts สำหรับทั้ง callcenter และ inspector
+- [x] Protected layouts สำหรับ admin, callcenter และ inspector
 
 ### Call Center (`/callcenter`)
 
@@ -150,6 +157,21 @@
 - [x] PhotoGallery — grid view + fullscreen modal
 - [x] ReviewForm — ความคิดเห็น + ค่าบริการเสนอ + ค่าบริการอนุมัติ
 
+### Admin Panel (`/admin`) — เพิ่มใหม่ 21 มี.ค. 2026
+
+- [x] Admin Layout + Auth Guard (เฉพาะ role admin)
+- [x] Dashboard — สถิติรวม (จำนวนผู้ใช้/เคส/รีวิว แยกตามสถานะ) + Quick Actions
+- [x] จัดการผู้ใช้ (`/admin/users`) — รายการ + ค้นหา + กรองตาม role + pagination
+- [x] เพิ่มผู้ใช้ (`/admin/users/new`) — สร้างบัญชีใหม่ + เลือก role
+- [x] แก้ไขผู้ใช้ (`/admin/users/[id]/edit`) — แก้ชื่อ, role, รหัสผ่าน, เปิด/ปิดใช้งาน
+- [x] ปิดใช้งานผู้ใช้ (soft delete) — ป้องกันลบตัวเอง
+- [x] จัดการเคส (`/admin/cases`) — รายการ + ค้นหา + กรองตามสถานะ + pagination
+- [x] แก้ไขเคส (`/admin/cases/[id]/edit`) — แก้ชื่อลูกค้า, สถานที่, สถานะ, ช่างสำรวจ
+- [x] ลบเคส — ลบ record (cascade) + ลบไฟล์รูปภาพบน disk
+- [x] จัดการรีวิว (`/admin/reviews`) — รายการ + กรองตามสถานะ + pagination
+- [x] แก้ไขรีวิว (`/admin/reviews/[id]/edit`) — แก้ความคิดเห็น, ค่าบริการ, สถานะ
+- [x] ลบรีวิว — ลบ record + เปลี่ยนสถานะเคสกลับเป็น surveyed
+
 ### Layout & UI
 
 - [x] Header — user info + role badge + logout
@@ -161,9 +183,9 @@
 ### สิ่งที่ยังขาด (Web)
 
 - [x] ~~ใช้ Leaflet/OpenStreetMap แทน Google Maps~~ — ตัดสินใจใช้ Leaflet ต่อ (ฟรี, ครบฟีเจอร์ที่ต้องการ)
+- [x] ~~Pagination สำหรับรายการเคส~~ ✅ มีใน Admin Panel แล้ว
+- [x] ~~Search / Filter ในหน้า dashboard~~ ✅ มีใน Admin Panel แล้ว
 - [ ] Error pages (error.tsx, not-found.tsx)
-- [ ] Pagination สำหรับรายการเคส
-- [ ] Search / Filter ในหน้า dashboard
 - [ ] Toast notifications (ตอนนี้ใช้ inline messages)
 
 ---
@@ -244,7 +266,7 @@
 9. ทดสอบ File Upload จาก mobile → backend → แสดงใน web
 10. ทดสอบ FCM บนอุปกรณ์จริง
 11. ~~ตัดสินใจเรื่อง Maps~~ ✅ ใช้ Leaflet/OpenStreetMap ต่อ (ฟรี, ครบฟีเจอร์)
-12. เพิ่ม pagination + search/filter ใน web
+12. ~~เพิ่ม pagination + search/filter ใน web~~ ✅ มีใน Admin Panel แล้ว
 13. เพิ่ม error pages (404, error boundary)
 14. ~~เพิ่ม FCM fallback เมื่อ Socket disconnect~~ ✅ FCM ทำงานคู่กับ Socket.io แล้ว
 15. เพิ่ม review rejection flow

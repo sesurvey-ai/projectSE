@@ -1,0 +1,349 @@
+import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
+import { db } from '../config/database';
+import { env } from '../config/env';
+import { NotFoundError, AppError } from '../middleware/errorHandler';
+
+interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+interface UserFilters extends PaginationParams {
+  role?: string;
+  is_active?: boolean;
+  search?: string;
+}
+
+interface CaseFilters extends PaginationParams {
+  status?: string;
+  search?: string;
+}
+
+interface ReviewFilters extends PaginationParams {
+  status?: string;
+}
+
+export const adminService = {
+  // ==================== Dashboard ====================
+  async getDashboardStats() {
+    const [usersTotal, usersByRole, casesTotal, casesByStatus, reviewsTotal] = await Promise.all([
+      db.query('SELECT COUNT(*)::int AS count FROM users'),
+      db.query('SELECT role, COUNT(*)::int AS count FROM users GROUP BY role'),
+      db.query('SELECT COUNT(*)::int AS count FROM cases'),
+      db.query('SELECT status, COUNT(*)::int AS count FROM cases GROUP BY status'),
+      db.query('SELECT COUNT(*)::int AS count FROM reviews'),
+    ]);
+
+    const byRole: Record<string, number> = {};
+    usersByRole.rows.forEach((r: { role: string; count: number }) => { byRole[r.role] = r.count; });
+
+    const byStatus: Record<string, number> = {};
+    casesByStatus.rows.forEach((r: { status: string; count: number }) => { byStatus[r.status] = r.count; });
+
+    return {
+      users: { total: usersTotal.rows[0].count, by_role: byRole },
+      cases: { total: casesTotal.rows[0].count, by_status: byStatus },
+      reviews: { total: reviewsTotal.rows[0].count },
+    };
+  },
+
+  // ==================== Users CRUD ====================
+  async getUsers(filters: UserFilters = {}) {
+    const { role, is_active, search, page = 1, limit = 20 } = filters;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (role) {
+      conditions.push(`role = $${idx++}`);
+      params.push(role);
+    }
+    if (is_active !== undefined) {
+      conditions.push(`is_active = $${idx++}`);
+      params.push(is_active);
+    }
+    if (search) {
+      conditions.push(`(username ILIKE $${idx} OR first_name ILIKE $${idx} OR last_name ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+
+    const [dataResult, countResult] = await Promise.all([
+      db.query(
+        `SELECT id, username, first_name, last_name, role, supervisor_id, is_active, created_at
+         FROM users ${where} ORDER BY id ASC LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...params, limit, offset]
+      ),
+      db.query(`SELECT COUNT(*)::int AS total FROM users ${where}`, params),
+    ]);
+
+    return {
+      users: dataResult.rows,
+      total: countResult.rows[0].total,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult.rows[0].total / limit),
+    };
+  },
+
+  async getUserById(id: number) {
+    const result = await db.query(
+      'SELECT id, username, first_name, last_name, role, supervisor_id, is_active, created_at FROM users WHERE id = $1',
+      [id]
+    );
+    if (result.rows.length === 0) throw new NotFoundError('User not found');
+    return result.rows[0];
+  },
+
+  async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number }) {
+    const existing = await db.query('SELECT id FROM users WHERE username = $1', [data.username]);
+    if (existing.rows.length > 0) throw new AppError(409, 'Username already exists');
+
+    const hash = await bcrypt.hash(data.password, 10);
+    const result = await db.query(
+      `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, username, first_name, last_name, role, supervisor_id, is_active, created_at`,
+      [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null]
+    );
+    return result.rows[0];
+  },
+
+  async updateUser(id: number, data: { first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string }) {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (data.first_name !== undefined) { fields.push(`first_name = $${idx++}`); params.push(data.first_name); }
+    if (data.last_name !== undefined) { fields.push(`last_name = $${idx++}`); params.push(data.last_name); }
+    if (data.role !== undefined) { fields.push(`role = $${idx++}`); params.push(data.role); }
+    if (data.supervisor_id !== undefined) { fields.push(`supervisor_id = $${idx++}`); params.push(data.supervisor_id); }
+    if (data.is_active !== undefined) { fields.push(`is_active = $${idx++}`); params.push(data.is_active); }
+    if (data.password) {
+      const hash = await bcrypt.hash(data.password, 10);
+      fields.push(`password_hash = $${idx++}`);
+      params.push(hash);
+    }
+
+    if (fields.length === 0) throw new AppError(400, 'No fields to update');
+
+    params.push(id);
+    const result = await db.query(
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}
+       RETURNING id, username, first_name, last_name, role, supervisor_id, is_active, created_at`,
+      params
+    );
+    if (result.rows.length === 0) throw new NotFoundError('User not found');
+    return result.rows[0];
+  },
+
+  async deleteUser(id: number, adminId: number) {
+    if (id === adminId) throw new AppError(400, 'Cannot deactivate yourself');
+
+    const result = await db.query(
+      `UPDATE users SET is_active = false WHERE id = $1
+       RETURNING id, username, first_name, last_name, role, is_active`,
+      [id]
+    );
+    if (result.rows.length === 0) throw new NotFoundError('User not found');
+    return result.rows[0];
+  },
+
+  // ==================== Cases CRUD ====================
+  async getCases(filters: CaseFilters = {}) {
+    const { status, search, page = 1, limit = 20 } = filters;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (status) {
+      conditions.push(`c.status = $${idx++}`);
+      params.push(status);
+    }
+    if (search) {
+      conditions.push(`(c.customer_name ILIKE $${idx} OR c.incident_location ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+
+    const [dataResult, countResult] = await Promise.all([
+      db.query(
+        `SELECT c.*,
+                u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
+                cr.first_name AS creator_first_name, cr.last_name AS creator_last_name
+         FROM cases c
+         LEFT JOIN users u ON c.assigned_to = u.id
+         LEFT JOIN users cr ON c.created_by = cr.id
+         ${where}
+         ORDER BY c.created_at DESC
+         LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...params, limit, offset]
+      ),
+      db.query(`SELECT COUNT(*)::int AS total FROM cases c ${where}`, params),
+    ]);
+
+    return {
+      cases: dataResult.rows,
+      total: countResult.rows[0].total,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult.rows[0].total / limit),
+    };
+  },
+
+  async getCaseById(id: number) {
+    const caseResult = await db.query(
+      `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name
+       FROM cases c LEFT JOIN users u ON c.assigned_to = u.id WHERE c.id = $1`,
+      [id]
+    );
+    if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+
+    const reportResult = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [id]);
+
+    let photos: unknown[] = [];
+    if (reportResult.rows.length > 0) {
+      const photoResult = await db.query('SELECT * FROM survey_photos WHERE report_id = $1', [reportResult.rows[0].id]);
+      photos = photoResult.rows;
+    }
+
+    const reviewResult = await db.query('SELECT * FROM reviews WHERE case_id = $1', [id]);
+
+    return {
+      case: caseResult.rows[0],
+      report: reportResult.rows[0] || null,
+      photos,
+      review: reviewResult.rows[0] || null,
+    };
+  },
+
+  async updateCase(id: number, data: { customer_name?: string; incident_location?: string; status?: string; assigned_to?: number | null }) {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (data.customer_name !== undefined) { fields.push(`customer_name = $${idx++}`); params.push(data.customer_name); }
+    if (data.incident_location !== undefined) { fields.push(`incident_location = $${idx++}`); params.push(data.incident_location); }
+    if (data.status !== undefined) { fields.push(`status = $${idx++}`); params.push(data.status); }
+    if (data.assigned_to !== undefined) { fields.push(`assigned_to = $${idx++}`); params.push(data.assigned_to); }
+
+    if (fields.length === 0) throw new AppError(400, 'No fields to update');
+
+    params.push(id);
+    const result = await db.query(
+      `UPDATE cases SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      params
+    );
+    if (result.rows.length === 0) throw new NotFoundError('Case not found');
+    return result.rows[0];
+  },
+
+  async deleteCase(id: number) {
+    // Find related photos before deleting (cascade will remove DB records)
+    const photos = await db.query(
+      `SELECT sp.file_path FROM survey_photos sp
+       JOIN survey_reports sr ON sp.report_id = sr.id
+       WHERE sr.case_id = $1`,
+      [id]
+    );
+
+    const result = await db.query('DELETE FROM cases WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) throw new NotFoundError('Case not found');
+
+    // Delete photo files from disk
+    for (const photo of photos.rows) {
+      const filePath = path.join(env.UPLOAD_DIR, photo.file_path);
+      try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
+    }
+
+    return { id };
+  },
+
+  // ==================== Reviews CRUD ====================
+  async getReviews(filters: ReviewFilters = {}) {
+    const { status, page = 1, limit = 20 } = filters;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (status) {
+      conditions.push(`r.status = $${idx++}`);
+      params.push(status);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+
+    const [dataResult, countResult] = await Promise.all([
+      db.query(
+        `SELECT r.*, c.customer_name, c.incident_location,
+                ch.first_name AS checker_first_name, ch.last_name AS checker_last_name
+         FROM reviews r
+         JOIN cases c ON r.case_id = c.id
+         LEFT JOIN users ch ON r.checker_id = ch.id
+         ${where}
+         ORDER BY r.reviewed_at DESC
+         LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...params, limit, offset]
+      ),
+      db.query(`SELECT COUNT(*)::int AS total FROM reviews r ${where}`, params),
+    ]);
+
+    return {
+      reviews: dataResult.rows,
+      total: countResult.rows[0].total,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult.rows[0].total / limit),
+    };
+  },
+
+  async updateReview(id: number, data: { comment?: string; proposed_fee?: number; approved_fee?: number; status?: string }) {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (data.comment !== undefined) { fields.push(`comment = $${idx++}`); params.push(data.comment); }
+    if (data.proposed_fee !== undefined) { fields.push(`proposed_fee = $${idx++}`); params.push(data.proposed_fee); }
+    if (data.approved_fee !== undefined) { fields.push(`approved_fee = $${idx++}`); params.push(data.approved_fee); }
+    if (data.status !== undefined) { fields.push(`status = $${idx++}`); params.push(data.status); }
+
+    if (fields.length === 0) throw new AppError(400, 'No fields to update');
+
+    params.push(id);
+    const result = await db.query(
+      `UPDATE reviews SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      params
+    );
+    if (result.rows.length === 0) throw new NotFoundError('Review not found');
+    return result.rows[0];
+  },
+
+  async deleteReview(id: number) {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const review = await client.query('SELECT case_id FROM reviews WHERE id = $1', [id]);
+      if (review.rows.length === 0) throw new NotFoundError('Review not found');
+
+      await client.query('DELETE FROM reviews WHERE id = $1', [id]);
+      await client.query(`UPDATE cases SET status = 'surveyed' WHERE id = $1`, [review.rows[0].case_id]);
+
+      await client.query('COMMIT');
+      return { id };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+};
