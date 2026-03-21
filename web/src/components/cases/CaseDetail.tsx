@@ -234,93 +234,149 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
             </div>
           )}
 
-          {/* ===== กลุ่ม: รายละเอียดอุบัติเหตุ ===== */}
-          <div className="flex items-center gap-3 mt-4">
-            <div className="w-1.5 h-8 bg-orange-500 rounded-full"></div>
-            <h2 className="text-xl font-bold text-orange-800">รายละเอียดอุบัติเหตุ</h2>
-            <div className="flex-1 h-px bg-orange-200"></div>
+          {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
+          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+            {/* Header bar */}
+            <div className="bg-orange-600 text-white px-4 py-2 flex flex-wrap items-center gap-x-6">
+              <span className="font-bold">::: รายละเอียดอุบัติเหตุ</span>
+            </div>
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500 w-[200px] whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_date || '-'} {report.acc_time && <span className="ml-2">{report.acc_time} น.</span>}</td>
+                  <td className="px-4 py-2" colSpan={2}></td>
+                </tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_place || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500 w-[160px]">จังหวัด/เขต :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_province || '-'} {report.acc_district && report.acc_district}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_cause || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">ลักษณะความเสียหาย :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_damage_type || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500 align-top">รายละเอียดการเกิดเหตุ :</td>
+                  <td className="px-4 py-2 text-gray-800 whitespace-pre-wrap" colSpan={3}>{report.acc_detail || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท :</td>
+                  <td className="px-4 py-2 font-medium text-gray-800" colSpan={3}>{report.acc_fault || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500">ผู้แจ้ง :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_reporter || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">ผู้สำรวจภัย :</td>
+                  <td className="px-4 py-2 font-medium text-gray-800">{report.acc_surveyor || '-'} {report.acc_surveyor_branch && <span className="text-gray-500 ml-1">{report.acc_surveyor_branch}</span>} {report.acc_surveyor_phone && <span className="text-gray-500 ml-1">โทร: {report.acc_surveyor_phone}</span>}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_customer_report_date || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_insurance_notify_date || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุ) :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_survey_arrive_date || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_survey_complete_date || '-'}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* รายละเอียดอุบัติเหตุ */}
-          {(
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">รายละเอียดอุบัติเหตุ</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InfoItem label="วันที่เกิดเหตุ" value={report.acc_date} />
-                <InfoItem label="เวลา" value={report.acc_time} />
-                <InfoItem label="สถานที่เกิดเหตุ" value={report.acc_place} />
-                <InfoItem label="จังหวัด" value={report.acc_province} />
-                <InfoItem label="เขต/อำเภอ" value={report.acc_district} />
-                <InfoItem label="ลักษณะการเกิดเหตุ" value={report.acc_cause} />
-                <InfoItem label="ลักษณะความเสียหาย" value={report.acc_damage_type} />
-                <InfoItem label="ฝ่ายประมาท" value={report.acc_fault} />
-              </div>
-              {report.acc_detail && (
-                <div className="mt-4">
-                  <span className="text-sm text-gray-500">รายละเอียดการเกิดเหตุ</span>
-                  <p className="font-medium text-gray-800 whitespace-pre-wrap mt-1 bg-gray-50 p-3 rounded">{report.acc_detail}</p>
-                </div>
-              )}
-            </div>
-          )}
+          {/* คู่กรณี + ตำรวจ + ติดตามงาน — แบบตาราง */}
+          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500 w-[200px] whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี :</td>
+                  <td className="px-4 py-2 text-gray-800" colSpan={3}>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <label className="flex items-center gap-1"><input type="checkbox" disabled checked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" disabled checked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" disabled checked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" disabled checked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" disabled checked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
+                      <span className="ml-2 font-medium">{report.acc_claim_amount != null ? `${Number(report.acc_claim_amount).toLocaleString()} บาท` : '0.00 บาท'}</span>
+                      <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
+                      <span className="font-medium">{report.acc_claim_total_amount != null ? `${Number(report.acc_claim_total_amount).toLocaleString()} บาท` : '-'}</span>
+                      <span className="ml-2 text-gray-500">การเก็บเป็น :</span>
+                      <span>-</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          {/* ข้อมูลการสำรวจ */}
-          {(
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">ข้อมูลการสำรวจ</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InfoItem label="ผู้แจ้ง" value={report.acc_reporter} />
-                <InfoItem label="ผู้สำรวจภัย" value={report.acc_surveyor} />
-                <InfoItem label="สาขา" value={report.acc_surveyor_branch} />
-                <InfoItem label="โทรศัพท์สำรวจ" value={report.acc_surveyor_phone} />
-                <InfoItem label="วันที่ลูกค้าแจ้ง บ.ประกัน" value={report.acc_customer_report_date} />
-                <InfoItem label="วันที่ บ.ประกันแจ้งสำรวจภัย" value={report.acc_insurance_notify_date} />
-                <InfoItem label="วันที่ถึงที่เกิดเหตุ" value={report.acc_survey_arrive_date} />
-                <InfoItem label="วันที่สำรวจเสร็จ" value={report.acc_survey_complete_date} />
-              </div>
-            </div>
-          )}
+          {/* พนักงานสอบสวน + แอลกอฮอล์ — แบบตาราง */}
+          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500 w-[200px] whitespace-nowrap">ชื่อพนักงานสอบสวน :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_police_name || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500 w-[160px]">สถานีตำรวจ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_police_station || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเห็นพนักงานสอบสวน :</td>
+                  <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.acc_police_comment || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500">วันที่ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_police_date || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">ประจำวันข้อที่ :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_police_book_no || '-'}</td>
+                </tr>
+                <tr className="bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผลการตรวจแอลกอฮอล์ :</td>
+                  <td className="px-4 py-2 text-gray-800" colSpan={3}>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจ'} className="w-3.5 h-3.5" /> ไม่มีการตรวจแอลกอฮอล์</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_alcohol_test === 'มีการตรวจ'} className="w-3.5 h-3.5" /> มีการตรวจแอลกอฮอล์</label>
+                      <span className="text-gray-500 ml-2">ระบุผล :</span>
+                      <span className="font-medium">{report.acc_alcohol_test && report.acc_alcohol_test !== 'ไม่มีการตรวจ' && report.acc_alcohol_test !== 'มีการตรวจ' ? report.acc_alcohol_test : '-'}</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          {/* คู่กรณี & ตำรวจ */}
-          {(
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">คู่กรณี & ตำรวจ</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InfoItem label="การเรียกร้องค่าเสียหายจากคู่กรณี" value={report.acc_claim_opponent} />
-                <InfoItem label="รับเงินจำนวน" value={report.acc_claim_amount != null ? formatCurrency(report.acc_claim_amount) : null} />
-                <InfoItem label="จากจำนวนเรียกร้องทั้งหมด" value={report.acc_claim_total_amount != null ? formatCurrency(report.acc_claim_total_amount) : null} />
-                <InfoItem label="ชื่อพนักงานสอบสวน" value={report.acc_police_name} />
-                <InfoItem label="สถานีตำรวจ" value={report.acc_police_station} />
-                <InfoItem label="วันที่ (ตำรวจ)" value={report.acc_police_date} />
-                <InfoItem label="ประจำวันข้อที่" value={report.acc_police_book_no} />
-                <InfoItem label="ผลการตรวจแอลกอฮอล์" value={report.acc_alcohol_test} />
-              </div>
-              {report.acc_police_comment && (
-                <div className="mt-4"><span className="text-sm text-gray-500">ความเห็นพนักงานสอบสวน</span><p className="font-medium text-gray-800 mt-1">{report.acc_police_comment}</p></div>
-              )}
-            </div>
-          )}
+          {/* การติดตามงาน — แบบตาราง */}
+          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 text-gray-500 w-[200px]">การติดตามงาน :</td>
+                  <td className="px-4 py-2 text-gray-800">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-gray-500 w-[120px]">ครั้งที่นัดหมาย :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_followup_count || '-'}</td>
+                </tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <td className="px-4 py-2 text-gray-500">รายละเอียดการนัดหมาย :</td>
+                  <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.acc_followup_detail || '-'}</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-gray-500">วันที่ :</td>
+                  <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.acc_followup_date || '-'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          {/* การติดตามงาน */}
-          {(
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">การติดตามงาน</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InfoItem label="สถานะ" value={report.acc_followup} />
-                <InfoItem label="ครั้งที่นัดหมาย" value={report.acc_followup_count} />
-                <InfoItem label="วันที่นัดหมาย" value={report.acc_followup_date} />
-                <InfoItem label="รายละเอียดการนัดหมาย" value={report.acc_followup_detail} />
-              </div>
-            </div>
-          )}
-
-          {/* หมายเหตุ */}
-          {(
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">หมายเหตุ</h3>
-              <p className="font-medium text-gray-800 whitespace-pre-wrap">{report.notes}</p>
-            </div>
-          )}
         </>
       )}
 
