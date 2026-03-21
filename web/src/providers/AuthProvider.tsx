@@ -27,6 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(storedUser);
+      setLoading(false);
+      // Verify token in background (don't block rendering)
       api.get('/api/users/me')
         .then((res) => {
           if (res.data.success && res.data.data) {
@@ -38,8 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           removeToken();
           setToken(null);
           setUser(null);
-        })
-        .finally(() => setLoading(false));
+        });
     } else {
       setLoading(false);
     }
