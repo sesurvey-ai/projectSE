@@ -384,8 +384,9 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex items-center gap-2">
                       <input type="text" disabled value={report.acc_date || ''} className="w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={report.acc_time ? report.acc_time.split(':')[0] : ''} className="w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled value={report.acc_time_hour || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <input type="text" disabled value={report.acc_time ? report.acc_time.split(':')[1] : ''} className="w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
