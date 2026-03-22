@@ -2,7 +2,7 @@
 
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, CAR_BRAND_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, CAR_BRAND_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, BANGKOK_DISTRICT_OPTIONS } from './caseOptions';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface CaseDetailProps {
@@ -407,8 +407,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                       <select disabled value={report.acc_province || '0'} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
                         {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
-                      <select disabled className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                        <option>{report.acc_district || 'เขต/อำเภอ'}</option>
+                      <select disabled value={report.acc_district || '-- เขต --'} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        {BANGKOK_DISTRICT_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
                   </td>
