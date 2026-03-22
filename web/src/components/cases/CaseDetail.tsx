@@ -726,6 +726,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
             </div>
           </div>
         </div>
+        </div>
         {/* คอลัมน์ขวา — ปุ่มอนุมัติ */}
         <div className="w-1/2 flex items-end justify-end">
           {review ? (
