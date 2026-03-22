@@ -44,16 +44,6 @@ export default function ReviewForm({ caseId, onReviewSubmitted }: ReviewFormProp
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">เสนอค่าบริการ (บาท)</label>
-          <input type="number" value={proposedFee} onChange={(e) => setProposedFee(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0.00" min="0" step="0.01" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">อนุมัติค่าบริการ (บาท)</label>
-          <input type="number" value={approvedFee} onChange={(e) => setApprovedFee(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0.00" min="0" step="0.01" />
-        </div>
-      </div>
       <div className="flex justify-end">
         <button type="submit" disabled={submitting} className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
           {submitting ? 'กำลังส่ง...' : 'อนุมัติ'}

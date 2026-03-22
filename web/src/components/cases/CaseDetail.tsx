@@ -729,10 +729,6 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               {review ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
-                  <div className="grid grid-cols-2 gap-4 mt-3">
-                    <div><span className="text-sm text-gray-500">เสนอค่าบริการ</span><p className="font-medium text-gray-800">{formatCurrency(review.proposed_fee)}</p></div>
-                    <div><span className="text-sm text-gray-500">อนุมัติค่าบริการ</span><p className="font-medium text-gray-800">{formatCurrency(review.approved_fee)}</p></div>
-                  </div>
                   {review.reviewed_at && <div className="mt-3 text-sm text-gray-400">ตรวจสอบเมื่อ {formatDate(review.reviewed_at)}</div>}
                 </div>
               ) : (
