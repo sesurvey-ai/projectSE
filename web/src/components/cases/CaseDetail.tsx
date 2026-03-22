@@ -27,6 +27,15 @@ function InfoItem({ label, value }: { label: string; value: string | number | nu
   );
 }
 
+const ColGroup = () => (
+  <colgroup>
+    <col style={{ width: '16%' }} />
+    <col style={{ width: '34%' }} />
+    <col style={{ width: '16%' }} />
+    <col style={{ width: '34%' }} />
+  </colgroup>
+);
+
 export default function CaseDetail({ caseData, report, photos, review, onReviewSubmitted }: CaseDetailProps) {
   return (
     <div className="space-y-6">
@@ -34,29 +43,43 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
         <>
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            {/* Header bar */}
-            <div className="bg-blue-700 text-white px-4 py-2 flex flex-wrap items-center gap-x-6 gap-y-1">
-              <span className="font-bold">:: รายละเอียดรถยนต์</span>
-              <div className="flex items-center gap-4 ml-auto">
-                <span>ประเภทเคลม :</span>
-                {['F','D','A','C'].map(v => (
-                  <span key={v} className={`${report.claim_type === v ? 'font-bold text-yellow-300' : 'text-blue-200'}`}>
-                    {report.claim_type === v ? '● ' : '○ '}{CLAIM_TYPE_LABELS[v]}
+            {/* Header bar with claim type & damage level */}
+            <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-bold">::: รายละเอียดรถยนต์</span>
+              <span className="ml-auto font-bold">ประเภทเคลม :</span>
+              <span className="text-red-400">*</span>
+              {['F','D','A','C'].map(v => (
+                <label key={v} className="flex items-center gap-1 cursor-default">
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 border-white inline-flex items-center justify-center ${report.claim_type === v ? 'bg-white' : ''}`}>
+                    {report.claim_type === v && <span className="w-1.5 h-1.5 rounded-full bg-blue-700"></span>}
                   </span>
-                ))}
-                <span className="ml-4">รถเสียหาย :</span>
-                <span className={report.damage_level === 'หนัก' ? 'font-bold text-yellow-300' : 'text-blue-200'}>{report.damage_level === 'หนัก' ? '● ' : '○ '}หนัก</span>
-                <span className={report.damage_level === 'เบา' ? 'font-bold text-yellow-300' : 'text-blue-200'}>{report.damage_level === 'เบา' ? '● ' : '○ '}เบา</span>
-                {report.car_lost && <span className="text-red-300 font-bold ml-2">☑ รถหาย</span>}
-              </div>
+                  <span>{CLAIM_TYPE_LABELS[v]}</span>
+                </label>
+              ))}
+              <span className="font-bold ml-4">รถเสียหาย :</span>
+              {['หนัก','เบา'].map(v => (
+                <label key={v} className="flex items-center gap-1 cursor-default">
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 border-white inline-flex items-center justify-center ${report.damage_level === v ? 'bg-white' : ''}`}>
+                    {report.damage_level === v && <span className="w-1.5 h-1.5 rounded-full bg-blue-700"></span>}
+                  </span>
+                  <span>{v}</span>
+                </label>
+              ))}
+              <label className="flex items-center gap-1 ml-2 cursor-default">
+                <span className={`w-3.5 h-3.5 rounded border border-white inline-flex items-center justify-center ${report.car_lost ? 'bg-white' : ''}`}>
+                  {report.car_lost && <span className="text-blue-700 text-xs font-bold">✓</span>}
+                </span>
+                <span>รถหาย</span>
+              </label>
             </div>
             {/* Table rows */}
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 w-[160px]">บริษัทผู้จัดเรื่อง :</td>
+                  <td className="px-4 py-2 text-gray-500">บริษัทผู้จัดเรื่อง :</td>
                   <td className="px-4 py-2 font-medium text-gray-800">{report.survey_company || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500 w-[160px]">วันที่ :</td>
+                  <td className="px-4 py-2 text-gray-500">วันที่ :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_date || '-'}</td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -67,7 +90,24 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">บริษัทประกัน :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.insurance_company || '-'} {report.insurance_branch && <span className="text-gray-500 ml-2">{report.insurance_branch}</span>}</td>
+                  <td className="px-4 py-2 overflow-hidden">
+                    <div className="flex items-center gap-1">
+                      <select disabled value={report.insurance_company || '0'} className="min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        <option value="0">-- ระบุ --</option>
+                        <option value="ประกันภัยทดสอบ">ประกันภัยทดสอบ</option>
+                        <option value="บริษัท เดอะ วัน ประกันภัย จำกัด (มหาชน)">บริษัท เดอะ วัน ประกันภัย จำกัด (มหาชน)</option>
+                        <option value="ไอโออิกรุงเทพประกันภัย">ไอโออิกรุงเทพประกันภัย</option>
+                        <option value="ฟอลคอนประกันภัย จำกัด (มหาชน)">ฟอลคอนประกันภัย จำกัด (มหาชน)</option>
+                        <option value="บริษัท อลิอันซ์ อยุธยา ประกันภัย จำกัด (มหาชน)">บริษัท อลิอันซ์ อยุธยา ประกันภัย จำกัด (มหาชน)</option>
+                        <option value="บริษัท เจมาร์ท ประกันภัย จํากัด (มหาชน)">บริษัท เจมาร์ท ประกันภัย จํากัด (มหาชน)</option>
+                        <option value="บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)">บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)</option>
+                      </select>
+                      <select disabled value={report.insurance_branch || 'กรุงเทพ'} className="w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        <option value="0">-- ระบุ --</option>
+                        <option value="กรุงเทพ">กรุงเทพ</option>
+                      </select>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-500">เลขเรื่องเซอร์เวย์ :</td>
                   <td className="px-4 py-2 text-gray-800">{report.survey_job_no || '-'}</td>
                 </tr>
@@ -76,6 +116,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-800">{report.claim_ref_no || '-'}</td>
                   <td className="px-4 py-2 text-gray-500">เลขที่เคลม :</td>
                   <td className="px-4 py-2 font-medium text-gray-800">{report.claim_no || '-'}</td>
+                  <td className="px-4 py-2" colSpan={2}></td>
                 </tr>
               </tbody>
             </table>
@@ -84,12 +125,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           {/* กรมธรรม์ — แบบตาราง */}
           {(
             <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-              <table className="w-full">
+              <table className="w-full table-fixed">
+                <ColGroup />
                 <tbody>
                   <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500 w-[160px]">กรมธรรม์(พรบ.) :</td>
+                    <td className="px-4 py-2 text-gray-500">กรมธรรม์(พรบ.) :</td>
                     <td className="px-4 py-2 text-gray-800">{report.prb_number || '-'}</td>
-                    <td className="px-4 py-2 text-gray-500 w-[160px]">กรมธรรม์เลขที่ :</td>
+                    <td className="px-4 py-2 text-gray-500">กรมธรรม์เลขที่ :</td>
                     <td className="px-4 py-2 font-medium text-gray-800">{report.policy_no || '-'}</td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -126,12 +168,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
           {/* รายละเอียดรถยนต์ — แบบตาราง */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 w-[160px]">หมายเลขทะเบียน :</td>
+                  <td className="px-4 py-2 text-gray-500">หมายเลขทะเบียน :</td>
                   <td className="px-4 py-2 font-medium text-gray-800">{report.license_plate || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500 w-[160px]">จังหวัด :</td>
+                  <td className="px-4 py-2 text-gray-500">จังหวัด :</td>
                   <td className="px-4 py-2 text-gray-800">{report.car_province || '-'}</td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -171,15 +214,16 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           {/* ข้อมูลผู้ขับขี่ — แบบตาราง */}
           {(
             <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-              <table className="w-full">
+              <table className="w-full table-fixed">
+                <ColGroup />
                 <tbody>
                   <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500 w-[160px] whitespace-nowrap">ผู้ขับขี่รถประกันภัย :</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย :</td>
                     <td className="px-4 py-2 font-medium text-gray-800">
                       {report.driver_gender && <span className="text-gray-500 mr-2">{report.driver_gender === 'M' ? '● ชาย' : report.driver_gender === 'F' ? '● หญิง' : ''}</span>}
                       {report.driver_name || '-'}
                     </td>
-                    <td className="px-4 py-2 text-gray-500 w-[160px] whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ :</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ :</td>
                     <td className="px-4 py-2 text-gray-800">{report.driver_relation || '-'}</td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -237,20 +281,21 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar */}
-            <div className="bg-orange-600 text-white px-4 py-2 flex flex-wrap items-center gap-x-6">
+            <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2">
               <span className="font-bold">::: รายละเอียดอุบัติเหตุ</span>
             </div>
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 w-[200px] whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_date || '-'} {report.acc_time && <span className="ml-2">{report.acc_time} น.</span>}</td>
                   <td className="px-4 py-2" colSpan={2}></td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_place || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500 w-[160px]">จังหวัด/เขต :</td>
+                  <td className="px-4 py-2 text-gray-500">จังหวัด/เขต :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_province || '-'} {report.acc_district && report.acc_district}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
@@ -291,10 +336,11 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
           {/* คู่กรณี + ตำรวจ + ติดตามงาน — แบบตาราง */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 w-[200px] whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี :</td>
                   <td className="px-4 py-2 text-gray-800" colSpan={3}>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                       <label className="flex items-center gap-1"><input type="checkbox" disabled checked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
@@ -316,12 +362,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
           {/* พนักงานสอบสวน + แอลกอฮอล์ — แบบตาราง */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 w-[200px] whitespace-nowrap">ชื่อพนักงานสอบสวน :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อพนักงานสอบสวน :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_police_name || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500 w-[160px]">สถานีตำรวจ :</td>
+                  <td className="px-4 py-2 text-gray-500">สถานีตำรวจ :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_police_station || '-'}</td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -336,14 +383,9 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 </tr>
                 <tr className="bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผลการตรวจแอลกอฮอล์ :</td>
-                  <td className="px-4 py-2 text-gray-800" colSpan={3}>
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1"><input type="radio" disabled checked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจ'} className="w-3.5 h-3.5" /> ไม่มีการตรวจแอลกอฮอล์</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_alcohol_test === 'มีการตรวจ'} className="w-3.5 h-3.5" /> มีการตรวจแอลกอฮอล์</label>
-                      <span className="text-gray-500 ml-2">ระบุผล :</span>
-                      <span className="font-medium">{report.acc_alcohol_test && report.acc_alcohol_test !== 'ไม่มีการตรวจ' && report.acc_alcohol_test !== 'มีการตรวจ' ? report.acc_alcohol_test : '-'}</span>
-                    </div>
-                  </td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_alcohol_test || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">ระบุผล :</td>
+                  <td className="px-4 py-2 font-medium text-gray-800">{report.acc_alcohol_result || '-'}</td>
                 </tr>
               </tbody>
             </table>
@@ -351,18 +393,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
           {/* การติดตามงาน — แบบตาราง */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 w-[200px]">การติดตามงาน :</td>
-                  <td className="px-4 py-2 text-gray-800">
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1"><input type="radio" disabled checked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500 w-[120px]">ครั้งที่นัดหมาย :</td>
+                  <td className="px-4 py-2 text-gray-500">การติดตามงาน :</td>
+                  <td className="px-4 py-2 text-gray-800">{report.acc_followup || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">ครั้งที่นัดหมาย :</td>
                   <td className="px-4 py-2 text-gray-800">{report.acc_followup_count || '-'}</td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
