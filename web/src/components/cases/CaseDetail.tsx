@@ -14,6 +14,14 @@ interface CaseDetailProps {
 }
 
 function formatDate(d: string) { if (!d) return '-'; return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function parseDatetime(val: string | null) {
+  if (!val) return { date: '', hour: '', minute: '' };
+  const parts = val.split('|');
+  const date = parts[0] || '';
+  const time = parts[1] || '';
+  const [hour, minute] = time.split(':');
+  return { date, hour: hour || '', minute: minute || '' };
+}
 function formatCurrency(v: number | null | undefined) { if (v == null) return '-'; return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(v); }
 
 const CLAIM_TYPE_LABELS: Record<string, string> = { F: 'เคลมสด', D: 'เคลมแห้ง', A: 'งานนัดหมาย', C: 'งานติดตาม' };
@@ -458,46 +466,54 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     </div>
                   </td>
                 </tr>
+                {(() => { const cr = parseDatetime(report.acc_customer_report_date); const ins = parseDatetime(report.acc_insurance_notify_date); return (
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled value={report.acc_customer_report_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={cr.date} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={cr.hour} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled value={report.acc_customer_report_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <input type="text" disabled value={cr.minute} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled value={report.acc_insurance_notify_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={ins.date} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={ins.hour} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled value={report.acc_insurance_notify_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <input type="text" disabled value={ins.minute} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                 </tr>
+                ); })()}
+                {(() => { const arr = parseDatetime(report.acc_survey_arrive_date); const comp = parseDatetime(report.acc_survey_complete_date); return (
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled value={report.acc_survey_arrive_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={arr.date} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={arr.hour} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled value={report.acc_survey_arrive_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <input type="text" disabled value={arr.minute} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled value={report.acc_survey_complete_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={comp.date} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={comp.hour} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled value={report.acc_survey_complete_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <input type="text" disabled value={comp.minute} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                 </tr>
+                ); })()}
               </tbody>
             </table>
           </div>
