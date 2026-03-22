@@ -381,46 +381,121 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_date || '-'} {report.acc_time && <span className="ml-2">{report.acc_time} น.</span>}</td>
-                  <td className="px-4 py-2" colSpan={2}></td>
+                  <td className="px-4 py-2" colSpan={3}>
+                    <div className="flex items-center gap-2">
+                      <input type="text" disabled value={report.acc_date || ''} className="w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={report.acc_time_hour || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_place || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500">จังหวัด/เขต :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_province || '-'} {report.acc_district && report.acc_district}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.acc_place || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
+                  <td className="px-4 py-2" colSpan={2}>
+                    <div className="flex items-center gap-1">
+                      <select disabled value={report.acc_province || '0'} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <select disabled className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        <option>{report.acc_district || 'เขต/อำเภอ'}</option>
+                      </select>
+                    </div>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_cause || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500">ลักษณะความเสียหาย :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_damage_type || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.acc_cause || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                      <option value="ชนฟุตบาท">ชนฟุตบาท</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ลักษณะความเสียหาย :</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.acc_damage_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                      <option value="เฉี่ยวชนวัสดุ">เฉี่ยวชนวัสดุ</option>
+                    </select>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 align-top">รายละเอียดการเกิดเหตุ :</td>
-                  <td className="px-4 py-2 text-gray-800 whitespace-pre-wrap" colSpan={3}>{report.acc_detail || '-'}</td>
+                  <td className="px-4 py-2" colSpan={3}>
+                    <textarea disabled value={report.acc_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm min-h-[80px]" rows={4}>{report.acc_detail || ''}</textarea>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800" colSpan={3}>{report.acc_fault || '-'}</td>
+                  <td className="px-4 py-2" colSpan={3}>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
+                      <span className="text-gray-500">คู่กรณีคันที่</span>
+                      <input type="text" disabled value={''} className="w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <label className="flex items-center gap-1"><input type="radio" disabled className="w-3.5 h-3.5" /> ประมาทร่วม</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled className="w-3.5 h-3.5" /> ไปถึง แล้วไม่พบ</label>
+                    </div>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ผู้แจ้ง :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_reporter || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.acc_reporter || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">ผู้สำรวจภัย :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.acc_surveyor || '-'} {report.acc_surveyor_branch && <span className="text-gray-500 ml-1">{report.acc_surveyor_branch}</span>} {report.acc_surveyor_phone && <span className="text-gray-500 ml-1">โทร: {report.acc_surveyor_phone}</span>}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_surveyor || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <select disabled className="w-[70px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        <option>-- ระบุ --</option>
+                      </select>
+                      <span className="text-gray-500 shrink-0">โทรศัพท์ :</span>
+                      <input type="text" disabled value={report.acc_surveyor_phone || ''} className="w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                    </div>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_customer_report_date || '-'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_customer_report_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={report.acc_customer_report_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_insurance_notify_date || '-'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_insurance_notify_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={report.acc_insurance_notify_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุ) :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_survey_arrive_date || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) :</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_survey_arrive_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={report.acc_survey_arrive_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_survey_complete_date || '-'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_survey_complete_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={report.acc_survey_complete_hour || ''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
