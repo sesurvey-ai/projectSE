@@ -135,35 +135,41 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">กรมธรรม์(พรบ.) :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.prb_number || '-'}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="checkbox" disabled checked={!!report.prb_number} className="w-3.5 h-3.5" /> มี (พรบ.)</label>
+                        <input type="text" disabled value={report.prb_number || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      </div>
+                    </td>
                     <td className="px-4 py-2 text-gray-500">กรมธรรม์เลขที่ :</td>
-                    <td className="px-4 py-2 font-medium text-gray-800">{report.policy_no || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.policy_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อผู้ขับขี่ตามกรมธรรม์ :</td>
-                    <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.driver_by_policy || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_by_policy || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
+                    <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">วันที่เริ่มต้น :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.policy_start || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.policy_start || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2 text-gray-500">วันที่สิ้นสุด :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.policy_end || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.policy_end || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย :</td>
-                    <td className="px-4 py-2 font-medium text-gray-800">{report.assured_name || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.assured_name || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2 text-gray-500">ประกันประเภท :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.policy_type || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.policy_type || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">อีเมลผู้เอาประกัน :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.assured_email || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.assured_email || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2 text-gray-500">รหัสภัยยานยนต์ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.risk_code || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.risk_code || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ค่าเสียหายส่วนแรก :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.deductible != null ? formatCurrency(report.deductible) : '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                 </tbody>
