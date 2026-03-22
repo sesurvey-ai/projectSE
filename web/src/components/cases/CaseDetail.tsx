@@ -115,10 +115,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">เลขที่รับแจ้ง :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.claim_ref_no || '-'}</td>
+                  <td className="px-4 py-2">
+                    <input type="text" disabled value={report.claim_ref_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                  </td>
                   <td className="px-4 py-2 text-gray-500">เลขที่เคลม :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.claim_no || '-'}</td>
-                  <td className="px-4 py-2" colSpan={2}></td>
+                  <td className="px-4 py-2">
+                    <input type="text" disabled value={report.claim_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                  </td>
                 </tr>
               </tbody>
             </table>
