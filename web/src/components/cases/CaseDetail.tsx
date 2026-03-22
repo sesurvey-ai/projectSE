@@ -381,7 +381,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar */}
-            <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2">
+            <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
               <span className="font-bold">::: รายละเอียดอุบัติเหตุ</span>
             </div>
             <table className="w-full table-fixed">
@@ -632,7 +632,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
       {/* รูปภาพ */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2">
+        <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
           <span className="font-bold">::: รูปภาพ</span>
         </div>
         <div className="p-4">
