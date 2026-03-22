@@ -2,6 +2,7 @@
 
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
+import { PROVINCE_OPTIONS, CAR_BRAND_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS } from './caseOptions';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface CaseDetailProps {
@@ -187,9 +188,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2"><input type="text" disabled value={report.license_plate || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">จังหวัด :</td>
                   <td className="px-4 py-2">
-                    <select disabled value={report.car_province || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                      <option value="0">-- ระบุ --</option>
-                      <option value="กรุงเทพ ฯ">กรุงเทพ ฯ</option>
+                    <select disabled value={report.car_province || '-- ระบุ --'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </td>
                 </tr>
@@ -209,9 +209,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </td>
                   <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
                   <td className="px-4 py-2">
-                    <select disabled value={report.car_brand || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                      <option value="0">-- ระบุ --</option>
-                      <option value="TOYOTA">TOYOTA</option>
+                    <select disabled value={report.car_brand || '-- ระบุ --'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      {CAR_BRAND_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </td>
                 </tr>
@@ -220,9 +219,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2"><input type="text" disabled value={report.car_model || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">สีรถ :</td>
                   <td className="px-4 py-2">
-                    <select disabled value={report.car_color || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                      <option value="0">-- ระบุ --</option>
-                      <option value="ดำ">ดำ</option>
+                    <select disabled value={report.car_color || '-- ระบุ --'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      {CAR_COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </td>
                 </tr>
@@ -232,7 +230,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ประเภทรถยนต์ไฟฟ้า :</td>
                   <td className="px-4 py-2">
                     <select disabled value={report.ev_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                      <option value="0">-- ระบุ --</option>
+                      {EV_TYPE_OPTIONS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
                     </select>
                   </td>
                 </tr>
