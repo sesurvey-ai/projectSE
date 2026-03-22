@@ -669,9 +669,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           <span className="font-bold">::: ค่าใช้จ่าย</span>
         </div>
         <div className="p-4">
-          <div className="grid grid-cols-2 gap-6">
-            {/* คอลัมน์ซ้าย — ตารางค่าใช้จ่าย */}
-            <div>
+          <div>
+            <div className="w-1/2">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -724,8 +723,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 </tbody>
               </table>
             </div>
-            {/* คอลัมน์ขวา — ปุ่มอนุมัติ */}
-            <div className="flex flex-col">
+            <div className="flex justify-end mt-4">
               {review ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
