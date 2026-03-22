@@ -10,7 +10,7 @@ import routes from './routes';
 const app = express();
 
 // Middleware
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: env.CORS_ORIGIN.split(',') }));
 app.use(morgan('dev'));
 app.use(express.json());

@@ -28,6 +28,7 @@ api.interceptors.response.use(
 );
 
 export function getPhotoUrl(filename: string): string {
+  if (filename.startsWith('/uploads/')) return `${API_URL}${filename}`;
   return `${API_URL}/uploads/${filename}`;
 }
 
