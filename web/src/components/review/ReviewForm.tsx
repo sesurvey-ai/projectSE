@@ -44,10 +44,6 @@ export default function ReviewForm({ caseId, onReviewSubmitted }: ReviewFormProp
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">ความคิดเห็น</label>
-        <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-vertical" placeholder="กรอกความคิดเห็น..." />
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">เสนอค่าบริการ (บาท)</label>
