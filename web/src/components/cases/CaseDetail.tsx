@@ -640,16 +640,6 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
         </div>
       </div>
 
-      {/* ค่าใช้จ่าย */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
-          <span className="font-bold">::: ค่าใช้จ่าย</span>
-        </div>
-        <div className="p-4">
-          <div className="text-gray-500 text-center py-4">ยังไม่มีข้อมูลค่าใช้จ่าย</div>
-        </div>
-      </div>
-
       {/* การตรวจสอบ */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
@@ -682,6 +672,16 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           ) : (
             <ReviewForm caseId={caseData.id} onReviewSubmitted={onReviewSubmitted} />
           )}
+        </div>
+      </div>
+
+      {/* ค่าใช้จ่าย */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
+          <span className="font-bold">::: ค่าใช้จ่าย</span>
+        </div>
+        <div className="p-4">
+          <div className="text-gray-500 text-center py-4">ยังไม่มีข้อมูลค่าใช้จ่าย</div>
         </div>
       </div>
     </div>
