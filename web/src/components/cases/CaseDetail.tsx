@@ -258,49 +258,91 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย :</td>
-                    <td className="px-4 py-2 font-medium text-gray-800">
-                      {report.driver_gender && <span className="text-gray-500 mr-2">{report.driver_gender === 'M' ? '● ชาย' : report.driver_gender === 'F' ? '● หญิง' : ''}</span>}
-                      {report.driver_name || '-'}
+                    <td className="px-4 py-2" colSpan={2}>
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" disabled checked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
+                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" disabled checked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
+                        <select disabled value={report.driver_title || '0'} className="w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                          <option value="0">--</option>
+                          <option value="นางสาว">นางสาว</option>
+                          <option value="นาง">นาง</option>
+                          <option value="นาย">นาย</option>
+                        </select>
+                        <span className="text-gray-500 shrink-0">ชื่อ</span>
+                        <input type="text" disabled value={report.driver_first_name || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                        <span className="text-gray-500 shrink-0">นามสกุล</span>
+                        <input type="text" disabled value={report.driver_last_name || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      </div>
                     </td>
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_relation || '-'}</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="px-4 py-2"></td>
+                    <td className="px-4 py-2" colSpan={2}></td>
+                    <td className="px-4 py-2">
+                      <select disabled value={report.driver_relation || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        <option value="0">-- ระบุ --</option>
+                        <option value="เจ้าของรถ">เจ้าของรถ</option>
+                        <option value="ญาติ">ญาติ</option>
+                        <option value="ลูกจ้าง">ลูกจ้าง</option>
+                        <option value="ผู้ยืม">ผู้ยืม</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                      </select>
+                    </td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">อายุ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_age != null ? report.driver_age : '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_age != null ? report.driver_age : ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2 text-gray-500">วันเกิด :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_birthdate || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_birthdate || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">ที่อยู่ปัจจุบัน :</td>
-                    <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.driver_address || '-'}</td>
+                    <td className="px-4 py-2" colSpan={3}>
+                      <div className="flex items-center gap-2">
+                        <input type="text" disabled value={report.driver_address || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                        <select disabled value={report.driver_province || '0'} className="w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                          {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        <select disabled value={report.driver_district || '0'} className="w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                          <option value="0">เขต/อำเภอ</option>
+                        </select>
+                      </div>
+                    </td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">โทรศัพท์ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_phone || '-'}</td>
-                    <td className="px-4 py-2 text-gray-500" colSpan={2}></td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_phone || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
+                    <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">บัตรประชาชนเลขที่ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_id_card || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_id_card || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ใบอนุญาตขับขี่เลขที่ :</td>
-                    <td className="px-4 py-2 font-medium text-gray-800">{report.driver_license_no || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_license_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ประเภท :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_license_type || '-'}</td>
+                    <td className="px-4 py-2">
+                      <select disabled value={report.driver_license_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                        <option value="0">-- ระบุ --</option>
+                        <option value="ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ</option>
+                        <option value="ใบขับขี่รถยนต์ส่วนบุคคล">ใบขับขี่รถยนต์ส่วนบุคคล</option>
+                        <option value="ใบขับขี่รถจักรยานยนต์">ใบขับขี่รถจักรยานยนต์</option>
+                      </select>
+                    </td>
                     <td className="px-4 py-2 text-gray-500">ออกให้ที่ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_license_place || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_license_place || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">ออกให้วันที่ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_license_start || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_license_start || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2 text-gray-500">หมดอายุวันที่ :</td>
-                    <td className="px-4 py-2 text-gray-800">{report.driver_license_end || '-'}</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={report.driver_license_end || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ใบสั่ง :</td>
-                    <td className="px-4 py-2 text-gray-800">-</td>
+                    <td className="px-4 py-2"><input type="text" disabled value={''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
@@ -309,7 +351,12 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ความเสียหายประมาณ :</td>
-                    <td className="px-4 py-2 font-medium text-gray-800">{report.estimated_cost != null ? `${Number(report.estimated_cost).toLocaleString()} บาท` : '-'}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <input type="text" disabled value={report.estimated_cost != null ? Number(report.estimated_cost).toFixed(2) : ''} className="w-[150px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                        <span className="text-gray-500">บาท</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                 </tbody>
