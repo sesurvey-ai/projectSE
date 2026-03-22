@@ -645,20 +645,33 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
         <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
           <span className="font-bold">::: การตรวจสอบ</span>
         </div>
-        <div className="p-6">
-        {review ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
-            {review.comment && <div className="mt-3"><span className="text-sm text-gray-500">ความคิดเห็น</span><p className="text-gray-800 mt-1">{review.comment}</p></div>}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-              <div><span className="text-sm text-gray-500">เสนอค่าบริการ</span><p className="font-medium text-gray-800">{formatCurrency(review.proposed_fee)}</p></div>
-              <div><span className="text-sm text-gray-500">อนุมัติค่าบริการ</span><p className="font-medium text-gray-800">{formatCurrency(review.approved_fee)}</p></div>
+        <div className="p-4">
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
+              <textarea disabled className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm min-h-[150px]" rows={6}>{report?.survey_result || 'เรียน ผู้ช่วยผู้จัดการฝ่ายสินไหมทราบ\nรถประกันประมาท เบียดฟุตบาตยางฉีก\nรถประกันประเภท 1 ซ่อมอู่\nออกหลักฐานให้รถประกันระบุเงื่อนไข รับผิดชอบยาง 50 เปอร์เซ็นต์\nความสัมพันธ์ผู้เอาประกันภัยเป็น มารดา\n ภูริ'}</textarea>
             </div>
-            {review.reviewed_at && <div className="mt-3 text-sm text-gray-400">ตรวจสอบเมื่อ {formatDate(review.reviewed_at)}</div>}
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
+              <textarea disabled className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm min-h-[150px]" rows={6}>{review?.comment || ''}</textarea>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
+              <textarea disabled className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm min-h-[150px]" rows={6}>{review?.surveyor_comment || ''}</textarea>
+            </div>
           </div>
-        ) : (
-          <ReviewForm caseId={caseData.id} onReviewSubmitted={onReviewSubmitted} />
-        )}
+          {review ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                <div><span className="text-sm text-gray-500">เสนอค่าบริการ</span><p className="font-medium text-gray-800">{formatCurrency(review.proposed_fee)}</p></div>
+                <div><span className="text-sm text-gray-500">อนุมัติค่าบริการ</span><p className="font-medium text-gray-800">{formatCurrency(review.approved_fee)}</p></div>
+              </div>
+              {review.reviewed_at && <div className="mt-3 text-sm text-gray-400">ตรวจสอบเมื่อ {formatDate(review.reviewed_at)}</div>}
+            </div>
+          ) : (
+            <ReviewForm caseId={caseData.id} onReviewSubmitted={onReviewSubmitted} />
+          )}
         </div>
       </div>
     </div>
