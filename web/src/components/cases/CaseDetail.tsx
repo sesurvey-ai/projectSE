@@ -549,25 +549,38 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อพนักงานสอบสวน :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_police_name || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.acc_police_name || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">สถานีตำรวจ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_police_station || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.acc_police_station || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเห็นพนักงานสอบสวน :</td>
-                  <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.acc_police_comment || '-'}</td>
+                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled value={report.acc_police_comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">วันที่ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_police_date || '-'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_police_date || ''} className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={''} className="w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-500">ประจำวันข้อที่ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_police_book_no || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.acc_police_book_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
                 <tr className="bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผลการตรวจแอลกอฮอล์ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_alcohol_test || '-'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> ไม่มีการตรวจแอลกอฮอล์</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_alcohol_test === 'มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> มีการตรวจแอลกอฮอล์</label>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-500">ระบุผล :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.acc_alcohol_result || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.acc_alcohol_result || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
               </tbody>
             </table>
@@ -580,17 +593,35 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">การติดตามงาน :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_followup || '-'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" disabled checked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-500">ครั้งที่นัดหมาย :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_followup_count || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.acc_followup_count || '1'} className="w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">รายละเอียดการนัดหมาย :</td>
-                  <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.acc_followup_detail || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">รายละเอียดการนัดหมาย :</td>
+                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled value={report.acc_followup_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
                 <tr>
                   <td className="px-4 py-2 text-gray-500">วันที่ :</td>
-                  <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.acc_followup_date || '-'}</td>
+                  <td className="px-4 py-2" colSpan={3}>
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled value={report.acc_followup_date || ''} className="w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                      <input type="text" disabled value={''} className="w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
+                      <input type="text" disabled value={''} className="w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" />
+                      <span className="text-gray-500 shrink-0">นาที</span>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
