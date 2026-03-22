@@ -681,7 +681,57 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           <span className="font-bold">::: ค่าใช้จ่าย</span>
         </div>
         <div className="p-4">
-          <div className="text-gray-500 text-center py-4">ยังไม่มีข้อมูลค่าใช้จ่าย</div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="px-4 py-2 text-left text-gray-600 font-semibold w-[40%]">รายละเอียด</th>
+                <th className="px-4 py-2 text-center text-gray-600 font-semibold w-[30%]">จำนวน</th>
+                <th className="px-4 py-2 text-center text-gray-600 font-semibold w-[30%]">ราคา/หน่วย</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-100">
+                <td className="px-4 py-2 text-gray-700">ค่าบริการ</td>
+                <td className="px-4 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="1" className="w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">ครั้ง</span></div></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="700.00" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <td className="px-4 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
+                <td className="px-4 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="" className="w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">ครั้ง</span></div></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="border-b border-gray-100">
+                <td className="px-4 py-2 text-gray-700">ค่ารูปถ่าย</td>
+                <td className="px-4 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="" className="w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">รูป</span></div></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <td className="px-4 py-2 text-gray-700">ค่าโทรศัพท์</td>
+                <td className="px-4 py-2"></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="border-b border-gray-100">
+                <td className="px-4 py-2 text-gray-700">ค่าประกันตัว</td>
+                <td className="px-4 py-2"></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <td className="px-4 py-2 text-gray-700">ค่าเรียกร้อง</td>
+                <td className="px-4 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="" className="w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">%</span></div></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="border-b border-gray-100">
+                <td className="px-4 py-2 text-gray-700">ค่าคัดประจำวัน</td>
+                <td className="px-4 py-2"></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="px-4 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
+                <td className="px-4 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
+                <td className="px-4 py-2 text-center"><input type="text" disabled value="" className="w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
