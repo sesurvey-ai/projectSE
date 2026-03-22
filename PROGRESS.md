@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 21 มีนาคม 2026 (19:30)
+**อัพเดทล่าสุด:** 22 มีนาคม 2026 (v1.3.4)
 
 ---
 
@@ -12,11 +12,11 @@
 | 2 | Authentication & User Roles | ✅ เสร็จแล้ว | 100% |
 | 3 | Backend API Development | ✅ เสร็จเกือบครบ | 99% |
 | 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 97% |
-| 5+6 | Unified Web (Next.js) + Admin Panel | ✅ เสร็จส่วนใหญ่ | 97% |
-| 7 | Integration & Testing | 🔄 ดำเนินการ | 55% |
+| 5+6 | Unified Web (Next.js) + Admin Panel | ✅ เสร็จเกือบครบ | 99% |
+| 7 | Integration & Testing | 🔄 ดำเนินการ | 60% |
 | 8 | Deployment & Go-live | ❌ ยังไม่ได้เริ่ม | 0% |
 
-**ความคืบหน้ารวม: ~88%**
+**ความคืบหน้ารวม: ~90%**
 
 ---
 
@@ -131,7 +131,7 @@
 
 ---
 
-## Phase 5+6: Unified Web (Next.js) ✅ 92%
+## Phase 5+6: Unified Web (Next.js) ✅ 99%
 
 ### Authentication & Routing
 
@@ -153,8 +153,12 @@
 ### Inspector (`/inspector`)
 
 - [x] Dashboard — แสดงรายการเคสรอตรวจ (CaseList component)
-- [x] รายละเอียดเคส (`/cases/[id]`) — ข้อมูลเคส + report + รูปถ่าย
-- [x] PhotoGallery — grid view + fullscreen modal
+- [x] รายละเอียดเคส (`/cases/[id]`) — ออกแบบใหม่ทั้งหมดให้ตรงกับฟอร์มประกันภัยต้นฉบับ
+- [x] ทุก section แปลงเป็น input fields (text inputs, dropdowns, radio buttons, checkboxes, textareas)
+- [x] Dropdown options ครบ: จังหวัด (79), เขต/อำเภอ (50 กทม.), ยี่ห้อรถ (71), สีรถ (55), ประเภท EV (5), สาเหตุอุบัติเหตุ (55+), ประเภทความเสียหาย (21)
+- [x] PhotoGallery — horizontal scroll + lightbox พร้อม prev/next navigation และ thumbnail strip
+- [x] Review section 3 คอลัมน์ (ผลการดำเนินงาน, ความเห็นผู้ตรวจสอบ, ความเห็นเซอร์เวย์)
+- [x] Expense table (ค่าใช้จ่าย) 8 รายการ — เชื่อมกับตาราง survey_expenses ใหม่
 - [x] ReviewForm — ความคิดเห็น + ค่าบริการเสนอ + ค่าบริการอนุมัติ
 
 ### Admin Panel (`/admin`) — เพิ่มใหม่ 21 มี.ค. 2026
@@ -190,7 +194,7 @@
 
 ---
 
-## Phase 7: Integration & Testing 🔄 55%
+## Phase 7: Integration & Testing 🔄 60%
 
 - [x] ทดสอบ Login ทุก role: callcenter01 ✅, checker01 ✅, survey01 ⚠️ (web ไม่รองรับ surveyor — ถูกต้องตาม design)
 - [x] ทดสอบ On-Demand GPS: Call Center กดเรียก → มือถือตอบกลับ → แสดง marker + ชื่อบนแผนที่ ✅
@@ -257,6 +261,30 @@
 **Mobile (Flutter):** ฟอร์มสำรวจ 8 sections พร้อม choice chips, checkboxes, dropdowns
 **Web (Next.js):** หน้าแสดงผลแบบตารางตรงตามฟอร์มเดิมของบริษัท (header สีน้ำเงิน/ส้ม)
 **UI ปรับปรุง:** Sidebar ซ่อน/แสดงได้, AuthProvider non-blocking, axios timeout เพิ่มเป็น 15s
+
+### ปรับปรุงหน้า Case Detail ครั้งใหญ่ (22 มี.ค. 2026)
+
+**Web — Case Detail Page ออกแบบใหม่ทั้งหมด:**
+- ทุก section แปลงจาก read-only เป็น input fields (text inputs, dropdowns, radio buttons, checkboxes, textareas)
+- เพิ่ม dropdown options ครบถ้วน:
+  - จังหวัด 79 จังหวัด
+  - เขต/อำเภอ 50 เขต (กรุงเทพฯ)
+  - ยี่ห้อรถยนต์ 71 ยี่ห้อ
+  - สีรถ 55 สี
+  - ประเภท EV 5 ประเภท
+  - สาเหตุอุบัติเหตุ 55+ รายการ
+  - ประเภทความเสียหาย 21 รายการ
+- Photo Gallery ปรับปรุงเป็น horizontal scroll + lightbox พร้อม prev/next navigation และ thumbnail strip
+- Review section 3 คอลัมน์ (ผลการดำเนินงาน, ความเห็นผู้ตรวจสอบ, ความเห็นเซอร์เวย์)
+- Expense table (ค่าใช้จ่าย) 8 รายการ: ค่าบริการ, ค่าเดินทาง, ค่ารูปถ่าย, ค่าโทรศัพท์, ค่าประกันตัว, ค่าเรียกร้อง, ค่าคัดประจำวัน, อื่นๆ
+
+**Database:**
+- สร้างตาราง `survey_expenses` ใหม่ (15 คอลัมน์) — เก็บข้อมูลค่าใช้จ่ายสำรวจ
+- เพิ่มคอลัมน์ใน survey_reports: `driver_first_name`, `driver_last_name`, `driver_province`, `driver_district`, `acc_alcohol_result`
+
+**Bug Fixes:**
+- แก้ CORS สำหรับแสดงรูปภาพ — เพิ่ม `crossOriginResourcePolicy: 'cross-origin'` ใน Helmet config
+- แก้ photo URL path handling ให้แสดงรูปได้ถูกต้อง
 
 ---
 
