@@ -184,39 +184,63 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">หมายเลขทะเบียน :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.license_plate || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.license_plate || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">จังหวัด :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.car_province || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.car_province || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                      <option value="กรุงเทพ ฯ">กรุงเทพ ฯ</option>
+                    </select>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ประเภทรถ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.car_type || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.car_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                      <option value="เก็งเอเชีย">เก็งเอเชีย</option>
+                    </select>
+                  </td>
                   <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.car_brand || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.car_brand || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                      <option value="TOYOTA">TOYOTA</option>
+                    </select>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">รุ่น :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.car_model || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.car_model || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">สีรถ :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.car_color || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.car_color || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                      <option value="ดำ">ดำ</option>
+                    </select>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ปีจดทะเบียนรถ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.car_reg_year || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.car_reg_year || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ประเภทรถยนต์ไฟฟ้า :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.ev_type || '-'}</td>
+                  <td className="px-4 py-2">
+                    <select disabled value={report.ev_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      <option value="0">-- ระบุ --</option>
+                    </select>
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">หมายเลขตัวถัง :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.chassis_no || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.chassis_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">หมายเลข Model :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.model_no || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.model_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
                 <tr className="bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">หมายเลขเครื่อง :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.engine_no || '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.engine_no || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                   <td className="px-4 py-2 text-gray-500">หมายเลข กม. :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.mileage != null ? `${Number(report.mileage).toLocaleString()}` : '-'}</td>
+                  <td className="px-4 py-2"><input type="text" disabled value={report.mileage != null ? Number(report.mileage).toLocaleString() : ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
                 </tr>
               </tbody>
             </table>
