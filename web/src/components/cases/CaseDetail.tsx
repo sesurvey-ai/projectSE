@@ -198,7 +198,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2">
                     <select disabled value={report.car_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
                       <option value="0">-- ระบุ --</option>
-                      <option value="เก็งเอเชีย">เก็งเอเชีย</option>
+                      <option value="เก็งเอเชีย">เก๋งเอเชีย</option>
+                      <option value="เก๋งยุโรป">เก๋งยุโรป</option>
+                      <option value="รถจักรยานยนต์">รถจักรยานยนต์</option>
+                      <option value="รถอื่นๆ">รถอื่นๆ</option>
+                      <option value="กระบะ">กระบะ</option>
+                      <option value="รถตู้">รถตู้</option>
+                      <option value="รถบรรทุก">รถบรรทุก</option>
                     </select>
                   </td>
                   <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
