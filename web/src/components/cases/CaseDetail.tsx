@@ -2,7 +2,7 @@
 
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, CAR_BRAND_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, BANGKOK_DISTRICT_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, CAR_BRAND_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, BANGKOK_DISTRICT_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface CaseDetailProps {
@@ -416,16 +416,14 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ :</td>
                   <td className="px-4 py-2">
-                    <select disabled value={report.acc_cause || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                      <option value="0">-- ระบุ --</option>
-                      <option value="ชนฟุตบาท">ชนฟุตบาท</option>
+                    <select disabled value={report.acc_cause || '-- ระบุ --'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      {ACC_CAUSE_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ลักษณะความเสียหาย :</td>
                   <td className="px-4 py-2">
-                    <select disabled value={report.acc_damage_type || '0'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
-                      <option value="0">-- ระบุ --</option>
-                      <option value="เฉี่ยวชนวัสดุ">เฉี่ยวชนวัสดุ</option>
+                    <select disabled value={report.acc_damage_type || '-- ระบุ --'} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm">
+                      {ACC_DAMAGE_TYPE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </td>
                 </tr>
