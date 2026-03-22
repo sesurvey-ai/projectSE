@@ -631,9 +631,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
       )}
 
       {/* รูปภาพ */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">รูปภาพ</h3>
-        <PhotoGallery photos={photos} />
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2">
+          <span className="font-bold">::: รูปภาพ</span>
+        </div>
+        <div className="p-4">
+          <PhotoGallery photos={photos} />
+        </div>
       </div>
 
       {/* การตรวจสอบ */}
