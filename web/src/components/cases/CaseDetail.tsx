@@ -723,18 +723,20 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-end mt-4">
-              {review ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
-                  {review.reviewed_at && <div className="mt-3 text-sm text-gray-400">ตรวจสอบเมื่อ {formatDate(review.reviewed_at)}</div>}
-                </div>
-              ) : (
-                <ReviewForm caseId={caseData.id} onReviewSubmitted={onReviewSubmitted} />
-              )}
-            </div>
           </div>
         </div>
+      </div>
+
+      {/* ปุ่มอนุมัติ */}
+      <div className="flex justify-end">
+        {review ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
+            {review.reviewed_at && <div className="mt-3 text-sm text-gray-400">ตรวจสอบเมื่อ {formatDate(review.reviewed_at)}</div>}
+          </div>
+        ) : (
+          <ReviewForm caseId={caseData.id} onReviewSubmitted={onReviewSubmitted} />
+        )}
       </div>
     </div>
   );
