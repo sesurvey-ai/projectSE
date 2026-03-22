@@ -109,7 +109,9 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">เลขเรื่องเซอร์เวย์ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.survey_job_no || '-'}</td>
+                  <td className="px-4 py-2">
+                    <input type="text" disabled value={report.survey_job_no || ''} placeholder="SEABI-110260301037" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" />
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">เลขที่รับแจ้ง :</td>
