@@ -347,7 +347,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเสียหายรถประกันภัย :</td>
-                    <td className="px-4 py-2 text-gray-800" colSpan={3}>{report.damage_description || '-'}</td>
+                    <td className="px-4 py-2" colSpan={3}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <button disabled className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-sm whitespace-nowrap">ข้อมูลความเสียหาย</button>
+                        <button disabled className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-sm whitespace-nowrap">พิมพ์ข้อมูลความเสียหาย</button>
+                      </div>
+                      <div className="text-gray-800">{report.damage_description || '-'}</div>
+                    </td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ความเสียหายประมาณ :</td>
