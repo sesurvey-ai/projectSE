@@ -664,13 +664,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
       </div>
 
       {/* ค่าใช้จ่าย */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
-          <span className="font-bold">::: ค่าใช้จ่าย</span>
-        </div>
-        <div className="p-4">
-          <div>
-            <div className="w-1/2">
+      <div className="w-1/2">
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-700 to-blue-500 text-white px-4 py-2 text-sm">
+            <span className="font-bold">::: ค่าใช้จ่าย</span>
+          </div>
+          <div className="p-4">
+            <div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -722,9 +722,9 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </tr>
                 </tbody>
               </table>
-            </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* ปุ่มอนุมัติ */}
