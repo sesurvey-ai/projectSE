@@ -66,14 +66,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     }
   }
 
-  String _formatDate(String dateStr) {
-    try {
-      final date = DateTime.parse(dateStr);
-      return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return dateStr;
-    }
-  }
 
   String _val(String? key) {
     if (key == null || _report == null) return '-';
@@ -123,29 +115,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Customer info card
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('ข้อมูลลูกค้า', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const Divider(),
-                        _buildInfoRow(Icons.person, 'ชื่อลูกค้า', caseModel.customerName),
-                        const SizedBox(height: 12),
-                        _buildInfoRow(Icons.location_on, 'สถานที่เกิดเหตุ', caseModel.incidentLocation),
-                        if (caseModel.incidentLat != null && caseModel.incidentLng != null) ...[
-                          const SizedBox(height: 12),
-                          _buildInfoRow(Icons.gps_fixed, 'พิกัด',
-                              '${caseModel.incidentLat!.toStringAsFixed(6)}, ${caseModel.incidentLng!.toStringAsFixed(6)}'),
-                        ],
-                        const SizedBox(height: 12),
-                        _buildInfoRow(Icons.access_time, 'วันที่สร้าง', _formatDate(caseModel.createdAt)),
-                      ],
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 16),
 
                 // Vehicle details card
@@ -407,23 +376,4 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     }
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: Colors.blue),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 2),
-              Text(value, style: const TextStyle(fontSize: 16)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }

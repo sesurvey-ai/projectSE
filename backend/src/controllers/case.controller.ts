@@ -27,6 +27,12 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  updateSurvey: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.updateSurvey(caseId, req.user!.id, req.body);
+    sendSuccess(res, result);
+  }),
+
   getCase: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const result = await caseService.getById(caseId);

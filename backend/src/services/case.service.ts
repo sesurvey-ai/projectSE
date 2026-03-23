@@ -75,6 +75,62 @@ export const caseService = {
     return updated.rows[0];
   },
 
+  async updateSurvey(caseId: number, surveyorId: number, data: Record<string, unknown>) {
+    const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+
+    const caseData = caseResult.rows[0];
+    if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
+
+    const reportResult = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (reportResult.rows.length === 0) throw new NotFoundError('Survey report not found');
+
+    const fields = [
+      'car_model','car_color','license_plate','notes',
+      'survey_company','survey_company_address','survey_company_phone',
+      'claim_type','damage_level','car_lost','insurance_company','insurance_branch',
+      'survey_job_no','claim_ref_no','claim_no',
+      'prb_number','policy_no','driver_by_policy','policy_start','policy_end',
+      'assured_name','policy_type','assured_email','risk_code','deductible',
+      'car_brand','car_type','car_province','chassis_no','engine_no','mileage',
+      'car_reg_year','ev_type','model_no',
+      'driver_gender','driver_title','driver_name','driver_first_name','driver_last_name',
+      'driver_age','driver_birthdate',
+      'driver_phone','driver_address','driver_province','driver_district',
+      'driver_id_card','driver_license_no',
+      'driver_license_type','driver_license_place','driver_license_start','driver_license_end',
+      'driver_relation','driver_ticket','damage_description','estimated_cost',
+      'acc_date','acc_time','acc_place','acc_province','acc_district',
+      'acc_cause','acc_damage_type','acc_detail','acc_fault',
+      'acc_reporter','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
+      'acc_customer_report_date','acc_insurance_notify_date',
+      'acc_survey_arrive_date','acc_survey_complete_date',
+      'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount',
+      'acc_police_name','acc_police_station','acc_police_comment','acc_police_date','acc_police_book_no',
+      'acc_alcohol_test','acc_alcohol_result',
+      'acc_followup','acc_followup_count','acc_followup_detail','acc_followup_date',
+    ];
+
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+    for (const f of fields) {
+      if (data[f] !== undefined) {
+        setClauses.push(`${f} = $${idx}`);
+        values.push(data[f] ?? null);
+        idx++;
+      }
+    }
+    if (setClauses.length === 0) throw new Error('No fields to update');
+
+    values.push(caseId);
+    const result = await db.query(
+      `UPDATE survey_reports SET ${setClauses.join(', ')} WHERE case_id = $${idx} RETURNING *`,
+      values
+    );
+    return result.rows[0];
+  },
+
   async submitSurvey(caseId: number, surveyorId: number, data: Record<string, unknown> & { photo_paths: string[] }) {
     const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');

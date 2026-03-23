@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
 
 class SurveyFormScreen extends StatefulWidget {
@@ -17,6 +19,13 @@ class SurveyFormScreen extends StatefulWidget {
 class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<String> _photoPaths = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDraft();
+  }
+
   final ImagePicker _picker = ImagePicker();
 
   // === บริษัทสำรวจ ===
@@ -47,7 +56,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _deductibleCtl = TextEditingController();
 
   // === รถ ===
-  String _carType = 'เก็งเอเชีย';
+  String _carType = '0';
   final _carBrandCtl = TextEditingController();
   final _carModelCtl = TextEditingController();
   final _carColorCtl = TextEditingController();
@@ -153,17 +162,85 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   void _removePhoto(int index) => setState(() => _photoPaths.removeAt(index));
 
-  Future<void> _submitSurvey() async {
-    if (!_formKey.currentState!.validate()) return;
+  String get _draftKey => 'survey_draft_${widget.caseId}';
 
+  Future<void> _saveDraft() async {
+    final data = _collectFormData();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_draftKey, jsonEncode(data));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('บันทึกร่างสำเร็จ'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 1),
+      ));
+    }
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString(_draftKey);
+    if (json == null) return;
+    final data = jsonDecode(json) as Map<String, dynamic>;
+
+    setState(() {
+      _claimType = data['claim_type'] ?? _claimType;
+      _damageLevel = data['damage_level'] ?? _damageLevel;
+      final ct = data['car_type'];
+      _carType = (ct != null && const ['0','A','E','M','T','V','W','O'].contains(ct)) ? ct : _carType;
+      _evType = data['ev_type'] ?? _evType;
+      _driverGender = data['driver_gender'] ?? _driverGender;
+      _driverTitle = data['driver_title'] ?? _driverTitle;
+      _accFault = data['acc_fault'] ?? _accFault;
+      _accFollowup = data['acc_followup'] ?? _accFollowup;
+    });
+
+    final mapping = <TextEditingController, String>{
+      _surveyJobNoCtl: 'survey_job_no', _claimRefNoCtl: 'claim_ref_no', _claimNoCtl: 'claim_no',
+      _insuranceCompanyCtl: 'insurance_company', _insuranceBranchCtl: 'insurance_branch',
+      _prbNumberCtl: 'prb_number', _policyNoCtl: 'policy_no', _driverByPolicyCtl: 'driver_by_policy',
+      _policyStartCtl: 'policy_start', _policyEndCtl: 'policy_end',
+      _assuredNameCtl: 'assured_name', _policyTypeCtl: 'policy_type',
+      _assuredEmailCtl: 'assured_email', _riskCodeCtl: 'risk_code', _deductibleCtl: 'deductible',
+      _licensePlateCtl: 'license_plate', _carProvinceCtl: 'car_province',
+      _carBrandCtl: 'car_brand', _carModelCtl: 'car_model', _carColorCtl: 'car_color',
+      _carRegYearCtl: 'car_reg_year', _chassisNoCtl: 'chassis_no', _engineNoCtl: 'engine_no',
+      _modelNoCtl: 'model_no', _mileageCtl: 'mileage',
+      _driverNameCtl: 'driver_first_name', _driverLastnameCtl: 'driver_last_name',
+      _driverAgeCtl: 'driver_age', _driverBirthdateCtl: 'driver_birthdate',
+      _driverPhoneCtl: 'driver_phone', _driverAddressCtl: 'driver_address',
+      _driverIdCardCtl: 'driver_id_card', _driverLicenseNoCtl: 'driver_license_no',
+      _driverLicenseTypeCtl: 'driver_license_type', _driverLicensePlaceCtl: 'driver_license_place',
+      _driverLicenseStartCtl: 'driver_license_start', _driverLicenseEndCtl: 'driver_license_end',
+      _driverRelationCtl: 'driver_relation',
+      _damageDescCtl: 'damage_description', _estimatedCostCtl: 'estimated_cost',
+      _accDateCtl: 'acc_date', _accTimeCtl: 'acc_time', _accPlaceCtl: 'acc_place',
+      _accProvinceCtl: 'acc_province', _accDistrictCtl: 'acc_district',
+      _accCauseCtl: 'acc_cause', _accDamageTypeCtl: 'acc_damage_type', _accDetailCtl: 'acc_detail',
+      _accReporterCtl: 'acc_reporter', _accSurveyorCtl: 'acc_surveyor',
+      _accSurveyorBranchCtl: 'acc_surveyor_branch', _accSurveyorPhoneCtl: 'acc_surveyor_phone',
+      _accCustomerReportDateCtl: 'acc_customer_report_date', _accInsNotifyDateCtl: 'acc_insurance_notify_date',
+      _accSurveyArriveDateCtl: 'acc_survey_arrive_date', _accSurveyCompleteDateCtl: 'acc_survey_complete_date',
+      _accClaimOpponentCtl: 'acc_claim_opponent', _accClaimAmountCtl: 'acc_claim_amount',
+      _accClaimTotalAmountCtl: 'acc_claim_total_amount',
+      _accPoliceNameCtl: 'acc_police_name', _accPoliceStationCtl: 'acc_police_station',
+      _accPoliceCommentCtl: 'acc_police_comment', _accPoliceDateCtl: 'acc_police_date',
+      _accPoliceBookNoCtl: 'acc_police_book_no', _accAlcoholTestCtl: 'acc_alcohol_test',
+      _accFollowupCountCtl: 'acc_followup_count', _accFollowupDetailCtl: 'acc_followup_detail',
+      _accFollowupDateCtl: 'acc_followup_date', _notesCtl: 'notes',
+    };
+    for (final entry in mapping.entries) {
+      final val = data[entry.value];
+      if (val != null) entry.key.text = val.toString();
+    }
+  }
+
+  Map<String, dynamic> _collectFormData() {
     final driverFullName = '$_driverTitle ${_driverNameCtl.text.trim()} ${_driverLastnameCtl.text.trim()}'.trim();
-
     final data = <String, dynamic>{
-      // บริษัทสำรวจ
       'survey_company': _surveyCompanyCtl.text.trim(),
       'survey_company_address': _surveyCompanyAddressCtl.text.trim(),
       'survey_company_phone': _surveyCompanyPhoneCtl.text.trim(),
-      // เคลม
       'claim_type': _claimType,
       'damage_level': _damageLevel,
       'car_lost': _carLost,
@@ -172,7 +249,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'survey_job_no': _surveyJobNoCtl.text.trim(),
       'claim_ref_no': _claimRefNoCtl.text.trim(),
       'claim_no': _claimNoCtl.text.trim(),
-      // กรมธรรม์
       'prb_number': _prbNumberCtl.text.trim(),
       'policy_no': _policyNoCtl.text.trim(),
       'driver_by_policy': _driverByPolicyCtl.text.trim(),
@@ -182,7 +258,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'policy_type': _policyTypeCtl.text.trim(),
       'assured_email': _assuredEmailCtl.text.trim(),
       'risk_code': _riskCodeCtl.text.trim(),
-      // รถ
       'car_brand': _carBrandCtl.text.trim(),
       'car_model': _carModelCtl.text.trim(),
       'car_color': _carColorCtl.text.trim(),
@@ -194,7 +269,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'car_reg_year': _carRegYearCtl.text.trim(),
       'ev_type': _evType.isNotEmpty ? _evType : null,
       'model_no': _modelNoCtl.text.trim(),
-      // ผู้ขับขี่
       'driver_gender': _driverGender,
       'driver_title': _driverTitle,
       'driver_name': driverFullName,
@@ -208,9 +282,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'driver_license_start': _driverLicenseStartCtl.text.trim(),
       'driver_license_end': _driverLicenseEndCtl.text.trim(),
       'driver_relation': _driverRelationCtl.text.trim(),
-      // ความเสียหาย
       'damage_description': _damageDescCtl.text.trim(),
-      // อุบัติเหตุ
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
       'acc_place': _accPlaceCtl.text.trim(),
@@ -241,18 +313,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'acc_followup_date': _accFollowupDateCtl.text.trim(),
       'notes': _notesCtl.text.trim(),
     };
-
     if (_mileageCtl.text.trim().isNotEmpty) data['mileage'] = int.tryParse(_mileageCtl.text.trim());
     if (_driverAgeCtl.text.trim().isNotEmpty) data['driver_age'] = int.tryParse(_driverAgeCtl.text.trim());
     if (_estimatedCostCtl.text.trim().isNotEmpty) data['estimated_cost'] = double.tryParse(_estimatedCostCtl.text.trim());
     if (_deductibleCtl.text.trim().isNotEmpty) data['deductible'] = double.tryParse(_deductibleCtl.text.trim());
     if (_accClaimAmountCtl.text.trim().isNotEmpty) data['acc_claim_amount'] = double.tryParse(_accClaimAmountCtl.text.trim());
     if (_accClaimTotalAmountCtl.text.trim().isNotEmpty) data['acc_claim_total_amount'] = double.tryParse(_accClaimTotalAmountCtl.text.trim());
+    return data;
+  }
 
+  Future<void> _submitSurvey() async {
+    if (!_formKey.currentState!.validate()) return;
+    final data = _collectFormData();
     final caseProvider = context.read<CaseProvider>();
     final success = await caseProvider.submitSurvey(widget.caseId, data, _photoPaths);
-
-    if (success && mounted) {
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ส่งข้อมูลสำรวจสำเร็จ'), backgroundColor: Colors.green));
       context.go('/cases');
     } else if (mounted) {
@@ -263,66 +341,60 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('แบบฟอร์มสำรวจ')),
+      appBar: AppBar(
+        title: const Text('แบบฟอร์มสำรวจ', style: TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0174BE), Color(0xFF4988C4)]))),
+        foregroundColor: Colors.white,
+        elevation: 2,
+      ),
+      floatingActionButton: Consumer<CaseProvider>(
+        builder: (context, cp, _) => FloatingActionButton(
+          onPressed: cp.isSubmitting ? null : _saveDraft,
+          backgroundColor: const Color(0xFF0174BE),
+          child: cp.isSubmitting
+            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Icon(Icons.save, color: Colors.white),
+        ),
+      ),
       body: Consumer<CaseProvider>(
         builder: (context, caseProvider, _) {
           return Stack(
             children: [
               SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ========== 0. บริษัทผู้จัดเรื่อง ==========
-                      _sectionHeader('บริษัทผู้จัดเรื่อง', Icons.business),
-                      const SizedBox(height: 12),
-                      _txt(_surveyCompanyCtl, 'บริษัทผู้จัดเรื่อง', Icons.corporate_fare),
-                      const SizedBox(height: 12),
-                      _txt(_surveyCompanyAddressCtl, 'ที่อยู่', Icons.location_on),
-                      const SizedBox(height: 12),
-                      _txt(_surveyCompanyPhoneCtl, 'เบอร์โทรศัพท์/Fax', Icons.phone, keyboardType: TextInputType.phone),
-                      const SizedBox(height: 24),
-
                       // ========== 1. ข้อมูลเคลม ==========
                       _sectionHeader('ข้อมูลเคลม', Icons.shield),
                       const SizedBox(height: 12),
-                      const Text('ประเภทเคลม', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 8, children: [
-                        _claimChip('เคลมสด', 'F'), _claimChip('เคลมแห้ง', 'D'),
-                        _claimChip('งานนัดหมาย', 'A'), _claimChip('งานติดตาม', 'C'),
-                      ]),
-                      const SizedBox(height: 12),
-                      const Text('รถเสียหาย', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 8, children: [
-                        ChoiceChip(label: const Text('หนัก'), selected: _damageLevel == 'หนัก', onSelected: (_) => setState(() => _damageLevel = 'หนัก'), selectedColor: Colors.red.shade100),
-                        ChoiceChip(label: const Text('เบา'), selected: _damageLevel == 'เบา', onSelected: (_) => setState(() => _damageLevel = 'เบา'), selectedColor: Colors.green.shade100),
-                      ]),
-                      CheckboxListTile(
-                        title: const Text('รถหาย', style: TextStyle(fontSize: 14)),
-                        value: _carLost,
-                        onChanged: (v) => setState(() => _carLost = v ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
+                      Text('ประเภทเคลม', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                       const SizedBox(height: 8),
                       Row(children: [
-                        Expanded(child: _txt(_insuranceCompanyCtl, 'บริษัทประกัน', Icons.business)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_insuranceBranchCtl, 'สาขา', Icons.store)),
+                        Expanded(child: _claimChip('เคลมสด', 'F')),
+                        const SizedBox(width: 4),
+                        Expanded(child: _claimChip('เคลมแห้ง', 'D')),
+                        const SizedBox(width: 4),
+                        Expanded(child: _claimChip('งานนัดหมาย', 'A')),
+                        const SizedBox(width: 4),
+                        Expanded(child: _claimChip('งานติดตาม', 'C')),
                       ]),
                       const SizedBox(height: 12),
+                      Text('รถเสียหาย', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                      const SizedBox(height: 8),
                       Row(children: [
-                        Expanded(child: _txt(_surveyJobNoCtl, 'เลขเรื่องเซอร์เวย์', Icons.numbers)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_claimRefNoCtl, 'เลขที่รับแจ้ง', Icons.receipt)),
+                        Expanded(child: _damageChip('หนัก', Colors.red.shade100)),
+                        const SizedBox(width: 4),
+                        Expanded(child: _damageChip('เบา', Colors.green.shade100)),
                       ]),
+                      const SizedBox(height: 8),
+                      _txt(_claimRefNoCtl, 'เลขที่รับแจ้ง', Icons.receipt),
                       const SizedBox(height: 12),
                       _txt(_claimNoCtl, 'เลขที่เคลม', Icons.tag),
+                      const SizedBox(height: 12),
+                      _txt(_surveyJobNoCtl, 'เลขเรื่องเซอร์เวย์', Icons.numbers),
                       const SizedBox(height: 24),
 
                       // ========== 2. กรมธรรม์ ==========
@@ -366,15 +438,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _carType,
-                            decoration: const InputDecoration(labelText: 'ประเภทรถ', prefixIcon: Icon(Icons.category), border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'ประเภทรถ', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+                            isExpanded: true,
                             items: const [
-                              DropdownMenuItem(value: 'เก็งเอเชีย', child: Text('เก็งเอเชีย')),
-                              DropdownMenuItem(value: 'เก็งยุโรป', child: Text('เก็งยุโรป')),
-                              DropdownMenuItem(value: 'กระบะ', child: Text('กระบะ')),
-                              DropdownMenuItem(value: 'รถตู้', child: Text('รถตู้')),
-                              DropdownMenuItem(value: 'รถบรรทุก', child: Text('รถบรรทุก')),
-                              DropdownMenuItem(value: 'รถจักรยานยนต์', child: Text('รถจักรยานยนต์')),
-                              DropdownMenuItem(value: 'รถอื่นๆ', child: Text('รถอื่นๆ')),
+                              DropdownMenuItem(value: '0', child: Text('-- ระบุ --')),
+                              DropdownMenuItem(value: 'A', child: Text('เก๋งเอเชีย')),
+                              DropdownMenuItem(value: 'E', child: Text('เก๋งยุโรป')),
+                              DropdownMenuItem(value: 'M', child: Text('รถจักรยานยนต์')),
+                              DropdownMenuItem(value: 'T', child: Text('กระบะ')),
+                              DropdownMenuItem(value: 'V', child: Text('รถตู้')),
+                              DropdownMenuItem(value: 'W', child: Text('รถบรรทุก')),
+                              DropdownMenuItem(value: 'O', child: Text('รถอื่นๆ')),
                             ],
                             onChanged: (v) => setState(() => _carType = v!),
                           ),
@@ -407,7 +481,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _evType.isEmpty ? null : _evType,
-                            decoration: const InputDecoration(labelText: 'ประเภทรถ EV', prefixIcon: Icon(Icons.electric_car), border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'ประเภทรถ EV', border: OutlineInputBorder()),
                             items: const [
                               DropdownMenuItem(value: '', child: Text('-- ระบุ --')),
                               DropdownMenuItem(value: 'BEV', child: Text('BEV (100%)')),
@@ -493,7 +567,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _damageDescCtl,
-                        decoration: const InputDecoration(labelText: 'รายละเอียดความเสียหาย', prefixIcon: Icon(Icons.description), border: OutlineInputBorder(), alignLabelWithHint: true),
+                        decoration: const InputDecoration(labelText: 'รายละเอียดความเสียหาย', border: OutlineInputBorder(), alignLabelWithHint: true),
                         maxLines: 4,
                       ),
                       const SizedBox(height: 12),
@@ -525,11 +599,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _accDetailCtl,
-                        decoration: const InputDecoration(labelText: 'รายละเอียดการเกิดเหตุ', prefixIcon: Icon(Icons.article), border: OutlineInputBorder(), alignLabelWithHint: true),
+                        decoration: const InputDecoration(labelText: 'รายละเอียดการเกิดเหตุ', border: OutlineInputBorder(), alignLabelWithHint: true),
                         maxLines: 5,
                       ),
                       const SizedBox(height: 12),
-                      const Text('ฝ่ายประมาท', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      Text('ฝ่ายประมาท', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                       const SizedBox(height: 8),
                       Wrap(spacing: 6, runSpacing: 6, children: [
                         ChoiceChip(label: const Text('รถประกันฝ่ายผิด'), selected: _accFault == 'ฝ่ายผิด', onSelected: (_) => setState(() => _accFault = 'ฝ่ายผิด'), selectedColor: Colors.red.shade100),
@@ -587,7 +661,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       const SizedBox(height: 12),
                       _txt(_accAlcoholTestCtl, 'ผลการตรวจแอลกอฮอล์', Icons.science),
                       const SizedBox(height: 12),
-                      const Text('การติดตามงาน', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      Text('การติดตามงาน', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                       const SizedBox(height: 8),
                       Wrap(spacing: 6, children: [
                         ChoiceChip(label: const Text('ไม่มีนัดหมาย'), selected: _accFollowup == 'ไม่มีการนัดหมาย', onSelected: (_) => setState(() => _accFollowup = 'ไม่มีการนัดหมาย')),
@@ -608,7 +682,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _notesCtl,
-                        decoration: const InputDecoration(labelText: 'หมายเหตุเพิ่มเติม', prefixIcon: Icon(Icons.note_add), border: OutlineInputBorder(), alignLabelWithHint: true),
+                        decoration: const InputDecoration(labelText: 'หมายเหตุเพิ่มเติม', border: OutlineInputBorder(), alignLabelWithHint: true),
                         maxLines: 3,
                       ),
                       const SizedBox(height: 24),
@@ -620,13 +694,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       const SizedBox(height: 24),
 
                       // Submit
-                      SizedBox(
+                      Container(
                         height: 52,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF0174BE), Color(0xFF4988C4)]),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                        ),
                         child: ElevatedButton.icon(
                           onPressed: caseProvider.isSubmitting ? null : _submitSurvey,
-                          icon: const Icon(Icons.send),
-                          label: const Text('ส่งข้อมูลสำรวจ', style: TextStyle(fontSize: 16)),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                          icon: const Icon(Icons.send_rounded, size: 22),
+                          label: const Text('ส่งข้อมูลสำรวจ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -650,24 +729,70 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Widget _sectionHeader(String title, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.shade200)),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF0174BE), Color(0xFF4988C4)]),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
       child: Row(children: [
-        Icon(icon, color: Colors.blue.shade700, size: 20),
-        const SizedBox(width: 8),
-        Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+        Icon(icon, color: Colors.white, size: 20),
+        const SizedBox(width: 10),
+        Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
       ]),
     );
   }
 
   Widget _claimChip(String label, String value) {
-    return ChoiceChip(label: Text(label), selected: _claimType == value, onSelected: (_) => setState(() => _claimType = value), selectedColor: Colors.blue.shade100);
+    final selected = _claimType == value;
+    return GestureDetector(
+      onTap: () => setState(() => _claimType = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? Colors.blue.shade100 : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? Colors.blue : Colors.grey.shade300),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 13, color: selected ? Colors.blue.shade800 : Colors.grey.shade700)),
+      ),
+    );
   }
+
+  Widget _damageChip(String label, Color selectedColor) {
+    final selected = _damageLevel == label;
+    return GestureDetector(
+      onTap: () => setState(() => _damageLevel = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? selectedColor : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? selectedColor.withValues(alpha: 0.8) : Colors.grey.shade300),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 13, color: selected ? Colors.black87 : Colors.grey.shade700)),
+      ),
+    );
+  }
+
+  static const _fieldBorder = OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFBDBDBD)));
+  static const _fieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 12);
 
   Widget _txt(TextEditingController ctl, String label, IconData icon, {bool required = false, TextInputType? keyboardType}) {
     return TextFormField(
       controller: ctl,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: const OutlineInputBorder()),
+      style: const TextStyle(fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        border: _fieldBorder,
+        enabledBorder: _fieldBorder,
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+        contentPadding: _fieldPadding,
+        isDense: true,
+      ),
       keyboardType: keyboardType,
       textInputAction: TextInputAction.next,
       validator: required ? (v) => (v == null || v.trim().isEmpty) ? 'กรุณากรอก${label.replaceAll(' *', '')}' : null : null,
@@ -677,7 +802,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _numField(TextEditingController ctl, String label, IconData icon, {bool decimal = false}) {
     return TextFormField(
       controller: ctl,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: const OutlineInputBorder()),
+      style: const TextStyle(fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        border: _fieldBorder,
+        enabledBorder: _fieldBorder,
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+        contentPadding: _fieldPadding,
+        isDense: true,
+      ),
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
       inputFormatters: decimal ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))] : [FilteringTextInputFormatter.digitsOnly],
       textInputAction: TextInputAction.next,

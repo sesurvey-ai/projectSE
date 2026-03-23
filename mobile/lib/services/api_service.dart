@@ -60,12 +60,13 @@ class ApiService {
     }
 
     return _dio.post('/api/cases/$caseId/survey', data: {
-      'car_model': data['car_model'],
-      'car_color': data['car_color'],
-      'license_plate': data['license_plate'],
-      'notes': data['notes'],
+      ...data,
       'photo_paths': uploadedPaths,
     });
+  }
+
+  Future<Response> updateSurvey(int caseId, Map<String, dynamic> data) async {
+    return _dio.put('/api/cases/$caseId/survey', data: data);
   }
 
   Future<List<String>> uploadPhotos(List<String> filePaths) async {

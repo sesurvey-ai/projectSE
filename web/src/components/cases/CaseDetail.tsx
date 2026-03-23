@@ -231,13 +231,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2">
                     <select disabled={d} name="car_type" defaultValue={report.car_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       <option value="0">-- ระบุ --</option>
-                      <option value="เก็งเอเชีย">เก๋งเอเชีย</option>
-                      <option value="เก๋งยุโรป">เก๋งยุโรป</option>
-                      <option value="รถจักรยานยนต์">รถจักรยานยนต์</option>
-                      <option value="รถอื่นๆ">รถอื่นๆ</option>
-                      <option value="กระบะ">กระบะ</option>
-                      <option value="รถตู้">รถตู้</option>
-                      <option value="รถบรรทุก">รถบรรทุก</option>
+                      <option value="A">เก๋งเอเชีย</option>
+                      <option value="E">เก๋งยุโรป</option>
+                      <option value="M">รถจักรยานยนต์</option>
+                      <option value="T">กระบะ</option>
+                      <option value="V">รถตู้</option>
+                      <option value="W">รถบรรทุก</option>
+                      <option value="O">รถอื่นๆ</option>
                     </select>
                   </td>
                   <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
@@ -292,7 +292,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย :</td>
                     <td className="px-4 py-2">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
                         <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`w-auto shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
@@ -301,29 +301,71 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                           <option value="นาง">นาง</option>
                           <option value="นาย">นาย</option>
                         </select>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2" colSpan={2}>
+                      <div className="flex items-center gap-2">
                         <span className="text-gray-500 shrink-0">ชื่อ</span>
-                        <input type="text" disabled={d} name="driver_first_name" defaultValue={report.driver_first_name || ''} className={`flex-1 min-w-[80px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <input type="text" disabled={d} name="driver_first_name" defaultValue={report.driver_first_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                         <span className="text-gray-500 shrink-0">นามสกุล</span>
-                        <input type="text" disabled={d} name="driver_last_name" defaultValue={report.driver_last_name || ''} className={`flex-1 min-w-[80px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <input type="text" disabled={d} name="driver_last_name" defaultValue={report.driver_last_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <td className="px-4 py-2 text-gray-500">วันเกิด :</td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <input type="text" disabled={d} name="driver_birthdate" defaultValue={report.driver_birthdate || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <span className="text-gray-500 shrink-0">อายุ</span>
+                        <input type="text" disabled={d} name="driver_age" defaultValue={report.driver_age != null ? report.driver_age : ''} className={`w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       </div>
                     </td>
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ :</td>
                     <td className="px-4 py-2">
                       <select disabled={d} name="driver_relation" defaultValue={report.driver_relation || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
-                        <option value="เจ้าของรถ">เจ้าของรถ</option>
-                        <option value="ญาติ">ญาติ</option>
+                        <option value="สามี">สามี</option>
+                        <option value="ภรรยา">ภรรยา</option>
+                        <option value="บุตร">บุตร</option>
+                        <option value="บิดา">บิดา</option>
+                        <option value="มารดา">มารดา</option>
+                        <option value="นายจ้าง">นายจ้าง</option>
                         <option value="ลูกจ้าง">ลูกจ้าง</option>
-                        <option value="ผู้ยืม">ผู้ยืม</option>
-                        <option value="อื่นๆ">อื่นๆ</option>
+                        <option value="ผู้เช่า">ผู้เช่า</option>
+                        <option value="พี่ชาย">พี่ชาย</option>
+                        <option value="พี่สาว">พี่สาว</option>
+                        <option value="น้องชาย">น้องชาย</option>
+                        <option value="น้องสาว">น้องสาว</option>
+                        <option value="เจ้าของรถ">เจ้าของรถ</option>
+                        <option value="หลาน">หลาน</option>
+                        <option value="อา">อา</option>
+                        <option value="น้า">น้า</option>
+                        <option value="ลุง">ลุง</option>
+                        <option value="ป้า">ป้า</option>
+                        <option value="ญาติ">ญาติ</option>
+                        <option value="เพื่อน">เพื่อน</option>
+                        <option value="แฟน">แฟน</option>
+                        <option value="พนักงาน">พนักงาน</option>
+                        <option value="พี่เขย">พี่เขย</option>
+                        <option value="น้องเขย">น้องเขย</option>
+                        <option value="พี่สะใภ้">พี่สะใภ้</option>
+                        <option value="น้องสะใภ้">น้องสะใภ้</option>
+                        <option value="พนักงานผู้เช่า">พนักงานผู้เช่า</option>
+                        <option value="ลุงเขย">ลุงเขย</option>
+                        <option value="น้าเขย">น้าเขย</option>
+                        <option value="น้าสะใภ้">น้าสะใภ้</option>
+                        <option value="อาเขย">อาเขย</option>
+                        <option value="อาสะใภ้">อาสะใภ้</option>
+                        <option value="หุ้นส่วน">หุ้นส่วน</option>
+                        <option value="บุตรหุ้นส่วน">บุตรหุ้นส่วน</option>
+                        <option value="เจ้าของบริษัท">เจ้าของบริษัท</option>
+                        <option value="เพื่อนบุตรเจ้าของรถ">เพื่อนบุตรเจ้าของรถ</option>
+                        <option value="บุตรเขย">บุตรเขย</option>
+                        <option value="หลานเขย">หลานเขย</option>
+                        <option value="บุตรสะใภ้">บุตรสะใภ้</option>
                       </select>
                     </td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">อายุ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_age" defaultValue={report.driver_age != null ? report.driver_age : ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2 text-gray-500">วันเกิด :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_birthdate" defaultValue={report.driver_birthdate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">ที่อยู่ปัจจุบัน :</td>
@@ -334,7 +376,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                           {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                         <select disabled={d} name="driver_district" defaultValue={report.driver_district || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          <option value="0">เขต/อำเภอ</option>
+                          {BANGKOK_DISTRICT_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
                         </select>
                       </div>
                     </td>
@@ -688,8 +730,14 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
       <div className="flex gap-6">
         <div className="w-1/2">
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
+            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm flex items-center justify-between">
               <span className="font-bold">::: ค่าใช้จ่าย</span>
+              <div className="flex items-center gap-2">
+                <span className="text-white text-sm">ครั้งที่</span>
+                <select disabled={d} name="expense_count" defaultValue={review?.expense_count || '1'} className={`border border-gray-300 rounded px-2 py-0.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm w-[50px]`}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
             </div>
           <div className="p-4">
             <div>

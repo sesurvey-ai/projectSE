@@ -77,4 +77,22 @@ class CaseProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> updateSurvey(int caseId, Map<String, dynamic> data) async {
+    _isSubmitting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _apiService.updateSurvey(caseId, data);
+      _isSubmitting = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'ไม่สามารถบันทึกข้อมูลได้';
+      _isSubmitting = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }
