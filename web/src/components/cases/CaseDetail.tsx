@@ -675,11 +675,11 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-              <textarea disabled={d} name="review_comment" defaultValue={review?.comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea disabled={d} name="review_comment" defaultValue={report?.review_comment || review?.comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
-              <textarea disabled={d} name="surveyor_comment" defaultValue={review?.surveyor_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea disabled={d} name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
             </div>
           </div>
         </div>
