@@ -277,4 +277,22 @@ export const caseService = {
 
     return { message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense };
   },
+
+  async getStats() {
+    const result = await db.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+        COUNT(*) FILTER (WHERE status = 'assigned') AS assigned,
+        COUNT(*) FILTER (WHERE status = 'surveyed') AS surveyed,
+        COUNT(*) FILTER (WHERE status = 'reviewed') AS reviewed,
+        COUNT(*) AS total
+      FROM cases
+    `);
+    const recentResult = await db.query(
+      `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name
+       FROM cases c LEFT JOIN users u ON c.assigned_to = u.id
+       ORDER BY c.created_at DESC LIMIT 10`
+    );
+    return { counts: result.rows[0], recent: recentResult.rows };
+  },
 };

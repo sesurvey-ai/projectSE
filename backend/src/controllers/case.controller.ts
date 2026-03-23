@@ -49,4 +49,9 @@ export const caseController = {
     const result = await caseService.updateReport(caseId, req.body);
     sendSuccess(res, result);
   }),
+
+  getStats: asyncHandler(async (_req: Request, res: Response) => {
+    const stats = await caseService.getStats();
+    sendSuccess(res, stats);
+  }),
 };

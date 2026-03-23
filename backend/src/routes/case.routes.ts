@@ -133,6 +133,7 @@ const submitReviewSchema = z.object({
   approved_fee: z.number().optional(),
 });
 
+router.get('/stats', auth, requireRole('callcenter'), caseController.getStats);
 router.post('/', auth, requireRole('callcenter'), validate(createCaseSchema), caseController.create);
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
