@@ -45,6 +45,17 @@ class CaseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<Map<String, dynamic>?> fetchCaseDetail(int caseId) async {
+    try {
+      final response = await _apiService.getCaseDetail(caseId);
+      final data = response.data;
+      if (data['success'] == true && data['data'] != null) {
+        return data['data']['report'] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<bool> submitSurvey(
       int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
     _isSubmitting = true;

@@ -136,7 +136,7 @@ router.post('/', auth, requireRole('callcenter'), validate(createCaseSchema), ca
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
 router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.getCase);
-router.get('/:id/detail', auth, requireRole('checker'), caseController.getDetail);
+router.get('/:id/detail', auth, requireRole('checker', 'surveyor'), caseController.getDetail);
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
 router.post('/:id/survey', auth, requireRole('surveyor'), validate(submitSurveySchema), caseController.submitSurvey);
 router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSchema), reviewController.submitReview);

@@ -47,6 +47,10 @@ class ApiService {
     return _dio.get('/api/cases/my');
   }
 
+  Future<Response> getCaseDetail(int caseId) async {
+    return _dio.get('/api/cases/$caseId/detail');
+  }
+
   // Survey
   Future<Response> submitSurvey(
       int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
