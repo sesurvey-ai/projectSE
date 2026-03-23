@@ -79,7 +79,7 @@ export default function EmployeesPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">แผนที่ตำแหน่งพนักงาน</h2>
-        <SurveyorMap surveyors={surveyors} />
+        <SurveyorMap surveyors={surveyors} autoFit={false} />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">

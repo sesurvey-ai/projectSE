@@ -36,6 +36,7 @@ interface SurveyorMapProps {
   surveyors: SurveyorLocation[];
   incidentLat?: number;
   incidentLng?: number;
+  autoFit?: boolean;
 }
 
 function FitBounds({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
@@ -55,7 +56,7 @@ function FitBounds({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
   return null;
 }
 
-export default function SurveyorMap({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
+export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoFit = true }: SurveyorMapProps) {
   const center: L.LatLngExpression = surveyors.length > 0
     ? [surveyors[0].latitude, surveyors[0].longitude]
     : incidentLat !== undefined && incidentLng !== undefined
@@ -68,7 +69,7 @@ export default function SurveyorMap({ surveyors, incidentLat, incidentLng }: Sur
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitBounds surveyors={surveyors} incidentLat={incidentLat} incidentLng={incidentLng} />
+      {autoFit && <FitBounds surveyors={surveyors} incidentLat={incidentLat} incidentLng={incidentLng} />}
 
       {surveyors.map((s) => (
         <Marker key={s.user_id} position={[s.latitude, s.longitude]}>
