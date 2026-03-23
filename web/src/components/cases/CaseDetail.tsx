@@ -53,7 +53,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
-            <div className="bg-gradient-to-r from-[#0174BE] to-blue-500 text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-bold">::: รายละเอียดรถยนต์</span>
               <span className="ml-auto font-bold">ประเภทเคลม :</span>
               <span className="text-red-400">*</span>
@@ -381,7 +381,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar */}
-            <div className="bg-gradient-to-r from-[#0174BE] to-blue-500 text-white px-4 py-2 text-sm">
+            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
               <span className="font-bold">::: รายละเอียดอุบัติเหตุ</span>
             </div>
             <table className="w-full table-fixed">
@@ -632,7 +632,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
       {/* รูปภาพ */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0174BE] to-blue-500 text-white px-4 py-2 text-sm">
+        <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
           <span className="font-bold">::: รูปภาพ</span>
         </div>
         <div className="p-4">
@@ -642,7 +642,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
 
       {/* การตรวจสอบ */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0174BE] to-blue-500 text-white px-4 py-2 text-sm">
+        <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
           <span className="font-bold">::: การตรวจสอบ</span>
         </div>
         <div className="p-4">
@@ -667,7 +667,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
       <div className="flex gap-6">
         <div className="w-1/2">
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="bg-gradient-to-r from-[#0174BE] to-blue-500 text-white px-4 py-2 text-sm">
+            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
               <span className="font-bold">::: ค่าใช้จ่าย</span>
             </div>
           <div className="p-4">
