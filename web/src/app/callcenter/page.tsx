@@ -95,8 +95,6 @@ export default function CallcenterDashboard() {
                 <thead>
                   <tr className="bg-gray-50 text-left">
                     <th className="px-5 py-3 font-semibold text-gray-600">#</th>
-                    <th className="px-5 py-3 font-semibold text-gray-600">ชื่อลูกค้า</th>
-                    <th className="px-5 py-3 font-semibold text-gray-600">บริษัทประกัน</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">สถานะ</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">ช่างสำรวจ</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">วันที่สร้าง</th>
@@ -108,8 +106,6 @@ export default function CallcenterDashboard() {
                     return (
                       <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-5 py-3 text-gray-500">{c.id}</td>
-                        <td className="px-5 py-3 font-medium text-gray-800">{c.customer_name}</td>
-                        <td className="px-5 py-3 text-gray-600">{c.insurance_company || '-'}</td>
                         <td className="px-5 py-3">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.color}`}>
                             {s.label}
@@ -123,7 +119,7 @@ export default function CallcenterDashboard() {
                     );
                   })}
                   {recent.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">ยังไม่มีเคส</td></tr>
+                    <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">ยังไม่มีเคส</td></tr>
                   )}
                 </tbody>
               </table>
