@@ -197,34 +197,81 @@ export const caseService = {
   },
 
   async updateReport(caseId: number, data: Record<string, unknown>) {
-    // Find report for this case
     const reportResult = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('Report not found');
     const reportId = reportResult.rows[0].id;
 
-    // Get all valid column names from survey_reports
+    const rd = (data.report_data || data) as Record<string, string>;
+
+    // === 1. Combine time fields ===
+    const g = (k: string) => rd[k] || '';
+    // acc_time = hour:minute
+    if (g('acc_time_hour') || g('acc_time_minute')) {
+      rd.acc_time = `${g('acc_time_hour')}:${g('acc_time_minute')}`;
+    }
+    // Date|HH:MM fields
+    const dateTimeFields = [
+      { dateKey: 'acc_customer_report_date_val', hourKey: 'acc_customer_report_hour', minKey: 'acc_customer_report_minute', dbCol: 'acc_customer_report_date' },
+      { dateKey: 'acc_insurance_notify_date_val', hourKey: 'acc_insurance_notify_hour', minKey: 'acc_insurance_notify_minute', dbCol: 'acc_insurance_notify_date' },
+      { dateKey: 'acc_survey_arrive_date_val', hourKey: 'acc_survey_arrive_hour', minKey: 'acc_survey_arrive_minute', dbCol: 'acc_survey_arrive_date' },
+      { dateKey: 'acc_survey_complete_date_val', hourKey: 'acc_survey_complete_hour', minKey: 'acc_survey_complete_minute', dbCol: 'acc_survey_complete_date' },
+    ];
+    for (const f of dateTimeFields) {
+      const d = g(f.dateKey), h = g(f.hourKey), m = g(f.minKey);
+      if (d) rd[f.dbCol] = h || m ? `${d}|${h}:${m}` : d;
+    }
+    // Police date + time
+    if (g('acc_police_date') || g('acc_police_hour')) {
+      const pd = g('acc_police_date'), ph = g('acc_police_hour'), pm = g('acc_police_minute');
+      if (pd && (ph || pm)) rd.acc_police_date = `${pd}|${ph}:${pm}`;
+    }
+    // Followup date + time
+    if (g('acc_followup_date') || g('acc_followup_hour')) {
+      const fd = g('acc_followup_date'), fh = g('acc_followup_hour'), fm = g('acc_followup_minute');
+      if (fd && (fh || fm)) rd.acc_followup_date = `${fd}|${fh}:${fm}`;
+    }
+
+    // === 2. Update survey_reports ===
     const colResult = await db.query(
       "SELECT column_name FROM information_schema.columns WHERE table_name = 'survey_reports' AND table_schema = 'public' AND column_name NOT IN ('id', 'case_id', 'created_at')"
     );
     const validCols = new Set(colResult.rows.map((r: { column_name: string }) => r.column_name));
 
-    // Build update query from data
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
-
-    const reportData = (data.report_data || data) as Record<string, string>;
-    for (const [key, val] of Object.entries(reportData)) {
+    for (const [key, val] of Object.entries(rd)) {
       if (validCols.has(key) && val !== undefined) {
         fields.push(`${key} = $${idx++}`);
         params.push(val === '' ? null : val);
       }
     }
+    let reportUpdated = 0;
+    if (fields.length > 0) {
+      params.push(reportId);
+      await db.query(`UPDATE survey_reports SET ${fields.join(', ')} WHERE id = $${idx}`, params);
+      reportUpdated = fields.length;
+    }
 
-    if (fields.length === 0) return { message: 'No fields to update' };
+    // === 3. Update survey_expenses ===
+    const expenseFields = ['service_fee_count','service_fee_price','travel_fee_count','travel_fee_price','photo_fee_count','photo_fee_price','phone_fee','bail_fee','claim_fee_percent','claim_fee_price','daily_record_fee','other_fee_detail','other_fee_price'];
+    const hasExpense = expenseFields.some(f => rd[f] !== undefined && rd[f] !== '');
+    if (hasExpense) {
+      await db.query('DELETE FROM survey_expenses WHERE report_id = $1', [reportId]);
+      const eCols: string[] = ['report_id'];
+      const eVals: unknown[] = [reportId];
+      let eIdx = 2;
+      for (const f of expenseFields) {
+        if (rd[f] !== undefined) {
+          eCols.push(f);
+          eVals.push(rd[f] === '' ? null : rd[f]);
+          eIdx++;
+        }
+      }
+      const ePlaceholders = eVals.map((_, i) => `$${i + 1}`).join(', ');
+      await db.query(`INSERT INTO survey_expenses (${eCols.join(', ')}) VALUES (${ePlaceholders})`, eVals);
+    }
 
-    params.push(reportId);
-    await db.query(`UPDATE survey_reports SET ${fields.join(', ')} WHERE id = $${idx}`, params);
-    return { message: 'Report updated', updated_fields: fields.length };
+    return { message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense };
   },
 };
