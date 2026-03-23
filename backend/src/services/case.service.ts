@@ -195,4 +195,36 @@ export const caseService = {
       review: reviewResult.rows[0] || null,
     };
   },
+
+  async updateReport(caseId: number, data: Record<string, unknown>) {
+    // Find report for this case
+    const reportResult = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (reportResult.rows.length === 0) throw new NotFoundError('Report not found');
+    const reportId = reportResult.rows[0].id;
+
+    // Get all valid column names from survey_reports
+    const colResult = await db.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'survey_reports' AND table_schema = 'public' AND column_name NOT IN ('id', 'case_id', 'created_at')"
+    );
+    const validCols = new Set(colResult.rows.map((r: { column_name: string }) => r.column_name));
+
+    // Build update query from data
+    const fields: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    const reportData = (data.report_data || data) as Record<string, string>;
+    for (const [key, val] of Object.entries(reportData)) {
+      if (validCols.has(key) && val !== undefined) {
+        fields.push(`${key} = $${idx++}`);
+        params.push(val === '' ? null : val);
+      }
+    }
+
+    if (fields.length === 0) return { message: 'No fields to update' };
+
+    params.push(reportId);
+    await db.query(`UPDATE survey_reports SET ${fields.join(', ')} WHERE id = $${idx}`, params);
+    return { message: 'Report updated', updated_fields: fields.length };
+  },
 };

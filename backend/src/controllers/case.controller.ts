@@ -43,4 +43,10 @@ export const caseController = {
     const detail = await caseService.getDetail(caseId);
     sendSuccess(res, detail);
   }),
+
+  updateReport: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.updateReport(caseId, req.body);
+    sendSuccess(res, result);
+  }),
 };

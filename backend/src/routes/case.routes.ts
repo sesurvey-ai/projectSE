@@ -129,5 +129,6 @@ router.get('/:id/detail', auth, requireRole('checker'), caseController.getDetail
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
 router.post('/:id/survey', auth, requireRole('surveyor'), validate(submitSurveySchema), caseController.submitSurvey);
 router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSchema), reviewController.submitReview);
+router.put('/:id/report', auth, requireRole('checker'), caseController.updateReport);
 
 export default router;

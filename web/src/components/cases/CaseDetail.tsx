@@ -61,7 +61,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
       const fd = new FormData(formRef.current);
       const data: Record<string, string> = {};
       fd.forEach((val, key) => { data[key] = val as string; });
-      const res = await api.put(`/api/admin/cases/${caseData.id}`, { report_data: data });
+      const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: data });
       if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); }
       else setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || ''));
     } catch { setSaveMsg('เกิดข้อผิดพลาดในการบันทึก'); }
