@@ -29,6 +29,7 @@ export default function EmployeesPage() {
   const [surveyors, setSurveyors] = useState<SurveyorLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [focusTarget, setFocusTarget] = useState<{ lat: number; lng: number; id: string } | null>(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -88,6 +89,7 @@ export default function EmployeesPage() {
               defaultCenter={[13.0, 101.0]}
               defaultZoom={6}
               height="100%"
+              focusTarget={focusTarget}
             />
           </div>
         </div>
@@ -103,7 +105,11 @@ export default function EmployeesPage() {
             ) : (
               <div className="space-y-2">
                 {surveyors.map((s, i) => (
-                  <div key={s.user_id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <div
+                    key={s.user_id}
+                    onClick={() => setFocusTarget({ lat: Number(s.latitude), lng: Number(s.longitude), id: s.user_id })}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${focusTarget?.id === s.user_id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:bg-gray-50'}`}
+                  >
                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold shrink-0">
                       {i + 1}
                     </div>

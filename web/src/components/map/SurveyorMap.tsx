@@ -40,6 +40,7 @@ interface SurveyorMapProps {
   defaultCenter?: [number, number];
   defaultZoom?: number;
   height?: string;
+  focusTarget?: { lat: number; lng: number; id: string } | null;
 }
 
 function FitBounds({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
@@ -59,7 +60,17 @@ function FitBounds({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
   return null;
 }
 
-export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoFit = true, defaultCenter, defaultZoom, height = '400px' }: SurveyorMapProps) {
+function FlyToTarget({ focusTarget }: { focusTarget?: { lat: number; lng: number; id: string } | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (focusTarget) {
+      map.flyTo([focusTarget.lat, focusTarget.lng], 15, { duration: 1 });
+    }
+  }, [map, focusTarget?.id, focusTarget?.lat, focusTarget?.lng]);
+  return null;
+}
+
+export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoFit = true, defaultCenter, defaultZoom, height = '400px', focusTarget }: SurveyorMapProps) {
   const center: L.LatLngExpression = defaultCenter
     ? defaultCenter
     : surveyors.length > 0
@@ -76,6 +87,7 @@ export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoF
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {autoFit && <FitBounds surveyors={surveyors} incidentLat={incidentLat} incidentLng={incidentLng} />}
+      <FlyToTarget focusTarget={focusTarget} />
 
       {surveyors.map((s) => (
         <Marker key={s.user_id} position={[s.latitude, s.longitude]}>
