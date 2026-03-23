@@ -22,7 +22,7 @@ export default function InspectorLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen min-w-[1024px]">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />

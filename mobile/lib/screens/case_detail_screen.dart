@@ -270,21 +270,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
           const Divider(height: 1),
 
-          // Driver info
-          _buildSection('ข้อมูลผู้ขับขี่', [
-            _buildTableRow('เพศ', _val('driver_gender') == 'M' ? 'ชาย' : _val('driver_gender') == 'F' ? 'หญิง' : '-'),
-            _buildTableRow('คำนำหน้า', _val('driver_title')),
-            _buildTableRow('ชื่อ', _val('driver_first_name')),
-            _buildTableRow('นามสกุล', _val('driver_last_name')),
-            _buildTableRow('ความสัมพันธ์', _val('driver_relation')),
-            _buildTableRow('อายุ', _val('driver_age')),
-            _buildTableRow('วันเกิด', _val('driver_birthdate')),
-            _buildTableRow('ที่อยู่', _val('driver_address')),
-            _buildTableRow('โทรศัพท์', _val('driver_phone')),
-            _buildTableRow('เลขบัตรประชาชน', _val('driver_id_card')),
-            _buildTableRow('เลขใบขับขี่', _val('driver_license_no')),
-            _buildTableRow('ประเภทใบขับขี่', _val('driver_license_type')),
-          ]),
+          // Driver info — form style like web
+          _buildDriverSection(),
 
           const Divider(height: 1),
 
@@ -294,6 +281,85 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             _buildTableRow('รายละเอียด', _val('damage_description')),
             _buildTableRow('ประมาณค่าเสียหาย', _val('estimated_cost') != '-' ? '${_val('estimated_cost')} บาท' : '-'),
           ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _inputField(String label, String value) {
+    return TextFormField(
+      initialValue: value == '-' ? '' : value,
+      readOnly: true,
+      style: const TextStyle(fontSize: 13, color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: Colors.grey.shade300)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: Colors.grey.shade300)),
+        isDense: true,
+      ),
+    );
+  }
+
+  Widget _inputRow2(String l1, String v1, String l2, String v2) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        Expanded(child: _inputField(l1, v1)),
+        const SizedBox(width: 8),
+        Expanded(child: _inputField(l2, v2)),
+      ]),
+    );
+  }
+
+  Widget _inputRow1(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: _inputField(label, value),
+    );
+  }
+
+  Widget _buildDriverSection() {
+    final gender = _val('driver_gender') == 'M' ? 'ชาย' : _val('driver_gender') == 'F' ? 'หญิง' : '-';
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('ข้อมูลผู้ขับขี่', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+          const SizedBox(height: 10),
+          // แถว 1: เพศ + คำนำหน้า + ชื่อ + นามสกุล
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              SizedBox(width: 60, child: _inputField('เพศ', gender)),
+              const SizedBox(width: 8),
+              SizedBox(width: 80, child: _inputField('คำนำหน้า', _val('driver_title'))),
+              const SizedBox(width: 8),
+              Expanded(child: _inputField('ชื่อ', _val('driver_first_name'))),
+              const SizedBox(width: 8),
+              Expanded(child: _inputField('นามสกุล', _val('driver_last_name'))),
+            ]),
+          ),
+          // แถว 2: ความสัมพันธ์
+          _inputRow1('ความสัมพันธ์กับเจ้าของรถ', _val('driver_relation')),
+          // แถว 3: อายุ + วันเกิด
+          _inputRow2('อายุ', _val('driver_age'), 'วันเกิด', _val('driver_birthdate')),
+          // แถว 4: ที่อยู่
+          _inputRow1('ที่อยู่ปัจจุบัน', _val('driver_address')),
+          // แถว 5: จังหวัด + เขต
+          _inputRow2('จังหวัด', _val('driver_province'), 'เขต/อำเภอ', _val('driver_district')),
+          // แถว 6: โทรศัพท์
+          _inputRow1('โทรศัพท์', _val('driver_phone')),
+          // แถว 7: บัตรประชาชน + ใบขับขี่
+          _inputRow2('บัตรประชาชนเลขที่', _val('driver_id_card'), 'ใบอนุญาตขับขี่เลขที่', _val('driver_license_no')),
+          // แถว 8: ประเภทใบขับขี่ + ออกให้ที่
+          _inputRow2('ประเภท', _val('driver_license_type'), 'ออกให้ที่', _val('driver_license_place')),
+          // แถว 9: ออกให้วันที่ + หมดอายุ
+          _inputRow2('ออกให้วันที่', _val('driver_license_start'), 'หมดอายุวันที่', _val('driver_license_end')),
         ],
       ),
     );
