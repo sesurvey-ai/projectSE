@@ -291,7 +291,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย :</td>
-                    <td className="px-4 py-2" colSpan={2}>
+                    <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
@@ -308,10 +308,6 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                       </div>
                     </td>
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ :</td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2"></td>
-                    <td className="px-4 py-2" colSpan={2}></td>
                     <td className="px-4 py-2">
                       <select disabled={d} name="driver_relation" defaultValue={report.driver_relation || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
