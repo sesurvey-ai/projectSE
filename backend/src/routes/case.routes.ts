@@ -64,10 +64,14 @@ const submitSurveySchema = z.object({
   driver_gender: z.string().optional(),
   driver_title: z.string().optional(),
   driver_name: z.string().optional(),
+  driver_first_name: z.string().optional(),
+  driver_last_name: z.string().optional(),
   driver_age: z.number().int().optional(),
   driver_birthdate: z.string().optional(),
   driver_phone: z.string().optional(),
   driver_address: z.string().optional(),
+  driver_province: z.string().optional(),
+  driver_district: z.string().optional(),
   driver_id_card: z.string().optional(),
   driver_license_no: z.string().optional(),
   driver_license_type: z.string().optional(),
@@ -75,6 +79,7 @@ const submitSurveySchema = z.object({
   driver_license_start: z.string().optional(),
   driver_license_end: z.string().optional(),
   driver_relation: z.string().optional(),
+  driver_ticket: z.string().optional(),
   // ความเสียหาย
   damage_description: z.string().optional(),
   estimated_cost: z.number().optional(),
@@ -88,6 +93,7 @@ const submitSurveySchema = z.object({
   acc_damage_type: z.string().optional(),
   acc_detail: z.string().optional(),
   acc_fault: z.string().optional(),
+  acc_fault_opponent_no: z.string().optional(),
   // การสำรวจ
   acc_reporter: z.string().optional(),
   acc_surveyor: z.string().optional(),
@@ -108,11 +114,16 @@ const submitSurveySchema = z.object({
   acc_police_date: z.string().optional(),
   acc_police_book_no: z.string().optional(),
   acc_alcohol_test: z.string().optional(),
+  acc_alcohol_result: z.string().optional(),
   // ติดตามงาน
   acc_followup: z.string().optional(),
   acc_followup_count: z.string().optional(),
   acc_followup_detail: z.string().optional(),
   acc_followup_date: z.string().optional(),
+  // การตรวจสอบ
+  survey_result: z.string().optional(),
+  review_comment: z.string().optional(),
+  surveyor_comment: z.string().optional(),
 });
 
 const submitReviewSchema = z.object({

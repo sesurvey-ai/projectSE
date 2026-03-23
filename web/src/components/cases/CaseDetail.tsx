@@ -61,6 +61,11 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
       const fd = new FormData(formRef.current);
       const data: Record<string, string> = {};
       fd.forEach((val, key) => { data[key] = val as string; });
+      // Handle checkbox group: acc_claim_opponent (multiple values → comma-separated)
+      const opponents = fd.getAll('acc_claim_opponent').map(v => String(v));
+      data['acc_claim_opponent'] = opponents.join(',');
+      // Handle checkbox: car_lost (unchecked = not in FormData)
+      data['car_lost'] = fd.has('car_lost') ? 'true' : 'false';
       const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: data });
       if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); }
       else setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || ''));
@@ -80,27 +85,25 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <span className="ml-auto font-bold">ประเภทเคลม :</span>
               <span className="text-red-400">*</span>
               {['F','D','A','C'].map(v => (
-                <label key={v} className="flex items-center gap-1 cursor-default">
-                  <span className={`w-3.5 h-3.5 rounded-full border-2 border-white inline-flex items-center justify-center ${report.claim_type === v ? 'bg-white' : ''}`}>
-                    {report.claim_type === v && <span className="w-1.5 h-1.5 rounded-full bg-blue-700"></span>}
-                  </span>
-                  <span>{CLAIM_TYPE_LABELS[v]}</span>
+                <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="claim_type" value={v} disabled={d} defaultChecked={report.claim_type === v} className="peer sr-only" />
+                  <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
+                  <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{CLAIM_TYPE_LABELS[v]}</span>
                 </label>
               ))}
               <span className="font-bold ml-4">รถเสียหาย :</span>
               {['หนัก','เบา'].map(v => (
-                <label key={v} className="flex items-center gap-1 cursor-default">
-                  <span className={`w-3.5 h-3.5 rounded-full border-2 border-white inline-flex items-center justify-center ${report.damage_level === v ? 'bg-white' : ''}`}>
-                    {report.damage_level === v && <span className="w-1.5 h-1.5 rounded-full bg-blue-700"></span>}
-                  </span>
-                  <span>{v}</span>
+                <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="damage_level" value={v} disabled={d} defaultChecked={report.damage_level === v} className="peer sr-only" />
+                  <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
+                  <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{v}</span>
                 </label>
               ))}
-              <label className="flex items-center gap-1 ml-2 cursor-default">
-                <span className={`w-3.5 h-3.5 rounded border border-white inline-flex items-center justify-center ${report.car_lost ? 'bg-white' : ''}`}>
-                  {report.car_lost && <span className="text-blue-700 text-xs font-bold">✓</span>}
-                </span>
-                <span>รถหาย</span>
+              <label className="flex items-center gap-1.5 ml-2 cursor-pointer relative">
+                <input type="checkbox" name="car_lost" value="true" disabled={d} defaultChecked={!!report.car_lost} className="peer sr-only" />
+                <span className="w-4 h-4 rounded border-2 border-white/50 peer-checked:border-white peer-checked:bg-white shrink-0"></span>
+                <svg className="absolute left-[3px] w-2.5 h-2.5 text-blue-700 hidden peer-checked:block pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">รถหาย</span>
               </label>
             </div>
             {/* Table rows */}
@@ -290,8 +293,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย :</td>
                     <td className="px-4 py-2" colSpan={2}>
                       <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" disabled={d} checked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
-                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" disabled={d} checked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
+                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
+                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
                         <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           <option value="0">--</option>
                           <option value="นางสาว">นางสาว</option>
@@ -383,7 +386,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                         <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-sm whitespace-nowrap">พิมพ์ข้อมูลความเสียหาย</button>
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-gray-800" colSpan={2}>{report.damage_description || '-'}</td>
+                    <td className="px-4 py-2" colSpan={2}><textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ความเสียหายประมาณ :</td>
@@ -459,15 +462,15 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รถประกันเป็นฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รถประกันเป็นฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รถคู่กรณีเป็นฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
                       <span className="text-gray-500">คู่กรณีคันที่</span>
                       <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> ไปถึง แล้วไม่พบ</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รอสรุปผลคดี" disabled={d} defaultChecked={report.acc_fault === 'รอสรุปผลคดี'} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ยกเลิกการเคลม" disabled={d} defaultChecked={report.acc_fault === 'ยกเลิกการเคลม'} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ไปถึง แล้วไม่พบ" disabled={d} defaultChecked={report.acc_fault === 'ไปถึง แล้วไม่พบ'} className="w-3.5 h-3.5" /> ไปถึง แล้วไม่พบ</label>
                     </div>
                   </td>
                 </tr>
@@ -547,16 +550,16 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี :</td>
                   <td className="px-4 py-2 text-gray-800" colSpan={3}>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <label className="flex items-center gap-1"><input type="checkbox" disabled={d} checked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" disabled={d} checked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" disabled={d} checked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" disabled={d} checked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" disabled={d} checked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
-                      <span className="ml-2 font-medium">{report.acc_claim_amount != null ? `${Number(report.acc_claim_amount).toLocaleString()} บาท` : '0.00 บาท'}</span>
+                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="คัดประจำวัน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับหลักฐานจากคู่กรณีผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บันทึกยอมรับผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บัตรติดต่อ" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
+                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
+                      <input type="text" name="acc_claim_amount" disabled={d} defaultValue={report.acc_claim_amount != null ? Number(report.acc_claim_amount).toFixed(2) : ''} className={`w-[100px] ml-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <span className="text-gray-500">บาท</span>
                       <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
-                      <span className="font-medium">{report.acc_claim_total_amount != null ? `${Number(report.acc_claim_total_amount).toLocaleString()} บาท` : '-'}</span>
-                      <span className="ml-2 text-gray-500">การเก็บเป็น :</span>
-                      <span>-</span>
+                      <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={report.acc_claim_total_amount != null ? Number(report.acc_claim_total_amount).toFixed(2) : ''} className={`w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <span className="text-gray-500">บาท</span>
                     </div>
                   </td>
                 </tr>
@@ -597,8 +600,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผลการตรวจแอลกอฮอล์ :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> ไม่มีการตรวจแอลกอฮอล์</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_alcohol_test === 'มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> มีการตรวจแอลกอฮอล์</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_alcohol_test" value="ไม่มีการตรวจแอลกอฮอล์" disabled={d} defaultChecked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> ไม่มีการตรวจแอลกอฮอล์</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_alcohol_test" value="มีการตรวจแอลกอฮอล์" disabled={d} defaultChecked={report.acc_alcohol_test === 'มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> มีการตรวจแอลกอฮอล์</label>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">ระบุผล :</td>
@@ -617,9 +620,9 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500">การติดตามงาน :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
-                      <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="ไม่มีการนัดหมาย" disabled={d} defaultChecked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="รอการนัดหมาย" disabled={d} defaultChecked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="มีการนัดหมาย" disabled={d} defaultChecked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">ครั้งที่นัดหมาย :</td>
