@@ -123,7 +123,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500">บริษัทประกัน :</td>
                   <td className="px-4 py-2 overflow-hidden">
                     <div className="flex items-center gap-1">
-                      <select disabled={d} defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
                         <option value="ประกันภัยทดสอบ">ประกันภัยทดสอบ</option>
                         <option value="บริษัท เดอะ วัน ประกันภัย จำกัด (มหาชน)">บริษัท เดอะ วัน ประกันภัย จำกัด (มหาชน)</option>
@@ -133,7 +133,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                         <option value="บริษัท เจมาร์ท ประกันภัย จํากัด (มหาชน)">บริษัท เจมาร์ท ประกันภัย จํากัด (มหาชน)</option>
                         <option value="บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)">บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)</option>
                       </select>
-                      <select disabled={d} defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
                         <option value="กรุงเทพ">กรุงเทพ</option>
                       </select>
@@ -141,17 +141,17 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </td>
                   <td className="px-4 py-2 text-gray-500">เลขเรื่องเซอร์เวย์ :</td>
                   <td className="px-4 py-2">
-                    <input type="text" disabled={d} defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                    <input type="text" disabled={d} name="survey_job_no" defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">เลขที่รับแจ้ง :</td>
                   <td className="px-4 py-2">
-                    <input type="text" disabled={d} defaultValue={report.claim_ref_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                    <input type="text" disabled={d} name="claim_ref_no" defaultValue={report.claim_ref_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                   </td>
                   <td className="px-4 py-2 text-gray-500">เลขที่เคลม :</td>
                   <td className="px-4 py-2">
-                    <input type="text" disabled={d} defaultValue={report.claim_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                    <input type="text" disabled={d} name="claim_no" defaultValue={report.claim_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                   </td>
                 </tr>
               </tbody>
@@ -169,38 +169,38 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="checkbox" disabled={d} checked={!!report.prb_number} className="w-3.5 h-3.5" /> มี (พรบ.)</label>
-                        <input type="text" disabled={d} defaultValue={report.prb_number || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <input type="text" disabled={d} name="prb_number" defaultValue={report.prb_number || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       </div>
                     </td>
                     <td className="px-4 py-2 text-gray-500">กรมธรรม์เลขที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.policy_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_no" defaultValue={report.policy_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อผู้ขับขี่ตามกรมธรรม์ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_by_policy || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_by_policy" defaultValue={report.driver_by_policy || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">วันที่เริ่มต้น :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.policy_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_start" defaultValue={report.policy_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">วันที่สิ้นสุด :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.policy_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_end" defaultValue={report.policy_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.assured_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="assured_name" defaultValue={report.assured_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">ประกันประเภท :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.policy_type || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_type" defaultValue={report.policy_type || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">อีเมลผู้เอาประกัน :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.assured_email || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="assured_email" defaultValue={report.assured_email || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">รหัสภัยยานยนต์ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.risk_code || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="risk_code" defaultValue={report.risk_code || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ค่าเสียหายส่วนแรก :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="deductible" defaultValue={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                 </tbody>
@@ -215,10 +215,10 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">หมายเลขทะเบียน :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.license_plate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="license_plate" defaultValue={report.license_plate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500">จังหวัด :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.car_province || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="car_province" defaultValue={report.car_province || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </td>
@@ -226,7 +226,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ประเภทรถ :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.car_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="car_type" defaultValue={report.car_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       <option value="0">-- ระบุ --</option>
                       <option value="เก็งเอเชีย">เก๋งเอเชีย</option>
                       <option value="เก๋งยุโรป">เก๋งยุโรป</option>
@@ -239,42 +239,42 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </td>
                   <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.car_brand || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="car_brand" defaultValue={report.car_brand || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {CAR_BRAND_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">รุ่น :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.car_model || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="car_model" defaultValue={report.car_model || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500">สีรถ :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.car_color || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="car_color" defaultValue={report.car_color || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {CAR_COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ปีจดทะเบียนรถ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.car_reg_year || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="car_reg_year" defaultValue={report.car_reg_year || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ประเภทรถยนต์ไฟฟ้า :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.ev_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="ev_type" defaultValue={report.ev_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {EV_TYPE_OPTIONS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
                     </select>
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">หมายเลขตัวถัง :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.chassis_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="chassis_no" defaultValue={report.chassis_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500">หมายเลข Model :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.model_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="model_no" defaultValue={report.model_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
                 <tr className="bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">หมายเลขเครื่อง :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.engine_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="engine_no" defaultValue={report.engine_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500">หมายเลข กม. :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.mileage != null ? Number(report.mileage).toLocaleString() : ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="mileage" defaultValue={report.mileage != null ? Number(report.mileage).toLocaleString() : ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
               </tbody>
             </table>
@@ -292,16 +292,16 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" disabled={d} checked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" disabled={d} checked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
-                        <select disabled={d} defaultValue={report.driver_title || '0'} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           <option value="0">--</option>
                           <option value="นางสาว">นางสาว</option>
                           <option value="นาง">นาง</option>
                           <option value="นาย">นาย</option>
                         </select>
                         <span className="text-gray-500 shrink-0">ชื่อ</span>
-                        <input type="text" disabled={d} defaultValue={report.driver_first_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <input type="text" disabled={d} name="driver_first_name" defaultValue={report.driver_first_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                         <span className="text-gray-500 shrink-0">นามสกุล</span>
-                        <input type="text" disabled={d} defaultValue={report.driver_last_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <input type="text" disabled={d} name="driver_last_name" defaultValue={report.driver_last_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       </div>
                     </td>
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ :</td>
@@ -310,7 +310,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     <td className="px-4 py-2"></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                     <td className="px-4 py-2">
-                      <select disabled={d} defaultValue={report.driver_relation || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="driver_relation" defaultValue={report.driver_relation || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
                         <option value="เจ้าของรถ">เจ้าของรถ</option>
                         <option value="ญาติ">ญาติ</option>
@@ -322,19 +322,19 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">อายุ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_age != null ? report.driver_age : ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_age" defaultValue={report.driver_age != null ? report.driver_age : ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">วันเกิด :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_birthdate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_birthdate" defaultValue={report.driver_birthdate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">ที่อยู่ปัจจุบัน :</td>
                     <td className="px-4 py-2" colSpan={3}>
                       <div className="flex items-center gap-2">
-                        <input type="text" disabled={d} defaultValue={report.driver_address || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <select disabled={d} defaultValue={report.driver_province || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <input type="text" disabled={d} name="driver_address" defaultValue={report.driver_address || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <select disabled={d} name="driver_province" defaultValue={report.driver_province || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
-                        <select disabled={d} defaultValue={report.driver_district || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <select disabled={d} name="driver_district" defaultValue={report.driver_district || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           <option value="0">เขต/อำเภอ</option>
                         </select>
                       </div>
@@ -342,19 +342,19 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">โทรศัพท์ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_phone || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_phone" defaultValue={report.driver_phone || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">บัตรประชาชนเลขที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_id_card || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_id_card" defaultValue={report.driver_id_card || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ใบอนุญาตขับขี่เลขที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_license_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_no" defaultValue={report.driver_license_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ประเภท :</td>
                     <td className="px-4 py-2">
-                      <select disabled={d} defaultValue={report.driver_license_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="driver_license_type" defaultValue={report.driver_license_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
                         <option value="ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ</option>
                         <option value="ใบขับขี่รถยนต์ส่วนบุคคล">ใบขับขี่รถยนต์ส่วนบุคคล</option>
@@ -362,17 +362,17 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                       </select>
                     </td>
                     <td className="px-4 py-2 text-gray-500">ออกให้ที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_license_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_place" defaultValue={report.driver_license_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">ออกให้วันที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_license_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_start" defaultValue={report.driver_license_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">หมดอายุวันที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.driver_license_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_end" defaultValue={report.driver_license_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ใบสั่ง :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_ticket" defaultValue={''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
@@ -389,7 +389,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     <td className="px-4 py-2 text-gray-500">ความเสียหายประมาณ :</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <input type="text" disabled={d} defaultValue={report.estimated_cost != null ? Number(report.estimated_cost).toFixed(2) : ''} className={`w-[150px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                        <input type="text" disabled={d} name="estimated_cost" defaultValue={report.estimated_cost != null ? Number(report.estimated_cost).toFixed(2) : ''} className={`w-[150px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                         <span className="text-gray-500">บาท</span>
                       </div>
                     </td>
@@ -413,23 +413,23 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex items-center gap-2">
-                      <input type="text" disabled={d} defaultValue={report.acc_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={report.acc_time ? report.acc_time.split(':')[0] : ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_date" defaultValue={report.acc_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_time_hour" defaultValue={report.acc_time ? report.acc_time.split(':')[0] : ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={report.acc_time ? report.acc_time.split(':')[1] : ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_time_minute" defaultValue={report.acc_time ? report.acc_time.split(':')[1] : ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.acc_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2" colSpan={2}>
                     <div className="flex items-center gap-1">
-                      <select disabled={d} defaultValue={report.acc_province || '0'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="acc_province" defaultValue={report.acc_province || '0'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
-                      <select disabled={d} defaultValue={report.acc_district || '-- เขต --'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="acc_district" defaultValue={report.acc_district || '-- เขต --'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         {BANGKOK_DISTRICT_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
                       </select>
                     </div>
@@ -438,13 +438,13 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.acc_cause || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {ACC_CAUSE_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ลักษณะความเสียหาย :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.acc_damage_type || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="acc_damage_type" defaultValue={report.acc_damage_type || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {ACC_DAMAGE_TYPE_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
                     </select>
                   </td>
@@ -452,7 +452,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 align-top">รายละเอียดการเกิดเหตุ :</td>
                   <td className="px-4 py-2" colSpan={3}>
-                    <textarea disabled={d} defaultValue={report.acc_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[80px]`} rows={4} />
+                    <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[80px]`} rows={4} />
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100">
@@ -463,7 +463,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                       <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
                       <label className="flex items-center gap-1"><input type="radio" disabled={d} checked={report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
                       <span className="text-gray-500">คู่กรณีคันที่</span>
-                      <input type="text" disabled={d} defaultValue={''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
                       <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
                       <label className="flex items-center gap-1"><input type="radio" disabled={d} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
@@ -473,16 +473,16 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ผู้แจ้ง :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.acc_reporter || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_reporter" defaultValue={report.acc_reporter || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500">ผู้สำรวจภัย :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={report.acc_surveyor || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <select disabled={d} className={`w-[70px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <input type="text" disabled={d} name="acc_surveyor" defaultValue={report.acc_surveyor || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <select disabled={d} name="acc_surveyor_branch" className={`w-[70px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option>-- ระบุ --</option>
                       </select>
                       <span className="text-gray-500 shrink-0">โทรศัพท์ :</span>
-                      <input type="text" disabled={d} defaultValue={report.acc_surveyor_phone || ''} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_surveyor_phone" defaultValue={report.acc_surveyor_phone || ''} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                     </div>
                   </td>
                 </tr>
@@ -491,20 +491,20 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={cr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={cr.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_customer_report_date_val" defaultValue={cr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_customer_report_hour" defaultValue={cr.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={cr.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_customer_report_minute" defaultValue={cr.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={ins.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={ins.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_insurance_notify_date_val" defaultValue={ins.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_insurance_notify_hour" defaultValue={ins.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={ins.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_insurance_notify_minute" defaultValue={ins.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
@@ -515,20 +515,20 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={arr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={arr.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_survey_arrive_date_val" defaultValue={arr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_survey_arrive_hour" defaultValue={arr.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={arr.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_survey_arrive_minute" defaultValue={arr.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={comp.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={comp.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_survey_complete_date_val" defaultValue={comp.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_survey_complete_hour" defaultValue={comp.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={comp.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_survey_complete_minute" defaultValue={comp.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
@@ -571,27 +571,27 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อพนักงานสอบสวน :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.acc_police_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_name" defaultValue={report.acc_police_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2 text-gray-500">สถานีตำรวจ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.acc_police_station || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_station" defaultValue={report.acc_police_station || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเห็นพนักงานสอบสวน :</td>
-                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled={d} defaultValue={report.acc_police_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled={d} name="acc_police_comment" defaultValue={report.acc_police_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">วันที่ :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={report.acc_police_date || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={''} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_police_date" defaultValue={report.acc_police_date || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_police_hour" defaultValue={''} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={''} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_police_minute" defaultValue={''} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">ประจำวันข้อที่ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.acc_police_book_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_book_no" defaultValue={report.acc_police_book_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
                 <tr className="bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผลการตรวจแอลกอฮอล์ :</td>
@@ -602,7 +602,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-500">ระบุผล :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} defaultValue={report.acc_alcohol_result || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_alcohol_result" defaultValue={report.acc_alcohol_result || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
               </tbody>
             </table>
@@ -624,23 +624,23 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                   </td>
                   <td className="px-4 py-2 text-gray-500">ครั้งที่นัดหมาย :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} defaultValue={report.acc_followup_count || '1'} className={`w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="acc_followup_count" defaultValue={report.acc_followup_count || '1'} className={`w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500 whitespace-nowrap">รายละเอียดการนัดหมาย :</td>
-                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled={d} defaultValue={report.acc_followup_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled={d} name="acc_followup_detail" defaultValue={report.acc_followup_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
                 <tr>
                   <td className="px-4 py-2 text-gray-500">วันที่ :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} defaultValue={report.acc_followup_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} defaultValue={''} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_followup_date" defaultValue={report.acc_followup_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_followup_hour" defaultValue={''} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} defaultValue={''} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_followup_minute" defaultValue={''} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
@@ -671,15 +671,15 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
-              <textarea disabled={d} defaultValue={report?.survey_result || 'เรียน ผู้ช่วยผู้จัดการฝ่ายสินไหมทราบ\nรถประกันประมาท เบียดฟุตบาตยางฉีก\nรถประกันประเภท 1 ซ่อมอู่\nออกหลักฐานให้รถประกันระบุเงื่อนไข รับผิดชอบยาง 50 เปอร์เซ็นต์\nความสัมพันธ์ผู้เอาประกันภัยเป็น มารดา\n ภูริ'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea disabled={d} name="survey_result" defaultValue={report?.survey_result || 'เรียน ผู้ช่วยผู้จัดการฝ่ายสินไหมทราบ\nรถประกันประมาท เบียดฟุตบาตยางฉีก\nรถประกันประเภท 1 ซ่อมอู่\nออกหลักฐานให้รถประกันระบุเงื่อนไข รับผิดชอบยาง 50 เปอร์เซ็นต์\nความสัมพันธ์ผู้เอาประกันภัยเป็น มารดา\n ภูริ'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-              <textarea disabled={d} defaultValue={review?.comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea disabled={d} name="review_comment" defaultValue={review?.comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
-              <textarea disabled={d} defaultValue={review?.surveyor_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea disabled={d} name="surveyor_comment" defaultValue={review?.surveyor_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
             </div>
           </div>
         </div>
@@ -710,43 +710,43 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าบริการ</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} defaultValue="1" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="700.00" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="service_fee_count" defaultValue="1" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="service_fee_price" defaultValue="700.00" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="travel_fee_count" defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="travel_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="photo_fee_count" defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="photo_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าโทรศัพท์</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="phone_fee" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าประกันตัว</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="bail_fee" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเรียกร้อง</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">%</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="claim_fee_percent" defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">%</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="claim_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าคัดประจำวัน</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="daily_record_fee" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="other_fee_detail" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-3 py-2"><input type="text" disabled={d} name="other_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
                   </tr>
                 </tbody>
               </table>
