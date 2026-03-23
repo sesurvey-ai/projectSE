@@ -672,7 +672,12 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
             </div>
           <div className="p-4">
             <div>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col style={{ width: '40%' }} />
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '30%' }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="px-3 py-2 text-left text-gray-600 font-semibold">รายละเอียด</th>
@@ -683,43 +688,43 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าบริการ</td>
-                    <td className="px-3 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="1" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">ครั้ง</span></div></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="700.00" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled value="1" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="700.00" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
-                    <td className="px-3 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">ครั้ง</span></div></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled value="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">รูป</span></div></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled value="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าโทรศัพท์</td>
-                    <td className="px-3 py-2"></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าประกันตัว</td>
-                    <td className="px-3 py-2"></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเรียกร้อง</td>
-                    <td className="px-3 py-2"><div className="flex items-center gap-1 justify-center"><input type="text" disabled value="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500">%</span></div></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled value="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /><span className="text-gray-500 w-[30px]">%</span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าคัดประจำวัน</td>
-                    <td className="px-3 py-2"></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
                     <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm" /></td>
-                    <td className="px-3 py-2 text-center"><input type="text" disabled value="" className="w-[90px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-center" /></td>
+                    <td className="px-3 py-2"><input type="text" disabled value="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-gray-100 text-sm text-right" /></td>
                   </tr>
                 </tbody>
               </table>
