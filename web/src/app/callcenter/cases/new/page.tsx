@@ -6,6 +6,7 @@ import api from '@/lib/api';
 
 export default function NewCasePage() {
   const [customerName, setCustomerName] = useState('');
+  const [insuranceCompany, setInsuranceCompany] = useState('');
   const [incidentLocation, setIncidentLocation] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -18,6 +19,7 @@ export default function NewCasePage() {
     try {
       const res = await api.post('/api/cases', {
         customer_name: customerName,
+        insurance_company: insuranceCompany || undefined,
         incident_location: incidentLocation,
       });
       if (res.data.success && res.data.data) {
@@ -55,6 +57,14 @@ export default function NewCasePage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ-นามสกุลผู้เกิดเหตุ</label>
             <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" placeholder="กรอกชื่อ-นามสกุล" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">บริษัทประกัน</label>
+            <select value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-white">
+              <option value="">เลือกบริษัทประกัน</option>
+              <option value="ไอโออิกรุงเทพประกันภัย">ไอโออิกรุงเทพประกันภัย</option>
+              <option value="บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)">บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">สถานที่เกิดเหตุ</label>

@@ -10,6 +10,7 @@ const router = Router();
 
 const createCaseSchema = z.object({
   customer_name: z.string().min(1, 'Customer name is required'),
+  insurance_company: z.string().optional(),
   incident_location: z.string().min(1, 'Incident location is required'),
   incident_lat: z.number().optional(),
   incident_lng: z.number().optional(),

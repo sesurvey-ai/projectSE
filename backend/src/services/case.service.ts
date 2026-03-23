@@ -4,12 +4,12 @@ import { fcmService } from './fcm.service';
 import { getIO } from '../socket';
 
 export const caseService = {
-  async create(data: { customer_name: string; incident_location: string; incident_lat?: number; incident_lng?: number }, createdBy: number) {
+  async create(data: { customer_name: string; insurance_company?: string; incident_location: string; incident_lat?: number; incident_lng?: number }, createdBy: number) {
     const result = await db.query(
-      `INSERT INTO cases (customer_name, incident_location, incident_lat, incident_lng, created_by)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO cases (customer_name, insurance_company, incident_location, incident_lat, incident_lng, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [data.customer_name, data.incident_location, data.incident_lat || null, data.incident_lng || null, createdBy]
+      [data.customer_name, data.insurance_company || null, data.incident_location, data.incident_lat || null, data.incident_lng || null, createdBy]
     );
     return result.rows[0];
   },
