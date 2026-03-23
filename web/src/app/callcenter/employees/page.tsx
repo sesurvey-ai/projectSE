@@ -8,7 +8,7 @@ import api from '@/lib/api';
 const SurveyorMap = dynamic(() => import('@/components/map/SurveyorMap'), {
   ssr: false,
   loading: () => (
-    <div className="w-full flex items-center justify-center bg-gray-100 rounded-lg" style={{ height: '500px' }}>
+    <div className="w-full flex items-center justify-center bg-gray-100 rounded-lg" style={{ height: '100%' }}>
       <p className="text-gray-500">กำลังโหลดแผนที่...</p>
     </div>
   ),
@@ -30,7 +30,6 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
 
-  // Listen for real-time location updates
   useEffect(() => {
     if (!socket) return;
     const handle = (data: SurveyorLocation | SurveyorLocation[]) => {
@@ -58,64 +57,71 @@ export default function EmployeesPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">พนักงานทั้งหมด</h1>
-        <p className="text-gray-500 mt-1">ดูพิกัดตำแหน่งพนักงานสำรวจทุกคนแบบเรียลไทม์</p>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">พนักงานทั้งหมด</h1>
+          <p className="text-gray-500 text-sm mt-1">ดูพิกัดตำแหน่งพนักงานสำรวจทุกคนแบบเรียลไทม์</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {surveyors.length > 0 && (
+            <span className="text-sm text-gray-500">พบ {surveyors.length} คน</span>
+          )}
+          <button
+            onClick={handleRequestLocation}
+            disabled={loading}
+            className="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm"
+          >
+            {loading ? 'กำลังเรียกพิกัด...' : 'เรียกพิกัดพนักงานทั้งหมด'}
+          </button>
+        </div>
       </div>
 
-      <div className="mb-6">
-        <button
-          onClick={handleRequestLocation}
-          disabled={loading}
-          className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-        >
-          {loading ? 'กำลังเรียกพิกัด...' : 'เรียกพิกัดพนักงานทั้งหมด'}
-        </button>
-        {surveyors.length > 0 && (
-          <span className="ml-4 text-sm text-gray-500">พบ {surveyors.length} คน</span>
-        )}
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">แผนที่ตำแหน่งพนักงาน</h2>
-        <SurveyorMap surveyors={surveyors} autoFit={false} />
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">รายชื่อพนักงาน</h2>
-        {surveyors.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            {requestSent ? 'กำลังรอข้อมูลพิกัดจากพนักงาน...' : 'กดปุ่ม "เรียกพิกัดพนักงานทั้งหมด" เพื่อดูตำแหน่ง'}
+      <div className="flex gap-4" style={{ height: 'calc(100vh - 160px)' }}>
+        {/* Left: Map */}
+        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex flex-col min-w-0">
+          <h2 className="text-sm font-semibold text-gray-800 mb-2">แผนที่ตำแหน่งพนักงาน</h2>
+          <div className="flex-1">
+            <SurveyorMap
+              surveyors={surveyors}
+              autoFit={false}
+              defaultCenter={[13.0, 101.0]}
+              defaultZoom={6}
+              height="100%"
+            />
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left">
-                  <th className="px-4 py-3 font-semibold text-gray-600">#</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">ชื่อ-นามสกุล</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Username</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">ละติจูด</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">ลองจิจูด</th>
-                </tr>
-              </thead>
-              <tbody>
+        </div>
+
+        {/* Right: Employee list */}
+        <div className="w-[380px] shrink-0 bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex flex-col">
+          <h2 className="text-sm font-semibold text-gray-800 mb-2">รายชื่อพนักงาน</h2>
+          <div className="flex-1 overflow-y-auto">
+            {surveyors.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                {requestSent ? 'กำลังรอข้อมูลพิกัด...' : 'กดปุ่ม "เรียกพิกัดพนักงานทั้งหมด"'}
+              </div>
+            ) : (
+              <div className="space-y-2">
                 {surveyors.map((s, i) => (
-                  <tr key={s.user_id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">
-                      {s.first_name ? `${s.first_name} ${s.last_name || ''}` : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{s.username}</td>
-                    <td className="px-4 py-3 text-gray-600">{Number(s.latitude).toFixed(6)}</td>
-                    <td className="px-4 py-3 text-gray-600">{Number(s.longitude).toFixed(6)}</td>
-                  </tr>
+                  <div key={s.user_id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold shrink-0">
+                      {i + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-800 text-sm truncate">
+                        {s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}
+                      </p>
+                      <p className="text-xs text-gray-400">{s.username}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {Number(s.latitude).toFixed(6)}, {Number(s.longitude).toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

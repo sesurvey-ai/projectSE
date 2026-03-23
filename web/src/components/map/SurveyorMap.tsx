@@ -37,6 +37,9 @@ interface SurveyorMapProps {
   incidentLat?: number;
   incidentLng?: number;
   autoFit?: boolean;
+  defaultCenter?: [number, number];
+  defaultZoom?: number;
+  height?: string;
 }
 
 function FitBounds({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
@@ -56,15 +59,18 @@ function FitBounds({ surveyors, incidentLat, incidentLng }: SurveyorMapProps) {
   return null;
 }
 
-export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoFit = true }: SurveyorMapProps) {
-  const center: L.LatLngExpression = surveyors.length > 0
-    ? [surveyors[0].latitude, surveyors[0].longitude]
-    : incidentLat !== undefined && incidentLng !== undefined
-      ? [incidentLat, incidentLng]
-      : [13.7563, 100.5018]; // Bangkok default
+export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoFit = true, defaultCenter, defaultZoom, height = '400px' }: SurveyorMapProps) {
+  const center: L.LatLngExpression = defaultCenter
+    ? defaultCenter
+    : surveyors.length > 0
+      ? [surveyors[0].latitude, surveyors[0].longitude]
+      : incidentLat !== undefined && incidentLng !== undefined
+        ? [incidentLat, incidentLng]
+        : [13.7563, 100.5018]; // Bangkok default
+  const zoom = defaultZoom ?? 12;
 
   return (
-    <MapContainer center={center} zoom={12} style={{ width: '100%', height: '400px', borderRadius: '0.5rem' }}>
+    <MapContainer center={center} zoom={zoom} style={{ width: '100%', height, borderRadius: '0.5rem' }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
