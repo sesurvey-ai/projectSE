@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 22 มีนาคม 2026 (v1.3.4)
+**อัพเดทล่าสุด:** 23 มีนาคม 2026 (v1.4.7)
 
 ---
 
@@ -285,6 +285,30 @@
 **Bug Fixes:**
 - แก้ CORS สำหรับแสดงรูปภาพ — เพิ่ม `crossOriginResourcePolicy: 'cross-origin'` ใน Helmet config
 - แก้ photo URL path handling ให้แสดงรูปได้ถูกต้อง
+
+### เพิ่มระบบแก้ไข/บันทึกข้อมูล (23 มี.ค. 2026)
+
+**ฟีเจอร์ Edit Mode:**
+- [x] ปุ่ม "แก้ไข" — เปิด edit mode ให้แก้ไขทุก input field ในหน้า Case Detail
+- [x] ปุ่ม "บันทึก" — บันทึกข้อมูลที่แก้ไขลง Database ผ่าน API
+- [x] ปุ่ม "ยกเลิก" — ยกเลิกการแก้ไข กลับเป็น read-only
+- [x] พื้นหลัง input เปลี่ยนจากเทาเป็นขาวเมื่อ edit mode เปิด
+- [x] แสดงข้อความ "บันทึกสำเร็จ" / "เกิดข้อผิดพลาด" หลังกดบันทึก
+
+**Backend API ใหม่:**
+- [x] `PUT /api/cases/:id/report` — endpoint สำหรับ checker อัพเดท survey report
+- [x] รวม field เวลา (hour+minute) เป็น format เดียวก่อนบันทึก
+- [x] บันทึกข้อมูลค่าใช้จ่ายลงตาราง `survey_expenses`
+- [x] ตรวจสอบ column name กับ DB schema ป้องกัน SQL injection
+
+**Database เพิ่มเติม:**
+- เพิ่มคอลัมน์: `survey_result`, `driver_ticket`, `review_comment`, `surveyor_comment`
+- เพิ่ม `name` attribute ครบ 100 ช่อง สำหรับ FormData collection
+
+**UI ปรับปรุง:**
+- [x] เปลี่ยนสี header gradient เป็น `#0174BE` → `#4988C4`
+- [x] Photo lightbox เพิ่ม Zoom in/out (50%-300%) + ปุ่มรีเซ็ต
+- [x] เปลี่ยน label ปุ่ม "อนุมัติ" เป็น "บันทึก"
 
 ---
 
