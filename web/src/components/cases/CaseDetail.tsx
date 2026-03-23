@@ -295,7 +295,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                       <div className="flex items-center gap-2 flex-wrap">
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
-                        <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`w-auto shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           <option value="0">--</option>
                           <option value="นางสาว">นางสาว</option>
                           <option value="นาง">นาง</option>
