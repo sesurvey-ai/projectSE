@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 23 มีนาคม 2026 (v1.5.11)
+**อัพเดทล่าสุด:** 24 มีนาคม 2026 (v1.5.16)
 
 ---
 
@@ -351,6 +351,36 @@
 **Backend — API ใหม่:**
 - [x] `PUT /api/cases/:id/survey` — surveyor อัพเดทข้อมูลสำรวจที่มีอยู่แล้ว (ไม่เช็ค status)
 - [x] แก้ bug `submitSurvey` ใน api_service.dart ที่ส่งแค่ 4 ฟิลด์ → ส่งทุกฟิลด์
+
+---
+
+### Call Center → Mobile ส่งข้อมูลเบื้องต้น (24 มี.ค. 2026 — v1.5.13 ถึง v1.5.16)
+
+**ฟีเจอร์หลัก: Call Center กรอกข้อมูลจากใบเคลม → สร้างเคส → ข้อมูลแสดงในแอปมือถือช่างสำรวจอัตโนมัติ**
+
+**Backend:**
+- [x] ขยาย `POST /api/cases` รับ 35+ field จากใบเคลม (เคลม, รถ, กรมธรรม์, คนขับ, อุบัติเหตุ)
+- [x] สร้าง `survey_reports` เบื้องต้นอัตโนมัติเมื่อมีข้อมูลจากใบเคลม (transaction)
+- [x] แก้ `submitSurvey` ให้ UPDATE ได้ถ้ามี report อยู่แล้ว (ป้องกัน unique constraint error)
+- [x] เพิ่มคอลัมน์ `reporter_phone` ในตาราง survey_reports (migration 006)
+
+**Web — หน้า Call Center สร้างเคส:**
+- [x] เพิ่ม dropdown เลือกบริษัทประกันเป็นตัวเลือกหลัก
+- [x] ไอโออิ → แสดงตารางข้อมูลเคลมแบบกะทัดรัด (ตามใบเคลมจริง)
+- [x] ไทยไพบูลย์ → แสดงฟอร์ม 3 field เดิม (ชื่อ, สถานที่, ปุ่มสร้าง)
+- [x] ค่าเริ่มต้น "-- เลือกบริษัทประกัน --" ไม่แสดงฟอร์มจนกว่าจะเลือก
+- [x] แยกเบอร์โทรผู้แจ้ง (`reporter_phone`) กับเบอร์โทรผู้ขับขี่ (`driver_phone`)
+- [x] ผู้เอาประกัน → ส่งทั้ง `customer_name` (cases) + `assured_name` (survey_reports)
+- [x] สถานที่เกิดเหตุ → ส่งทั้ง `incident_location` (cases) + `acc_place` (survey_reports)
+
+**Mobile:**
+- [x] เพิ่ม `_loadExistingReport()` — โหลดข้อมูลจาก server ก่อน local draft
+- [x] Refactor `_populateForm()` ใช้ร่วมกันระหว่าง server data และ draft data
+- [x] ลำดับ: server data → draft data (draft ทับ server ได้)
+
+**Test Data:**
+- [x] ไฟล์ทดสอบ JSON จากใบเคลม Aioi Bangkok Insurance (`test_claim_aioi_commuter.json`)
+- [x] ไฟล์ seed SQL (`003_seed_test_claim_aioi.sql`)
 
 ---
 

@@ -109,7 +109,7 @@ export default function NewCasePage() {
                   <td className={L}>เวลาเกิดเหตุ</td>
                   <td className={V}><input value={f('acc_time')} onChange={e => s('acc_time', e.target.value)} className={I} placeholder="13:30" /></td>
                   <td className={L}>เบอร์โทรผู้แจ้ง</td>
-                  <td className={V}><input value={f('driver_phone')} onChange={e => s('driver_phone', e.target.value)} className={I} placeholder="0993166888" /></td>
+                  <td className={V}><input value={f('reporter_phone')} onChange={e => s('reporter_phone', e.target.value)} className={I} placeholder="0993166888" /></td>
                 </tr>
                 <tr>
                   <td className={L}>สาขาประกัน</td>
@@ -167,7 +167,7 @@ export default function NewCasePage() {
                 </tr>
                 <tr>
                   <td className={L}>สถานที่เกิดเหตุ *</td>
-                  <td className={V} colSpan={5}><input value={incidentLocation} onChange={e => setIncidentLocation(e.target.value)} className={`${I} font-medium`} placeholder="บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง ซ.ศูนย์วิจัย 8" required /></td>
+                  <td className={V} colSpan={5}><input value={incidentLocation} onChange={e => { setIncidentLocation(e.target.value); s('acc_place', e.target.value); }} className={`${I} font-medium`} placeholder="บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง ซ.ศูนย์วิจัย 8" required /></td>
                 </tr>
                 <tr>
                   <td className={L}>ตำบล</td>
@@ -196,7 +196,7 @@ export default function NewCasePage() {
                   <td className={L}>ประเภท</td>
                   <td className={V}><input value={f('policy_type')} onChange={e => s('policy_type', e.target.value)} className={I} placeholder="1" /></td>
                   <td className={L}>ผู้เอาประกัน *</td>
-                  <td className={V}><input value={customerName} onChange={e => setCustomerName(e.target.value)} className={`${I} font-medium`} placeholder="ชื่อ / บริษัท" required /></td>
+                  <td className={V}><input value={customerName} onChange={e => { setCustomerName(e.target.value); s('assured_name', e.target.value); }} className={`${I} font-medium`} placeholder="ชื่อ / บริษัท" required /></td>
                 </tr>
                 <tr>
                   <td className={L}>เริ่มคุ้มครอง</td>

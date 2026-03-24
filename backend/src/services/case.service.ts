@@ -28,7 +28,7 @@ export const caseService = {
         'driver_first_name','driver_last_name','driver_phone',
         'acc_date','acc_time','acc_place','acc_province','acc_district',
         'acc_cause','acc_damage_type','acc_detail','acc_fault',
-        'acc_reporter','acc_insurance_notify_date','notes',
+        'acc_reporter','reporter_phone','acc_insurance_notify_date','notes',
       ];
       const providedFields: string[] = [];
       const providedValues: unknown[] = [];
@@ -146,7 +146,7 @@ export const caseService = {
       'driver_relation','driver_ticket','damage_description','estimated_cost',
       'acc_date','acc_time','acc_place','acc_province','acc_district',
       'acc_cause','acc_damage_type','acc_detail','acc_fault',
-      'acc_reporter','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
+      'acc_reporter','reporter_phone','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
       'acc_customer_report_date','acc_insurance_notify_date',
       'acc_survey_arrive_date','acc_survey_complete_date',
       'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount',
@@ -204,7 +204,7 @@ export const caseService = {
         'driver_relation','driver_ticket','damage_description','estimated_cost',
         'acc_date','acc_time','acc_place','acc_province','acc_district',
         'acc_cause','acc_damage_type','acc_detail','acc_fault','acc_fault_opponent_no',
-        'acc_reporter','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
+        'acc_reporter','reporter_phone','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
         'acc_customer_report_date','acc_insurance_notify_date',
         'acc_survey_arrive_date','acc_survey_complete_date',
         'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount',

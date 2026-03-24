@@ -52,6 +52,7 @@ const createCaseSchema = z.object({
   acc_detail: z.string().optional(),
   acc_fault: z.string().optional(),
   acc_reporter: z.string().optional(),
+  reporter_phone: z.string().optional(),
   acc_insurance_notify_date: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -137,6 +138,7 @@ const submitSurveySchema = z.object({
   acc_fault_opponent_no: z.string().optional(),
   // การสำรวจ
   acc_reporter: z.string().optional(),
+  reporter_phone: z.string().optional(),
   acc_surveyor: z.string().optional(),
   acc_surveyor_branch: z.string().optional(),
   acc_surveyor_phone: z.string().optional(),
