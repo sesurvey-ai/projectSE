@@ -1,0 +1,59 @@
+{
+  "source": "แบบรับแจ้งอุบัติเหตุยานยนต์ ไอโออิ กรุงเทพ ประกันภัย",
+  "claim_date": "24/03/2569",
+
+  "case": {
+    "customer_name": "บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง จำกัด",
+    "incident_location": "บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง ซ.ศูนย์วิจัย 8 แขวงบางกะปิ เขตห้วยขวาง กรุงเทพฯ",
+    "insurance_company": "ไอโออิกรุงเทพประกันภัย"
+  },
+
+  "survey_report": {
+    "survey_company": "บริษัท เอลอี เซอร์เวย์ แอนด์ คอนซัลแทนท์ จำกัด",
+    "survey_company_address": "43 ชั้นที่ ซ.ลาดพร้าว138(มีสุข) ถ.ลาดพร้าว แขวงคลองจั่น เขตบางกะปิ กรุงเทพฯ 102",
+
+    "claim_type": "F",
+    "claim_no": "2026013124026",
+    "claim_ref_no": "2026051556",
+    "insurance_company": "ไอโออิกรุงเทพประกันภัย",
+    "insurance_branch": "กรุงเทพ",
+    "survey_job_no": "SEABI-210260302833",
+    "car_lost": false,
+
+    "policy_no": "125013115911",
+    "policy_type": "1",
+    "policy_start": "30/03/2568",
+    "policy_end": "30/03/2569",
+    "assured_name": "บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง จำกัด",
+    "prb_number": "125013326605",
+    "deductible": "0",
+
+    "car_brand": "TOYOTA",
+    "car_model": "COMMUTER 2.8 COMMUTER",
+    "car_type": "V",
+    "car_color": "ขาว",
+    "license_plate": "1นจ2922",
+    "car_province": "กรุงเทพ ฯ",
+    "chassis_no": "MMKBBHCPX06523611",
+    "engine_no": "1GD5396358",
+    "car_reg_year": "2023",
+
+    "driver_first_name": "สรธัทร",
+    "driver_last_name": "พูนสวัสดิ์",
+    "driver_phone": "0993166888",
+
+    "acc_date": "23/03/2569",
+    "acc_time": "13:30",
+    "acc_place": "บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง ซ.ศูนย์วิจัย 8",
+    "acc_province": "กรุงเทพฯ",
+    "acc_district": "เขตห้วยขวาง",
+    "acc_cause": "ชนวัสดุ/สิ่งของ เช่น เสา,กำแพง,ประตู ฯลฯ",
+    "acc_damage_type": "เฉี่ยวชนวัสดุ",
+    "acc_detail": "ป.เปิดประตูฝาท้ายไว้แล้วถอยชนเสา มีแจ้งเพิ่ม\nรถประกันประเภท 1 ซ่อมห้าง ไม่มี DD ไม่ระบุคนขับ\nรถปี 2023 ต่ออายุปีที่ 3",
+    "acc_fault": "รถประกันผิด",
+    "acc_reporter": "จินดา ชูศิลปกิจเจริญ (ABI)",
+    "acc_insurance_notify_date": "24/03/2569|11:32",
+
+    "notes": "โอนสาย 8899 | SE408 นายมนชัย 095-9412353 | กรวีย์ ประสานงานแทนให้ 0993166888"
+  }
+}

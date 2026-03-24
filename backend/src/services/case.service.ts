@@ -4,14 +4,58 @@ import { fcmService } from './fcm.service';
 import { getIO } from '../socket';
 
 export const caseService = {
-  async create(data: { customer_name: string; insurance_company?: string; incident_location: string; incident_lat?: number; incident_lng?: number }, createdBy: number) {
-    const result = await db.query(
-      `INSERT INTO cases (customer_name, insurance_company, incident_location, incident_lat, incident_lng, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [data.customer_name, data.insurance_company || null, data.incident_location, data.incident_lat || null, data.incident_lng || null, createdBy]
-    );
-    return result.rows[0];
+  async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+
+      const caseResult = await client.query(
+        `INSERT INTO cases (customer_name, insurance_company, incident_location, incident_lat, incident_lng, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [data.customer_name, data.insurance_company || null, data.incident_location, data.incident_lat || null, data.incident_lng || null, createdBy]
+      );
+      const newCase = caseResult.rows[0];
+
+      // สร้าง survey_report เบื้องต้น ถ้ามีข้อมูลจากใบเคลม
+      const reportFields = [
+        'survey_company','survey_company_address',
+        'claim_type','claim_no','claim_ref_no','insurance_company','insurance_branch',
+        'survey_job_no','car_lost',
+        'policy_no','policy_type','policy_start','policy_end','assured_name','prb_number','deductible',
+        'car_brand','car_model','car_type','car_color','license_plate','car_province',
+        'chassis_no','engine_no','car_reg_year',
+        'driver_first_name','driver_last_name','driver_phone',
+        'acc_date','acc_time','acc_place','acc_province','acc_district',
+        'acc_cause','acc_damage_type','acc_detail','acc_fault',
+        'acc_reporter','acc_insurance_notify_date','notes',
+      ];
+      const providedFields: string[] = [];
+      const providedValues: unknown[] = [];
+      for (const f of reportFields) {
+        if (data[f] !== undefined && data[f] !== '') {
+          providedFields.push(f);
+          providedValues.push(data[f]);
+        }
+      }
+
+      if (providedFields.length > 0) {
+        const cols = ['case_id', ...providedFields].join(', ');
+        const placeholders = [newCase.id, ...providedValues].map((_, i) => `$${i + 1}`).join(', ');
+        await client.query(
+          `INSERT INTO survey_reports (${cols}) VALUES (${placeholders})`,
+          [newCase.id, ...providedValues]
+        );
+      }
+
+      await client.query('COMMIT');
+      return newCase;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   async getMyCases(surveyorId: number) {
@@ -172,12 +216,26 @@ export const caseService = {
       const values = fields.map(f => data[f] ?? null);
       const placeholders = fields.map((_, i) => `$${i + 2}`).join(',');
 
-      const reportResult = await client.query(
-        `INSERT INTO survey_reports (case_id, ${fields.join(',')})
-         VALUES ($1, ${placeholders}) RETURNING *`,
-        [caseId, ...values]
-      );
-      const report = reportResult.rows[0];
+      // ตรวจสอบว่ามี report อยู่แล้วหรือไม่ (สร้างจาก callcenter)
+      const existingReport = await client.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+      let report;
+      if (existingReport.rows.length > 0) {
+        // UPDATE report ที่มีอยู่
+        const setClauses = fields.map((f, i) => `${f} = $${i + 1}`);
+        const updateResult = await client.query(
+          `UPDATE survey_reports SET ${setClauses.join(', ')} WHERE case_id = $${fields.length + 1} RETURNING *`,
+          [...values, caseId]
+        );
+        report = updateResult.rows[0];
+      } else {
+        // INSERT report ใหม่
+        const insertResult = await client.query(
+          `INSERT INTO survey_reports (case_id, ${fields.join(',')})
+           VALUES ($1, ${placeholders}) RETURNING *`,
+          [caseId, ...values]
+        );
+        report = insertResult.rows[0];
+      }
 
       for (const filePath of data.photo_paths) {
         await client.query(

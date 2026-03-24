@@ -23,7 +23,92 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDraft();
+    _loadExistingReport();
+  }
+
+  Future<void> _loadExistingReport() async {
+    try {
+      final caseProvider = context.read<CaseProvider>();
+      final report = await caseProvider.fetchCaseDetail(widget.caseId);
+      if (report != null && mounted) {
+        _populateForm(report);
+      }
+    } catch (_) {}
+    // โหลด draft ทับ (ถ้ามี) เพื่อให้ข้อมูลที่ช่างแก้ไขในเครื่องมีความสำคัญกว่า
+    await _loadDraft();
+  }
+
+  void _populateForm(Map<String, dynamic> data) {
+    setState(() {
+      _claimType = data['claim_type'] ?? _claimType;
+      _damageLevel = data['damage_level'] ?? _damageLevel;
+      final ct = data['car_type'];
+      _carType = (ct != null && const ['0','A','E','M','T','V','W','O'].contains(ct)) ? ct : _carType;
+      _evType = data['ev_type'] ?? _evType;
+      final dg = data['driver_gender'];
+      _driverGender = (dg != null && const ['M','F'].contains(dg)) ? dg : _driverGender;
+      final dt = data['driver_title'];
+      final validMale = ['นาย','ด.ช.','คุณ'];
+      final validFemale = ['นาง','นางสาว','ด.ญ.','คุณ'];
+      if (dt != null && const ['นาย','นาง','นางสาว','ด.ช.','ด.ญ.','คุณ'].contains(dt)) {
+        if (_driverGender == 'M' && validMale.contains(dt)) {
+          _driverTitle = dt;
+        } else if (_driverGender == 'F' && validFemale.contains(dt)) {
+          _driverTitle = dt;
+        } else if (_driverGender == '') {
+          _driverTitle = '0';
+        } else {
+          _driverTitle = _driverGender == 'M' ? 'นาย' : 'นางสาว';
+        }
+      } else {
+        if (_driverGender == 'M') _driverTitle = 'นาย';
+        else if (_driverGender == 'F') _driverTitle = 'นางสาว';
+        else _driverTitle = '0';
+      }
+      _accFault = data['acc_fault'] ?? _accFault;
+      _accFollowup = data['acc_followup'] ?? _accFollowup;
+    });
+
+    final mapping = <TextEditingController, String>{
+      _surveyCompanyCtl: 'survey_company', _surveyCompanyAddressCtl: 'survey_company_address',
+      _surveyCompanyPhoneCtl: 'survey_company_phone',
+      _surveyJobNoCtl: 'survey_job_no', _claimRefNoCtl: 'claim_ref_no', _claimNoCtl: 'claim_no',
+      _insuranceCompanyCtl: 'insurance_company', _insuranceBranchCtl: 'insurance_branch',
+      _prbNumberCtl: 'prb_number', _policyNoCtl: 'policy_no', _driverByPolicyCtl: 'driver_by_policy',
+      _policyStartCtl: 'policy_start', _policyEndCtl: 'policy_end',
+      _assuredNameCtl: 'assured_name', _policyTypeCtl: 'policy_type',
+      _assuredEmailCtl: 'assured_email', _riskCodeCtl: 'risk_code', _deductibleCtl: 'deductible',
+      _licensePlateCtl: 'license_plate', _carProvinceCtl: 'car_province',
+      _carBrandCtl: 'car_brand', _carModelCtl: 'car_model', _carColorCtl: 'car_color',
+      _carRegYearCtl: 'car_reg_year', _chassisNoCtl: 'chassis_no', _engineNoCtl: 'engine_no',
+      _modelNoCtl: 'model_no', _mileageCtl: 'mileage',
+      _driverNameCtl: 'driver_first_name', _driverLastnameCtl: 'driver_last_name',
+      _driverAgeCtl: 'driver_age', _driverBirthdateCtl: 'driver_birthdate',
+      _driverPhoneCtl: 'driver_phone', _driverAddressCtl: 'driver_address',
+      _driverIdCardCtl: 'driver_id_card', _driverLicenseNoCtl: 'driver_license_no',
+      _driverLicenseTypeCtl: 'driver_license_type', _driverLicensePlaceCtl: 'driver_license_place',
+      _driverLicenseStartCtl: 'driver_license_start', _driverLicenseEndCtl: 'driver_license_end',
+      _driverRelationCtl: 'driver_relation',
+      _damageDescCtl: 'damage_description', _estimatedCostCtl: 'estimated_cost',
+      _accDateCtl: 'acc_date', _accTimeCtl: 'acc_time', _accPlaceCtl: 'acc_place',
+      _accProvinceCtl: 'acc_province', _accDistrictCtl: 'acc_district',
+      _accCauseCtl: 'acc_cause', _accDamageTypeCtl: 'acc_damage_type', _accDetailCtl: 'acc_detail',
+      _accReporterCtl: 'acc_reporter', _accSurveyorCtl: 'acc_surveyor',
+      _accSurveyorBranchCtl: 'acc_surveyor_branch', _accSurveyorPhoneCtl: 'acc_surveyor_phone',
+      _accCustomerReportDateCtl: 'acc_customer_report_date', _accInsNotifyDateCtl: 'acc_insurance_notify_date',
+      _accSurveyArriveDateCtl: 'acc_survey_arrive_date', _accSurveyCompleteDateCtl: 'acc_survey_complete_date',
+      _accClaimOpponentCtl: 'acc_claim_opponent', _accClaimAmountCtl: 'acc_claim_amount',
+      _accClaimTotalAmountCtl: 'acc_claim_total_amount',
+      _accPoliceNameCtl: 'acc_police_name', _accPoliceStationCtl: 'acc_police_station',
+      _accPoliceCommentCtl: 'acc_police_comment', _accPoliceDateCtl: 'acc_police_date',
+      _accPoliceBookNoCtl: 'acc_police_book_no', _accAlcoholTestCtl: 'acc_alcohol_test',
+      _accFollowupCountCtl: 'acc_followup_count', _accFollowupDetailCtl: 'acc_followup_detail',
+      _accFollowupDateCtl: 'acc_followup_date', _notesCtl: 'notes',
+    };
+    for (final entry in mapping.entries) {
+      final val = data[entry.value];
+      if (val != null) entry.key.text = val.toString();
+    }
   }
 
   final ImagePicker _picker = ImagePicker();
@@ -182,75 +267,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final json = prefs.getString(_draftKey);
     if (json == null) return;
     final data = jsonDecode(json) as Map<String, dynamic>;
-
-    setState(() {
-      _claimType = data['claim_type'] ?? _claimType;
-      _damageLevel = data['damage_level'] ?? _damageLevel;
-      final ct = data['car_type'];
-      _carType = (ct != null && const ['0','A','E','M','T','V','W','O'].contains(ct)) ? ct : _carType;
-      _evType = data['ev_type'] ?? _evType;
-      final dg = data['driver_gender'];
-      _driverGender = (dg != null && const ['M','F'].contains(dg)) ? dg : _driverGender;
-      final dt = data['driver_title'];
-      final validMale = ['นาย','ด.ช.','คุณ'];
-      final validFemale = ['นาง','นางสาว','ด.ญ.','คุณ'];
-      if (dt != null && const ['นาย','นาง','นางสาว','ด.ช.','ด.ญ.','คุณ'].contains(dt)) {
-        if (_driverGender == 'M' && validMale.contains(dt)) {
-          _driverTitle = dt;
-        } else if (_driverGender == 'F' && validFemale.contains(dt)) {
-          _driverTitle = dt;
-        } else if (_driverGender == '') {
-          _driverTitle = '0';
-        } else {
-          _driverTitle = _driverGender == 'M' ? 'นาย' : 'นางสาว';
-        }
-      } else {
-        if (_driverGender == 'M') _driverTitle = 'นาย';
-        else if (_driverGender == 'F') _driverTitle = 'นางสาว';
-        else _driverTitle = '0';
-      }
-      _accFault = data['acc_fault'] ?? _accFault;
-      _accFollowup = data['acc_followup'] ?? _accFollowup;
-    });
-
-    final mapping = <TextEditingController, String>{
-      _surveyJobNoCtl: 'survey_job_no', _claimRefNoCtl: 'claim_ref_no', _claimNoCtl: 'claim_no',
-      _insuranceCompanyCtl: 'insurance_company', _insuranceBranchCtl: 'insurance_branch',
-      _prbNumberCtl: 'prb_number', _policyNoCtl: 'policy_no', _driverByPolicyCtl: 'driver_by_policy',
-      _policyStartCtl: 'policy_start', _policyEndCtl: 'policy_end',
-      _assuredNameCtl: 'assured_name', _policyTypeCtl: 'policy_type',
-      _assuredEmailCtl: 'assured_email', _riskCodeCtl: 'risk_code', _deductibleCtl: 'deductible',
-      _licensePlateCtl: 'license_plate', _carProvinceCtl: 'car_province',
-      _carBrandCtl: 'car_brand', _carModelCtl: 'car_model', _carColorCtl: 'car_color',
-      _carRegYearCtl: 'car_reg_year', _chassisNoCtl: 'chassis_no', _engineNoCtl: 'engine_no',
-      _modelNoCtl: 'model_no', _mileageCtl: 'mileage',
-      _driverNameCtl: 'driver_first_name', _driverLastnameCtl: 'driver_last_name',
-      _driverAgeCtl: 'driver_age', _driverBirthdateCtl: 'driver_birthdate',
-      _driverPhoneCtl: 'driver_phone', _driverAddressCtl: 'driver_address',
-      _driverIdCardCtl: 'driver_id_card', _driverLicenseNoCtl: 'driver_license_no',
-      _driverLicenseTypeCtl: 'driver_license_type', _driverLicensePlaceCtl: 'driver_license_place',
-      _driverLicenseStartCtl: 'driver_license_start', _driverLicenseEndCtl: 'driver_license_end',
-      _driverRelationCtl: 'driver_relation',
-      _damageDescCtl: 'damage_description', _estimatedCostCtl: 'estimated_cost',
-      _accDateCtl: 'acc_date', _accTimeCtl: 'acc_time', _accPlaceCtl: 'acc_place',
-      _accProvinceCtl: 'acc_province', _accDistrictCtl: 'acc_district',
-      _accCauseCtl: 'acc_cause', _accDamageTypeCtl: 'acc_damage_type', _accDetailCtl: 'acc_detail',
-      _accReporterCtl: 'acc_reporter', _accSurveyorCtl: 'acc_surveyor',
-      _accSurveyorBranchCtl: 'acc_surveyor_branch', _accSurveyorPhoneCtl: 'acc_surveyor_phone',
-      _accCustomerReportDateCtl: 'acc_customer_report_date', _accInsNotifyDateCtl: 'acc_insurance_notify_date',
-      _accSurveyArriveDateCtl: 'acc_survey_arrive_date', _accSurveyCompleteDateCtl: 'acc_survey_complete_date',
-      _accClaimOpponentCtl: 'acc_claim_opponent', _accClaimAmountCtl: 'acc_claim_amount',
-      _accClaimTotalAmountCtl: 'acc_claim_total_amount',
-      _accPoliceNameCtl: 'acc_police_name', _accPoliceStationCtl: 'acc_police_station',
-      _accPoliceCommentCtl: 'acc_police_comment', _accPoliceDateCtl: 'acc_police_date',
-      _accPoliceBookNoCtl: 'acc_police_book_no', _accAlcoholTestCtl: 'acc_alcohol_test',
-      _accFollowupCountCtl: 'acc_followup_count', _accFollowupDetailCtl: 'acc_followup_detail',
-      _accFollowupDateCtl: 'acc_followup_date', _notesCtl: 'notes',
-    };
-    for (final entry in mapping.entries) {
-      final val = data[entry.value];
-      if (val != null) entry.key.text = val.toString();
-    }
+    _populateForm(data);
   }
 
   Map<String, dynamic> _collectFormData() {
