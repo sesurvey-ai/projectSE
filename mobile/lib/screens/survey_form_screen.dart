@@ -34,8 +34,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _surveyCompanyPhoneCtl = TextEditingController();
 
   // === เคลม ===
-  String _claimType = 'D';
-  String _damageLevel = 'เบา';
+  String _claimType = '';
+  String _damageLevel = '';
   bool _carLost = false;
   final _insuranceCompanyCtl = TextEditingController();
   final _insuranceBranchCtl = TextEditingController();
@@ -70,8 +70,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _modelNoCtl = TextEditingController();
 
   // === ผู้ขับขี่ ===
-  String _driverGender = 'M';
-  String _driverTitle = 'นาย';
+  String _driverGender = '';
+  String _driverTitle = '0';
   final _driverNameCtl = TextEditingController();
   final _driverLastnameCtl = TextEditingController();
   final _driverAgeCtl = TextEditingController();
@@ -189,8 +189,26 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final ct = data['car_type'];
       _carType = (ct != null && const ['0','A','E','M','T','V','W','O'].contains(ct)) ? ct : _carType;
       _evType = data['ev_type'] ?? _evType;
-      _driverGender = data['driver_gender'] ?? _driverGender;
-      _driverTitle = data['driver_title'] ?? _driverTitle;
+      final dg = data['driver_gender'];
+      _driverGender = (dg != null && const ['M','F'].contains(dg)) ? dg : _driverGender;
+      final dt = data['driver_title'];
+      final validMale = ['นาย','ด.ช.','คุณ'];
+      final validFemale = ['นาง','นางสาว','ด.ญ.','คุณ'];
+      if (dt != null && const ['นาย','นาง','นางสาว','ด.ช.','ด.ญ.','คุณ'].contains(dt)) {
+        if (_driverGender == 'M' && validMale.contains(dt)) {
+          _driverTitle = dt;
+        } else if (_driverGender == 'F' && validFemale.contains(dt)) {
+          _driverTitle = dt;
+        } else if (_driverGender == '') {
+          _driverTitle = '0';
+        } else {
+          _driverTitle = _driverGender == 'M' ? 'นาย' : 'นางสาว';
+        }
+      } else {
+        if (_driverGender == 'M') _driverTitle = 'นาย';
+        else if (_driverGender == 'F') _driverTitle = 'นางสาว';
+        else _driverTitle = '0';
+      }
       _accFault = data['acc_fault'] ?? _accFault;
       _accFollowup = data['acc_followup'] ?? _accFollowup;
     });
@@ -509,19 +527,29 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                           ]),
                         ),
                         const SizedBox(width: 8),
-                        // คำนำหน้า
+                        // คำนำหน้า (กรองตามเพศ)
                         Expanded(
                           flex: 1,
                           child: DropdownButtonFormField<String>(
+                            key: ValueKey(_driverGender),
                             initialValue: _driverTitle,
                             decoration: const InputDecoration(labelText: 'คำนำหน้า', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
-                            items: const [
-                              DropdownMenuItem(value: 'นาย', child: Text('นาย')),
-                              DropdownMenuItem(value: 'นาง', child: Text('นาง')),
-                              DropdownMenuItem(value: 'นางสาว', child: Text('นางสาว')),
-                              DropdownMenuItem(value: 'ด.ช.', child: Text('ด.ช.')),
-                              DropdownMenuItem(value: 'ด.ญ.', child: Text('ด.ญ.')),
-                            ],
+                            items: _driverGender == 'M'
+                              ? const [
+                                  DropdownMenuItem(value: 'นาย', child: Text('นาย')),
+                                  DropdownMenuItem(value: 'ด.ช.', child: Text('ด.ช.')),
+                                  DropdownMenuItem(value: 'คุณ', child: Text('คุณ')),
+                                ]
+                              : _driverGender == 'F'
+                              ? const [
+                                  DropdownMenuItem(value: 'นาง', child: Text('นาง')),
+                                  DropdownMenuItem(value: 'นางสาว', child: Text('นางสาว')),
+                                  DropdownMenuItem(value: 'ด.ญ.', child: Text('ด.ญ.')),
+                                  DropdownMenuItem(value: 'คุณ', child: Text('คุณ')),
+                                ]
+                              : const [
+                                  DropdownMenuItem(value: '0', child: Text('- คำนำหน้า -')),
+                                ],
                             onChanged: (v) => setState(() => _driverTitle = v!),
                           ),
                         ),
