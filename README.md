@@ -206,13 +206,13 @@ docker-compose up -d --build
 docker-compose logs -f
 ```
 
-### ใช้ Coolify (Hostinger VPS)
+### ใช้ Dokploy (Hostinger VPS)
 
 1. Push code ไป GitHub repository
-2. ใน Coolify dashboard สร้าง 3 services:
+2. ใน Dokploy dashboard สร้าง 3 services:
    - **Backend** — ชี้ไปที่ `backend/Dockerfile`, ตั้งค่า env vars, mount volume สำหรับ uploads
    - **Web App** — ชี้ไปที่ `web/Dockerfile`, port 3000
-3. ตั้งค่า domain + SSL (auto จาก Coolify)
+3. ตั้งค่า domain + SSL (auto จาก Dokploy)
 4. Build Flutter APK: `cd mobile && flutter build apk --release`
 
 ---

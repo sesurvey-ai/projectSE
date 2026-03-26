@@ -388,7 +388,7 @@
 
 - [x] Dockerfile สำหรับ backend (multi-stage build พร้อม)
 - [x] docker-compose.yml มีแล้ว
-- [ ] Deploy Backend + Web ผ่าน Coolify บน Hostinger VPS
+- [ ] Deploy Backend + Web ผ่าน Dokploy บน Hostinger VPS
 - [ ] ตั้งค่า SSL Certificate และ Domain
 - [ ] ทดสอบบน Production environment
 - [ ] Build Flutter APK/IPA สำหรับแจกจ่าย
@@ -437,4 +437,4 @@
 | File Storage | Multer (local disk) | ✅ |
 | Maps | Leaflet / OpenStreetMap (แทน Google Maps) | ✅ |
 | Authentication | JWT | ✅ |
-| Deployment | Docker + Coolify (Hostinger VPS) | ⏳ รอ deploy |
+| Deployment | Docker + Dokploy (Hostinger VPS) | ⏳ รอ deploy |
