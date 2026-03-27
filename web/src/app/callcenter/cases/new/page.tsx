@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, FormEvent } from 'react';
+import React, { useState, useRef, useCallback, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
@@ -25,7 +25,8 @@ export default function NewCasePage() {
   const [showOcrRaw, setShowOcrRaw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleOcrUpload = async (file: File) => {
+  // append mode: ข้อมูลใหม่เติมเฉพาะช่องที่ยังว่าง
+  const handleOcrUpload = async (file: File, append = false) => {
     setError('');
     setOcrLoading(true);
     setOcrPreview(URL.createObjectURL(file));
@@ -38,16 +39,31 @@ export default function NewCasePage() {
       });
       if (res.data.success && res.data.data) {
         const { fields, ocrRaw: rawText } = res.data.data as { fields: Record<string, string>; ocrRaw: string };
-        if (rawText) setOcrRaw(rawText);
+        if (rawText) setOcrRaw(prev => append ? prev + '\n---\n' + rawText : rawText);
         const newForm: Record<string, string> = {};
         for (const [key, val] of Object.entries(fields || {})) {
           if (val && typeof val === 'string' && val.trim()) {
             newForm[key] = val.trim();
           }
         }
-        setForm(prev => ({ ...prev, ...newForm }));
-        if (newForm.assured_name) setCustomerName(newForm.assured_name);
-        if (newForm.acc_place) setIncidentLocation(newForm.acc_place);
+        if (append) {
+          // เติมเฉพาะช่องที่ยังว่าง
+          setForm(prev => {
+            const merged = { ...prev };
+            for (const [key, val] of Object.entries(newForm)) {
+              if (!merged[key] || !merged[key].trim()) {
+                merged[key] = val;
+              }
+            }
+            return merged;
+          });
+          if (!customerName && newForm.assured_name) setCustomerName(newForm.assured_name);
+          if (!incidentLocation && newForm.acc_place) setIncidentLocation(newForm.acc_place);
+        } else {
+          setForm(prev => ({ ...prev, ...newForm }));
+          if (newForm.assured_name) setCustomerName(newForm.assured_name);
+          if (newForm.acc_place) setIncidentLocation(newForm.acc_place);
+        }
         setOcrDone(true);
       } else {
         setError(res.data.message || 'ไม่สามารถอ่านข้อมูลจากรูปได้');
@@ -59,6 +75,9 @@ export default function NewCasePage() {
     }
   };
 
+  const [appendMode, setAppendMode] = useState(false);
+  const appendFileRef = useRef<HTMLInputElement>(null);
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -67,7 +86,18 @@ export default function NewCasePage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleOcrUpload(file);
+    if (file) handleOcrUpload(file, appendMode);
+    setAppendMode(false);
+  };
+
+  const handleAppendFile = () => {
+    setAppendMode(true);
+    appendFileRef.current?.click();
+  };
+
+  const handleAppendCapture = () => {
+    setAppendMode(true);
+    handleScreenCapture();
   };
 
   const resetOcr = () => {
@@ -77,6 +107,119 @@ export default function NewCasePage() {
     setCustomerName('');
     setIncidentLocation('');
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Screen capture + multi-crop state
+  type CropRect = { x: number; y: number; w: number; h: number };
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cropping, setCropping] = useState(false);
+  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const [cropEnd, setCropEnd] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [savedCrops, setSavedCrops] = useState<CropRect[]>([]);
+  const capturedImgRef = useRef<HTMLImageElement | null>(null);
+
+  const handleScreenCapture = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'monitor' } as MediaTrackConstraints });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
+      await new Promise(r => setTimeout(r, 300));
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d')!.drawImage(video, 0, 0);
+      stream.getTracks().forEach(t => t.stop());
+      setCapturedImage(canvas.toDataURL('image/png'));
+      setCropping(true);
+      setCropStart(null);
+      setCropEnd(null);
+      setSavedCrops([]);
+    } catch {
+      // user cancelled
+    }
+  }, []);
+
+  const getCropRect = (): CropRect | null => {
+    if (!cropStart || !cropEnd) return null;
+    const r = {
+      x: Math.min(cropStart.x, cropEnd.x),
+      y: Math.min(cropStart.y, cropEnd.y),
+      w: Math.abs(cropEnd.x - cropStart.x),
+      h: Math.abs(cropEnd.y - cropStart.y),
+    };
+    return r.w > 20 && r.h > 20 ? r : null;
+  };
+
+  // บันทึกส่วนที่เลือก แล้วเลือกส่วนถัดไปได้
+  const handleAddCrop = () => {
+    const rect = getCropRect();
+    if (rect) {
+      setSavedCrops(prev => [...prev, rect]);
+      setCropStart(null);
+      setCropEnd(null);
+    }
+  };
+
+  // ลบส่วนที่เลือกล่าสุด
+  const handleUndoCrop = () => {
+    setSavedCrops(prev => prev.slice(0, -1));
+  };
+
+  // รวมทุกส่วนที่เลือกเป็นรูปเดียว แล้วส่ง OCR
+  const handleCropConfirm = useCallback(async () => {
+    if (!capturedImgRef.current) return;
+    const img = capturedImgRef.current;
+    const scaleX = img.naturalWidth / img.clientWidth;
+    const scaleY = img.naturalHeight / img.clientHeight;
+
+    // รวม crop ปัจจุบัน (ถ้ามี) กับที่บันทึกไว้
+    const currentRect = getCropRect();
+    const allCrops = [...savedCrops];
+    if (currentRect) allCrops.push(currentRect);
+    if (allCrops.length === 0) return;
+
+    // รวมทุกส่วนเป็นรูปเดียว (ต่อแนวตั้ง)
+    const GAP = 10;
+    const scaledCrops = allCrops.map(r => ({
+      sx: r.x * scaleX, sy: r.y * scaleY,
+      sw: r.w * scaleX, sh: r.h * scaleY,
+    }));
+    const maxW = Math.max(...scaledCrops.map(c => c.sw));
+    const totalH = scaledCrops.reduce((sum, c) => sum + c.sh, 0) + GAP * (scaledCrops.length - 1);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = maxW;
+    canvas.height = totalH;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    let offsetY = 0;
+    for (const c of scaledCrops) {
+      ctx.drawImage(img, c.sx, c.sy, c.sw, c.sh, 0, offsetY, c.sw, c.sh);
+      offsetY += c.sh + GAP;
+    }
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      setCropping(false);
+      setCapturedImage(null);
+      setSavedCrops([]);
+      const file = new File([blob], 'capture.png', { type: 'image/png' });
+      handleOcrUpload(file, appendMode);
+      setAppendMode(false);
+    }, 'image/png');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cropStart, cropEnd, savedCrops, appendMode]);
+
+  const handleCropCancel = () => {
+    setCropping(false);
+    setCapturedImage(null);
+    setCropStart(null);
+    setCropEnd(null);
+    setSavedCrops([]);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -288,31 +431,110 @@ export default function NewCasePage() {
         {/* ไทยไพบูลย์ → OCR upload + ตาราง */}
         {insuranceCompany === 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)' && (
           <>
-            {/* Upload zone */}
-            {!ocrDone && (
-              <div
-                onDragOver={e => e.preventDefault()}
-                onDrop={handleFileDrop}
-                onClick={() => !ocrLoading && fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors mb-4 ${ocrLoading ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}`}
-              >
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-                {ocrLoading ? (
-                  <div className="space-y-3">
-                    <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-                    <p className="text-sm text-blue-600 font-medium">กำลังอ่านข้อมูลจากรูป...</p>
-                    <p className="text-xs text-gray-400">Typhoon OCR กำลังประมวลผล อาจใช้เวลาสักครู่</p>
+            {/* Upload zone + Capture button */}
+            {!ocrDone && !ocrLoading && (
+              <div className="flex gap-3 mb-4">
+                {/* Upload zone */}
+                <div
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={handleFileDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                >
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                  <div className="space-y-1">
+                    <div className="text-3xl text-gray-300">&#128193;</div>
+                    <p className="text-sm font-medium text-gray-600">เลือกไฟล์รูป</p>
+                    <p className="text-xs text-gray-400">ลากไฟล์มาวาง หรือคลิก</p>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="text-4xl text-gray-300">&#128247;</div>
-                    <p className="text-sm font-medium text-gray-600">อัปโหลดรูปใบรับแจ้งเคลม</p>
-                    <p className="text-xs text-gray-400">ลากไฟล์มาวาง หรือคลิกเพื่อเลือกรูป (JPEG, PNG, WebP)</p>
+                </div>
+                {/* Capture button */}
+                <div
+                  onClick={handleScreenCapture}
+                  className="flex-1 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors border-gray-300 hover:border-green-400 hover:bg-green-50"
+                >
+                  <div className="space-y-1">
+                    <div className="text-3xl text-gray-300">&#9986;</div>
+                    <p className="text-sm font-medium text-gray-600">จับภาพหน้าจอ</p>
+                    <p className="text-xs text-gray-400">เลือกเฉพาะส่วนที่ต้องการ</p>
                   </div>
-                )}
-                {ocrPreview && ocrLoading && (
+                </div>
+              </div>
+            )}
+
+            {/* Loading state */}
+            {ocrLoading && (
+              <div className="border-2 border-dashed rounded-xl p-8 text-center border-blue-400 bg-blue-50 mb-4">
+                <div className="space-y-3">
+                  <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+                  <p className="text-sm text-blue-600 font-medium">กำลังอ่านข้อมูลจากรูป...</p>
+                  <p className="text-xs text-gray-400">Typhoon OCR กำลังประมวลผล อาจใช้เวลาสักครู่</p>
+                </div>
+                {ocrPreview && (
                   <img src={ocrPreview} alt="preview" className="mt-4 max-h-40 mx-auto rounded-lg opacity-50" />
                 )}
+              </div>
+            )}
+
+            {/* Crop overlay modal — เลือกได้หลายส่วน */}
+            {cropping && capturedImage && (
+              <div className="fixed inset-0 bg-black/70 z-50 flex flex-col">
+                <div className="bg-white px-4 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-medium text-gray-700">ลากเมาส์เลือกพื้นที่</p>
+                    {savedCrops.length > 0 && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">เลือกแล้ว {savedCrops.length} ส่วน</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {getCropRect() && (
+                      <button type="button" onClick={handleAddCrop} className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">+ เพิ่มส่วน</button>
+                    )}
+                    {savedCrops.length > 0 && (
+                      <button type="button" onClick={handleUndoCrop} className="px-4 py-1.5 bg-yellow-100 text-yellow-700 text-sm rounded-lg hover:bg-yellow-200">ย้อน</button>
+                    )}
+                    {(savedCrops.length > 0 || getCropRect()) && (
+                      <button type="button" onClick={handleCropConfirm} className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                        ตกลง ({savedCrops.length + (getCropRect() ? 1 : 0)} ส่วน)
+                      </button>
+                    )}
+                    <button type="button" onClick={handleCropCancel} className="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">ยกเลิก</button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto relative cursor-crosshair"
+                  onMouseDown={e => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left + e.currentTarget.scrollLeft;
+                    const y = e.clientY - rect.top + e.currentTarget.scrollTop;
+                    setCropStart({ x, y });
+                    setCropEnd({ x, y });
+                    setIsDragging(true);
+                  }}
+                  onMouseMove={e => {
+                    if (!isDragging) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left + e.currentTarget.scrollLeft;
+                    const y = e.clientY - rect.top + e.currentTarget.scrollTop;
+                    setCropEnd({ x, y });
+                  }}
+                  onMouseUp={() => setIsDragging(false)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img ref={capturedImgRef} src={capturedImage} alt="captured" className="max-w-none" draggable={false} />
+                  {/* ส่วนที่บันทึกไว้แล้ว — เส้นเขียว */}
+                  {savedCrops.map((r, i) => (
+                    <div key={i} className="absolute border-2 border-green-500 bg-green-500/10" style={{ left: r.x, top: r.y, width: r.w, height: r.h }}>
+                      <span className="absolute -top-5 left-0 text-xs bg-green-600 text-white px-1.5 rounded">{i + 1}</span>
+                    </div>
+                  ))}
+                  {/* ส่วนที่กำลังเลือก — เส้นฟ้า */}
+                  {cropStart && cropEnd && (() => {
+                    const r = getCropRect();
+                    return r ? (
+                      <div className="absolute border-2 border-blue-500 bg-blue-500/10" style={{ left: r.x, top: r.y, width: r.w, height: r.h }} />
+                    ) : null;
+                  })()}
+                </div>
               </div>
             )}
 
@@ -324,9 +546,13 @@ export default function NewCasePage() {
                     <span className="text-green-600 text-sm font-medium">&#10003; อ่านข้อมูลสำเร็จ</span>
                     <span className="text-xs text-gray-400">ตรวจสอบและแก้ไขข้อมูลได้ก่อนสร้างเคส</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 items-center">
+                    <input ref={appendFileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                    <button type="button" onClick={handleAppendFile} className="text-xs text-green-600 hover:underline font-medium">+ เลือกไฟล์เพิ่ม</button>
+                    <button type="button" onClick={handleAppendCapture} className="text-xs text-green-600 hover:underline font-medium">+ จับภาพเพิ่ม</button>
+                    <span className="text-gray-300">|</span>
                     {ocrRaw && <button type="button" onClick={() => setShowOcrRaw(!showOcrRaw)} className="text-xs text-gray-500 hover:underline">{showOcrRaw ? 'ซ่อน' : 'ดู'} OCR Raw</button>}
-                    <button type="button" onClick={resetOcr} className="text-xs text-blue-600 hover:underline">อัปโหลดรูปใหม่</button>
+                    <button type="button" onClick={resetOcr} className="text-xs text-red-500 hover:underline">เริ่มใหม่</button>
                   </div>
                 </div>
 
