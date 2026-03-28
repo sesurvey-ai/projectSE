@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useCallback, FormEvent } from 'react';
+import React, { useState, useRef, useCallback, useMemo, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
+import thaiProvinces from '@/data/thai_provinces.json';
 
 export default function NewCasePage() {
   const router = useRouter();
+  const { socket } = useSocket();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -16,6 +19,14 @@ export default function NewCasePage() {
   const [form, setForm] = useState<Record<string, string>>({});
   const f = (key: string) => form[key] || '';
   const s = (key: string, v: string) => setForm(prev => ({ ...prev, [key]: v }));
+
+  const provinceNames = useMemo(() => Object.keys(thaiProvinces as Record<string, string[]>).sort(), []);
+  const accDistricts = useMemo(() => {
+    const prov = f('acc_province');
+    return prov ? ((thaiProvinces as Record<string, string[]>)[prov] || []) : [];
+  }, [form['acc_province']]);
+
+  const SP = 'w-full text-[12px] text-gray-900 outline-none bg-transparent px-1 py-0.5 border border-gray-200 rounded';
 
   // OCR state
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -239,12 +250,23 @@ export default function NewCasePage() {
       }
       const res = await api.post('/api/cases', payload);
       if (res.data.success && res.data.data) {
-        router.push(`/callcenter/cases/${res.data.data.id}/assign`);
+        const newCaseId = res.data.data.id;
+        if (socket) {
+          socket.emit('request_location', { request_id: String(newCaseId) });
+        }
+        router.push(`/callcenter/cases/${newCaseId}/assign`);
       } else {
         setError(res.data.message || 'ไม่สามารถสร้างเคสได้');
       }
-    } catch {
-      setError('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+      const fieldErrors = axiosErr.response?.data?.errors;
+      if (fieldErrors) {
+        const details = Object.entries(fieldErrors).map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`).join('; ');
+        setError(`ข้อมูลไม่ถูกต้อง: ${details}`);
+      } else {
+        setError(axiosErr.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -377,10 +399,20 @@ export default function NewCasePage() {
                 <tr>
                   <td className={L}>ตำบล</td>
                   <td className={V}><input value={f('acc_subdistrict')} onChange={e => s('acc_subdistrict', e.target.value)} className={I} /></td>
-                  <td className={L}>อำเภอ</td>
-                  <td className={V}><input value={f('acc_district')} onChange={e => s('acc_district', e.target.value)} className={I} /></td>
                   <td className={L}>จังหวัด</td>
-                  <td className={V}><input value={f('acc_province')} onChange={e => s('acc_province', e.target.value)} className={I} /></td>
+                  <td className={V}>
+                    <select value={f('acc_province')} onChange={e => { s('acc_province', e.target.value); s('acc_district', ''); }} className={SP}>
+                      <option value="">-- เลือกจังหวัด --</option>
+                      {provinceNames.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </td>
+                  <td className={L}>อำเภอ</td>
+                  <td className={V}>
+                    <select value={f('acc_district')} onChange={e => s('acc_district', e.target.value)} className={SP}>
+                      <option value="">-- เลือกอำเภอ --</option>
+                      {accDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </td>
                 </tr>
                 <tr>
                   <td className={L}>ลักษณะการเกิดเหตุ</td>
@@ -591,10 +623,20 @@ export default function NewCasePage() {
                     <tr>
                       <td className={L}>ตำบล/แขวง</td>
                       <td className={V}><input value={f('acc_subdistrict')} onChange={e => s('acc_subdistrict', e.target.value)} className={I} /></td>
-                      <td className={L}>อำเภอ/เขต</td>
-                      <td className={V}><input value={f('acc_district')} onChange={e => s('acc_district', e.target.value)} className={I} /></td>
                       <td className={L}>จังหวัด</td>
-                      <td className={V}><input value={f('acc_province')} onChange={e => s('acc_province', e.target.value)} className={I} /></td>
+                      <td className={V}>
+                        <select value={f('acc_province')} onChange={e => { s('acc_province', e.target.value); s('acc_district', ''); }} className={SP}>
+                          <option value="">-- เลือกจังหวัด --</option>
+                          {provinceNames.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </td>
+                      <td className={L}>อำเภอ/เขต</td>
+                      <td className={V}>
+                        <select value={f('acc_district')} onChange={e => s('acc_district', e.target.value)} className={SP}>
+                          <option value="">-- เลือกอำเภอ --</option>
+                          {accDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </td>
                     </tr>
                     <tr>
                       <td className={L}>ทะเบียนรถ</td>

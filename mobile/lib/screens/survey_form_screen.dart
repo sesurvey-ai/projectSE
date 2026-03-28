@@ -435,11 +435,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       // ========== 2. กรมธรรม์ ==========
                       _sectionHeader('ข้อมูลกรมธรรม์', Icons.article),
                       const SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(child: _txt(_prbNumberCtl, 'เลข พรบ.', Icons.description)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_policyNoCtl, 'เลขกรมธรรม์', Icons.pin)),
-                      ]),
+                      _txt(_policyNoCtl, 'เลขกรมธรรม์', Icons.pin),
+                      const SizedBox(height: 12),
+                      _txt(_prbNumberCtl, 'เลข พรบ.', Icons.description),
                       const SizedBox(height: 12),
                       _txt(_driverByPolicyCtl, 'ชื่อผู้ขับขี่ตามกรมธรรม์', Icons.person_search),
                       const SizedBox(height: 12),

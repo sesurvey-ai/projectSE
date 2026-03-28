@@ -9,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
   final SocketService _socketService;
   final FcmService _fcmService;
+  VoidCallback? _onCaseAssignedRefresh;
 
   User? _user;
   String? _token;
@@ -22,6 +23,10 @@ class AuthProvider extends ChangeNotifier {
   })  : _authService = AuthService(apiService),
         _socketService = socketService,
         _fcmService = fcmService;
+
+  void setOnCaseAssignedRefresh(VoidCallback callback) {
+    _onCaseAssignedRefresh = callback;
+  }
 
   User? get user => _user;
   String? get token => _token;
@@ -67,7 +72,8 @@ class AuthProvider extends ChangeNotifier {
       } catch (e) {
         debugPrint('[Auth] Failed to show notification: $e');
       }
-      // Notify listeners so CaseProvider can refresh
+      // Refresh case list automatically
+      _onCaseAssignedRefresh?.call();
       notifyListeners();
     };
   }

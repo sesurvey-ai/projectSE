@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 24 มีนาคม 2026 (v1.5.16)
+**อัพเดทล่าสุด:** 28 มีนาคม 2026 (v1.5.20)
 
 ---
 
@@ -381,6 +381,44 @@
 **Test Data:**
 - [x] ไฟล์ทดสอบ JSON จากใบเคลม Aioi Bangkok Insurance (`test_claim_aioi_commuter.json`)
 - [x] ไฟล์ seed SQL (`003_seed_test_claim_aioi.sql`)
+
+---
+
+### OCR + ระบบสร้างเคสอัตโนมัติ + ปรับปรุง UI (28 มี.ค. 2026 — v1.5.20)
+
+**OCR & Case Creation Bug Fixes:**
+- [x] แก้ error "เกิดข้อผิดพลาด กรุณาลองใหม่" — แสดง error จริงจาก backend แทนข้อความกว้าง
+- [x] เพิ่ม 8 OCR fields ที่ขาดใน Zod schema + DB (`acc_insurance_notify_time`, `receiver_name`, `surveyor_name`, `surveyor_phone`, `counterparty_plate/brand/insurance/detail`)
+- [x] Migration 008: เพิ่ม 8 columns ใน survey_reports
+- [x] Migration 009: ขยาย VARCHAR columns ที่สั้นเกินไป (20→50-100) แก้ "value too long" error
+- [x] ขยาย `acc_place`, `notes`, `incident_location` เป็น VARCHAR(255)
+
+**Web — Call Center ปรับปรุง:**
+- [x] เรียกพิกัดมือถืออัตโนมัติเมื่อกดสร้างเคส (socket emit `request_location` ก่อน redirect)
+- [x] หน้ามอบหมายช่าง auto-request พิกัดเมื่อ socket พร้อม (ไม่ต้องกดปุ่ม)
+- [x] จังหวัด/อำเภอ เปลี่ยนจาก input เป็น dropdown (77 จังหวัด + กรองอำเภอตามจังหวัด) ทั้ง 2 ฟอร์ม (ไอโออิ + ไทยไพบูลย์)
+- [x] ใช้ข้อมูลจังหวัด/อำเภอจากไฟล์ต้นฉบับตรงเป๊ะ (79 จังหวัด)
+
+**Mobile — Auto-refresh งานใหม่:**
+- [x] เมื่อได้รับ `case_assigned` ผ่าน socket → เรียก `fetchMyCases()` อัตโนมัติ (ไม่ต้อง pull-to-refresh)
+- [x] เชื่อม AuthProvider → CaseProvider ผ่าน `setOnCaseAssignedRefresh` callback
+
+**Mobile — ข้อมูลผู้ขับขี่ปรับปรุงใหญ่:**
+- [x] เปิดทุก field ให้แก้ไขได้ (editable) — input พื้นหลังขาว, dropdown เลือกได้
+- [x] เพศ/คำนำหน้า → dropdown select พร้อมตัวเลือกครบ
+- [x] ความสัมพันธ์กับเจ้าของรถ → dropdown 39 ตัวเลือก (สามี, ภรรยา, บุตร ฯลฯ)
+- [x] จังหวัด/อำเภอ → dropdown กรองอำเภอตามจังหวัด (โหลดจาก assets)
+- [x] วันเกิด → custom Buddhist date picker (bottom sheet scroll wheel วัน/เดือน/ปี พ.ศ.)
+- [x] เรียง field ใหม่: แถว 1 (เพศ+คำนำหน้า+วันเกิด) → แถว 2 (ชื่อ+นามสกุล) → แถว 3 (อายุ+โทรศัพท์+ความสัมพันธ์)
+- [x] ปุ่ม "สแกนบัตรประชาชน" + "สแกนใบขับขี่" (UI พร้อม, รอ logic สแกน)
+- [x] ใช้ `Flexible` แทน `SizedBox` — ช่องยืดหยุ่นตามขนาดจอ
+
+**Mobile — แบบฟอร์มสำรวจ:**
+- [x] ส่วนกรมธรรม์: ย้ายเลขกรมธรรม์ขึ้นบน + แยกบรรทัดเต็มพื้นที่
+
+**Mobile — Dependencies:**
+- [x] เพิ่ม `flutter_localizations` สำหรับ Thai locale
+- [x] ตั้ง `locale: th_TH` ใน MaterialApp
 
 ---
 

@@ -28,7 +28,10 @@ export const caseService = {
         'driver_first_name','driver_last_name','driver_phone',
         'acc_date','acc_time','acc_place','acc_subdistrict','acc_province','acc_district',
         'acc_cause','acc_damage_type','acc_detail','acc_fault',
-        'acc_reporter','reporter_phone','acc_insurance_notify_date','notes',
+        'acc_reporter','reporter_phone','acc_insurance_notify_date',
+        'acc_insurance_notify_time','receiver_name','surveyor_name','surveyor_phone',
+        'counterparty_plate','counterparty_brand','counterparty_insurance','counterparty_detail',
+        'notes',
       ];
       const providedFields: string[] = [];
       const providedValues: unknown[] = [];

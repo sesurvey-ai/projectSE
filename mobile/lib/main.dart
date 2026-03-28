@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'config/app_router.dart';
@@ -60,6 +61,11 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
     );
     _caseProvider = CaseProvider(apiService: widget.apiService);
 
+    // Auto-refresh case list when a new case is assigned
+    _authProvider.setOnCaseAssignedRefresh(() {
+      _caseProvider.fetchMyCases();
+    });
+
     // Check auth state on app start
     _authProvider.checkAuth();
   }
@@ -79,6 +85,16 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
           return MaterialApp.router(
             title: 'SE Survey',
             debugShowCheckedModeBanner: false,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('th', 'TH'),
+              Locale('en', 'US'),
+            ],
+            locale: const Locale('th', 'TH'),
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
               useMaterial3: true,

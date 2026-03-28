@@ -55,6 +55,14 @@ const createCaseSchema = z.object({
   acc_reporter: z.string().optional(),
   reporter_phone: z.string().optional(),
   acc_insurance_notify_date: z.string().optional(),
+  acc_insurance_notify_time: z.string().optional(),
+  receiver_name: z.string().optional(),
+  surveyor_name: z.string().optional(),
+  surveyor_phone: z.string().optional(),
+  counterparty_plate: z.string().optional(),
+  counterparty_brand: z.string().optional(),
+  counterparty_insurance: z.string().optional(),
+  counterparty_detail: z.string().optional(),
   notes: z.string().optional(),
 });
 

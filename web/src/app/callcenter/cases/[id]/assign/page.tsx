@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useSocket } from '@/hooks/useSocket';
@@ -96,6 +96,15 @@ export default function AssignPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [socket, caseId, incidentLat, incidentLng]);
+
+  // Auto-request locations on mount when socket is ready
+  const autoRequested = useRef(false);
+  useEffect(() => {
+    if (socket && !autoRequested.current) {
+      autoRequested.current = true;
+      handleRequestLocation();
+    }
+  }, [socket, handleRequestLocation]);
 
   const handleAssign = async (surveyorUserId: string) => {
     setAssigning(surveyorUserId); setError('');
