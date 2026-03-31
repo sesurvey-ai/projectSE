@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 28 มีนาคม 2026 (v1.5.20)
+**อัพเดทล่าสุด:** 31 มีนาคม 2026 (v1.5.21)
 
 ---
 
@@ -10,13 +10,13 @@
 |:---:|---|:---:|:---:|
 | 1 | Project Setup & DB Design | ✅ เสร็จแล้ว | 100% |
 | 2 | Authentication & User Roles | ✅ เสร็จแล้ว | 100% |
-| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 99% |
-| 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 97% |
+| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 98% |
+| 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 95% |
 | 5+6 | Unified Web (Next.js) + Admin Panel | ✅ เสร็จเกือบครบ | 99% |
 | 7 | Integration & Testing | 🔄 ดำเนินการ | 60% |
-| 8 | Deployment & Go-live | ❌ ยังไม่ได้เริ่ม | 0% |
+| 8 | Deployment & Go-live | 🔄 เริ่มบางส่วน | 15% |
 
-**ความคืบหน้ารวม: ~90%**
+**ความคืบหน้ารวม: ~88%**
 
 ---
 
@@ -43,7 +43,7 @@
 
 ---
 
-## Phase 3: Backend API Development ✅ 97%
+## Phase 3: Backend API Development ✅ 98%
 
 ### REST API Endpoints
 
@@ -78,7 +78,7 @@
 - [x] FCM เรียกอัตโนมัติเมื่อ assign case
 - [x] Socket.io `case_assigned` event — ส่ง real-time notification ไปยัง mobile เมื่อมอบหมายงาน
 - [x] Export `getIO()` จาก socket server สำหรับใช้ใน services อื่น
-- [ ] FCM silent push fallback เมื่อ Socket disconnect — มี service แต่ยังไม่ trigger อัตโนมัติ
+- [x] ~~FCM silent push fallback เมื่อ Socket disconnect~~ ✅ FCM ทำงานคู่กับ Socket.io แล้ว
 
 ### File Upload
 
@@ -420,9 +420,35 @@
 - [x] เพิ่ม `flutter_localizations` สำหรับ Thai locale
 - [x] ตั้ง `locale: th_TH` ใน MaterialApp
 
+### ปรับปรุงแบบฟอร์มสำรวจ + หน้ารายละเอียดงาน (31 มี.ค. 2026 — v1.5.21)
+
+**Mobile — แบบฟอร์มสำรวจ ปรับปรุงครั้งใหญ่:**
+- [x] จังหวัดรถ → dropdown 79 จังหวัด (โหลดจาก `thai_provinces.json`)
+- [x] ความสัมพันธ์กับเจ้าของรถ → dropdown 39 ตัวเลือก
+- [x] ประเภทใบขับขี่ → dropdown 21 ตัวเลือก (ตามต้นฉบับ)
+- [x] เพศ → dropdown (เพศ/ชาย/หญิง) สไตล์เดียวกับหน้ารายละเอียด
+- [x] วันเกิด → Buddhist Date Picker (scroll wheel วัน/เดือน/ปี พ.ศ.)
+- [x] เพิ่มปุ่ม "สแกนบัตรประชาชน" + "สแกนใบขับขี่" (UI พร้อม, รอ logic)
+- [x] เพิ่ม จังหวัด/เขต-อำเภอ ผู้ขับขี่ (dropdown กรองตามจังหวัด)
+- [x] จัด layout ผู้ขับขี่ใหม่ 9 แถว ตรงกับหน้ารายละเอียดทุก field
+- [x] ลักษณะการเกิดเหตุ → dropdown 70+ ตัวเลือก (ตามต้นฉบับ)
+- [x] ลักษณะความเสียหาย → dropdown 20 ตัวเลือก (แยกบรรทัดเต็มพื้นที่)
+- [x] ส่วนความเสียหาย — ออกแบบใหม่: ExpansionTile พับได้ + ปุ่ม + เพิ่มรายการ
+  - ชิ้นส่วน (text input) + ตำแหน่ง (ซ้าย/ขวา/ทั้งหมด) + ระดับ (ต่ำ/กลาง/สูง/สูงมาก)
+  - สีปุ่มระดับตามความรุนแรง (เขียว→ส้ม→แดง→ม่วง)
+  - auto-fill ข้อมูลลง "รายละเอียดความเสียหาย" + scrollbar เมื่อเกิน
+- [x] ปรับขนาดตัวอักษรทุกช่อง → fontSize 13 เท่ากันหมด
+- [x] ปรับขนาดช่อง อายุ/โทรศัพท์/ความสัมพันธ์ ให้พอดีกับเนื้อหา
+
+**Web — ปรับปรุง:**
+- [x] ประเภทใบขับขี่ → เพิ่มเป็น 21 ตัวเลือก (ตามต้นฉบับ)
+
+**Mobile — หน้ารายละเอียดงาน:**
+- [x] นำส่วน "ข้อมูลผู้ขับขี่" และ "ความเสียหาย" ออก (ย้ายไปอยู่ในแบบฟอร์มสำรวจแทน)
+
 ---
 
-## Phase 8: Deployment & Go-live ❌ 0%
+## Phase 8: Deployment & Go-live 🔄 15%
 
 - [x] Dockerfile สำหรับ backend (multi-stage build พร้อม)
 - [x] docker-compose.yml มีแล้ว

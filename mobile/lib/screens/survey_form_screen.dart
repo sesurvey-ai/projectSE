@@ -19,11 +19,156 @@ class SurveyFormScreen extends StatefulWidget {
 class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<String> _photoPaths = [];
+  List<String> _provinceNames = [];
+  Map<String, List<String>> _provincesData = {};
 
   @override
   void initState() {
     super.initState();
+    _loadProvinces();
     _loadExistingReport();
+  }
+
+  Future<void> _loadProvinces() async {
+    try {
+      final raw = await DefaultAssetBundle.of(context).loadString('assets/thai_provinces.json');
+      final parsed = Map<String, dynamic>.from(jsonDecode(raw));
+      setState(() {
+        _provincesData = parsed.map((k, v) => MapEntry(k, List<String>.from(v)));
+        _provinceNames = _provincesData.keys.toList()..sort();
+      });
+    } catch (_) {}
+  }
+
+  void _showBuddhistDatePicker() {
+    final now = DateTime.now();
+    final thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    int selDay = now.day;
+    int selMonth = now.month;
+    int selYear = now.year + 543 - 25;
+
+    final existing = _driverBirthdateCtl.text.trim();
+    if (existing.isNotEmpty) {
+      final parts = existing.split('/');
+      if (parts.length == 3) {
+        selDay = int.tryParse(parts[0]) ?? selDay;
+        selMonth = int.tryParse(parts[1]) ?? selMonth;
+        selYear = int.tryParse(parts[2]) ?? selYear;
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final maxDay = DateTime(selYear - 543, selMonth + 1, 0).day;
+            if (selDay > maxDay) selDay = maxDay;
+            return Container(
+              height: 320,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('เลือกวันเกิด', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      TextButton(
+                        onPressed: () {
+                          final formatted = '${selDay.toString().padLeft(2, '0')}/${selMonth.toString().padLeft(2, '0')}/$selYear';
+                          setState(() { _driverBirthdateCtl.text = formatted; });
+                          Navigator.pop(ctx);
+                        },
+                        child: const Text('ตกลง', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Text('วัน', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Expanded(
+                                child: ListWheelScrollView.useDelegate(
+                                  itemExtent: 36,
+                                  diameterRatio: 1.5,
+                                  physics: const FixedExtentScrollPhysics(),
+                                  controller: FixedExtentScrollController(initialItem: selDay - 1),
+                                  onSelectedItemChanged: (i) => setModalState(() => selDay = i + 1),
+                                  childDelegate: ListWheelChildBuilderDelegate(
+                                    childCount: maxDay,
+                                    builder: (ctx, i) => Center(child: Text('${i + 1}', style: TextStyle(fontSize: 18, fontWeight: (i + 1) == selDay ? FontWeight.bold : FontWeight.normal))),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Text('เดือน', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Expanded(
+                                child: ListWheelScrollView.useDelegate(
+                                  itemExtent: 36,
+                                  diameterRatio: 1.5,
+                                  physics: const FixedExtentScrollPhysics(),
+                                  controller: FixedExtentScrollController(initialItem: selMonth - 1),
+                                  onSelectedItemChanged: (i) => setModalState(() => selMonth = i + 1),
+                                  childDelegate: ListWheelChildBuilderDelegate(
+                                    childCount: 12,
+                                    builder: (ctx, i) => Center(child: Text(thaiMonths[i], style: TextStyle(fontSize: 16, fontWeight: (i + 1) == selMonth ? FontWeight.bold : FontWeight.normal))),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Text('ปี พ.ศ.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Expanded(
+                                child: ListWheelScrollView.useDelegate(
+                                  itemExtent: 36,
+                                  diameterRatio: 1.5,
+                                  physics: const FixedExtentScrollPhysics(),
+                                  controller: FixedExtentScrollController(initialItem: selYear - (now.year + 543 - 100)),
+                                  onSelectedItemChanged: (i) => setModalState(() => selYear = (now.year + 543 - 100) + i),
+                                  childDelegate: ListWheelChildBuilderDelegate(
+                                    childCount: 101,
+                                    builder: (ctx, i) {
+                                      final y = (now.year + 543 - 100) + i;
+                                      return Center(child: Text('$y', style: TextStyle(fontSize: 18, fontWeight: y == selYear ? FontWeight.bold : FontWeight.normal)));
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _loadExistingReport() async {
@@ -89,6 +234,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _driverLicenseTypeCtl: 'driver_license_type', _driverLicensePlaceCtl: 'driver_license_place',
       _driverLicenseStartCtl: 'driver_license_start', _driverLicenseEndCtl: 'driver_license_end',
       _driverRelationCtl: 'driver_relation',
+      _driverProvinceCtl: 'driver_province', _driverDistrictCtl: 'driver_district',
       _damageDescCtl: 'damage_description', _estimatedCostCtl: 'estimated_cost',
       _accDateCtl: 'acc_date', _accTimeCtl: 'acc_time', _accPlaceCtl: 'acc_place',
       _accProvinceCtl: 'acc_province', _accDistrictCtl: 'acc_district',
@@ -170,10 +316,52 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _driverLicenseStartCtl = TextEditingController();
   final _driverLicenseEndCtl = TextEditingController();
   final _driverRelationCtl = TextEditingController();
+  final _driverProvinceCtl = TextEditingController();
+  final _driverDistrictCtl = TextEditingController();
 
   // === ความเสียหาย ===
   final _damageDescCtl = TextEditingController();
   final _estimatedCostCtl = TextEditingController();
+  // รายการความเสียหาย: {part: ชื่อชิ้นส่วน, pos: L/R/A, level: O/L/M/H/X}
+  final List<Map<String, String>> _damageItems = [];
+  bool _damageExpanded = false;
+
+  void _addDamageItem() {
+    setState(() {
+      _damageItems.add({'part': '', 'pos': '', 'level': ''});
+      _damageExpanded = true;
+    });
+  }
+
+  void _removeDamageItem(int index) {
+    setState(() {
+      _damageItems.removeAt(index);
+      _syncDamageDesc();
+    });
+  }
+
+  void _updateDamageItem(int index, String key, String value) {
+    setState(() {
+      _damageItems[index][key] = value;
+      _syncDamageDesc();
+    });
+  }
+
+  void _syncDamageDesc() {
+    final posLabels = {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'};
+    final levelLabels = {'L': 'ต่ำ', 'M': 'กลาง', 'H': 'สูง', 'X': 'สูงมาก'};
+    final lines = <String>[];
+    for (int i = 0; i < _damageItems.length; i++) {
+      final item = _damageItems[i];
+      if (item['part']?.isNotEmpty == true) {
+        final pos = posLabels[item['pos']] ?? '';
+        final level = levelLabels[item['level']] ?? '';
+        final parts = [item['part']!, if (pos.isNotEmpty) pos, if (level.isNotEmpty) level];
+        lines.add('${i + 1}. ${parts.join(' - ')}');
+      }
+    }
+    _damageDescCtl.text = lines.join('\n');
+  }
 
   // === อุบัติเหตุ ===
   final _accDateCtl = TextEditingController();
@@ -222,7 +410,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _driverNameCtl, _driverLastnameCtl, _driverAgeCtl, _driverBirthdateCtl,
       _driverPhoneCtl, _driverAddressCtl, _driverIdCardCtl, _driverLicenseNoCtl,
       _driverLicenseTypeCtl, _driverLicensePlaceCtl, _driverLicenseStartCtl, _driverLicenseEndCtl,
-      _driverRelationCtl, _damageDescCtl, _estimatedCostCtl,
+      _driverRelationCtl, _driverProvinceCtl, _driverDistrictCtl,
+      _damageDescCtl, _estimatedCostCtl,
       _accDateCtl, _accTimeCtl, _accPlaceCtl, _accProvinceCtl, _accDistrictCtl,
       _accCauseCtl, _accDamageTypeCtl, _accDetailCtl, _accReporterCtl, _accSurveyorCtl,
       _accCustomerReportDateCtl, _accInsNotifyDateCtl, _accSurveyArriveDateCtl, _accSurveyCompleteDateCtl,
@@ -317,6 +506,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'driver_license_start': _driverLicenseStartCtl.text.trim(),
       'driver_license_end': _driverLicenseEndCtl.text.trim(),
       'driver_relation': _driverRelationCtl.text.trim(),
+      'driver_province': _driverProvinceCtl.text.trim(),
+      'driver_district': _driverDistrictCtl.text.trim(),
       'damage_description': _damageDescCtl.text.trim(),
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
@@ -466,7 +657,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       _txt(_licensePlateCtl, 'หมายเลขทะเบียน *', Icons.confirmation_number, required: true),
                       const SizedBox(height: 12),
                       Row(children: [
-                        Expanded(child: _txt(_carProvinceCtl, 'จังหวัด', Icons.location_city)),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey('car_province_${_carProvinceCtl.text}'),
+                            initialValue: _carProvinceCtl.text.isNotEmpty && _provinceNames.contains(_carProvinceCtl.text) ? _carProvinceCtl.text : null,
+                            decoration: InputDecoration(
+                              labelText: 'จังหวัด',
+                              labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                              border: _fieldBorder,
+                              enabledBorder: _fieldBorder,
+                              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                              contentPadding: _fieldPadding,
+                              isDense: true,
+                            ),
+                            isExpanded: true,
+                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            hint: const Text('-- เลือกจังหวัด --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            items: _provinceNames.map((p) => DropdownMenuItem(value: p, child: Text(p, style: const TextStyle(fontSize: 13)))).toList(),
+                            onChanged: (v) {
+                              setState(() { _carProvinceCtl.text = v ?? ''; });
+                            },
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
@@ -532,86 +744,433 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       // ========== 4. ผู้ขับขี่ ==========
                       _sectionHeader('ข้อมูลผู้ขับขี่รถประกันภัย', Icons.person),
                       const SizedBox(height: 12),
+                      // ปุ่มสแกน
                       Row(children: [
-                        // เพศ
                         Expanded(
-                          flex: 1,
-                          child: Wrap(spacing: 4, children: [
-                            ChoiceChip(label: const Text('ชาย'), selected: _driverGender == 'M', onSelected: (_) => setState(() { _driverGender = 'M'; _driverTitle = 'นาย'; })),
-                            ChoiceChip(label: const Text('หญิง'), selected: _driverGender == 'F', onSelected: (_) => setState(() { _driverGender = 'F'; _driverTitle = 'นางสาว'; })),
-                          ]),
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              // TODO: สแกนบัตรประชาชน
+                            },
+                            icon: const Icon(Icons.credit_card, size: 18),
+                            label: const Text('สแกนบัตรประชาชน', style: TextStyle(fontSize: 13)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0174BE),
+                              side: const BorderSide(color: Color(0xFF0174BE)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        // คำนำหน้า (กรองตามเพศ)
                         Expanded(
-                          flex: 1,
-                          child: DropdownButtonFormField<String>(
-                            key: ValueKey(_driverGender),
-                            initialValue: _driverTitle,
-                            decoration: const InputDecoration(labelText: 'คำนำหน้า', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
-                            items: _driverGender == 'M'
-                              ? const [
-                                  DropdownMenuItem(value: 'นาย', child: Text('นาย')),
-                                  DropdownMenuItem(value: 'ด.ช.', child: Text('ด.ช.')),
-                                  DropdownMenuItem(value: 'คุณ', child: Text('คุณ')),
-                                ]
-                              : _driverGender == 'F'
-                              ? const [
-                                  DropdownMenuItem(value: 'นาง', child: Text('นาง')),
-                                  DropdownMenuItem(value: 'นางสาว', child: Text('นางสาว')),
-                                  DropdownMenuItem(value: 'ด.ญ.', child: Text('ด.ญ.')),
-                                  DropdownMenuItem(value: 'คุณ', child: Text('คุณ')),
-                                ]
-                              : const [
-                                  DropdownMenuItem(value: '0', child: Text('- คำนำหน้า -')),
-                                ],
-                            onChanged: (v) => setState(() => _driverTitle = v!),
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              // TODO: สแกนใบขับขี่
+                            },
+                            icon: const Icon(Icons.badge, size: 18),
+                            label: const Text('สแกนใบขับขี่', style: TextStyle(fontSize: 13)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0174BE),
+                              side: const BorderSide(color: Color(0xFF0174BE)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
                           ),
                         ),
                       ]),
                       const SizedBox(height: 12),
+                      // แถว 1: เพศ + คำนำหน้า + วันเกิด
+                      Row(children: [
+                        Flexible(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey('gender_$_driverGender'),
+                            initialValue: _driverGender == 'M' ? 'ชาย' : _driverGender == 'F' ? 'หญิง' : 'เพศ',
+                            isExpanded: true,
+                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            decoration: InputDecoration(
+                              labelText: 'เพศ',
+                              labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                              border: _fieldBorder, enabledBorder: _fieldBorder,
+                              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                              contentPadding: _fieldPadding, isDense: true,
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'เพศ', child: Text('เพศ', style: TextStyle(fontSize: 13))),
+                              DropdownMenuItem(value: 'ชาย', child: Text('ชาย', style: TextStyle(fontSize: 13))),
+                              DropdownMenuItem(value: 'หญิง', child: Text('หญิง', style: TextStyle(fontSize: 13))),
+                            ],
+                            onChanged: (v) {
+                              setState(() {
+                                _driverGender = v == 'ชาย' ? 'M' : v == 'หญิง' ? 'F' : '';
+                                if (_driverGender == 'M') _driverTitle = 'นาย';
+                                else if (_driverGender == 'F') _driverTitle = 'นางสาว';
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          flex: 4,
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey('title_$_driverGender'),
+                            initialValue: _driverTitle,
+                            isExpanded: true,
+                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            decoration: InputDecoration(
+                              labelText: 'คำนำหน้า',
+                              labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                              border: _fieldBorder, enabledBorder: _fieldBorder,
+                              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                              contentPadding: _fieldPadding, isDense: true,
+                            ),
+                            items: _driverGender == 'M'
+                              ? const [
+                                  DropdownMenuItem(value: 'นาย', child: Text('นาย', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 'ด.ช.', child: Text('ด.ช.', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 'คุณ', child: Text('คุณ', style: TextStyle(fontSize: 13))),
+                                ]
+                              : _driverGender == 'F'
+                              ? const [
+                                  DropdownMenuItem(value: 'นาง', child: Text('นาง', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 'นางสาว', child: Text('นางสาว', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 'ด.ญ.', child: Text('ด.ญ.', style: TextStyle(fontSize: 13))),
+                                  DropdownMenuItem(value: 'คุณ', child: Text('คุณ', style: TextStyle(fontSize: 13))),
+                                ]
+                              : const [
+                                  DropdownMenuItem(value: '0', child: Text('คำนำหน้า', style: TextStyle(fontSize: 13))),
+                                ],
+                            onChanged: (v) => setState(() => _driverTitle = v!),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          flex: 5,
+                          child: GestureDetector(
+                            onTap: _showBuddhistDatePicker,
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                controller: _driverBirthdateCtl,
+                                style: const TextStyle(fontSize: 13),
+                                decoration: InputDecoration(
+                                  labelText: 'วันเกิด',
+                                  labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                                  border: _fieldBorder, enabledBorder: _fieldBorder,
+                                  focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                                  contentPadding: _fieldPadding, isDense: true,
+                                  suffixIcon: const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 12),
+                      // แถว 2: ชื่อ + นามสกุล
                       Row(children: [
                         Expanded(child: _txt(_driverNameCtl, 'ชื่อ *', Icons.person_outline, required: true)),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Expanded(child: _txt(_driverLastnameCtl, 'นามสกุล', Icons.person_outline)),
                       ]),
                       const SizedBox(height: 12),
-                      _txt(_driverRelationCtl, 'ความสัมพันธ์กับเจ้าของรถ', Icons.people),
-                      const SizedBox(height: 12),
+                      // แถว 3: อายุ + โทรศัพท์ + ความสัมพันธ์
                       Row(children: [
-                        Expanded(child: _numField(_driverAgeCtl, 'อายุ *', Icons.cake)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_driverBirthdateCtl, 'วันเกิด (วว/ดด/ปปปป)', Icons.calendar_month)),
+                        SizedBox(width: 60, child: _numField(_driverAgeCtl, 'อายุ', Icons.cake)),
+                        const SizedBox(width: 8),
+                        SizedBox(width: 120, child: _txt(_driverPhoneCtl, 'โทรศัพท์', Icons.phone, keyboardType: TextInputType.phone)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey('driver_relation_${_driverRelationCtl.text}'),
+                            initialValue: _driverRelationCtl.text.isNotEmpty && _driverRelationCtl.text != '-- ระบุ --' ? _driverRelationCtl.text : null,
+                            decoration: InputDecoration(
+                              labelText: 'ความสัมพันธ์',
+                              labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                              border: _fieldBorder, enabledBorder: _fieldBorder,
+                              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                              contentPadding: _fieldPadding, isDense: true,
+                            ),
+                            isExpanded: true,
+                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            items: const [
+                              'สามี', 'ภรรยา', 'บุตร', 'บิดา', 'มารดา',
+                              'นายจ้าง', 'ลูกจ้าง', 'ผู้เช่า', 'พี่ชาย', 'พี่สาว',
+                              'น้องชาย', 'น้องสาว', 'เจ้าของรถ', 'หลาน', 'อา', 'น้า', 'ลุง', 'ป้า',
+                              'ญาติ', 'เพื่อน', 'แฟน', 'พนักงาน', 'พี่เขย', 'น้องเขย',
+                              'พี่สะใภ้', 'น้องสะใภ้', 'พนักงานผู้เช่า', 'ลุงเขย', 'น้าเขย',
+                              'น้าสะใภ้', 'อาเขย', 'อาสะใภ้', 'หุ้นส่วน', 'บุตรหุ้นส่วน',
+                              'เจ้าของบริษัท', 'เพื่อนบุตรเจ้าของรถ', 'บุตรเขย', 'หลานเขย', 'บุตรสะใภ้',
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                            onChanged: (v) {
+                              setState(() { _driverRelationCtl.text = v ?? ''; });
+                            },
+                          ),
+                        ),
                       ]),
                       const SizedBox(height: 12),
+                      // แถว 4: ที่อยู่
                       _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', Icons.home),
                       const SizedBox(height: 12),
-                      _txt(_driverPhoneCtl, 'โทรศัพท์ *', Icons.phone, required: true, keyboardType: TextInputType.phone),
+                      // แถว 5: จังหวัด
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('driver_province_${_driverProvinceCtl.text}'),
+                        initialValue: _driverProvinceCtl.text.isNotEmpty && _provinceNames.contains(_driverProvinceCtl.text) ? _driverProvinceCtl.text : null,
+                        decoration: InputDecoration(
+                          labelText: 'จังหวัด',
+                          labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          border: _fieldBorder, enabledBorder: _fieldBorder,
+                          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                          contentPadding: _fieldPadding, isDense: true,
+                        ),
+                        isExpanded: true,
+                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                        hint: const Text('-- เลือกจังหวัด --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                        items: _provinceNames.map((p) => DropdownMenuItem(value: p, child: Text(p, style: const TextStyle(fontSize: 13)))).toList(),
+                        onChanged: (v) {
+                          setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; });
+                        },
+                      ),
                       const SizedBox(height: 12),
+                      // แถว 6: เขต/อำเภอ
+                      Builder(builder: (_) {
+                        final districts = (_driverProvinceCtl.text.isNotEmpty && _provincesData.containsKey(_driverProvinceCtl.text))
+                            ? _provincesData[_driverProvinceCtl.text]!
+                            : <String>[];
+                        return DropdownButtonFormField<String>(
+                          key: ValueKey('driver_district_${_driverProvinceCtl.text}_${_driverDistrictCtl.text}'),
+                          initialValue: _driverDistrictCtl.text.isNotEmpty && districts.contains(_driverDistrictCtl.text) ? _driverDistrictCtl.text : null,
+                          decoration: InputDecoration(
+                            labelText: 'เขต/อำเภอ',
+                            labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            border: _fieldBorder, enabledBorder: _fieldBorder,
+                            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                            contentPadding: _fieldPadding, isDense: true,
+                          ),
+                          isExpanded: true,
+                          style: const TextStyle(fontSize: 13, color: Colors.black87),
+                          hint: const Text('-- เลือกเขต/อำเภอ --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                          items: districts.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))).toList(),
+                          onChanged: (v) {
+                            setState(() { _driverDistrictCtl.text = v ?? ''; });
+                          },
+                        );
+                      }),
+                      const SizedBox(height: 12),
+                      // แถว 7: บัตรประชาชน + ใบขับขี่เลขที่
                       Row(children: [
-                        Expanded(child: _txt(_driverIdCardCtl, 'บัตรประชาชน *', Icons.credit_card, required: true, keyboardType: TextInputType.number)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่ *', Icons.card_membership, required: true)),
+                        Expanded(child: _txt(_driverIdCardCtl, 'บัตรประชาชนเลขที่', Icons.credit_card, keyboardType: TextInputType.number)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', Icons.card_membership)),
                       ]),
                       const SizedBox(height: 12),
-                      _txt(_driverLicenseTypeCtl, 'ประเภทใบขับขี่', Icons.badge),
-                      const SizedBox(height: 12),
+                      // แถว 8: ประเภทใบขับขี่ + ออกให้ที่
                       Row(children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey('license_type_${_driverLicenseTypeCtl.text}'),
+                            initialValue: _driverLicenseTypeCtl.text.isNotEmpty ? _driverLicenseTypeCtl.text : null,
+                            decoration: InputDecoration(
+                              labelText: 'ประเภท',
+                              labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                              border: _fieldBorder, enabledBorder: _fieldBorder,
+                              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                              contentPadding: _fieldPadding, isDense: true,
+                            ),
+                            isExpanded: true,
+                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            items: const [
+                              'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ',
+                              'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ',
+                              'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว',
+                              'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว',
+                              'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ',
+                              'ใบขับขี่รถยนต์สาธารณะ',
+                              'ใบขับขี่สากล',
+                              'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ',
+                              'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี',
+                              'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ',
+                              'ใบขับขี่รถยนต์ส่วนบุคคล',
+                              'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
+                              'ใบขับขี่ขนส่งชนิดที่1',
+                              'ใบขับขี่ขนส่งชนิดที่2',
+                              'ใบขับขี่ขนส่งชนิดที่3',
+                              'ใบอนุญาติขับขี่ชนิดที่4',
+                              'ไม่มีใบขับขี่',
+                              'ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ',
+                              'ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว',
+                              'ใบอนุญาตเป็นผู้ขับรถทุกประเภท',
+                              'อื่นๆ',
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                            onChanged: (v) {
+                              setState(() { _driverLicenseTypeCtl.text = v ?? ''; });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(child: _txt(_driverLicensePlaceCtl, 'ออกให้ที่', Icons.location_on)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_driverLicenseStartCtl, 'ออกให้วันที่', Icons.event_available)),
                       ]),
                       const SizedBox(height: 12),
-                      _txt(_driverLicenseEndCtl, 'หมดอายุวันที่', Icons.event_busy),
+                      // แถว 9: ออกให้วันที่ + หมดอายุ
+                      Row(children: [
+                        Expanded(child: _txt(_driverLicenseStartCtl, 'ออกให้วันที่', Icons.event_available)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _txt(_driverLicenseEndCtl, 'หมดอายุวันที่', Icons.event_busy)),
+                      ]),
                       const SizedBox(height: 24),
 
                       // ========== 5. ความเสียหาย ==========
                       _sectionHeader('ความเสียหายรถประกันภัย', Icons.report_problem),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _damageDescCtl,
-                        decoration: const InputDecoration(labelText: 'รายละเอียดความเสียหาย', border: OutlineInputBorder(), alignLabelWithHint: true),
-                        maxLines: 4,
+                      // รายการความเสียหาย (พับได้)
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFF0174BE).withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            key: ValueKey('damage_expanded_$_damageExpanded'),
+                            initiallyExpanded: _damageExpanded || _damageItems.isNotEmpty,
+                            onExpansionChanged: (v) => _damageExpanded = v,
+                            tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            leading: const Icon(Icons.build_circle, color: Color(0xFF0174BE), size: 20),
+                            title: Text(
+                              'รายการชิ้นส่วนเสียหาย (${_damageItems.length})',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0174BE)),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: _addDamageItem,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0174BE).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(Icons.add, size: 20, color: Color(0xFF0174BE)),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.expand_more, color: Colors.grey),
+                              ],
+                            ),
+                            children: [
+                              if (_damageItems.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  child: Text('กด + เพื่อเพิ่มรายการชิ้นส่วนที่เสียหาย', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                                ),
+                              for (int i = 0; i < _damageItems.length; i++) ...[
+                                if (i > 0) Divider(color: Colors.grey.shade200, height: 16),
+                                // Header: ลำดับ + ปุ่มลบ
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('ชิ้นส่วนที่ ${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+                                    GestureDetector(
+                                      onTap: () => _removeDamageItem(i),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                                        child: Icon(Icons.close, size: 14, color: Colors.red.shade700),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                // ชื่อชิ้นส่วน
+                                TextFormField(
+                                  key: ValueKey('damage_part_$i'),
+                                  initialValue: _damageItems[i]['part'],
+                                  style: const TextStyle(fontSize: 13),
+                                  decoration: InputDecoration(
+                                    labelText: 'ชิ้นส่วน',
+                                    labelStyle: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    hintText: 'เช่น กันชนหน้า, ประตูหน้า',
+                                    hintStyle: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                                    border: _fieldBorder, enabledBorder: _fieldBorder,
+                                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), isDense: true,
+                                    filled: true, fillColor: Colors.white,
+                                  ),
+                                  onChanged: (v) => _updateDamageItem(i, 'part', v),
+                                ),
+                                const SizedBox(height: 8),
+                                // ตำแหน่ง + ระดับ
+                                Row(children: [
+                                  const Text('ตำแหน่ง ', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                  ...['L', 'R', 'A'].map((pos) {
+                                    final labels = {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'};
+                                    final selected = _damageItems[i]['pos'] == pos;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 3),
+                                      child: GestureDetector(
+                                        onTap: () => _updateDamageItem(i, 'pos', selected ? '' : pos),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: selected ? const Color(0xFF0174BE) : Colors.grey.shade200,
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          child: Text(labels[pos]!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: selected ? Colors.white : Colors.grey.shade700)),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ]),
+                                const SizedBox(height: 6),
+                                Row(children: [
+                                  const Text('ระดับ ', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                  ...['L', 'M', 'H', 'X'].map((lv) {
+                                    final labels = {'L': 'ต่ำ', 'M': 'กลาง', 'H': 'สูง', 'X': 'สูงมาก'};
+                                    final colors = {'L': Colors.lightGreen, 'M': Colors.orange, 'H': Colors.red, 'X': Colors.purple};
+                                    final selected = _damageItems[i]['level'] == lv;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 3),
+                                      child: GestureDetector(
+                                        onTap: () => _updateDamageItem(i, 'level', selected ? '' : lv),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: selected ? colors[lv] : Colors.grey.shade200,
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          child: Text(labels[lv]!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: selected ? Colors.white : colors[lv])),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ]),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // รายละเอียดความเสียหาย (auto-fill จากรายการด้านบน)
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 120),
+                        child: Scrollbar(
+                          thumbVisibility: true,
+                          child: TextFormField(
+                            controller: _damageDescCtl,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'รายละเอียดความเสียหาย',
+                              labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                              border: const OutlineInputBorder(), alignLabelWithHint: true,
+                              filled: false,
+                            ),
+                            maxLines: null,
+                            readOnly: _damageItems.isNotEmpty,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       _numField(_estimatedCostCtl, 'ค่าเสียหายประมาณ (บาท)', Icons.attach_money, decimal: true),
@@ -634,11 +1193,43 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                         Expanded(child: _txt(_accDistrictCtl, 'เขต/อำเภอ', Icons.map)),
                       ]),
                       const SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(child: _txt(_accCauseCtl, 'ลักษณะการเกิดเหตุ', Icons.warning)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _txt(_accDamageTypeCtl, 'ลักษณะความเสียหาย', Icons.broken_image)),
-                      ]),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('acc_cause_${_accCauseCtl.text}'),
+                        initialValue: _accCauseCtl.text.isNotEmpty && _accCauseOptions.contains(_accCauseCtl.text) ? _accCauseCtl.text : null,
+                        decoration: InputDecoration(
+                          labelText: 'ลักษณะการเกิดเหตุ',
+                          labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          border: _fieldBorder, enabledBorder: _fieldBorder,
+                          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                          contentPadding: _fieldPadding, isDense: true,
+                        ),
+                        isExpanded: true,
+                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                        hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                        items: _accCauseOptions.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
+                        onChanged: (v) {
+                          setState(() { _accCauseCtl.text = v ?? ''; });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('acc_damage_${_accDamageTypeCtl.text}'),
+                        initialValue: _accDamageTypeCtl.text.isNotEmpty && _accDamageOptions.contains(_accDamageTypeCtl.text) ? _accDamageTypeCtl.text : null,
+                        decoration: InputDecoration(
+                          labelText: 'ลักษณะความเสียหาย',
+                          labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          border: _fieldBorder, enabledBorder: _fieldBorder,
+                          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF0174BE), width: 1.5)),
+                          contentPadding: _fieldPadding, isDense: true,
+                        ),
+                        isExpanded: true,
+                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                        hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                        items: _accDamageOptions.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
+                        onChanged: (v) {
+                          setState(() { _accDamageTypeCtl.text = v ?? ''; });
+                        },
+                      ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _accDetailCtl,
@@ -821,12 +1412,59 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   static const _fieldBorder = OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFBDBDBD)));
+
+  static const _accCauseOptions = [
+    'ชนท้ายคู่กรณี', 'ชนคนบาดเจ็บ/เสียชีวิต', 'ชนรถคู่กรณีมีการบาดเจ็บ/เสียชีวิต',
+    'ชน/เสียหลักหมุน/พลิกคว่ำ/ตกข้างทางมีผู้บาดเจ็บ/เสียชีวิต',
+    'ชนทรัพย์สินคู่กรณี', 'ชนคู่กรณีในช่องทางสวน', 'ชนคู่กรณีและถูกชน',
+    'ถอยชนคู่กรณี', 'เฉี่ยว/เบียดคู่กรณี', 'เปิดประตูชนรถคู่กรณี',
+    'ชนคู่กรณี/หรือถูกชนและไม่ทราบคู่กรณี', 'เลี้ยว/กลับรถ/เปลี่ยนช่องทางชนคู่กรณี',
+    'ชนรถคู่กรณีไม่คุ้มครองรถประกัน', 'ชนวัสดุ/สิ่งของ เช่น เสา,กำแพง,ประตู ฯลฯ',
+    'ชนฟุตบาท', 'ชนทรัพย์สินตนเอง', 'ชนสัตว์',
+    'ทรัพย์สินหล่นใส่คู่กรณี', 'ผู้โดยสารตกรถ',
+    'เกี่ยวสายไฟฟ้า/โทรศัพท์/สายน้ำมัน', 'เสียหลักล้ม',
+    'ฝากระโปรงหน้าเปิด', 'ยางระเบิด', 'ตกหลุม',
+    'ถูกน้ำมันเบรครด', 'ประมาทร่วม', 'ต่างฝ่ายต่างซ่อม',
+    'ช่วยเหลือมนุษยธรรม', 'รอคู่กรณีติดต่อ', 'รอตรวจสอบใบขับขี่',
+    'แก๊สระเบิด', 'คู่กรณีชนท้าย', 'คู่กรณีชนแล้วหลบหนี',
+    'คู่กรณีเฉี่ยวชน', 'คู่กรณีเฉี่ยวชนบุคคลในรถประกันบาดเจ็บ/เสียชีวิต',
+    'ชนสัตว์และเรียกร้องเจ้าของ', 'คู่กรณีเปิดประตูชนรถประกัน',
+    'คู่กรณีถอยชน', 'คู่กรณีชน/ทรัพย์สินผู้เอาประกันเดียวกัน',
+    'คู่กรณีกลั่นแกล้ง', 'ทรัพย์สินคู่กรณีหล่นใส่',
+    'เด็กปั๊มประมาทลืมปลดสายน้ำมัน',
+    'ความเสียหายของรถประกันที่เกิดจากเหตุภายนอก',
+    'รถหายโดยการฉ้อฉล ตามสัญญาประกันภัย',
+    'ไฟไหม้จากเหตุภายนอก', 'ถูกก้อนหิน', 'ถูกขูดขีด/กลั่นแกล้ง',
+    'วัตถุหล่นใส่', 'รถหายตามสัญญาเช่าซื้อ', 'รถหายโดยการโจรกรรม',
+    'ไฟไหม้โดยระบบของตัวรถยนต์', 'ไฟไหม้ที่เกิดจากการชน',
+    'น้ำท่วม', 'ภัยธรรมชาติอื่น ๆ', 'ลักทรัพย์อุปกรณ์/ส่วนควบ',
+    'ภัยอื่น ๆ', 'ภัยก่อการร้าย',
+    'ไม่พบรถประกัน', 'ไม่พบรถคู่กรณี', 'ไม่พบรถประกัน/คู่กรณี',
+    'รอผลคดี', 'รอตรวจสอบกรมธรรม์', 'รอเซ็นเคลม',
+    'รอรายงานอุบัติเหตุ', 'รอรถประกันติดต่อ',
+    'เคลมซ้ำ', 'เปิดเคลมผิดพลาด',
+    'ฉ้อฉลจากการชน', 'รถหายโดยการฉ้อฉล',
+    'ไฟไหม้โดยการฉ้อฉล', 'การยึดรถ (A.P.HONDA)',
+    'เสียหายขณะจอดอยู่', 'กระจกบังลมหน้าแตก', 'กระจกอื่นๆ แตก',
+    'รถประกันชนรถคู่กรณีไม่เอาความ', 'สูญเสียการควบคุม',
+    'หนูกัดสายไฟ', 'การเสียชีวิตอ้นเกิดจากสาเหตุอื่นๆ',
+    'การเสียชีวิตอันเกิดจากการใช้รถ',
+  ];
+
+  static const _accDamageOptions = [
+    'เคลมแห้ง', 'กระจกแตก', 'กระจกอื่น ๆ แตก', 'ชนคู่กรณีเสียหาย',
+    'ถูกคู่กรณีชน', 'ตกถนน', 'พลิกคว่ำ', 'รถประกันไฟไหม้',
+    'เฉี่ยวชนวัสดุ', 'ถูกขูดขีดกลั่นแกล้ง', 'ถูกลักอุปกรณ์ส่วนควบ',
+    'วัสดุหล่นใส่', 'ยางระเบิด', 'จอดไว้ถูกชนไม่ทราบคู่กรณี',
+    'หนูกัดสายไฟ', 'รถหาย', 'น้ำท่วมเสียหาย',
+    'ชนคนบาดเจ็บ', 'ผู้โดยสารประกันตกรถ', 'เสียหายทั้งหมด',
+  ];
   static const _fieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 12);
 
   Widget _txt(TextEditingController ctl, String label, IconData icon, {bool required = false, TextInputType? keyboardType}) {
     return TextFormField(
       controller: ctl,
-      style: const TextStyle(fontSize: 14),
+      style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
@@ -845,7 +1483,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _numField(TextEditingController ctl, String label, IconData icon, {bool decimal = false}) {
     return TextFormField(
       controller: ctl,
-      style: const TextStyle(fontSize: 14),
+      style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),

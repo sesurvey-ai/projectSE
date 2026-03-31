@@ -394,19 +394,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             _buildTableRow('เลขไมล์', _val('mileage')),
           ]),
 
-          const Divider(height: 1),
-
-          // Driver info — form style like web
-          _buildDriverSection(),
-
-          const Divider(height: 1),
-
-          // Damage info
-          _buildSection('ความเสียหาย', [
-            _buildTableRow('ระดับความเสียหาย', _val('damage_level')),
-            _buildTableRow('รายละเอียด', _val('damage_description')),
-            _buildTableRow('ประมาณค่าเสียหาย', _val('estimated_cost') != '-' ? '${_val('estimated_cost')} บาท' : '-'),
-          ]),
         ],
       ),
     );
