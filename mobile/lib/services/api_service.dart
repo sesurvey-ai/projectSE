@@ -55,34 +55,31 @@ class ApiService {
   // Survey
   Future<Response> submitSurvey(
       int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
-    List<String> uploadedPaths = [];
-    if (photoPaths.isNotEmpty) {
-      uploadedPaths = await uploadPhotos(photoPaths);
-    }
-
-    // อัปโหลดทุกไฟล์ในโฟลเดอร์เคสขึ้น server
+    // อัปโหลดทั้งโฟลเดอร์ขึ้น server (รวม arrival + survey + OCR)
     final claimNo = data['claim_no']?.toString() ?? '';
-    if (claimNo.isNotEmpty) {
-      await uploadCaseFolder(caseId, claimNo);
+    final surveyJobNo = data['survey_job_no']?.toString() ?? '';
+    if (claimNo.isNotEmpty && surveyJobNo.isNotEmpty) {
+      await uploadCaseFolder(caseId, claimNo, surveyJobNo);
     }
 
     return _dio.post('/api/cases/$caseId/survey', data: {
       ...data,
-      'photo_paths': uploadedPaths,
+      'photo_paths': <String>[],
     });
   }
 
-  Future<void> uploadCaseFolder(int caseId, String claimNo) async {
+  Future<void> uploadCaseFolder(int caseId, String claimNo, String surveyJobNo) async {
     try {
-      final folderName = claimNo.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
-      final folder = Directory('/storage/emulated/0/Download/SE_Survey/$folderName');
+      final claimFolder = claimNo.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+      final jobFolder = surveyJobNo.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+      final folder = Directory('/storage/emulated/0/Download/SE_Survey/$claimFolder/$jobFolder');
       if (!folder.existsSync()) return;
 
       final files = folder.listSync().whereType<File>().toList();
       if (files.isEmpty) return;
 
       final formData = FormData();
-      formData.fields.add(MapEntry('folder', folderName));
+      formData.fields.add(MapEntry('folder', claimFolder));
       for (final file in files) {
         formData.files.add(MapEntry(
           'photos',

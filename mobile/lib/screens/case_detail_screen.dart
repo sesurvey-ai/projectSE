@@ -145,20 +145,17 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         _arrivalPhotoPath = localPath;
         _uploadingArrival = true;
       });
-      // Upload photo to server
+      // บันทึกเวลาถึงที่เกิดเหตุ (ไม่อัปโหลดรูปขึ้น server — จะอัปโหลดตอนส่งงาน)
       final apiService = ApiService();
-      final uploaded = await apiService.uploadPhotos([localPath]);
-      if (uploaded.isNotEmpty) {
-        await apiService.confirmArrival(widget.caseId, uploaded.first);
-        if (mounted) {
-          setState(() {
-            _arrivalConfirmed = true;
-            _uploadingArrival = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ยืนยันถึงที่เกิดเหตุแล้ว'), backgroundColor: Colors.green),
-          );
-        }
+      await apiService.confirmArrival(widget.caseId, 'arrival.jpg');
+      if (mounted) {
+        setState(() {
+          _arrivalConfirmed = true;
+          _uploadingArrival = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ยืนยันถึงที่เกิดเหตุแล้ว'), backgroundColor: Colors.green),
+        );
       }
     } catch (e) {
       if (mounted) {

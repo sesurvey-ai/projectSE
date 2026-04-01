@@ -240,7 +240,15 @@ export const caseService = {
       }
     }
 
-    // เพิ่มรูปใหม่เข้าโฟลเดอร์ย่อย (ไม่ลบรูปเก่า)
+    // ลบรูปเก่าในโฟลเดอร์ย่อยก่อนใส่รูปใหม่จากมือถือ
+    try {
+      const existing = fs.default.readdirSync(subFolderPath);
+      for (const f of existing) {
+        try { fs.default.unlinkSync(pathMod.default.join(subFolderPath, f)); } catch { /* skip */ }
+      }
+    } catch { /* folder may not exist */ }
+
+    // ใส่รูปใหม่จากมือถือ
     const movedFiles: string[] = [];
     for (const file of files) {
       const destPath = pathMod.default.join(subFolderPath, file.filename);
@@ -359,11 +367,21 @@ export const caseService = {
         report = insertResult.rows[0];
       }
 
-      for (const filePath of data.photo_paths) {
-        await client.query(
-          'INSERT INTO survey_photos (report_id, file_path) VALUES ($1, $2)',
-          [report.id, filePath]
-        );
+      // บันทึก survey_photos จากโฟลเดอร์ที่อัปโหลดมาจากมือถือ
+      const claimNo = (data.claim_no as string || '').replace(/[/\\?%*:|"<>]/g, '_') || `case_${caseId}`;
+      const surveyJobNo = (data.survey_job_no as string || '').replace(/[/\\?%*:|"<>]/g, '_') || `job_${caseId}`;
+      const fs = await import('fs');
+      const pathMod = await import('path');
+      const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, claimNo, surveyJobNo);
+      if (fs.default.existsSync(folderPath)) {
+        const filesInFolder = fs.default.readdirSync(folderPath);
+        for (const fileName of filesInFolder) {
+          const photoPath = `${claimNo}/${surveyJobNo}/${fileName}`;
+          await client.query(
+            'INSERT INTO survey_photos (report_id, file_path) VALUES ($1, $2)',
+            [report.id, photoPath]
+          );
+        }
       }
 
       await client.query(
