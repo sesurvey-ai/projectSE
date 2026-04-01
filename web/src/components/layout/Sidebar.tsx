@@ -24,7 +24,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
 
 const TITLES: Record<string, string> = {
   admin: 'ผู้ดูแลระบบ',
-  callcenter: 'Call Center',
+  callcenter: 'รับแจ้งอุบัติเหตุ',
   checker: 'ระบบตรวจสอบ',
 };
 

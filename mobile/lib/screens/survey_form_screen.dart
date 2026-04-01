@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
+import '../config/api_config.dart';
 
 class SurveyFormScreen extends StatefulWidget {
   final int caseId;
@@ -21,6 +22,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final List<String> _photoPaths = [];
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
+  List<Map<String, dynamic>> _caseImages = [];
+  bool _showImageSheet = false;
 
   @override
   void initState() {
@@ -176,6 +179,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final caseProvider = context.read<CaseProvider>();
       final report = await caseProvider.fetchCaseDetail(widget.caseId);
       if (report != null && mounted) {
+        final images = report['case_images'];
+        if (images != null && images is List && images.isNotEmpty) {
+          setState(() {
+            _caseImages = List<Map<String, dynamic>>.from(
+              images.where((img) => img['image_type'] == 'ocr'),
+            );
+          });
+        }
         _populateForm(report);
       }
     } catch (_) {}
@@ -425,10 +436,53 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     super.dispose();
   }
 
+  void _showCardImage(int initialIndex) {
+    final urls = _caseImages.map((img) {
+      final filePath = img['file_path']?.toString() ?? '';
+      return '${ApiConfig.baseUrl}/uploads/$filePath';
+    }).toList();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: PageController(initialPage: initialIndex),
+              itemCount: urls.length,
+              itemBuilder: (context, index) => InteractiveViewer(child: Image.network(urls[index], fit: BoxFit.contain)),
+            ),
+            Positioned(
+              top: MediaQuery.of(ctx).padding.top + 8,
+              right: 8,
+              child: IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, color: Colors.white, size: 28)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String> _getCaseFolder() async {
+    final cn = _claimNoCtl.text.trim();
+    final sj = _surveyJobNoCtl.text.trim();
+    final claimFolder = cn.isNotEmpty ? cn.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'case_${widget.caseId}';
+    final jobFolder = sj.isNotEmpty ? sj.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'job_${widget.caseId}';
+    final folder = Directory('/storage/emulated/0/Download/SE_Survey/$claimFolder/$jobFolder');
+    if (!folder.existsSync()) folder.createSync(recursive: true);
+    return folder.path;
+  }
+
   Future<void> _takePhoto() async {
     try {
       final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80, maxWidth: 1920);
-      if (photo != null) setState(() => _photoPaths.add(photo.path));
+      if (photo == null) return;
+      // Copy to local case folder
+      final caseFolder = await _getCaseFolder();
+      final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(photo.path).copy(localPath);
+      setState(() => _photoPaths.add(localPath));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
     }
@@ -549,7 +603,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   Future<void> _submitSurvey() async {
-    if (!_formKey.currentState!.validate()) return;
     final data = _collectFormData();
     final caseProvider = context.read<CaseProvider>();
     final success = await caseProvider.submitSurvey(widget.caseId, data, _photoPaths);
@@ -574,12 +627,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         elevation: 2,
       ),
       floatingActionButton: Consumer<CaseProvider>(
-        builder: (context, cp, _) => FloatingActionButton(
-          onPressed: cp.isSubmitting ? null : _saveDraft,
-          backgroundColor: const Color(0xFF0174BE),
-          child: cp.isSubmitting
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : const Icon(Icons.save, color: Colors.white),
+        builder: (context, cp, _) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_caseImages.isNotEmpty) ...[
+              FloatingActionButton(
+                heroTag: 'viewImages',
+                onPressed: () => setState(() => _showImageSheet = !_showImageSheet),
+                backgroundColor: _showImageSheet ? Colors.orange : const Color(0xFF0174BE),
+                mini: true,
+                child: Icon(_showImageSheet ? Icons.close : Icons.credit_card, color: Colors.white),
+              ),
+              const SizedBox(height: 12),
+            ],
+            FloatingActionButton(
+              heroTag: 'saveDraft',
+              onPressed: cp.isSubmitting ? null : _saveDraft,
+              backgroundColor: const Color(0xFF0174BE),
+              child: cp.isSubmitting
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.save, color: Colors.white),
+            ),
+          ],
         ),
       ),
       body: Consumer<CaseProvider>(
@@ -654,7 +723,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       // ========== 3. รายละเอียดรถ ==========
                       _sectionHeader('รายละเอียดรถยนต์', Icons.directions_car),
                       const SizedBox(height: 12),
-                      _txt(_licensePlateCtl, 'หมายเลขทะเบียน *', Icons.confirmation_number, required: true),
+                      _txt(_licensePlateCtl, 'หมายเลขทะเบียน', Icons.confirmation_number),
                       const SizedBox(height: 12),
                       Row(children: [
                         Expanded(
@@ -701,13 +770,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       ]),
                       const SizedBox(height: 12),
                       Row(children: [
-                        Expanded(child: _txt(_carBrandCtl, 'ยี่ห้อ *', Icons.branding_watermark, required: true)),
+                        Expanded(child: _txt(_carBrandCtl, 'ยี่ห้อ', Icons.branding_watermark)),
                         const SizedBox(width: 12),
                         Expanded(child: _txt(_carModelCtl, 'รุ่น', Icons.model_training)),
                       ]),
                       const SizedBox(height: 12),
                       Row(children: [
-                        Expanded(child: _txt(_carColorCtl, 'สีรถ *', Icons.color_lens, required: true)),
+                        Expanded(child: _txt(_carColorCtl, 'สีรถ', Icons.color_lens)),
                         const SizedBox(width: 12),
                         Expanded(child: _txt(_carRegYearCtl, 'ปีจดทะเบียน', Icons.date_range)),
                       ]),
@@ -721,7 +790,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       ]),
                       const SizedBox(height: 12),
                       Row(children: [
-                        Expanded(child: _numField(_mileageCtl, 'หมายเลข กม. *', Icons.speed)),
+                        Expanded(child: _numField(_mileageCtl, 'หมายเลข กม.', Icons.speed)),
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
@@ -868,7 +937,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       const SizedBox(height: 12),
                       // แถว 2: ชื่อ + นามสกุล
                       Row(children: [
-                        Expanded(child: _txt(_driverNameCtl, 'ชื่อ *', Icons.person_outline, required: true)),
+                        Expanded(child: _txt(_driverNameCtl, 'ชื่อ', Icons.person_outline)),
                         const SizedBox(width: 8),
                         Expanded(child: _txt(_driverLastnameCtl, 'นามสกุล', Icons.person_outline)),
                       ]),
@@ -1185,7 +1254,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                         Expanded(child: _txt(_accTimeCtl, 'เวลา (นน:นน)', Icons.access_time)),
                       ]),
                       const SizedBox(height: 12),
-                      _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ *', Icons.location_on, required: true),
+                      _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ', Icons.location_on),
                       const SizedBox(height: 12),
                       Row(children: [
                         Expanded(child: _txt(_accProvinceCtl, 'จังหวัด', Icons.location_city)),
@@ -1352,6 +1421,71 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   color: Colors.black26,
                   child: const Center(child: Card(child: Padding(padding: EdgeInsets.all(32), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('กำลังส่งข้อมูล...')])))),
                 ),
+              if (_showImageSheet && _caseImages.isNotEmpty)
+                DraggableScrollableSheet(
+                  initialChildSize: 0.4,
+                  minChildSize: 0.15,
+                  maxChildSize: 0.85,
+                  builder: (context, scrollController) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, -2))],
+                      ),
+                      child: Column(
+                        children: [
+                          Container(margin: const EdgeInsets.only(top: 8), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.credit_card, color: Color(0xFF0174BE), size: 20),
+                                const SizedBox(width: 8),
+                                Text('หน้าการ์ด (${_caseImages.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+                                const Spacer(),
+                                IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => setState(() => _showImageSheet = false), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          Expanded(
+                            child: ListView.builder(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(12),
+                              itemCount: _caseImages.length,
+                              itemBuilder: (context, index) {
+                                final filePath = _caseImages[index]['file_path']?.toString() ?? '';
+                                final imageUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: GestureDetector(
+                                    onTap: () => _showCardImage(index),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        imageUrl,
+                                        width: double.infinity,
+                                        fit: BoxFit.fitWidth,
+                                        loadingBuilder: (context, child, progress) {
+                                          if (progress == null) return child;
+                                          return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+                                        },
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(height: 80, color: Colors.grey.shade200, child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
             ],
           );
         },
@@ -1480,7 +1614,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _numField(TextEditingController ctl, String label, IconData icon, {bool decimal = false}) {
+  Widget _numField(TextEditingController ctl, String label, IconData icon, {bool decimal = false, bool required = false}) {
     return TextFormField(
       controller: ctl,
       style: const TextStyle(fontSize: 13),
@@ -1496,6 +1630,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
       inputFormatters: decimal ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))] : [FilteringTextInputFormatter.digitsOnly],
       textInputAction: TextInputAction.next,
+      validator: required ? (v) => (v == null || v.trim().isEmpty) ? 'กรุณากรอก${label.replaceAll(' *', '')}' : null : null,
     );
   }
 

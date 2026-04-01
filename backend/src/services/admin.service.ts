@@ -247,19 +247,36 @@ export const adminService = {
   },
 
   async deleteCase(id: number) {
-    // Find related photos before deleting (cascade will remove DB records)
-    const photos = await db.query(
+    // Find related photos before deleting
+    const surveyPhotos = await db.query(
       `SELECT sp.file_path FROM survey_photos sp
        JOIN survey_reports sr ON sp.report_id = sr.id
        WHERE sr.case_id = $1`,
       [id]
     );
+    const caseImages = await db.query(
+      'SELECT file_path FROM case_images WHERE case_id = $1',
+      [id]
+    );
+
+    // Delete related records in correct order (foreign key dependencies)
+    await db.query(
+      `DELETE FROM survey_expenses WHERE report_id IN (SELECT id FROM survey_reports WHERE case_id = $1)`,
+      [id]
+    );
+    await db.query(
+      `DELETE FROM survey_photos WHERE report_id IN (SELECT id FROM survey_reports WHERE case_id = $1)`,
+      [id]
+    );
+    await db.query('DELETE FROM survey_reports WHERE case_id = $1', [id]);
+    await db.query('DELETE FROM reviews WHERE case_id = $1', [id]);
+    await db.query('DELETE FROM case_images WHERE case_id = $1', [id]);
 
     const result = await db.query('DELETE FROM cases WHERE id = $1 RETURNING id', [id]);
     if (result.rows.length === 0) throw new NotFoundError('Case not found');
 
     // Delete photo files from disk
-    for (const photo of photos.rows) {
+    for (const photo of [...surveyPhotos.rows, ...caseImages.rows]) {
       const filePath = path.join(env.UPLOAD_DIR, photo.file_path);
       try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
     }

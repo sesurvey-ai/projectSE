@@ -35,6 +35,7 @@ export default function NewCasePage() {
   const [ocrRaw, setOcrRaw] = useState('');
   const [showOcrRaw, setShowOcrRaw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [ocrImagePaths, setOcrImagePaths] = useState<string[]>([]);
 
   // append mode: ข้อมูลใหม่เติมเฉพาะช่องที่ยังว่าง
   const handleOcrUpload = async (file: File, append = false) => {
@@ -49,7 +50,8 @@ export default function NewCasePage() {
         timeout: 200000,
       });
       if (res.data.success && res.data.data) {
-        const { fields, ocrRaw: rawText } = res.data.data as { fields: Record<string, string>; ocrRaw: string };
+        const { fields, ocrRaw: rawText, savedImage } = res.data.data as { fields: Record<string, string>; ocrRaw: string; savedImage?: string };
+        if (savedImage) setOcrImagePaths(prev => [...prev, savedImage]);
         if (rawText) setOcrRaw(prev => append ? prev + '\n---\n' + rawText : rawText);
         const newForm: Record<string, string> = {};
         for (const [key, val] of Object.entries(fields || {})) {
@@ -117,6 +119,7 @@ export default function NewCasePage() {
     setForm({});
     setCustomerName('');
     setIncidentLocation('');
+    setOcrImagePaths([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -243,6 +246,7 @@ export default function NewCasePage() {
         incident_location: incidentLocation,
       };
       if (insuranceCompany) payload.insurance_company = insuranceCompany;
+      if (ocrImagePaths.length > 0) payload.ocr_image_paths = ocrImagePaths;
       for (const [key, val] of Object.entries(form)) {
         if (val.trim()) {
           payload[key] = key === 'deductible' ? (parseFloat(val) || 0) : val.trim();
@@ -460,10 +464,26 @@ export default function NewCasePage() {
           </>
         )}
 
-        {/* ไทยไพบูลย์ → OCR upload + ตาราง */}
+        {/* ไทยไพบูลย์ → ช่องกรอกหลัก + OCR upload + ตาราง */}
         {insuranceCompany === 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)' && (
           <>
-            {/* Upload zone + Capture button */}
+            {/* ช่องกรอกข้อมูลหลัก — แสดงเสมอ */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">เลขเคลม</label>
+                <input value={f('claim_no')} onChange={e => s('claim_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขเคลม" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">เลขเรื่องเซอร์เวย์</label>
+                <input value={f('survey_job_no')} onChange={e => s('survey_job_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขเรื่องเซอร์เวย์" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">เลขรับแจ้ง</label>
+                <input value={f('claim_ref_no')} onChange={e => s('claim_ref_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขรับแจ้ง" />
+              </div>
+            </div>
+
+            {/* Upload zone + Capture button — ทางเลือกเสริม */}
             {!ocrDone && !ocrLoading && (
               <div className="flex gap-3 mb-4">
                 {/* Upload zone */}
@@ -477,7 +497,7 @@ export default function NewCasePage() {
                   <div className="space-y-1">
                     <div className="text-3xl text-gray-300">&#128193;</div>
                     <p className="text-sm font-medium text-gray-600">เลือกไฟล์รูป</p>
-                    <p className="text-xs text-gray-400">ลากไฟล์มาวาง หรือคลิก</p>
+                    <p className="text-xs text-gray-400">ลากไฟล์มาวาง หรือคลิก (ไม่บังคับ)</p>
                   </div>
                 </div>
                 {/* Capture button */}
@@ -488,7 +508,7 @@ export default function NewCasePage() {
                   <div className="space-y-1">
                     <div className="text-3xl text-gray-300">&#9986;</div>
                     <p className="text-sm font-medium text-gray-600">จับภาพหน้าจอ</p>
-                    <p className="text-xs text-gray-400">เลือกเฉพาะส่วนที่ต้องการ</p>
+                    <p className="text-xs text-gray-400">เลือกเฉพาะส่วนที่ต้องการ (ไม่บังคับ)</p>
                   </div>
                 </div>
               </div>
@@ -570,36 +590,31 @@ export default function NewCasePage() {
               </div>
             )}
 
-            {/* OCR result table */}
+            {/* OCR success bar */}
             {ocrDone && (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600 text-sm font-medium">&#10003; อ่านข้อมูลสำเร็จ</span>
-                    <span className="text-xs text-gray-400">ตรวจสอบและแก้ไขข้อมูลได้ก่อนสร้างเคส</span>
-                  </div>
-                  <div className="flex gap-3 items-center">
-                    <input ref={appendFileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-                    <button type="button" onClick={handleAppendFile} className="text-xs text-green-600 hover:underline font-medium">+ เลือกไฟล์เพิ่ม</button>
-                    <button type="button" onClick={handleAppendCapture} className="text-xs text-green-600 hover:underline font-medium">+ จับภาพเพิ่ม</button>
-                    <span className="text-gray-300">|</span>
-                    {ocrRaw && <button type="button" onClick={() => setShowOcrRaw(!showOcrRaw)} className="text-xs text-gray-500 hover:underline">{showOcrRaw ? 'ซ่อน' : 'ดู'} OCR Raw</button>}
-                    <button type="button" onClick={resetOcr} className="text-xs text-red-500 hover:underline">เริ่มใหม่</button>
-                  </div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600 text-sm font-medium">&#10003; อ่านข้อมูลสำเร็จ</span>
+                  <span className="text-xs text-gray-400">ตรวจสอบและแก้ไขข้อมูลได้ก่อนสร้างเคส</span>
                 </div>
+                <div className="flex gap-3 items-center">
+                  <input ref={appendFileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                  <button type="button" onClick={handleAppendFile} className="text-xs text-green-600 hover:underline font-medium">+ เลือกไฟล์เพิ่ม</button>
+                  <button type="button" onClick={handleAppendCapture} className="text-xs text-green-600 hover:underline font-medium">+ จับภาพเพิ่ม</button>
+                  <span className="text-gray-300">|</span>
+                  {ocrRaw && <button type="button" onClick={() => setShowOcrRaw(!showOcrRaw)} className="text-xs text-gray-500 hover:underline">{showOcrRaw ? 'ซ่อน' : 'ดู'} OCR Raw</button>}
+                  <button type="button" onClick={resetOcr} className="text-xs text-red-500 hover:underline">เริ่มใหม่</button>
+                </div>
+              </div>
+            )}
 
-                {showOcrRaw && (
-                  <pre className="bg-gray-50 border border-gray-200 rounded p-3 text-[11px] text-gray-600 mb-3 max-h-60 overflow-auto whitespace-pre-wrap">{ocrRaw}</pre>
-                )}
+            {showOcrRaw && ocrRaw && (
+              <pre className="bg-gray-50 border border-gray-200 rounded p-3 text-[11px] text-gray-600 mb-3 max-h-60 overflow-auto whitespace-pre-wrap">{ocrRaw}</pre>
+            )}
 
-                <table className="w-full border-collapse border border-gray-200 bg-white text-[12px] mb-4">
+            {/* ตารางข้อมูล — แสดงเสมอ */}
+            <table className="w-full border-collapse border border-gray-200 bg-white text-[12px] mb-4">
                   <tbody>
-                    <tr>
-                      <td className={L}>เลขรับแจ้ง</td>
-                      <td className={V}><input value={f('claim_ref_no')} onChange={e => s('claim_ref_no', e.target.value)} className={I} /></td>
-                      <td className={L}>เลขที่เคลม</td>
-                      <td className={V} colSpan={3}><input value={f('claim_no')} onChange={e => s('claim_no', e.target.value)} className={I} /></td>
-                    </tr>
                     <tr>
                       <td className={L}>วันที่รับแจ้ง</td>
                       <td className={V}><input value={f('acc_insurance_notify_date')} onChange={e => s('acc_insurance_notify_date', e.target.value)} className={I} /></td>
@@ -727,8 +742,6 @@ export default function NewCasePage() {
                     {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
                   </button>
                 </div>
-              </>
-            )}
           </>
         )}
       </form>

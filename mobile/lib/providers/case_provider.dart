@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/case_model.dart';
 import '../services/api_service.dart';
@@ -50,7 +51,12 @@ class CaseProvider extends ChangeNotifier {
       final response = await _apiService.getCaseDetail(caseId);
       final data = response.data;
       if (data['success'] == true && data['data'] != null) {
-        return data['data']['report'] as Map<String, dynamic>?;
+        final report = data['data']['report'] as Map<String, dynamic>?;
+        // แนบ case_images เข้ากับ report
+        if (report != null && data['data']['case_images'] != null) {
+          report['case_images'] = data['data']['case_images'];
+        }
+        return report;
       }
     } catch (_) {}
     return null;
@@ -71,7 +77,15 @@ class CaseProvider extends ChangeNotifier {
       await fetchMyCases();
       return true;
     } catch (e) {
-      _error = 'ไม่สามารถส่งข้อมูลสำรวจได้';
+      String msg = 'ไม่สามารถส่งข้อมูลสำรวจได้';
+      if (e is DioException && e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map && data['message'] != null) {
+          msg = '$msg: ${data['message']}';
+        }
+      }
+      debugPrint('submitSurvey error: $e');
+      _error = msg;
       _isSubmitting = false;
       notifyListeners();
       return false;

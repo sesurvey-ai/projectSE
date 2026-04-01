@@ -1,4 +1,5 @@
 import { db } from '../config/database';
+import { env } from '../config/env';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
 import { getIO } from '../socket';
@@ -49,6 +50,37 @@ export const caseService = {
           `INSERT INTO survey_reports (${cols}) VALUES (${placeholders})`,
           [newCase.id, ...providedValues]
         );
+      }
+
+      // ย้ายรูป OCR เข้าโฟลเดอร์ {เลขเคลม}/{เลขเรื่องเซอร์เวย์}/
+      const ocrImagePaths = data.ocr_image_paths as string[] | undefined;
+      const claimNo = (data.claim_no as string || '').trim();
+      const surveyJobNo = (data.survey_job_no as string || '').trim();
+      const claimFolder = claimNo ? claimNo.replace(/[/\\?%*:|"<>]/g, '_') : `case_${newCase.id}`;
+      const jobFolder = surveyJobNo ? surveyJobNo.replace(/[/\\?%*:|"<>]/g, '_') : `job_${newCase.id}`;
+
+      if (ocrImagePaths && Array.isArray(ocrImagePaths) && ocrImagePaths.length > 0) {
+        const fs = await import('fs');
+        const pathMod = await import('path');
+        const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, claimFolder, jobFolder);
+        if (!fs.default.existsSync(folderPath)) {
+          fs.default.mkdirSync(folderPath, { recursive: true });
+        }
+
+        for (const filePath of ocrImagePaths) {
+          const srcPath = pathMod.default.resolve(env.UPLOAD_DIR, filePath);
+          const destPath = pathMod.default.join(folderPath, filePath);
+          try {
+            if (fs.default.existsSync(srcPath) && !fs.default.existsSync(destPath)) {
+              fs.default.renameSync(srcPath, destPath);
+            }
+          } catch { /* skip */ }
+
+          await client.query(
+            'INSERT INTO case_images (case_id, file_path, image_type) VALUES ($1, $2, $3)',
+            [newCase.id, `${claimFolder}/${jobFolder}/${filePath}`, 'ocr']
+          );
+        }
       }
 
       await client.query('COMMIT');
@@ -178,6 +210,93 @@ export const caseService = {
     return result.rows[0];
   },
 
+  async uploadCaseFolder(caseId: number, folderName: string, files: Express.Multer.File[]) {
+    // ดึงเลขเคลม + เลขเรื่องเซอร์เวย์
+    const reportResult = await db.query('SELECT claim_no, survey_job_no FROM survey_reports WHERE case_id = $1', [caseId]);
+    const claimNo = (reportResult.rows[0]?.claim_no || folderName || `case_${caseId}`).replace(/[/\\?%*:|"<>]/g, '_');
+    const surveyJobNo = (reportResult.rows[0]?.survey_job_no || `job_${caseId}`).replace(/[/\\?%*:|"<>]/g, '_');
+
+    const fs = await import('fs');
+    const pathMod = await import('path');
+
+    // โครงสร้าง: uploads/{เลขเคลม}/{เลขเรื่องเซอร์เวย์}/
+    const subFolderPath = pathMod.default.resolve(env.UPLOAD_DIR, claimNo, surveyJobNo);
+    if (!fs.default.existsSync(subFolderPath)) {
+      fs.default.mkdirSync(subFolderPath, { recursive: true });
+    }
+
+    // ลบรูปที่อยู่นอกโฟลเดอร์เคลม (uploads/ root) ของเคสนี้
+    const surveyPhotos = await db.query(
+      `SELECT sp.file_path FROM survey_photos sp JOIN survey_reports sr ON sp.report_id = sr.id WHERE sr.case_id = $1`, [caseId]
+    );
+    const caseImages = await db.query(
+      'SELECT file_path FROM case_images WHERE case_id = $1', [caseId]
+    );
+    for (const row of [...surveyPhotos.rows, ...caseImages.rows]) {
+      const fp = row.file_path as string;
+      if (!fp.includes('/')) {
+        const fullPath = pathMod.default.resolve(env.UPLOAD_DIR, fp);
+        try { if (fs.default.existsSync(fullPath)) fs.default.unlinkSync(fullPath); } catch { /* skip */ }
+      }
+    }
+
+    // เพิ่มรูปใหม่เข้าโฟลเดอร์ย่อย (ไม่ลบรูปเก่า)
+    const movedFiles: string[] = [];
+    for (const file of files) {
+      const destPath = pathMod.default.join(subFolderPath, file.filename);
+      try {
+        fs.default.renameSync(file.path, destPath);
+        movedFiles.push(`${claimNo}/${surveyJobNo}/${file.filename}`);
+      } catch { movedFiles.push(file.filename); }
+    }
+
+    return { folder: `${claimNo}/${surveyJobNo}`, files: movedFiles };
+  },
+
+  async createCaseFolder(caseId: number) {
+    const reportResult = await db.query('SELECT claim_no FROM survey_reports WHERE case_id = $1', [caseId]);
+    const claimNo = reportResult.rows[0]?.claim_no || `case_${caseId}`;
+    const folderName = claimNo.replace(/[/\\?%*:|"<>]/g, '_');
+
+    const fs = await import('fs');
+    const path = await import('path');
+    const folderPath = path.default.resolve(env.UPLOAD_DIR, folderName);
+    if (!fs.default.existsSync(folderPath)) {
+      fs.default.mkdirSync(folderPath, { recursive: true });
+    }
+    return { folder: folderName, path: folderPath };
+  },
+
+  async confirmArrival(caseId: number, surveyorId: number, photoPath: string) {
+    const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+    const caseData = caseResult.rows[0];
+    if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
+
+    await db.query(
+      'INSERT INTO case_images (case_id, file_path, image_type) VALUES ($1, $2, $3)',
+      [caseId, photoPath, 'arrival']
+    );
+
+    // บันทึกเวลาถึงที่เกิดเหตุใน survey_reports
+    const now = new Date();
+    const arrivalTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear() + 543}|${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const existingReport = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (existingReport.rows.length > 0) {
+      await db.query('UPDATE survey_reports SET acc_survey_arrive_date = $1 WHERE case_id = $2', [arrivalTime, caseId]);
+    }
+
+    return { success: true, arrival_time: arrivalTime };
+  },
+
+  async getArrivalPhotos(caseId: number) {
+    const result = await db.query(
+      "SELECT * FROM case_images WHERE case_id = $1 AND image_type = 'arrival' ORDER BY uploaded_at",
+      [caseId]
+    );
+    return result.rows;
+  },
+
   async submitSurvey(caseId: number, surveyorId: number, data: Record<string, unknown> & { photo_paths: string[] }) {
     const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
@@ -270,9 +389,12 @@ export const caseService = {
 
   async getForReview() {
     const result = await db.query(
-      `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name
+      `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
+              sr.claim_no, sr.survey_job_no, sr.claim_ref_no,
+              ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
        FROM cases c
        LEFT JOIN users u ON c.assigned_to = u.id
+       LEFT JOIN survey_reports sr ON sr.case_id = c.id
        WHERE c.status IN ('surveyed', 'reviewed')
        ORDER BY c.created_at DESC`
     );
@@ -308,11 +430,32 @@ export const caseService = {
       [caseId]
     );
 
+    // รูป OCR/capture จาก call center
+    const caseImagesResult = await db.query(
+      'SELECT * FROM case_images WHERE case_id = $1 ORDER BY uploaded_at',
+      [caseId]
+    );
+
+    // คำนวณ visit_count จาก claim_no เดียวกัน
+    let visitCount = 1;
+    const report = reportResult.rows[0] || null;
+    if (report?.claim_no) {
+      const vcResult = await db.query(
+        `SELECT COUNT(*) AS cnt FROM survey_reports sr
+         JOIN cases c ON c.id = sr.case_id
+         WHERE sr.claim_no = $1 AND c.created_at <= (SELECT created_at FROM cases WHERE id = $2)`,
+        [report.claim_no, caseId]
+      );
+      visitCount = parseInt(vcResult.rows[0]?.cnt || '1', 10);
+    }
+
     return {
       case: caseResult.rows[0],
-      report: reportResult.rows[0] || null,
+      report,
       photos,
       review: reviewResult.rows[0] || null,
+      case_images: caseImagesResult.rows,
+      visit_count: visitCount,
     };
   },
 
@@ -406,8 +549,11 @@ export const caseService = {
       FROM cases
     `);
     const recentResult = await db.query(
-      `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name
+      `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
+              sr.claim_no, sr.survey_job_no, sr.claim_ref_no,
+              ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
        FROM cases c LEFT JOIN users u ON c.assigned_to = u.id
+       LEFT JOIN survey_reports sr ON sr.case_id = c.id
        ORDER BY c.created_at DESC LIMIT 10`
     );
     return { counts: result.rows[0], recent: recentResult.rows };

@@ -12,6 +12,7 @@ interface CaseDetailProps {
   report: any;
   photos: any[];
   review: any;
+  visitCount?: number;
   onReviewSubmitted: () => void;
 }
 
@@ -47,7 +48,7 @@ const ColGroup = () => (
   </colgroup>
 );
 
-export default function CaseDetail({ caseData, report, photos, review, onReviewSubmitted }: CaseDetailProps) {
+export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, onReviewSubmitted }: CaseDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -724,7 +725,7 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
         </div>
       </div>
 
-      {/* การตรวจสอบ */}
+      {/* การตรวจสอบ — กรอกได้เลยไม่ต้องกดแก้ไข */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
           <span className="font-bold">::: การตรวจสอบ</span>
@@ -733,21 +734,21 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
-              <textarea disabled={d} name="survey_result" defaultValue={report?.survey_result || 'เรียน ผู้ช่วยผู้จัดการฝ่ายสินไหมทราบ\nรถประกันประมาท เบียดฟุตบาตยางฉีก\nรถประกันประเภท 1 ซ่อมอู่\nออกหลักฐานให้รถประกันระบุเงื่อนไข รับผิดชอบยาง 50 เปอร์เซ็นต์\nความสัมพันธ์ผู้เอาประกันภัยเป็น มารดา\n ภูริ'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea name="survey_result" defaultValue={report?.survey_result || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-              <textarea disabled={d} name="review_comment" defaultValue={report?.review_comment || review?.comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
-              <textarea disabled={d} name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[150px]`} rows={6} />
+              <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ค่าใช้จ่าย + ปุ่มอนุมัติ */}
+      {/* ค่าใช้จ่าย + ปุ่มอนุมัติ — กรอกได้เลยไม่ต้องกดแก้ไข */}
       <div className="flex gap-6">
         <div className="w-1/2">
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -755,9 +756,8 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
               <span className="font-bold">::: ค่าใช้จ่าย</span>
               <div className="flex items-center gap-2">
                 <span className="text-white text-sm">ครั้งที่</span>
-                <select disabled={d} name="expense_count" defaultValue={review?.expense_count || '1'} className={`border border-gray-300 rounded px-2 py-0.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm w-[50px]`}>
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
+                <span className="bg-white text-gray-800 rounded px-2.5 py-0.5 text-sm font-bold">{visitCount}</span>
+                <input type="hidden" name="expense_count" value={visitCount} />
               </div>
             </div>
           <div className="p-4">
@@ -778,43 +778,43 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าบริการ</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="service_fee_count" defaultValue="1" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="service_fee_price" defaultValue="700.00" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="service_fee_count" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="service_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="travel_fee_count" defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="travel_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="travel_fee_count" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="travel_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="photo_fee_count" defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="photo_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="photo_fee_count" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="photo_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าโทรศัพท์</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="phone_fee" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" name="phone_fee" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าประกันตัว</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="bail_fee" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" name="bail_fee" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเรียกร้อง</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={d} name="claim_fee_percent" defaultValue="" className={`w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} /><span className="text-gray-500 w-[30px]">%</span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="claim_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">%</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="claim_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าคัดประจำวัน</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="daily_record_fee" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" name="daily_record_fee" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="other_fee_detail" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-3 py-2"><input type="text" disabled={d} name="other_fee_price" defaultValue="" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-right`} /></td>
+                    <td className="px-3 py-2"><input type="text" name="other_fee_detail" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
+                    <td className="px-3 py-2"><input type="text" name="other_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                 </tbody>
               </table>
@@ -828,18 +828,19 @@ export default function CaseDetail({ caseData, report, photos, review, onReviewS
             <div className={`px-4 py-2 rounded text-sm ${saveMsg.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{saveMsg}</div>
           )}
           <div className="flex gap-3">
-            {!isEditing ? (
-              <button type="button" onClick={() => setIsEditing(true)} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">แก้ไข</button>
-            ) : (
-              <>
-                <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 bg-gray-400 text-white rounded-lg font-medium hover:bg-gray-500 transition">ยกเลิก</button>
-                <button type="button" onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
-                  {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-                </button>
-              </>
+            {!isEditing && (
+              <button type="button" onClick={() => setIsEditing(true)} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">แก้ไขทั้งหมด</button>
             )}
-            {!review && !isEditing && (
-              <ReviewForm caseId={caseData.id} onReviewSubmitted={onReviewSubmitted} />
+            {isEditing && (
+              <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 bg-gray-400 text-white rounded-lg font-medium hover:bg-gray-500 transition">ยกเลิก</button>
+            )}
+            <button type="button" onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
+              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+            </button>
+            {!review && (
+              <button type="button" onClick={async () => { await handleSave(); try { await api.post(`/api/cases/${caseData.id}/review`, {}); onReviewSubmitted(); } catch {} }} disabled={saving} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
+                อนุมัติ
+              </button>
             )}
           </div>
           {review && (

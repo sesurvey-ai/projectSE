@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/case_provider.dart';
 import '../models/case_model.dart';
+import '../config/api_config.dart';
+import '../services/api_service.dart';
 
 class CaseDetailScreen extends StatefulWidget {
   final int caseId;
@@ -18,6 +22,19 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   Map<String, dynamic>? _report;
   bool _loadingDetail = true;
   Map<String, List<String>> _provincesData = {};
+  bool _arrivalConfirmed = false;
+  String? _arrivalPhotoPath;
+  String? _arrivalPhotoUrl;
+  bool _uploadingArrival = false;
+  final _picker = ImagePicker();
+
+  // collapsible sections state
+  final Map<String, bool> _expandedSections = {
+    'company': false,
+    'policy': false,
+    'vehicle': false,
+    'card_face': false,
+  };
 
   @override
   void initState() {
@@ -46,8 +63,110 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         _report = report;
         _loadingDetail = false;
       });
+      // Check if arrival photo already exists
+      _checkArrivalPhotos();
+      // Download OCR images to local folder
+      _downloadCaseImages();
     } catch (_) {
       setState(() => _loadingDetail = false);
+    }
+  }
+
+  Future<void> _downloadCaseImages() async {
+    try {
+      final images = _report?['case_images'];
+      if (images == null || images is! List || images.isEmpty) return;
+      final caseFolder = await _getCaseFolder();
+      final httpClient = HttpClient();
+      for (final img in images) {
+        final filePath = img['file_path']?.toString() ?? '';
+        if (filePath.isEmpty) continue;
+        final fileName = filePath.split('/').last;
+        final localFile = File('$caseFolder/$fileName');
+        if (localFile.existsSync()) continue; // skip if already downloaded
+        try {
+          final url = '${ApiConfig.baseUrl}/uploads/$filePath';
+          final request = await httpClient.getUrl(Uri.parse(url));
+          final response = await request.close();
+          if (response.statusCode == 200) {
+            final bytes = await response.fold<List<int>>([], (prev, chunk) => prev..addAll(chunk));
+            await localFile.writeAsBytes(bytes);
+          }
+        } catch (_) {}
+      }
+      httpClient.close();
+    } catch (_) {}
+  }
+
+  Future<void> _checkArrivalPhotos() async {
+    try {
+      final apiService = ApiService();
+      final res = await apiService.getArrivalPhotos(widget.caseId);
+      if (res.data['success'] == true) {
+        final List photos = res.data['data'] ?? [];
+        if (photos.isNotEmpty && mounted) {
+          final filePath = photos.last['file_path']?.toString() ?? '';
+          setState(() {
+            _arrivalConfirmed = true;
+            _arrivalPhotoUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  String get _claimNo {
+    final cn = _report?['claim_no']?.toString() ?? '';
+    return cn.isNotEmpty ? cn.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'case_${widget.caseId}';
+  }
+
+  String get _surveyJobNo {
+    final sj = _report?['survey_job_no']?.toString() ?? '';
+    return sj.isNotEmpty ? sj.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'job_${widget.caseId}';
+  }
+
+  Future<String> _getCaseFolder() async {
+    final downloadDir = Directory('/storage/emulated/0/Download/SE_Survey/$_claimNo/$_surveyJobNo');
+    if (!downloadDir.existsSync()) downloadDir.createSync(recursive: true);
+    return downloadDir.path;
+  }
+
+  Future<void> _takeArrivalPhoto() async {
+    try {
+      final photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80, maxWidth: 1920);
+      if (photo == null) return;
+
+      // Copy to local folder
+      final caseFolder = await _getCaseFolder();
+      final localPath = '$caseFolder/arrival.jpg';
+      await File(photo.path).copy(localPath);
+
+      setState(() {
+        _arrivalPhotoPath = localPath;
+        _uploadingArrival = true;
+      });
+      // Upload photo to server
+      final apiService = ApiService();
+      final uploaded = await apiService.uploadPhotos([localPath]);
+      if (uploaded.isNotEmpty) {
+        await apiService.confirmArrival(widget.caseId, uploaded.first);
+        if (mounted) {
+          setState(() {
+            _arrivalConfirmed = true;
+            _uploadingArrival = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ยืนยันถึงที่เกิดเหตุแล้ว'), backgroundColor: Colors.green),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadingArrival = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ไม่สามารถอัปโหลดรูปได้ กรุณาลองใหม่'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -287,27 +406,158 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
                 const SizedBox(height: 24),
 
-                // Survey button
-                if (caseModel.status == 'assigned')
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.go('/cases/${caseModel.id}/survey'),
-                      icon: const Icon(Icons.assignment),
-                      label: const Text('เริ่มสำรวจ', style: TextStyle(fontSize: 16)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                // Arrival confirmation + Survey button
+                if (caseModel.status == 'assigned') ...[
+                  // ถ่ายรูปยืนยันถึงที่เกิดเหตุ
+                  if (!_arrivalConfirmed) ...[
+                    if (_arrivalPhotoPath != null && _uploadingArrival)
+                      const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+                    else if (_arrivalPhotoPath != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(File(_arrivalPhotoPath!), height: 200, width: double.infinity, fit: BoxFit.cover),
+                      )
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.camera_alt, size: 48, color: Colors.orange.shade400),
+                            const SizedBox(height: 8),
+                            const Text('ถ่ายรูปยืนยันถึงที่เกิดเหตุ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange)),
+                            const SizedBox(height: 4),
+                            Text('กรุณาถ่ายรูปสถานที่เพื่อยืนยันก่อนเริ่มสำรวจ', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton.icon(
+                                onPressed: _takeArrivalPhoto,
+                                icon: const Icon(Icons.camera_alt),
+                                label: const Text('ถ่ายรูปยืนยัน', style: TextStyle(fontSize: 16)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ] else ...[
+                    // ยืนยันแล้ว — แสดง preview รูป + ปุ่มเริ่มสำรวจ
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.green.shade600, size: 24),
+                                const SizedBox(width: 8),
+                                const Text('ยืนยันถึงที่เกิดเหตุแล้ว', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green)),
+                              ],
+                            ),
+                          ),
+                          if (_arrivalPhotoPath != null)
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                              child: Image.file(File(_arrivalPhotoPath!), height: 180, width: double.infinity, fit: BoxFit.cover),
+                            )
+                          else if (_arrivalPhotoUrl != null)
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                              child: Image.network(
+                                _arrivalPhotoUrl!,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+                                },
+                                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          // สร้างโฟลเดอร์บนเครื่อง
+                          await _getCaseFolder();
+                          // สร้างโฟลเดอร์บน server
+                          try {
+                            final apiService = ApiService();
+                            await apiService.createCaseFolder(caseModel.id);
+                          } catch (_) {}
+                          if (mounted) context.go('/cases/${caseModel.id}/survey');
+                        },
+                        icon: const Icon(Icons.assignment),
+                        label: const Text('เริ่มสำรวจ', style: TextStyle(fontSize: 16)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildCollapsibleSection(String key, String title, IconData icon, List<Widget> rows) {
+    final expanded = _expandedSections[key] ?? false;
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expandedSections[key] = !expanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: const Color(0xFF0174BE)),
+                const SizedBox(width: 8),
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+                const Spacer(),
+                Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+        if (expanded)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(children: rows),
+          ),
+      ],
     );
   }
 
@@ -328,14 +578,13 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.directions_car, color: Colors.white, size: 20),
+                const Icon(Icons.description, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 const Text(
-                  'รายละเอียดรถยนต์',
+                  'รายละเอียด',
                   style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
-                // Claim type badge
                 if (_val('claim_type') != '-')
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -352,8 +601,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
           ),
 
-          // Company & claim info
-          _buildSection('บริษัทประกัน / เคลม', [
+          _buildCollapsibleSection('company', 'บริษัทประกัน / เคลม', Icons.business, [
             _buildTableRow('บริษัทประกัน', _val('insurance_company')),
             _buildTableRow('สาขา', _val('insurance_branch')),
             _buildTableRow('เลขเรื่องเซอร์เวย์', _val('survey_job_no')),
@@ -361,10 +609,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             _buildTableRow('เลขที่เคลม', _val('claim_no')),
           ]),
 
-          const Divider(height: 1),
-
-          // Policy info
-          _buildSection('ข้อมูลกรมธรรม์', [
+          _buildCollapsibleSection('policy', 'ข้อมูลกรมธรรม์', Icons.policy, [
             _buildTableRow('เลข พ.ร.บ.', _val('prb_number')),
             _buildTableRow('เลขกรมธรรม์', _val('policy_no')),
             _buildTableRow('ผู้ขับตามกรมธรรม์', _val('driver_by_policy')),
@@ -376,10 +621,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             _buildTableRow('ค่าเสียหายส่วนแรก', _val('deductible')),
           ]),
 
-          const Divider(height: 1),
-
-          // Vehicle info
-          _buildSection('ข้อมูลรถยนต์', [
+          _buildCollapsibleSection('vehicle', 'ข้อมูลรถยนต์', Icons.directions_car, [
             _buildTableRow('หมายเลขทะเบียน', _val('license_plate')),
             _buildTableRow('จังหวัด', _val('car_province')),
             _buildTableRow('ประเภทรถ', _val('car_type')),
@@ -394,7 +636,130 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             _buildTableRow('เลขไมล์', _val('mileage')),
           ]),
 
+          if (_report?['case_images'] != null && (_report!['case_images'] as List).isNotEmpty)
+            _buildCollapsibleSection('card_face', 'หน้าการ์ด', Icons.credit_card, [
+              _buildCaseImagesContent(),
+            ]),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCaseImagesContent() {
+    final images = _report!['case_images'] as List;
+    final baseUrl = ApiConfig.baseUrl;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...images.map((img) {
+          final filePath = img['file_path']?.toString() ?? '';
+          final imageUrl = '$baseUrl/uploads/$filePath';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: () => _showFullImage(imageUrl),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.fitWidth,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const SizedBox(
+                      height: 100,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 80,
+                      color: Colors.grey.shade200,
+                      child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildCaseImagesSection() {
+    final images = _report!['case_images'] as List;
+    final baseUrl = ApiConfig.baseUrl;
+    return Column(
+      children: [
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('เอกสารใบแจ้งเคลม', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+              const SizedBox(height: 8),
+              ...images.map((img) {
+                final filePath = img['file_path']?.toString() ?? '';
+                final imageUrl = '$baseUrl/uploads/$filePath';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: GestureDetector(
+                    onTap: () => _showFullImage(imageUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.fitWidth,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const SizedBox(
+                            height: 100,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 80,
+                            color: Colors.grey.shade200,
+                            child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showFullImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Image.network(imageUrl, fit: BoxFit.contain),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

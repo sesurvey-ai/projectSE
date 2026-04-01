@@ -14,6 +14,7 @@ export default function CaseDetailPage() {
   const [report, setReport] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [review, setReview] = useState(null);
+  const [visitCount, setVisitCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -26,6 +27,7 @@ export default function CaseDetailPage() {
         setReport(res.data.data.report || null);
         setPhotos(res.data.data.photos || []);
         setReview(res.data.data.review || null);
+        setVisitCount(res.data.data.visit_count || 1);
       }
     } catch { setError('ไม่สามารถโหลดข้อมูลเคสได้'); }
     finally { setLoading(false); }
@@ -47,7 +49,7 @@ export default function CaseDetailPage() {
         <button onClick={() => router.push('/inspector')} className="text-gray-500 hover:text-gray-700">&larr; กลับ</button>
         <h2 className="text-2xl font-bold text-gray-800">รายละเอียดเคส #{(caseData as { id: number }).id}</h2>
       </div>
-      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} onReviewSubmitted={fetchDetail} />
+      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} onReviewSubmitted={fetchDetail} />
     </div>
   );
 }

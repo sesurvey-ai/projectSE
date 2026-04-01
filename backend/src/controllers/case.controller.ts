@@ -56,6 +56,33 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  uploadCaseFolder: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const folder = req.body?.folder || '';
+    const files = req.files as Express.Multer.File[];
+    const result = await caseService.uploadCaseFolder(caseId, folder, files || []);
+    sendSuccess(res, result);
+  }),
+
+  createCaseFolder: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.createCaseFolder(caseId);
+    sendSuccess(res, result);
+  }),
+
+  confirmArrival: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const { photo_path } = req.body;
+    const result = await caseService.confirmArrival(caseId, req.user!.id, photo_path);
+    sendSuccess(res, result);
+  }),
+
+  getArrivalPhotos: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const photos = await caseService.getArrivalPhotos(caseId);
+    sendSuccess(res, photos);
+  }),
+
   getStats: asyncHandler(async (_req: Request, res: Response) => {
     const stats = await caseService.getStats();
     sendSuccess(res, stats);
