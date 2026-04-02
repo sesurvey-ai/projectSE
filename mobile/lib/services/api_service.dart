@@ -125,6 +125,11 @@ class ApiService {
     return _dio.get('/api/cases/$caseId/arrival');
   }
 
+  // ปฏิเสธงาน
+  Future<Response> declineCase(int caseId) async {
+    return _dio.post('/api/cases/$caseId/decline');
+  }
+
   // FCM token
   Future<Response> updateFcmToken(String token) async {
     return _dio.put('/api/users/me/fcm-token', data: {

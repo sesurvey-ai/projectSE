@@ -107,6 +107,9 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
         onAccepted: () {
           _caseProvider.fetchMyCases();
         },
+        onDeclined: () {
+          _caseProvider.fetchMyCases();
+        },
       ),
     ));
   }

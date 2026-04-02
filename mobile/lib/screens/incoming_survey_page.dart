@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
+import '../services/api_service.dart';
 
 class IncomingSurveyPage extends StatefulWidget {
   final int caseId;
@@ -57,6 +58,12 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
   Future<void> _decline() async {
     await NotificationService().cancelNotification(widget.notificationId);
     await NotificationService().stopAlarm();
+    // ถอนงานออกจาก surveyor ใน backend
+    try {
+      await ApiService().declineCase(widget.caseId);
+    } catch (e) {
+      debugPrint('Decline case error: $e');
+    }
     widget.onDeclined?.call();
     if (mounted) Navigator.of(context).pop(false);
   }

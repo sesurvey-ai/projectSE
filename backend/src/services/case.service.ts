@@ -154,6 +154,19 @@ export const caseService = {
     return updated.rows[0];
   },
 
+  async declineCase(caseId: number, surveyorId: number) {
+    const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+    const caseData = caseResult.rows[0];
+    if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
+
+    const result = await db.query(
+      "UPDATE cases SET assigned_to = NULL, status = 'pending' WHERE id = $1 RETURNING *",
+      [caseId]
+    );
+    return result.rows[0];
+  },
+
   async updateSurvey(caseId: number, surveyorId: number, data: Record<string, unknown>) {
     const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');

@@ -21,6 +21,13 @@ class _CaseListScreenState extends State<CaseListScreen> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // fetch ทุกครั้งที่หน้าแสดง
+    context.read<CaseProvider>().fetchMyCases();
+  }
+
   Future<void> _onRefresh() async {
     await context.read<CaseProvider>().fetchMyCases();
   }

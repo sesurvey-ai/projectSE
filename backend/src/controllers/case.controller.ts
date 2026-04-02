@@ -70,6 +70,12 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  declineCase: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.declineCase(caseId, req.user!.id);
+    sendSuccess(res, result);
+  }),
+
   confirmArrival: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const { photo_path } = req.body;

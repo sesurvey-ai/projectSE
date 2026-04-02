@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.26)
+**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.27)
 
 ---
 
@@ -565,6 +565,15 @@
 | แอปเปิดอยู่ (foreground) | Socket.IO → AudioPlayer ✅ | Socket.IO → IncomingSurveyPage ✅ |
 | แอปปิด/จอดับ (background) | FCM → AudioPlayer ✅ | FCM → notification bar ✅ |
 | กดรับงาน/ปฏิเสธ | หยุดเสียงทันที ✅ | ปิดหน้า ✅ |
+
+### ปฏิเสธงาน + Auto Refresh (2 เม.ย. 2026 — v1.5.27)
+
+**Backend — API ใหม่:**
+- [x] `POST /api/cases/:id/decline` — surveyor ปฏิเสธงาน → ถอน `assigned_to` = null, status กลับเป็น `pending`
+
+**Mobile:**
+- [x] กดปฏิเสธ → เรียก API ถอนงาน → งานหายจาก "งานของฉัน"
+- [x] หน้า "งานของฉัน" auto refresh ทุกครั้งที่แสดง (กลับจากหน้าอื่น, กดรับ/ปฏิเสธ)
 
 ---
 

@@ -202,6 +202,7 @@ router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseS
 router.post('/:id/folder', auth, requireRole('surveyor'), caseController.createCaseFolder);
 router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 50), caseController.uploadCaseFolder);
 router.post('/:id/arrival', auth, requireRole('surveyor'), caseController.confirmArrival);
+router.post('/:id/decline', auth, requireRole('surveyor'), caseController.declineCase);
 router.get('/:id/arrival', auth, requireRole('surveyor', 'checker'), caseController.getArrivalPhotos);
 router.post('/:id/survey', auth, requireRole('surveyor'), validate(submitSurveySchema), caseController.submitSurvey);
 router.put('/:id/survey', auth, requireRole('surveyor'), caseController.updateSurvey);
