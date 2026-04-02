@@ -497,6 +497,16 @@ export const caseService = {
       visitCount = parseInt(vcResult.rows[0]?.cnt || '1', 10);
     }
 
+    // ค่าใช้จ่าย
+    let expenses = null;
+    if (report) {
+      const expResult = await db.query(
+        'SELECT * FROM survey_expenses WHERE report_id = $1',
+        [report.id]
+      );
+      expenses = expResult.rows[0] || null;
+    }
+
     return {
       case: caseResult.rows[0],
       report,
@@ -504,6 +514,7 @@ export const caseService = {
       review: reviewResult.rows[0] || null,
       case_images: caseImagesResult.rows,
       visit_count: visitCount,
+      expenses,
     };
   },
 

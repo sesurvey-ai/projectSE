@@ -13,6 +13,7 @@ interface CaseDetailProps {
   photos: any[];
   review: any;
   visitCount?: number;
+  expenses?: any;
   onReviewSubmitted: () => void;
 }
 
@@ -48,7 +49,8 @@ const ColGroup = () => (
   </colgroup>
 );
 
-export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, onReviewSubmitted }: CaseDetailProps) {
+export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, expenses, onReviewSubmitted }: CaseDetailProps) {
+  const ex = expenses || {};
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -778,43 +780,43 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าบริการ</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="service_fee_count" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="service_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="service_fee_count" defaultValue={ex.service_fee_count || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="service_fee_price" defaultValue={ex.service_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="travel_fee_count" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="travel_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="travel_fee_count" defaultValue={ex.travel_fee_count || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="travel_fee_price" defaultValue={ex.travel_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="photo_fee_count" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="photo_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="photo_fee_count" defaultValue={ex.photo_fee_count || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="photo_fee_price" defaultValue={ex.photo_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าโทรศัพท์</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="phone_fee" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="phone_fee" defaultValue={ex.phone_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าประกันตัว</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="bail_fee" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="bail_fee" defaultValue={ex.bail_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเรียกร้อง</td>
-                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue="" className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">%</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="claim_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue={ex.claim_fee_percent || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">%</span></div></td>
+                    <td className="px-3 py-2"><input type="text" name="claim_fee_price" defaultValue={ex.claim_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าคัดประจำวัน</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="daily_record_fee" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="daily_record_fee" defaultValue={ex.daily_record_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
-                    <td className="px-3 py-2"><input type="text" name="other_fee_detail" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
-                    <td className="px-3 py-2"><input type="text" name="other_fee_price" defaultValue="" className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="other_fee_detail" defaultValue={ex.other_fee_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
+                    <td className="px-3 py-2"><input type="text" name="other_fee_price" defaultValue={ex.other_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                 </tbody>
               </table>

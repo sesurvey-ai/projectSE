@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.23)
+**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.25)
 
 ---
 
@@ -507,6 +507,34 @@
 **Backend — แก้ bug:**
 - [x] Zod schema `submitSurveySchema` เปลี่ยน `.optional()` เป็น `.nullish()` (รองรับ null จาก Flutter)
 - [x] ลบเคส admin: ลบ `survey_expenses` → `survey_photos` → `survey_reports` → `reviews` → `case_images` → `cases` (แก้ foreign key error)
+
+### แก้ไขระบบไฟล์ + รองรับมือถือจริง + แก้ Bug (2 เม.ย. 2026 — v1.5.24)
+
+**Backend — ระบบไฟล์:**
+- [x] Multer เปลี่ยนจาก `{timestamp}-{uuid}` เป็นชื่อเดิมจากมือถือ (`originalname`) — ตรวจสอบไฟล์ง่ายขึ้น
+- [x] `upload-folder` ข้ามรูป OCR ไม่ลบ — แก้ปัญหาหน้าการ์ดหายหลังส่งงาน
+- [x] `submitSurvey` ข้ามรูป OCR ไม่บันทึกซ้ำใน `survey_photos` — แก้รูปซ้ำในหน้าเว็บ
+- [x] Admin ลบเคส: ลบโฟลเดอร์ว่าง (`{เลขเซอร์เวย์}/` และ `{เลขเคลม}/`) หลังลบรูป
+- [x] `confirmArrival` เปลี่ยนจาก INSERT เป็น UPSERT — ถ่ายรูปยืนยันซ้ำได้ไม่ error
+
+**Mobile — รองรับมือถือจริง:**
+- [x] `ApiConfig` auto-detect emulator vs มือถือจริง (ลอง connect `10.0.2.2` → ถ้าไม่ได้ใช้ IP จริง)
+- [x] เพิ่ม `permission_handler` — ขอ `MANAGE_EXTERNAL_STORAGE` ก่อนเขียนไฟล์บนมือถือจริง
+- [x] `gradle.properties` เปิด permission flags สำหรับ `permission_handler`
+
+**Mobile — UI:**
+- [x] หน้ารายละเอียดงาน: section "หน้าการ์ด" แสดงเฉพาะรูป OCR รูปแรกรูปเดียว
+- [x] แบบฟอร์มสำรวจ: เปลี่ยน "งานนัดหมาย" → "นัดหมาย", "งานติดตาม" → "ติดตาม"
+- [x] แสดง error จริงแทนข้อความกว้างๆ เมื่อถ่ายรูปยืนยันไม่สำเร็จ
+
+### ระบบค่าใช้จ่าย บันทึก + โหลดข้อมูลเดิม (2 เม.ย. 2026 — v1.5.25)
+
+**Backend:**
+- [x] `getDetail()` เพิ่ม query `survey_expenses` ส่งข้อมูลค่าใช้จ่ายกลับมาใน API response
+
+**Web — ระบบตรวจสอบ:**
+- [x] หน้ารายละเอียดเคส: ค่าใช้จ่าย 13 fields แสดงข้อมูลเดิมจาก DB (`defaultValue`)
+- [x] กรอกยอดเงิน/จำนวนครั้ง → กดบันทึก → เปิดใหม่ข้อมูลแสดงกลับมาครบ
 
 ---
 
