@@ -2,11 +2,24 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
+import 'notification_service.dart';
 
 // Top-level handler for background messages
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('Background message received: ${message.messageId}');
+  final data = message.data;
+  if (data['type'] == 'new_survey') {
+    final ns = NotificationService();
+    await ns.initialize();
+    final caseId = data['case_id'] ?? '';
+    await ns.showUrgentNotification(
+      id: int.tryParse(caseId) ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: data['title'] ?? 'งานสำรวจใหม่',
+      body: data['address'] ?? '',
+      payload: caseId,
+    );
+  }
 }
 
 class FcmService {
@@ -16,6 +29,9 @@ class FcmService {
 
   // Callback for when a notification is tapped with a case ID
   void Function(int caseId)? onNotificationTapWithCaseId;
+
+  // Callback เมื่อได้รับงานสำรวจใหม่ (urgent notification)
+  void Function(Map<String, dynamic> data)? onNewSurveyReceived;
 
   FcmService(this._apiService);
 
@@ -77,15 +93,24 @@ class FcmService {
         _sendTokenToServer(newToken);
       });
 
-      // Handle foreground messages — show as local notification
+      // Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('Foreground message received: ${message.messageId}');
+        final data = message.data;
+
+        // Data message type: new_survey → foreground ไม่ต้องทำอะไร (Socket.IO จัดการแล้ว)
+        if (data['type'] == 'new_survey') {
+          debugPrint('FCM foreground new_survey — skipped (Socket handles it)');
+          return;
+        }
+
+        // Regular notification message
         final notification = message.notification;
         if (notification != null) {
           showLocalNotification(
             title: notification.title ?? 'SE Survey',
             body: notification.body ?? '',
-            payload: message.data['case_id'],
+            payload: data['case_id'],
           );
         }
       });

@@ -6,8 +6,11 @@ import '../screens/case_list_screen.dart';
 import '../screens/case_detail_screen.dart';
 import '../screens/survey_form_screen.dart';
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/cases',
     refreshListenable: authProvider,
     redirect: (BuildContext context, GoRouterState state) {

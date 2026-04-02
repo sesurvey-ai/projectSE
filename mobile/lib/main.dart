@@ -9,6 +9,8 @@ import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/case_provider.dart';
 import 'config/api_config.dart';
+import 'services/notification_service.dart';
+import 'screens/incoming_survey_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +26,9 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }
+
+  // Initialize notification service
+  await NotificationService().initialize();
 
   final apiService = ApiService();
   final socketService = SocketService();
@@ -71,8 +76,39 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
       _caseProvider.fetchMyCases();
     });
 
+    // เมื่อได้รับงานใหม่ (Socket.IO) → แสดงหน้ารับงานเต็มจอ
+    _authProvider.onNewSurveyIncoming = (data) {
+      _showIncomingSurveyPage(data);
+    };
+
+    // เมื่อได้รับงานใหม่ (FCM foreground) → แสดงหน้ารับงานเต็มจอ
+    widget.fcmService.onNewSurveyReceived = (data) {
+      _showIncomingSurveyPage(data);
+    };
+
     // Check auth state on app start
     _authProvider.checkAuth();
+  }
+
+  void _showIncomingSurveyPage(Map<String, dynamic> data) {
+    final ctx = rootNavigatorKey.currentContext;
+    if (ctx == null) return;
+    final caseId = int.tryParse(data['case_id']?.toString() ?? '') ?? 0;
+    final customerName = data['customer_name']?.toString() ?? data['title']?.toString() ?? 'ลูกค้า';
+    final address = data['incident_location']?.toString() ?? data['address']?.toString() ?? '';
+    final notifId = caseId > 0 ? caseId : DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    Navigator.of(ctx).push(MaterialPageRoute(
+      builder: (_) => IncomingSurveyPage(
+        caseId: caseId,
+        title: customerName,
+        address: address,
+        notificationId: notifId,
+        onAccepted: () {
+          _caseProvider.fetchMyCases();
+        },
+      ),
+    ));
   }
 
   @override

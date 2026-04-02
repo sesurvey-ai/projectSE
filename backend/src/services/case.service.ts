@@ -126,11 +126,11 @@ export const caseService = {
     console.log(`[FCM] Surveyor ${surveyor.id} fcm_token: ${surveyor.fcm_token ? 'EXISTS' : 'NULL'}`);
     if (surveyor.fcm_token) {
       try {
-        const fcmResult = await fcmService.sendNotification(
+        const fcmResult = await fcmService.sendUrgentSurvey(
           surveyor.fcm_token,
-          'งานใหม่',
-          `คุณได้รับมอบหมายงานสำรวจ: ${caseData.customer_name}`,
-          { case_id: String(caseId) }
+          caseId,
+          caseData.customer_name,
+          caseData.incident_location || ''
         );
         console.log('[FCM] Send success:', fcmResult);
       } catch (err) {

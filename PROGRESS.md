@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.25)
+**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.26)
 
 ---
 
@@ -535,6 +535,36 @@
 **Web — ระบบตรวจสอบ:**
 - [x] หน้ารายละเอียดเคส: ค่าใช้จ่าย 13 fields แสดงข้อมูลเดิมจาก DB (`defaultValue`)
 - [x] กรอกยอดเงิน/จำนวนครั้ง → กดบันทึก → เปิดใหม่ข้อมูลแสดงกลับมาครบ
+
+### ระบบแจ้งเตือนแบบดังไม่หยุด — Insistent Notification (2 เม.ย. 2026 — v1.5.26)
+
+**ฟีเจอร์หลัก: เมื่อมอบหมายงานใหม่ → มือถือเสียง alarm ดังวนซ้ำ + แสดงหน้ารับงานเต็มจอ จนกว่าจะกดรับ/ปฏิเสธ**
+
+**Mobile — ไฟล์ใหม่:**
+- [x] `notification_service.dart` — urgent notification channel + AudioPlayer เล่นเสียง alarm วนซ้ำ
+- [x] `incoming_survey_page.dart` — หน้ารับงานเต็มจอ (พื้นหลังสีเข้ม, ปุ่มรับ/ปฏิเสธ, pulse animation)
+- [x] `alarm_loop.wav` — เสียง alarm 3 วินาที (เล่นวนซ้ำผ่าน AudioPlayer)
+
+**Mobile — แก้ไข:**
+- [x] `fcm_service.dart` — รับ FCM data message `type: new_survey` → trigger urgent notification (background)
+- [x] `auth_provider.dart` — Socket.IO `case_assigned` → trigger เสียง alarm + แสดงหน้ารับงาน (foreground)
+- [x] `main.dart` — initialize NotificationService + เชื่อม IncomingSurveyPage ผ่าน `rootNavigatorKey`
+- [x] `app_router.dart` — export `rootNavigatorKey` ให้ main.dart ใช้แสดงหน้ารับงาน
+- [x] `AndroidManifest.xml` — เพิ่ม `USE_FULL_SCREEN_INTENT` + lock screen flags
+
+**Backend — แก้ไข:**
+- [x] `fcm.service.ts` — เพิ่ม `sendUrgentSurvey()` ส่ง data-only message (ไม่ใช่ notification message)
+- [x] `case.service.ts` — assign case เรียก `sendUrgentSurvey` แทน `sendNotification`
+
+**Dependencies เพิ่ม:**
+- [x] `audioplayers: ^6.1.0` — เล่นเสียง alarm วนซ้ำ (เชื่อถือได้กว่า notification channel sound)
+
+**พฤติกรรม:**
+| สถานการณ์ | เสียง alarm | หน้ารับงาน |
+|---|---|---|
+| แอปเปิดอยู่ (foreground) | Socket.IO → AudioPlayer ✅ | Socket.IO → IncomingSurveyPage ✅ |
+| แอปปิด/จอดับ (background) | FCM → AudioPlayer ✅ | FCM → notification bar ✅ |
+| กดรับงาน/ปฏิเสธ | หยุดเสียงทันที ✅ | ปิดหน้า ✅ |
 
 ---
 

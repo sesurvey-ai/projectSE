@@ -48,6 +48,7 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   go_router: ^17.1.0
   permission_handler: ^11.3.1
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,7 @@ flutter:
 
   assets:
     - assets/thai_provinces.json
+    - assets/alarm_loop.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
