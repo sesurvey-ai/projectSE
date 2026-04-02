@@ -8,9 +8,14 @@ import 'services/socket_service.dart';
 import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/case_provider.dart';
+import 'config/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ตรวจสอบว่าเป็น emulator หรือมือถือจริง
+  await ApiConfig.init();
+  debugPrint('API URL: ${ApiConfig.baseUrl}');
 
   // Initialize Firebase
   try {

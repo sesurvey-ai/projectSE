@@ -240,10 +240,21 @@ export const caseService = {
       }
     }
 
-    // ลบรูปเก่าในโฟลเดอร์ย่อยก่อนใส่รูปใหม่จากมือถือ
+    // ดึงชื่อไฟล์ OCR ที่ต้องเก็บไว้
+    const ocrFiles = new Set<string>();
+    const ocrResult = await db.query(
+      "SELECT file_path FROM case_images WHERE case_id = $1 AND image_type = 'ocr'", [caseId]
+    );
+    for (const row of ocrResult.rows) {
+      const fp = row.file_path as string;
+      ocrFiles.add(pathMod.default.basename(fp));
+    }
+
+    // ลบรูปเก่าในโฟลเดอร์ย่อย ยกเว้นรูป OCR
     try {
       const existing = fs.default.readdirSync(subFolderPath);
       for (const f of existing) {
+        if (ocrFiles.has(f)) continue; // ข้ามรูป OCR
         try { fs.default.unlinkSync(pathMod.default.join(subFolderPath, f)); } catch { /* skip */ }
       }
     } catch { /* folder may not exist */ }
@@ -251,11 +262,12 @@ export const caseService = {
     // ใส่รูปใหม่จากมือถือ
     const movedFiles: string[] = [];
     for (const file of files) {
-      const destPath = pathMod.default.join(subFolderPath, file.filename);
+      const safeName = file.originalname.replace(/[/\\?%*:|"<>]/g, '_');
+      const destPath = pathMod.default.join(subFolderPath, safeName);
       try {
         fs.default.renameSync(file.path, destPath);
-        movedFiles.push(`${claimNo}/${surveyJobNo}/${file.filename}`);
-      } catch { movedFiles.push(file.filename); }
+        movedFiles.push(`${claimNo}/${surveyJobNo}/${safeName}`);
+      } catch { movedFiles.push(safeName); }
     }
 
     return { folder: `${claimNo}/${surveyJobNo}`, files: movedFiles };
@@ -281,10 +293,21 @@ export const caseService = {
     const caseData = caseResult.rows[0];
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
 
-    await db.query(
-      'INSERT INTO case_images (case_id, file_path, image_type) VALUES ($1, $2, $3)',
-      [caseId, photoPath, 'arrival']
+    // ถ้ามี arrival อยู่แล้ว → อัพเดท, ถ้าไม่มี → insert ใหม่
+    const existing = await db.query(
+      "SELECT id FROM case_images WHERE case_id = $1 AND image_type = 'arrival'", [caseId]
     );
+    if (existing.rows.length > 0) {
+      await db.query(
+        'UPDATE case_images SET file_path = $1, uploaded_at = NOW() WHERE id = $2',
+        [photoPath, existing.rows[0].id]
+      );
+    } else {
+      await db.query(
+        'INSERT INTO case_images (case_id, file_path, image_type) VALUES ($1, $2, $3)',
+        [caseId, photoPath, 'arrival']
+      );
+    }
 
     // บันทึกเวลาถึงที่เกิดเหตุใน survey_reports
     const now = new Date();
@@ -367,15 +390,22 @@ export const caseService = {
         report = insertResult.rows[0];
       }
 
-      // บันทึก survey_photos จากโฟลเดอร์ที่อัปโหลดมาจากมือถือ
+      // บันทึก survey_photos จากโฟลเดอร์ที่อัปโหลดมาจากมือถือ (ข้ามรูป OCR)
       const claimNo = (data.claim_no as string || '').replace(/[/\\?%*:|"<>]/g, '_') || `case_${caseId}`;
       const surveyJobNo = (data.survey_job_no as string || '').replace(/[/\\?%*:|"<>]/g, '_') || `job_${caseId}`;
       const fs = await import('fs');
       const pathMod = await import('path');
       const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, claimNo, surveyJobNo);
       if (fs.default.existsSync(folderPath)) {
+        // ดึงชื่อไฟล์ OCR เพื่อข้าม
+        const ocrResult = await client.query(
+          "SELECT file_path FROM case_images WHERE case_id = $1 AND image_type = 'ocr'", [caseId]
+        );
+        const ocrFileNames = new Set(ocrResult.rows.map((r: any) => pathMod.default.basename(r.file_path)));
+
         const filesInFolder = fs.default.readdirSync(folderPath);
         for (const fileName of filesInFolder) {
+          if (ocrFileNames.has(fileName)) continue; // ข้ามรูป OCR
           const photoPath = `${claimNo}/${surveyJobNo}/${fileName}`;
           await client.query(
             'INSERT INTO survey_photos (report_id, file_path) VALUES ($1, $2)',

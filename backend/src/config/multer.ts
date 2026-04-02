@@ -1,6 +1,5 @@
 import multer from 'multer';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { env } from './env';
 
 const storage = multer.diskStorage({
@@ -8,8 +7,9 @@ const storage = multer.diskStorage({
     cb(null, path.resolve(env.UPLOAD_DIR));
   },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}-${uuidv4()}${ext}`);
+    // ใช้ชื่อเดิมจากมือถือ — sanitize อักขระพิเศษ
+    const safeName = file.originalname.replace(/[/\\?%*:|"<>]/g, '_');
+    cb(null, safeName);
   },
 });
 

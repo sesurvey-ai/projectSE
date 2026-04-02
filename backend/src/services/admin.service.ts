@@ -275,10 +275,27 @@ export const adminService = {
     const result = await db.query('DELETE FROM cases WHERE id = $1 RETURNING id', [id]);
     if (result.rows.length === 0) throw new NotFoundError('Case not found');
 
-    // Delete photo files from disk
+    // Delete photo files from disk + cleanup empty folders
+    const foldersToClean = new Set<string>();
     for (const photo of [...surveyPhotos.rows, ...caseImages.rows]) {
       const filePath = path.join(env.UPLOAD_DIR, photo.file_path);
       try { fs.unlinkSync(filePath); } catch { /* file may not exist */ }
+      // เก็บ path โฟลเดอร์ย่อยเพื่อลบทีหลัง
+      const dir = path.dirname(filePath);
+      if (dir !== path.resolve(env.UPLOAD_DIR)) foldersToClean.add(dir);
+    }
+
+    // ลบโฟลเดอร์ย่อย (surveyJobNo) แล้วลบโฟลเดอร์แม่ (claimNo) ถ้าว่าง
+    for (const folder of foldersToClean) {
+      try {
+        if (fs.existsSync(folder) && fs.readdirSync(folder).length === 0) {
+          fs.rmdirSync(folder);
+          const parent = path.dirname(folder);
+          if (parent !== path.resolve(env.UPLOAD_DIR) && fs.existsSync(parent) && fs.readdirSync(parent).length === 0) {
+            fs.rmdirSync(parent);
+          }
+        }
+      } catch { /* skip */ }
     }
 
     return { id };

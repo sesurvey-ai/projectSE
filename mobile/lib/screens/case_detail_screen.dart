@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../providers/case_provider.dart';
 import '../models/case_model.dart';
@@ -126,6 +127,13 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   }
 
   Future<String> _getCaseFolder() async {
+    // ขอ storage permission บน Android
+    if (Platform.isAndroid) {
+      final status = await Permission.manageExternalStorage.request();
+      if (!status.isGranted) {
+        debugPrint('Storage permission denied');
+      }
+    }
     final downloadDir = Directory('/storage/emulated/0/Download/SE_Survey/$_claimNo/$_surveyJobNo');
     if (!downloadDir.existsSync()) downloadDir.createSync(recursive: true);
     return downloadDir.path;
@@ -158,10 +166,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Arrival error: $e');
       if (mounted) {
         setState(() => _uploadingArrival = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ไม่สามารถอัปโหลดรูปได้ กรุณาลองใหม่'), backgroundColor: Colors.red),
+          SnackBar(content: Text('ไม่สามารถอัปโหลดรูปได้: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -633,54 +642,45 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             _buildTableRow('เลขไมล์', _val('mileage')),
           ]),
 
-          if (_report?['case_images'] != null && (_report!['case_images'] as List).isNotEmpty)
+          if (_report?['case_images'] != null && (_report!['case_images'] as List).where((img) => img['image_type'] == 'ocr').isNotEmpty)
             _buildCollapsibleSection('card_face', 'หน้าการ์ด', Icons.credit_card, [
-              _buildCaseImagesContent(),
+              _buildCardFaceImage(),
             ]),
         ],
       ),
     );
   }
 
-  Widget _buildCaseImagesContent() {
+  Widget _buildCardFaceImage() {
     final images = _report!['case_images'] as List;
-    final baseUrl = ApiConfig.baseUrl;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ...images.map((img) {
-          final filePath = img['file_path']?.toString() ?? '';
-          final imageUrl = '$baseUrl/uploads/$filePath';
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: GestureDetector(
-              onTap: () => _showFullImage(imageUrl),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.fitWidth,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return const SizedBox(
-                      height: 100,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 80,
-                      color: Colors.grey.shade200,
-                      child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-                    );
-                  },
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
+    final ocrImages = images.where((img) => img['image_type'] == 'ocr').toList();
+    if (ocrImages.isEmpty) return const SizedBox.shrink();
+    final filePath = ocrImages.first['file_path']?.toString() ?? '';
+    final imageUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
+    return GestureDetector(
+      onTap: () => _showFullImage(imageUrl),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imageUrl,
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return const SizedBox(
+              height: 100,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 80,
+              color: Colors.grey.shade200,
+              child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+            );
+          },
+        ),
+      ),
     );
   }
 
