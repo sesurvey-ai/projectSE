@@ -1,5 +1,6 @@
 package com.sesurvey.se_survey
 
+import android.content.Context
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -9,6 +10,18 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         var isAppInForeground = false
+
+        private const val PREFS = "notif_state"
+
+        fun setWasOnHomeScreen(context: Context, value: Boolean) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean("was_on_home", value).apply()
+        }
+
+        fun getWasOnHomeScreen(context: Context): Boolean {
+            return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("was_on_home", false)
+        }
     }
 
     private val CHANNEL = "com.sesurvey.se_survey/notification"
@@ -39,9 +52,16 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // เรียกเมื่อกดปุ่ม Home
+        setWasOnHomeScreen(this, true)
+    }
+
     override fun onResume() {
         super.onResume()
         isAppInForeground = true
+        setWasOnHomeScreen(this, false)
         handleNotificationAction(intent)
     }
 

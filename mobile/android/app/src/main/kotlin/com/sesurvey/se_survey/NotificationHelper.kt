@@ -1,13 +1,11 @@
 package com.sesurvey.se_survey
 
-import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
@@ -44,34 +42,11 @@ object NotificationHelper {
         // 3. แอปเราอยู่ foreground
         if (MainActivity.isAppInForeground) return ScreenState.APP_FOREGROUND
 
-        // 4. หน้า Home หรือแอปอื่น?
-        if (isOnHomeScreen(context)) return ScreenState.HOME_SCREEN
+        // 4. กดปุ่ม Home จากแอปเรา → หน้า Home
+        if (MainActivity.getWasOnHomeScreen(context)) return ScreenState.HOME_SCREEN
 
         // 5. แอปอื่น
         return ScreenState.OTHER_APP
-    }
-
-    @Suppress("DEPRECATION")
-    private fun isOnHomeScreen(context: Context): Boolean {
-        try {
-            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val tasks = am.getRunningTasks(1)
-            if (tasks.isNotEmpty()) {
-                val topPackage = tasks[0].topActivity?.packageName ?: return false
-
-                // เทียบกับ launcher packages ที่ติดตั้งอยู่
-                val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                val launchers = context.packageManager.queryIntentActivities(launcherIntent, PackageManager.MATCH_DEFAULT_ONLY)
-                for (info in launchers) {
-                    if (info.activityInfo.packageName == topPackage) {
-                        return true
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("NotifHelper", "isOnHomeScreen error: $e")
-        }
-        return false
     }
 
     // ── แสดง notification ตามเงื่อนไข ─────────────────────────────
