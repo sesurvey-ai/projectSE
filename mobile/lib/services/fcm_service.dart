@@ -2,24 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
-import 'notification_service.dart';
 
 // Top-level handler for background messages
+// new_survey จะถูกจัดการโดย native MyFirebaseMessagingService แล้ว (แสดง custom notification)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('Background message received: ${message.messageId}');
-  final data = message.data;
-  if (data['type'] == 'new_survey') {
-    final ns = NotificationService();
-    await ns.initialize();
-    final caseId = data['case_id'] ?? '';
-    await ns.showUrgentNotification(
-      id: int.tryParse(caseId) ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title: data['title'] ?? 'งานสำรวจใหม่',
-      body: data['address'] ?? '',
-      payload: caseId,
-    );
-  }
+  // new_survey → native Android จัดการแล้ว ไม่ต้องทำซ้ำ
 }
 
 class FcmService {

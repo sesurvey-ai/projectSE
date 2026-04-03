@@ -21,9 +21,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         Log.d("NotifAction", "Received action=$action caseId=$caseId notifId=$notificationId")
 
-        // Cancel the notification
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.cancel(notificationId)
+        // Cancel notification + stop alarm
+        NotificationHelper.cancelNotification(context, notificationId)
 
         // Send result back to Flutter via MainActivity
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)

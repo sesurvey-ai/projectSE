@@ -110,8 +110,7 @@ class NotificationService {
       await _showFlutterNotification(id: id, title: title, body: body, payload: payload);
     }
 
-    // เล่นเสียง alarm ด้วย (backup — native channel ก็เล่นเสียงอยู่แล้ว)
-    await _startAlarm();
+    // Native MediaPlayer เล่นเสียงอยู่แล้ว — ไม่ต้องเล่นซ้ำจาก Flutter
 
     // แสดง overlay popup ทับแอปอื่น (ถ้ามี permission)
     try {
@@ -180,25 +179,6 @@ class NotificationService {
       notificationDetails: details,
       payload: payload,
     );
-  }
-
-  Future<void> _startAlarm() async {
-    if (_isPlaying) return;
-    _isPlaying = true;
-    try {
-      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-      await _audioPlayer.setAudioContext(AudioContext(
-        android: AudioContextAndroid(
-          usageType: AndroidUsageType.alarm,
-          contentType: AndroidContentType.sonification,
-          audioFocus: AndroidAudioFocus.gainTransientExclusive,
-        ),
-        iOS: AudioContextIOS(),
-      ));
-      await _audioPlayer.play(AssetSource('alarm_loop.wav'));
-    } catch (e) {
-      debugPrint('[Notification] Alarm play error: $e');
-    }
   }
 
   Future<void> stopAlarm() async {
