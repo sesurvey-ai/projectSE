@@ -1,6 +1,25 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart' hide NotificationVisibility;
+
+// Background action handler (ต้องเป็น top-level function)
+@pragma('vm:entry-point')
+void onNotificationAction(NotificationResponse response) {
+  debugPrint('[Notification] Action: ${response.actionId} payload: ${response.payload}');
+  final ns = NotificationService();
+  final id = int.tryParse(response.payload ?? '') ?? 0;
+
+  if (response.actionId == 'decline') {
+    ns.cancelNotification(id);
+    ns._onDeclineAction?.call(id);
+  } else {
+    // กด 'accept' หรือกดที่ notification body → รับงาน
+    ns.cancelNotification(id);
+    ns._onAcceptAction?.call(id);
+  }
+}
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._();
@@ -11,8 +30,20 @@ class NotificationService {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
 
-  // Callback เมื่อกดรับงาน
-  void Function(int caseId)? onAcceptSurvey;
+  // Native MethodChannel for custom notification
+  static const _nativeChannel = MethodChannel('com.sesurvey.se_survey/notification');
+
+  // Callbacks
+  void Function(int caseId)? _onAcceptAction;
+  void Function(int caseId)? _onDeclineAction;
+
+  void setCallbacks({
+    void Function(int caseId)? onAccept,
+    void Function(int caseId)? onDecline,
+  }) {
+    _onAcceptAction = onAccept;
+    _onDeclineAction = onDecline;
+  }
 
   Future<void> initialize() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -21,53 +52,116 @@ class NotificationService {
 
     await _plugin.initialize(
       settings: initSettings,
-      onDidReceiveNotificationResponse: _onResponse,
+      onDidReceiveNotificationResponse: onNotificationAction,
+      onDidReceiveBackgroundNotificationResponse: onNotificationAction,
     );
 
-    // ลบ channel เก่า
+    // ลบ channel เก่าทั้งหมด เพื่อให้สร้างใหม่พร้อมเสียง
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.deleteNotificationChannel(channelId: 'urgent_survey_channel');
-    await androidPlugin?.deleteNotificationChannel(channelId: 'urgent_survey_channel_v2');
-
-    // ตั้ง AudioPlayer ให้วนซ้ำ
-    await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-    await _audioPlayer.setSource(AssetSource('alarm_loop.wav'));
-  }
-
-  void _onResponse(NotificationResponse response) {
-    final payload = response.payload;
-    if (payload != null) {
-      final caseId = int.tryParse(payload);
-      if (caseId != null && onAcceptSurvey != null) {
-        onAcceptSurvey!(caseId);
-      }
+    for (final ch in [
+      'se_survey_channel',
+      'urgent_survey_channel', 'urgent_survey_channel_v2', 'urgent_survey_channel_v3',
+      'urgent_alarm_channel_v4', 'urgent_alarm_channel_v5', 'urgent_alarm_v6',
+      'urgent_alarm_v7',
+    ]) {
+      await androidPlugin?.deleteNotificationChannel(channelId: ch);
     }
-    // หยุดเสียงเมื่อกด notification
-    stopAlarm();
+
+    // Listen for native notification actions (accept/decline from custom notification)
+    _nativeChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onNotificationAction') {
+        final action = call.arguments['action'] as String?;
+        final caseId = call.arguments['caseId'] as int? ?? 0;
+        debugPrint('[Notification] Native action: $action caseId=$caseId');
+
+        await stopAlarm();
+        try { await FlutterOverlayWindow.closeOverlay(); } catch (_) {}
+
+        if (action == 'decline') {
+          _onDeclineAction?.call(caseId);
+        } else {
+          _onAcceptAction?.call(caseId);
+        }
+      }
+    });
   }
 
-  /// แจ้งเตือนแบบดังไม่หยุด — notification + เล่นเสียงวนซ้ำ
+  /// แจ้งเตือนแบบสายเรียกเข้า LINE — custom layout พร้อมปุ่มรับ/ปฏิเสธ
   Future<void> showUrgentNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
-    // แสดง notification (ไม่มีเสียงจาก channel — เล่นเสียงเอง)
+    final caseId = int.tryParse(payload ?? '') ?? id;
+
+    try {
+      // ใช้ native Android custom notification (LINE-style)
+      await _nativeChannel.invokeMethod('showIncomingNotification', {
+        'id': id,
+        'title': title,
+        'body': body,
+        'caseId': caseId,
+      });
+      debugPrint('[Notification] Native incoming notification shown: id=$id');
+    } catch (e) {
+      debugPrint('[Notification] Native notification error: $e, falling back to flutter');
+      // Fallback to flutter_local_notifications
+      await _showFlutterNotification(id: id, title: title, body: body, payload: payload);
+    }
+
+    // เล่นเสียง alarm ด้วย (backup — native channel ก็เล่นเสียงอยู่แล้ว)
+    await _startAlarm();
+
+    // แสดง overlay popup ทับแอปอื่น (ถ้ามี permission)
+    try {
+      final hasPermission = await FlutterOverlayWindow.isPermissionGranted();
+      if (hasPermission) {
+        await FlutterOverlayWindow.showOverlay(
+          height: 200,
+          width: WindowSize.matchParent,
+          alignment: OverlayAlignment.topCenter,
+          enableDrag: false,
+        );
+      }
+    } catch (e) {
+      debugPrint('[Notification] Overlay error: $e');
+    }
+  }
+
+  /// Fallback notification ด้วย flutter_local_notifications
+  Future<void> _showFlutterNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
     final androidDetails = AndroidNotificationDetails(
-      'urgent_survey_channel_v3',
+      'urgent_alarm_v7',
       'งานสำรวจเร่งด่วน',
-      channelDescription: 'แจ้งเตือนเมื่อมีงานสำรวจใหม่',
+      channelDescription: 'เสียงดังจนกว่าจะกดรับ',
       importance: Importance.max,
       priority: Priority.high,
-      playSound: false, // ไม่ใช้เสียง channel — เล่นเองผ่าน AudioPlayer
+      sound: const RawResourceAndroidNotificationSound('alarm_loop'),
+      playSound: true,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      additionalFlags: Int32List.fromList([4]),
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
-      ongoing: true,
+      ongoing: false,
       autoCancel: false,
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
       visibility: NotificationVisibility.public,
+      ticker: 'งานสำรวจใหม่',
+      styleInformation: BigTextStyleInformation(
+        '$body\n\n⬇️ กดปุ่มด้านล่างเพื่อรับหรือปฏิเสธงาน',
+        contentTitle: title,
+      ),
+      actions: const [
+        AndroidNotificationAction('accept', '✅ รับงาน', showsUserInterface: true),
+        AndroidNotificationAction('decline', '❌ ปฏิเสธ', showsUserInterface: true),
+      ],
     );
 
     final details = NotificationDetails(
@@ -86,47 +180,50 @@ class NotificationService {
       notificationDetails: details,
       payload: payload,
     );
-
-    // เล่นเสียง alarm วนซ้ำ
-    await _startAlarm();
-    debugPrint('[Notification] Urgent notification + alarm: id=$id');
   }
 
-  /// เริ่มเล่นเสียง alarm วนซ้ำ
   Future<void> _startAlarm() async {
     if (_isPlaying) return;
     _isPlaying = true;
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer.setAudioContext(AudioContext(
+        android: AudioContextAndroid(
+          usageType: AndroidUsageType.alarm,
+          contentType: AndroidContentType.sonification,
+          audioFocus: AndroidAudioFocus.gainTransientExclusive,
+        ),
+        iOS: AudioContextIOS(),
+      ));
       await _audioPlayer.play(AssetSource('alarm_loop.wav'));
-      debugPrint('[Notification] Alarm started');
     } catch (e) {
       debugPrint('[Notification] Alarm play error: $e');
     }
   }
 
-  /// หยุดเสียง alarm
   Future<void> stopAlarm() async {
     if (!_isPlaying) return;
     _isPlaying = false;
     try {
       await _audioPlayer.stop();
-      debugPrint('[Notification] Alarm stopped');
     } catch (e) {
       debugPrint('[Notification] Alarm stop error: $e');
     }
   }
 
-  /// ยกเลิก notification + หยุดเสียง
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id: id);
+    // Cancel native notification too
+    try {
+      await _nativeChannel.invokeMethod('cancelNotification', {'id': id});
+    } catch (_) {}
     await stopAlarm();
-    debugPrint('[Notification] Cancelled: id=$id');
+    try { await FlutterOverlayWindow.closeOverlay(); } catch (_) {}
   }
 
-  /// ยกเลิกทั้งหมด
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
     await stopAlarm();
+    try { await FlutterOverlayWindow.closeOverlay(); } catch (_) {}
   }
 }
