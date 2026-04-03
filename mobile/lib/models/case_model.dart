@@ -7,6 +7,7 @@ class CaseModel {
   final int? assignedTo;
   final String status;
   final String createdAt;
+  final String? claimNo;
 
   CaseModel({
     required this.id,
@@ -17,6 +18,7 @@ class CaseModel {
     this.assignedTo,
     required this.status,
     required this.createdAt,
+    this.claimNo,
   });
 
   factory CaseModel.fromJson(Map<String, dynamic> json) => CaseModel(
@@ -32,5 +34,6 @@ class CaseModel {
         assignedTo: json['assigned_to'],
         status: json['status'] ?? '',
         createdAt: json['created_at'] ?? '',
+        claimNo: json['claim_no'],
       );
 }

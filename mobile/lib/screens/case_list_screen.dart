@@ -93,7 +93,10 @@ class _CaseListScreenState extends State<CaseListScreen> {
             );
           }
 
-          if (caseProvider.cases.isEmpty) {
+          final activeCases = caseProvider.cases.where((c) => c.status != 'declined').toList();
+          final declinedCases = caseProvider.cases.where((c) => c.status == 'declined').toList();
+
+          if (activeCases.isEmpty && declinedCases.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -116,16 +119,35 @@ class _CaseListScreenState extends State<CaseListScreen> {
 
           return RefreshIndicator(
             onRefresh: _onRefresh,
-            child: ListView.builder(
+            child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: caseProvider.cases.length,
-              itemBuilder: (context, index) {
-                final caseItem = caseProvider.cases[index];
-                return CaseCard(
+              children: [
+                // งานปกติ
+                ...activeCases.map((caseItem) => CaseCard(
                   caseModel: caseItem,
                   onTap: () => context.go('/cases/${caseItem.id}'),
-                );
-              },
+                )),
+                // งานที่ปฏิเสธ
+                if (declinedCases.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+                        SizedBox(width: 6),
+                        Text('งานที่ปฏิเสธ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                  ...declinedCases.map((caseItem) => Opacity(
+                    opacity: 0.6,
+                    child: CaseCard(
+                      caseModel: caseItem,
+                      onTap: () => context.go('/cases/${caseItem.id}'),
+                    ),
+                  )),
+                ],
+              ],
             ),
           );
         },

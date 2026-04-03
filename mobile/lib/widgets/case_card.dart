@@ -68,7 +68,7 @@ class CaseCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      caseModel.customerName,
+                      caseModel.claimNo ?? 'ไม่มีเลขเคลม',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

@@ -95,7 +95,11 @@ export const caseService = {
 
   async getMyCases(surveyorId: number) {
     const result = await db.query(
-      `SELECT * FROM cases WHERE assigned_to = $1 ORDER BY created_at DESC`,
+      `SELECT c.*, sr.claim_no, sr.survey_job_no, sr.claim_ref_no
+       FROM cases c
+       LEFT JOIN survey_reports sr ON sr.case_id = c.id
+       WHERE c.assigned_to = $1
+       ORDER BY c.created_at DESC`,
       [surveyorId]
     );
     return result.rows;
@@ -161,7 +165,7 @@ export const caseService = {
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
 
     const result = await db.query(
-      "UPDATE cases SET assigned_to = NULL, status = 'pending' WHERE id = $1 RETURNING *",
+      "UPDATE cases SET status = 'declined' WHERE id = $1 RETURNING *",
       [caseId]
     );
     return result.rows[0];
