@@ -51,7 +51,7 @@ class IncomingCallActivity : Activity() {
         findViewById<TextView>(R.id.btn_mute).setOnClickListener {
             NotificationHelper.stopAlarm()
             it.alpha = 0.4f
-            (it as TextView).text = "🔇 ปิดเสียงแล้ว"
+            (it as TextView).text = "🔈"
         }
 
         // ปุ่มรับงาน
