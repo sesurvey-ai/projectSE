@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 3 เมษายน 2026 (v1.5.33)
+**อัพเดทล่าสุด:** 3 เมษายน 2026 (v1.5.34)
 
 ---
 
@@ -583,6 +583,26 @@
 | `NotificationActionReceiver.kt` | รับ action จากปุ่มบน notification (รับงาน/ปิดเสียง) |
 | `notification_incoming.xml` | Layout notification bar (ปุ่มรับงาน + ปิดเสียง) |
 | `activity_incoming_call.xml` | Layout fullscreen (icon + info + ปุ่มรับงาน + ปิดเสียง) |
+
+### แก้ไขฟีเจอร์เรียกพิกัด GPS — เปลี่ยนจาก Socket.IO เป็น FCM + REST API (3 เม.ย. 2026 — v1.5.34)
+
+**ปัญหา:** หลังลบ Socket.IO จาก mobile (v1.5.30) ฟีเจอร์ `request_location` ใช้งานไม่ได้
+**แก้ไข:** ใช้ FCM push แทน Socket.IO + มือถือส่ง GPS กลับผ่าน REST API
+
+**Flow ใหม่:**
+```
+Web (request_location) → Backend → FCM push → มือถือ → อ่าน GPS → POST /api/users/me/location → Backend → Socket.IO (location_update) → Web แสดงแผนที่
+```
+
+**Backend:**
+- [x] เพิ่ม `POST /api/users/me/location` — รับ GPS จากมือถือ + emit `location_update` ผ่าน Socket.IO ไปหา Web
+- [x] แก้ `locationHandler.ts` — เมื่อรับ `request_location` ส่ง FCM `sendSilentPush` ไปหา surveyor ทุกคน
+
+**Mobile (Native Android):**
+- [x] สร้าง `LocationHelper.kt` — อ่าน GPS ด้วย `LocationManager` + POST ไป backend
+- [x] แก้ `MyFirebaseMessagingService.kt` — เพิ่ม handler `type: request_location` → อ่าน GPS → ส่งกลับอัตโนมัติ
+
+**Web:** ไม่ต้องแก้ไข — ยังใช้ Socket.IO `request_location` + listen `location_update` เหมือนเดิม
 
 ---
 

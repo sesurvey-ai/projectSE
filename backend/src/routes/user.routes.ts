@@ -10,7 +10,14 @@ const fcmTokenSchema = z.object({
   fcm_token: z.string().min(1, 'FCM token is required'),
 });
 
+const locationSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  request_id: z.string().optional(),
+});
+
 router.get('/me', auth, userController.getMe);
 router.put('/me/fcm-token', auth, validate(fcmTokenSchema), userController.updateFcmToken);
+router.post('/me/location', auth, validate(locationSchema), userController.updateLocation);
 
 export default router;
