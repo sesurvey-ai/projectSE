@@ -81,6 +81,7 @@
             <intent-filter>
                 <action android:name="com.sesurvey.se_survey.ACTION_ACCEPT" />
                 <action android:name="com.sesurvey.se_survey.ACTION_DECLINE" />
+                <action android:name="com.sesurvey.se_survey.ACTION_MUTE" />
             </intent-filter>
         </receiver>
 

@@ -99,18 +99,6 @@ object NotificationHelper {
         val customView = RemoteViews(context.packageName, R.layout.notification_incoming)
         customView.setTextViewText(R.id.notification_title, title)
 
-        // Decline button
-        val declineIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = NotificationActionReceiver.ACTION_DECLINE
-            putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, id)
-            putExtra(NotificationActionReceiver.EXTRA_CASE_ID, caseId)
-        }
-        val declinePi = PendingIntent.getBroadcast(
-            context, id * 2, declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        customView.setOnClickPendingIntent(R.id.btn_decline, declinePi)
-
         // Accept button
         val acceptIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = NotificationActionReceiver.ACTION_ACCEPT
@@ -122,6 +110,18 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         customView.setOnClickPendingIntent(R.id.btn_accept, acceptPi)
+
+        // Mute button
+        val muteIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_MUTE
+            putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, id)
+            putExtra(NotificationActionReceiver.EXTRA_CASE_ID, caseId)
+        }
+        val mutePi = PendingIntent.getBroadcast(
+            context, id * 2 + 3, muteIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        customView.setOnClickPendingIntent(R.id.btn_mute, mutePi)
 
         // Tap intent → open app
         val tapIntent = Intent(context, MainActivity::class.java).apply {

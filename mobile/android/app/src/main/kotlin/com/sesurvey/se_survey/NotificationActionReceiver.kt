@@ -1,6 +1,5 @@
 package com.sesurvey.se_survey
 
-import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,6 +9,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_ACCEPT = "com.sesurvey.se_survey.ACTION_ACCEPT"
         const val ACTION_DECLINE = "com.sesurvey.se_survey.ACTION_DECLINE"
+        const val ACTION_MUTE = "com.sesurvey.se_survey.ACTION_MUTE"
         const val EXTRA_NOTIFICATION_ID = "notification_id"
         const val EXTRA_CASE_ID = "case_id"
     }
@@ -20,6 +20,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val action = intent.action
 
         Log.d("NotifAction", "Received action=$action caseId=$caseId notifId=$notificationId")
+
+        if (action == ACTION_MUTE) {
+            // ปิดเสียงอย่างเดียว — ไม่ปิด notification
+            NotificationHelper.stopAlarm()
+            return
+        }
 
         // Cancel notification + stop alarm
         NotificationHelper.cancelNotification(context, notificationId)

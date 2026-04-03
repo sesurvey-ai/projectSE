@@ -47,9 +47,11 @@ class IncomingCallActivity : Activity() {
         findViewById<TextView>(R.id.txt_customer).text = customerName
         findViewById<TextView>(R.id.txt_address).text = address
 
-        // ปุ่มปฏิเสธ
-        findViewById<Button>(R.id.btn_decline).setOnClickListener {
-            handleAction("decline")
+        // ปุ่มปิดเสียง
+        findViewById<TextView>(R.id.btn_mute).setOnClickListener {
+            NotificationHelper.stopAlarm()
+            it.alpha = 0.4f
+            (it as TextView).text = "🔇 ปิดเสียงแล้ว"
         }
 
         // ปุ่มรับงาน

@@ -5,22 +5,41 @@
     android:orientation="vertical"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
-    android:paddingTop="16dp"
-    android:paddingBottom="16dp">
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
-    <!-- Title -->
-    <TextView
-        android:id="@+id/notification_title"
+    <!-- Row 1: Title + Mute button -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textColor="#000000"
-        android:textStyle="bold"
-        android:layout_marginBottom="12dp"
-        android:singleLine="true"
-        android:ellipsize="end" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
 
-    <!-- Buttons -->
+        <TextView
+            android:id="@+id/notification_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="15sp"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/btn_mute"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="🔇 ปิดเสียง"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:background="@drawable/btn_mute_notif_bg" />
+    </LinearLayout>
+
+    <!-- Row 2: Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -28,28 +47,8 @@
         android:baselineAligned="false">
 
         <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="5dp">
-
-            <TextView
-                android:id="@+id/btn_decline"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:gravity="center"
-                android:text="ปฏิเสธ"
-                android:textSize="15sp"
-                android:textColor="#FFFFFF"
-                android:textStyle="bold"
-                android:background="@drawable/btn_decline_bg" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="5dp">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
             <TextView
                 android:id="@+id/btn_accept"

@@ -4,7 +4,23 @@
     android:layout_height="match_parent"
     android:background="#0D1B2A">
 
-    <!-- Top section: icon + title -->
+    <!-- Top: mute button -->
+    <TextView
+        android:id="@+id/btn_mute"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="24dp"
+        android:gravity="center"
+        android:paddingHorizontal="16dp"
+        android:text="🔇 ปิดเสียง"
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/btn_mute_bg" />
+
+    <!-- Center section: icon + title + info -->
     <LinearLayout
         android:id="@+id/top_section"
         android:layout_width="match_parent"
@@ -15,21 +31,19 @@
         android:layout_marginBottom="80dp"
         android:paddingHorizontal="32dp">
 
-        <!-- Pulsing icon circle -->
+        <!-- Icon circle -->
         <FrameLayout
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="32dp">
 
-            <!-- Outer ring -->
             <View
                 android:id="@+id/pulse_ring"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@drawable/circle_outline_orange" />
 
-            <!-- Inner icon -->
             <ImageView
                 android:layout_width="60dp"
                 android:layout_height="60dp"
@@ -143,32 +157,17 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:paddingHorizontal="40dp"
-        android:paddingBottom="48dp">
-
-        <Button
-            android:id="@+id/btn_decline"
-            android:layout_width="0dp"
-            android:layout_height="64dp"
-            android:layout_weight="1"
-            android:text="ปฏิเสธ"
-            android:textSize="18sp"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/btn_decline_fullscreen"
-            android:layout_marginEnd="10dp"
-            android:textAllCaps="false" />
+        android:paddingBottom="80dp">
 
         <Button
             android:id="@+id/btn_accept"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="64dp"
-            android:layout_weight="1"
             android:text="รับงาน"
             android:textSize="18sp"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:background="@drawable/btn_accept_fullscreen"
-            android:layout_marginStart="10dp"
             android:textAllCaps="false" />
     </LinearLayout>
 
