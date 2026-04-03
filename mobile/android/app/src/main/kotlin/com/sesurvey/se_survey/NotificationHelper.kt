@@ -1,50 +1,124 @@
 package com.sesurvey.se_survey
 
+import android.app.ActivityManager
+import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 
 object NotificationHelper {
 
-    private const val CHANNEL_ID = "incoming_call_channel_v4"
+    private const val CHANNEL_ID = "incoming_call_channel_v5"
     private var mediaPlayer: MediaPlayer? = null
 
-    fun showIncomingNotification(context: Context, id: Int, title: String, caseId: Int) {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    // ── สถานะหน้าจอ ──────────────────────────────────────────────
+    enum class ScreenState {
+        SCREEN_OFF,      // จอปิด (ดับ)
+        SCREEN_LOCKED,   // จอล็อค
+        HOME_SCREEN,     // หน้า Home (launcher)
+        APP_FOREGROUND,  // เปิดแอป SE Survey อยู่
+        OTHER_APP        // เปิดแอปอื่น
+    }
 
-        // Create notification channel (ไม่ใส่เสียงใน channel — เล่นเสียงเองผ่าน MediaPlayer)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            listOf(
-                "incoming_call_channel", "incoming_call_channel_v1",
-                "incoming_call_channel_v2", "incoming_call_channel_v3",
-                "urgent_alarm_v7",
-            ).forEach {
-                try { nm.deleteNotificationChannel(it) } catch (_: Exception) {}
-            }
+    fun getScreenState(context: Context): ScreenState {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
 
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "งานสำรวจเข้ามา",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "แจ้งเตือนงานสำรวจใหม่แบบสายเรียกเข้า"
-                setSound(null, null) // ปิดเสียง channel — ใช้ MediaPlayer แทน
-                enableVibration(true)
-                vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 500)
-                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-                setBypassDnd(true)
+        // 1. จอปิด
+        if (!pm.isInteractive) return ScreenState.SCREEN_OFF
+
+        // 2. จอล็อค
+        if (km.isKeyguardLocked) return ScreenState.SCREEN_LOCKED
+
+        // 3. แอปเราอยู่ foreground
+        if (MainActivity.isAppInForeground) return ScreenState.APP_FOREGROUND
+
+        // 4. หน้า Home หรือแอปอื่น?
+        if (isOnHomeScreen(context)) return ScreenState.HOME_SCREEN
+
+        // 5. แอปอื่น
+        return ScreenState.OTHER_APP
+    }
+
+    @Suppress("DEPRECATION")
+    private fun isOnHomeScreen(context: Context): Boolean {
+        try {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val tasks = am.getRunningTasks(1)
+            if (tasks.isNotEmpty()) {
+                val topPackage = tasks[0].topActivity?.packageName ?: return false
+
+                // เทียบกับ launcher packages ที่ติดตั้งอยู่
+                val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                val launchers = context.packageManager.queryIntentActivities(launcherIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                for (info in launchers) {
+                    if (info.activityInfo.packageName == topPackage) {
+                        return true
+                    }
+                }
             }
-            nm.createNotificationChannel(channel)
+        } catch (e: Exception) {
+            Log.e("NotifHelper", "isOnHomeScreen error: $e")
         }
+        return false
+    }
+
+    // ── แสดง notification ตามเงื่อนไข ─────────────────────────────
+    fun showIncomingNotification(context: Context, id: Int, title: String, caseId: Int,
+                                    customerName: String = "", address: String = "") {
+
+        val state = getScreenState(context)
+        Log.d("NotifHelper", "Screen state: $state")
+
+        ensureChannel(context)
+
+        when (state) {
+            // Fullscreen: จอปิด, จอล็อค, หน้า Home
+            ScreenState.SCREEN_OFF,
+            ScreenState.SCREEN_LOCKED,
+            ScreenState.HOME_SCREEN -> {
+                showFullscreen(context, id, caseId, customerName, address)
+            }
+            // Notification Bar: เปิดแอป SE Survey, เปิดแอปอื่น
+            ScreenState.APP_FOREGROUND,
+            ScreenState.OTHER_APP -> {
+                showNotificationBar(context, id, title, caseId, customerName, address)
+            }
+        }
+
+        // เล่นเสียง alarm ทุกกรณี
+        startAlarm(context)
+    }
+
+    // ── Fullscreen Activity ───────────────────────────────────────
+    private fun showFullscreen(context: Context, id: Int, caseId: Int,
+                                customerName: String, address: String) {
+        val intent = Intent(context, IncomingCallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("case_id", caseId)
+            putExtra("notification_id", id)
+            putExtra("customer_name", customerName)
+            putExtra("address", address)
+        }
+        context.startActivity(intent)
+        Log.d("NotifHelper", "Fullscreen launched: caseId=$caseId")
+    }
+
+    // ── Notification Bar ──────────────────────────────────────────
+    private fun showNotificationBar(context: Context, id: Int, title: String,
+                                     caseId: Int, customerName: String, address: String) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Custom layout
         val customView = RemoteViews(context.packageName, R.layout.notification_incoming)
@@ -74,18 +148,17 @@ object NotificationHelper {
         )
         customView.setOnClickPendingIntent(R.id.btn_accept, acceptPi)
 
-        // Full screen intent → open app
-        val fullScreenIntent = Intent(context, MainActivity::class.java).apply {
+        // Tap intent → open app
+        val tapIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("notification_action", "tap")
             putExtra("case_id", caseId)
         }
-        val fullScreenPi = PendingIntent.getActivity(
-            context, id * 2 + 2, fullScreenIntent,
+        val tapPi = PendingIntent.getActivity(
+            context, id * 2 + 2, tapIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Build notification (ไม่ใส่ setSound — ใช้ MediaPlayer แทน)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setCustomContentView(customView)
@@ -97,16 +170,41 @@ object NotificationHelper {
             .setAutoCancel(false)
             .setOngoing(true)
             .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
-            .setFullScreenIntent(fullScreenPi, true)
-            .setContentIntent(fullScreenPi)
+            .setContentIntent(tapPi)
             .build()
 
         nm.notify(id, notification)
-
-        // เล่นเสียง alarm ผ่าน MediaPlayer (ดังได้ทุกสถานะ)
-        startAlarm(context)
+        Log.d("NotifHelper", "Notification bar shown: caseId=$caseId")
     }
 
+    // ── Notification Channel ──────────────────────────────────────
+    private fun ensureChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            listOf(
+                "incoming_call_channel", "incoming_call_channel_v1",
+                "incoming_call_channel_v2", "incoming_call_channel_v3",
+                "incoming_call_channel_v4", "urgent_alarm_v7",
+            ).forEach {
+                try { nm.deleteNotificationChannel(it) } catch (_: Exception) {}
+            }
+
+            val channel = NotificationChannel(
+                CHANNEL_ID, "งานสำรวจเข้ามา", NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "แจ้งเตือนงานสำรวจใหม่"
+                setSound(null, null)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 500)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+                setBypassDnd(true)
+            }
+            nm.createNotificationChannel(channel)
+        }
+    }
+
+    // ── Alarm ─────────────────────────────────────────────────────
     fun startAlarm(context: Context) {
         if (mediaPlayer?.isPlaying == true) return
         try {
@@ -137,7 +235,6 @@ object NotificationHelper {
                 it.release()
             }
             mediaPlayer = null
-            Log.d("NotifHelper", "Alarm stopped")
         } catch (e: Exception) {
             Log.e("NotifHelper", "Alarm stop error: $e")
         }

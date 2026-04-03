@@ -87,9 +87,10 @@ class FcmService {
         debugPrint('Foreground message received: ${message.messageId}');
         final data = message.data;
 
-        // Data message type: new_survey → foreground ไม่ต้องทำอะไร (Socket.IO จัดการแล้ว)
+        // Data message type: new_survey → แสดงหน้ารับงาน
         if (data['type'] == 'new_survey') {
-          debugPrint('FCM foreground new_survey — skipped (Socket handles it)');
+          debugPrint('FCM foreground new_survey received');
+          onNewSurveyReceived?.call(data);
           return;
         }
 

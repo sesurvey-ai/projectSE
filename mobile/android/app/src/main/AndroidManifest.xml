@@ -53,6 +53,18 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Fullscreen incoming call activity — shows on lock screen -->
+        <activity
+            android:name=".IncomingCallActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:showWhenLocked="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity="com.sesurvey.se_survey.incoming"
+            android:theme="@android:style/Theme.NoTitleBar" />
+
         <!-- Native FCM service — handles notification even when app is in background -->
         <service
             android:name=".MyFirebaseMessagingService"

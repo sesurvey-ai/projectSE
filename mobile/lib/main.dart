@@ -4,13 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'config/app_router.dart';
 import 'services/api_service.dart';
-import 'services/socket_service.dart';
 import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/case_provider.dart';
 import 'config/api_config.dart';
 import 'services/notification_service.dart';
 import 'screens/incoming_survey_page.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,26 +30,30 @@ void main() async {
   // Initialize notification service
   await NotificationService().initialize();
 
+  // ขอ permission แสดง overlay ทับแอปอื่น
+  try {
+    final hasOverlay = await FlutterOverlayWindow.isPermissionGranted();
+    if (!hasOverlay) {
+      await FlutterOverlayWindow.requestPermission();
+    }
+  } catch (_) {}
+
   final apiService = ApiService();
-  final socketService = SocketService();
   final fcmService = FcmService(apiService);
 
   runApp(SeSurveyApp(
     apiService: apiService,
-    socketService: socketService,
     fcmService: fcmService,
   ));
 }
 
 class SeSurveyApp extends StatefulWidget {
   final ApiService apiService;
-  final SocketService socketService;
   final FcmService fcmService;
 
   const SeSurveyApp({
     super.key,
     required this.apiService,
-    required this.socketService,
     required this.fcmService,
   });
 
@@ -66,7 +70,6 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
     super.initState();
     _authProvider = AuthProvider(
       apiService: widget.apiService,
-      socketService: widget.socketService,
       fcmService: widget.fcmService,
     );
     _caseProvider = CaseProvider(apiService: widget.apiService);
@@ -76,15 +79,23 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
       _caseProvider.fetchMyCases();
     });
 
-    // เมื่อได้รับงานใหม่ (Socket.IO) → แสดงหน้ารับงานเต็มจอ
+    // เมื่อได้รับงานใหม่ (FCM foreground) → แสดงหน้ารับงานเต็มจอ
     _authProvider.onNewSurveyIncoming = (data) {
       _showIncomingSurveyPage(data);
     };
 
-    // เมื่อได้รับงานใหม่ (FCM foreground) → แสดงหน้ารับงานเต็มจอ
-    widget.fcmService.onNewSurveyReceived = (data) {
-      _showIncomingSurveyPage(data);
-    };
+    // ตั้ง callbacks สำหรับปุ่มรับ/ปฏิเสธบน notification bar
+    NotificationService().setCallbacks(
+      onAccept: (caseId) {
+        _caseProvider.fetchMyCases();
+      },
+      onDecline: (caseId) async {
+        try {
+          await widget.apiService.declineCase(caseId);
+        } catch (_) {}
+        _caseProvider.fetchMyCases();
+      },
+    );
 
     // Check auth state on app start
     _authProvider.checkAuth();

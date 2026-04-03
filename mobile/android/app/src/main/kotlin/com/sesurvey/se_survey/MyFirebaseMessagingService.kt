@@ -16,6 +16,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val caseIdStr = data["case_id"] ?: ""
             val caseId = caseIdStr.toIntOrNull() ?: (System.currentTimeMillis() / 1000).toInt()
             val customerName = data["customer_name"] ?: data["title"] ?: "งานสำรวจใหม่"
+            val address = data["incident_location"] ?: data["address"] ?: ""
             val title = if (customerName.startsWith("งาน")) customerName else "งานสำรวจใหม่: $customerName"
 
             NotificationHelper.showIncomingNotification(
@@ -23,6 +24,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 id = caseId,
                 title = title,
                 caseId = caseId,
+                customerName = customerName,
+                address = address,
             )
             Log.d("FCM-Native", "Incoming notification shown for caseId=$caseId")
         }

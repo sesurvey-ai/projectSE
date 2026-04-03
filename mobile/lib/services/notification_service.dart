@@ -92,16 +92,20 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
+    String? customerName,
+    String? address,
   }) async {
     final caseId = int.tryParse(payload ?? '') ?? id;
 
     try {
-      // ใช้ native Android custom notification (LINE-style)
+      // ใช้ native Android custom notification (LINE-style) + fullscreen activity
       await _nativeChannel.invokeMethod('showIncomingNotification', {
         'id': id,
         'title': title,
         'body': body,
         'caseId': caseId,
+        'customerName': customerName ?? title,
+        'address': address ?? body,
       });
       debugPrint('[Notification] Native incoming notification shown: id=$id');
     } catch (e) {

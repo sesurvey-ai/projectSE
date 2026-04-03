@@ -7,6 +7,10 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
 
+    companion object {
+        var isAppInForeground = false
+    }
+
     private val CHANNEL = "com.sesurvey.se_survey/notification"
     private var methodChannel: MethodChannel? = null
 
@@ -20,7 +24,9 @@ class MainActivity : FlutterActivity() {
                     val id = call.argument<Int>("id") ?: 0
                     val title = call.argument<String>("title") ?: ""
                     val caseId = call.argument<Int>("caseId") ?: 0
-                    NotificationHelper.showIncomingNotification(this, id, title, caseId)
+                    val customerName = call.argument<String>("customerName") ?: ""
+                    val address = call.argument<String>("address") ?: ""
+                    NotificationHelper.showIncomingNotification(this, id, title, caseId, customerName, address)
                     result.success(true)
                 }
                 "cancelNotification" -> {
@@ -33,13 +39,19 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
+    override fun onResume() {
+        super.onResume()
+        isAppInForeground = true
         handleNotificationAction(intent)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onPause() {
+        super.onPause()
+        isAppInForeground = false
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
         handleNotificationAction(intent)
     }
 
@@ -47,7 +59,6 @@ class MainActivity : FlutterActivity() {
         val action = intent?.getStringExtra("notification_action") ?: return
         val caseId = intent.getIntExtra("case_id", 0)
 
-        // Clear the extras so we don't re-process
         intent.removeExtra("notification_action")
         intent.removeExtra("case_id")
 
