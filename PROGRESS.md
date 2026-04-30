@@ -1,6 +1,6 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 2 เมษายน 2026 (v1.5.27)
+**อัพเดทล่าสุด:** 3 เมษายน 2026 (v1.5.34)
 
 ---
 
@@ -109,7 +109,7 @@
 
 - [x] API Service (Dio + JWT interceptor + timeout 30s)
 - [x] Auth Service (login, logout, token storage ด้วย SharedPreferences)
-- [x] Socket Service (on-demand GPS: listen `request_location` → ส่ง GPS กลับ + listen `case_assigned` → แสดง notification)
+- [x] ~~Socket Service~~ — ลบแล้ว (v1.5.30) เปลี่ยนเป็น FCM อย่างเดียว
 - [x] Location Service (Geolocator: high accuracy, permission handling)
 - [x] FCM Service (Firebase Messaging จริง + background handler + foreground listener + token refresh)
 
@@ -203,7 +203,7 @@
 - [x] ทดสอบ End-to-End (API): pending → assigned → surveyed → reviewed ✅ — ผ่านครบทุก status transition
 - [ ] ทดสอบ End-to-End (UI): ทดสอบผ่าน mobile + web จริง
 - [ ] ทดสอบ File Upload จาก mobile → backend → แสดงใน web
-- [ ] ทดสอบ Push Notification (FCM) บนอุปกรณ์จริง
+- [x] ทดสอบ Push Notification (FCM) บนอุปกรณ์จริง ✅ — Samsung A36 (Android 16) ผ่านทุกสถานะ
 - [ ] แก้ Bug และปรับปรุงประสิทธิภาพ
 
 ### Bug ที่พบและแก้ไขแล้ว (20 มี.ค. 2026)
@@ -536,44 +536,73 @@
 - [x] หน้ารายละเอียดเคส: ค่าใช้จ่าย 13 fields แสดงข้อมูลเดิมจาก DB (`defaultValue`)
 - [x] กรอกยอดเงิน/จำนวนครั้ง → กดบันทึก → เปิดใหม่ข้อมูลแสดงกลับมาครบ
 
-### ระบบแจ้งเตือนแบบดังไม่หยุด — Insistent Notification (2 เม.ย. 2026 — v1.5.26)
+### ระบบแจ้งเตือน LINE-style + Fullscreen + ลบ Socket.IO (3 เม.ย. 2026 — v1.5.28 ถึง v1.5.33)
 
-**ฟีเจอร์หลัก: เมื่อมอบหมายงานใหม่ → มือถือเสียง alarm ดังวนซ้ำ + แสดงหน้ารับงานเต็มจอ จนกว่าจะกดรับ/ปฏิเสธ**
+**Notification Bar แบบ LINE สายเรียกเข้า (v1.5.28):**
+- [x] Custom notification layout ด้วย native Android `RemoteViews`
+- [x] ปุ่ม "รับงาน" สีเขียวมุมมน ขนาดใหญ่
+- [x] `BroadcastReceiver` รับ action จากปุ่มบน notification
+- [x] `MethodChannel` เชื่อม Flutter ↔ Native Android
 
-**Mobile — ไฟล์ใหม่:**
-- [x] `notification_service.dart` — urgent notification channel + AudioPlayer เล่นเสียง alarm วนซ้ำ
-- [x] `incoming_survey_page.dart` — หน้ารับงานเต็มจอ (พื้นหลังสีเข้ม, ปุ่มรับ/ปฏิเสธ, pulse animation)
-- [x] `alarm_loop.wav` — เสียง alarm 3 วินาที (เล่นวนซ้ำผ่าน AudioPlayer)
+**Notification ทำงานทุกสถานะแอป (v1.5.29):**
+- [x] สร้าง `MyFirebaseMessagingService` (native Kotlin) — รับ FCM message โดยตรง
+- [x] สร้าง `NotificationHelper` — shared logic สร้าง notification
+- [x] เพิ่ม native `MediaPlayer` เล่นเสียง alarm (USAGE_ALARM, looping)
+- [x] เสียงดังได้ทุกสถานะ: foreground, background, จอล็อค, จอปิด
 
-**Mobile — แก้ไข:**
-- [x] `fcm_service.dart` — รับ FCM data message `type: new_survey` → trigger urgent notification (background)
-- [x] `auth_provider.dart` — Socket.IO `case_assigned` → trigger เสียง alarm + แสดงหน้ารับงาน (foreground)
-- [x] `main.dart` — initialize NotificationService + เชื่อม IncomingSurveyPage ผ่าน `rootNavigatorKey`
-- [x] `app_router.dart` — export `rootNavigatorKey` ให้ main.dart ใช้แสดงหน้ารับงาน
-- [x] `AndroidManifest.xml` — เพิ่ม `USE_FULL_SCREEN_INTENT` + lock screen flags
+**ลบ Socket.IO → FCM อย่างเดียว (v1.5.30):**
+- [x] ลบ `socket_service.dart` + dependency `socket_io_client`
+- [x] FCM foreground: `onNewSurveyReceived` callback แทน Socket.IO
+- [x] FCM background: `MyFirebaseMessagingService` (native) จัดการ
+- [x] ลดความซับซ้อน — ไม่ต้องจัดการ duplicate ระหว่าง Socket.IO กับ FCM
 
-**Backend — แก้ไข:**
-- [x] `fcm.service.ts` — เพิ่ม `sendUrgentSurvey()` ส่ง data-only message (ไม่ใช่ notification message)
-- [x] `case.service.ts` — assign case เรียก `sendUrgentSurvey` แทน `sendNotification`
+**Fullscreen Incoming Call Activity (v1.5.30):**
+- [x] `IncomingCallActivity.kt` — native Android Activity เต็มจอ
+- [x] แสดงบน lock screen + เปิดจออัตโนมัติ (`showWhenLocked`, `turnScreenOn`)
+- [x] กด back ไม่ได้ — ต้องกดปุ่มรับงานเท่านั้น
+- [x] Layout: icon + "งานสำรวจใหม่" + card ลูกค้า/สถานที่ + ปุ่มรับงาน
 
-**Dependencies เพิ่ม:**
-- [x] `audioplayers: ^6.1.0` — เล่นเสียง alarm วนซ้ำ (เชื่อถือได้กว่า notification channel sound)
+**เงื่อนไขแสดงแจ้งเตือนตามสถานะจอ (v1.5.30-v1.5.31):**
+- [x] ตรวจจับ 5 สถานะ: จอปิด, จอล็อค, หน้า Home, แอปเราอยู่ foreground, แอปอื่น
+- [x] จอปิด / จอล็อค / หน้า Home / แอปอื่น → **Fullscreen**
+- [x] เปิดแอป SE Survey → **Notification Bar**
+- [x] ตรวจจับ Home screen ด้วย `onUserLeaveHint()` + `SharedPreferences` (รอด process death)
 
-**พฤติกรรม:**
-| สถานการณ์ | เสียง alarm | หน้ารับงาน |
-|---|---|---|
-| แอปเปิดอยู่ (foreground) | Socket.IO → AudioPlayer ✅ | Socket.IO → IncomingSurveyPage ✅ |
-| แอปปิด/จอดับ (background) | FCM → AudioPlayer ✅ | FCM → notification bar ✅ |
-| กดรับงาน/ปฏิเสธ | หยุดเสียงทันที ✅ | ปิดหน้า ✅ |
+**ปุ่มปิดเสียง + ลบปุ่มปฏิเสธ (v1.5.32-v1.5.33):**
+- [x] เพิ่มปุ่ม 🔇 ปิดเสียง — Fullscreen (มุมขวาบน) + Notification Bar (ข้างชื่อ)
+- [x] ลบปุ่ม "ปฏิเสธ" ออกทั้ง 2 หน้า — เหลือแค่ปุ่ม "รับงาน"
+- [x] เปลี่ยนชื่อปุ่มจาก "รับสาย" เป็น "รับงาน" บน notification bar
 
-### ปฏิเสธงาน + Auto Refresh (2 เม.ย. 2026 — v1.5.27)
+**ไฟล์ Native Android ที่สร้างใหม่:**
 
-**Backend — API ใหม่:**
-- [x] `POST /api/cases/:id/decline` — surveyor ปฏิเสธงาน → ถอน `assigned_to` = null, status กลับเป็น `pending`
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `NotificationHelper.kt` | Shared logic: ตรวจสถานะจอ + สร้าง notification/fullscreen + alarm |
+| `MyFirebaseMessagingService.kt` | รับ FCM push → แสดง notification ทุกสถานะ |
+| `IncomingCallActivity.kt` | หน้า fullscreen เต็มจอ (แสดงบน lock screen) |
+| `NotificationActionReceiver.kt` | รับ action จากปุ่มบน notification (รับงาน/ปิดเสียง) |
+| `notification_incoming.xml` | Layout notification bar (ปุ่มรับงาน + ปิดเสียง) |
+| `activity_incoming_call.xml` | Layout fullscreen (icon + info + ปุ่มรับงาน + ปิดเสียง) |
 
-**Mobile:**
-- [x] กดปฏิเสธ → เรียก API ถอนงาน → งานหายจาก "งานของฉัน"
-- [x] หน้า "งานของฉัน" auto refresh ทุกครั้งที่แสดง (กลับจากหน้าอื่น, กดรับ/ปฏิเสธ)
+### แก้ไขฟีเจอร์เรียกพิกัด GPS — เปลี่ยนจาก Socket.IO เป็น FCM + REST API (3 เม.ย. 2026 — v1.5.34)
+
+**ปัญหา:** หลังลบ Socket.IO จาก mobile (v1.5.30) ฟีเจอร์ `request_location` ใช้งานไม่ได้
+**แก้ไข:** ใช้ FCM push แทน Socket.IO + มือถือส่ง GPS กลับผ่าน REST API
+
+**Flow ใหม่:**
+```
+Web (request_location) → Backend → FCM push → มือถือ → อ่าน GPS → POST /api/users/me/location → Backend → Socket.IO (location_update) → Web แสดงแผนที่
+```
+
+**Backend:**
+- [x] เพิ่ม `POST /api/users/me/location` — รับ GPS จากมือถือ + emit `location_update` ผ่าน Socket.IO ไปหา Web
+- [x] แก้ `locationHandler.ts` — เมื่อรับ `request_location` ส่ง FCM `sendSilentPush` ไปหา surveyor ทุกคน
+
+**Mobile (Native Android):**
+- [x] สร้าง `LocationHelper.kt` — อ่าน GPS ด้วย `LocationManager` + POST ไป backend
+- [x] แก้ `MyFirebaseMessagingService.kt` — เพิ่ม handler `type: request_location` → อ่าน GPS → ส่งกลับอัตโนมัติ
+
+**Web:** ไม่ต้องแก้ไข — ยังใช้ Socket.IO `request_location` + listen `location_update` เหมือนเดิม
 
 ---
 
