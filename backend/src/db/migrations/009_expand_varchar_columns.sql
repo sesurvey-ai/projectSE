@@ -11,7 +11,6 @@ ALTER TABLE survey_reports ALTER COLUMN acc_followup TYPE VARCHAR(100);
 ALTER TABLE survey_reports ALTER COLUMN driver_phone TYPE VARCHAR(50);
 ALTER TABLE survey_reports ALTER COLUMN reporter_phone TYPE VARCHAR(50);
 ALTER TABLE survey_reports ALTER COLUMN surveyor_phone TYPE VARCHAR(50);
-ALTER TABLE survey_reports ALTER COLUMN acc_surveyor_phone TYPE VARCHAR(50);
 ALTER TABLE survey_reports ALTER COLUMN driver_id_card TYPE VARCHAR(50);
 ALTER TABLE survey_reports ALTER COLUMN driver_title TYPE VARCHAR(50);
 ALTER TABLE survey_reports ALTER COLUMN driver_birthdate TYPE VARCHAR(50);

@@ -1,9 +1,12 @@
 -- SE SURVEY: Test Data from Aioi Bangkok Insurance Claim Form
 -- Source: แบบรับแจ้งอุบัติเหตุยานยนต์ ไอโออิ กรุงเทพ ประกันภัย
 -- Claim No: 2026013124026 | Date: 23/03/2026
+-- NOTE: columns aligned to the actual schema —
+--   cases has no `insurance_company`; survey_reports has no
+--   survey_company*/insurance_branch/car_lost/driver_first_name/driver_last_name.
 
 -- Step 1: Insert case
-INSERT INTO cases (customer_name, incident_location, incident_lat, incident_lng, assigned_to, created_by, status, insurance_company)
+INSERT INTO cases (customer_name, incident_location, incident_lat, incident_lng, assigned_to, created_by, status)
 VALUES (
   'บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง จำกัด',
   'บริษัท เช็ด แอนด์ เสิร์ฟ แคทเทอริง ซ.ศูนย์วิจัย 8 แขวงบางกะปิ เขตห้วยขวาง กรุงเทพฯ',
@@ -11,26 +14,19 @@ VALUES (
   100.5317347,
   1,  -- assigned_to: survey01
   3,  -- created_by: callcenter01
-  'assigned',
-  'ไอโออิกรุงเทพประกันภัย'
+  'assigned'
 );
 
--- Step 2: Insert survey report (uses currval to get the case_id)
+-- Step 2: Insert survey report (uses currval to get the case_id from the same session)
 INSERT INTO survey_reports (
   case_id,
-  -- Survey Company
-  survey_company,
-  survey_company_address,
-  survey_company_phone,
   -- Claim Info
   claim_type,
   claim_no,
   claim_ref_no,
   insurance_company,
-  insurance_branch,
   survey_job_no,
   damage_level,
-  car_lost,
   -- Policy Info (ภาคสมัครใจ)
   policy_no,
   policy_type,
@@ -50,8 +46,6 @@ INSERT INTO survey_reports (
   engine_no,
   car_reg_year,
   -- Driver Info
-  driver_first_name,
-  driver_last_name,
   driver_name,
   driver_phone,
   -- Accident Details
@@ -70,19 +64,13 @@ INSERT INTO survey_reports (
   notes
 ) VALUES (
   currval(pg_get_serial_sequence('cases', 'id')),
-  -- Survey Company
-  'บริษัท เอลอี เซอร์เวย์ แอนด์ คอนซัลแทนท์ จำกัด',
-  '43 ชั้นที่ ซ.ลาดพร้าว138(มีสุข) ถ.ลาดพร้าว แขวงคลองจั่น เขตบางกะปิ กรุงเทพฯ 102',
-  NULL,
   -- Claim Info
   'F',                          -- เคลมสด (Fresh)
   '2026013124026',              -- เลขที่เคลม
   '2026051556',                 -- เลขรับแจ้ง
   'ไอโออิกรุงเทพประกันภัย',
-  'กรุงเทพ',
   'SEABI-210260302833',         -- survey job no
   NULL,
-  false,
   -- Policy Info (ภาคสมัครใจ)
   '125013115911',               -- เลขกรมธรรม์ภาคสมัครใจ
   '1',                          -- ประเภทกรมธรรม์ ชั้น 1
@@ -102,8 +90,6 @@ INSERT INTO survey_reports (
   '1GD5396358',
   '2023',                       -- รถปี 2023
   -- Driver Info
-  'สรธัทร',
-  'พูนสวัสดิ์',
   'สรธัทร พูนสวัสดิ์',
   '0993166888',
   -- Accident Details
@@ -114,7 +100,7 @@ INSERT INTO survey_reports (
   'เขตห้วยขวาง',
   'ชนวัสดุ/สิ่งของ เช่น เสา,กำแพง,ประตู ฯลฯ',
   'เฉี่ยวชนวัสดุ',
-  'ป.เปิดประตูฝาท้ายไว้แล้วถอยชนเสา มีแจ้งเพิ่ม\nรถประกันประเภท 1 ซ่อมห้าง ไม่มี DD ไม่ระบุคนขับ\nรถปี 2023 ต่ออายุปีที่ 3',
+  'ป.เปิดประตูฝาท้ายไว้แล้วถอยชนเสา มีแจ้งเพิ่ม รถประกันประเภท 1 ซ่อมห้าง ไม่มี DD ไม่ระบุคนขับ รถปี 2023 ต่ออายุปีที่ 3',
   'รถประกันผิด',
   'จินดา ชูศิลปกิจเจริญ (ABI)',
   '24/03/2569|11:32',           -- วันที่รับแจ้ง
