@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+
+// ── Design tokens (from "SE Survey · Login Redesign" — Style B Minimal) ──
+const Color _accent = Color(0xFF1D5BE0);
+const Color _ink = Color(0xFF1A2236);
+const Color _label = Color(0xFF6B7488);
+const Color _muted = Color(0xFFAEB5C6);
+const Color _line = Color(0xFFE6E9F0);
+const Color _errorRed = Color(0xFFDC3848);
+const Color _toggleOff = Color(0xFFD4D9E3);
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,10 +20,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _remember = true;
+  String? _localError;
 
   @override
   void dispose() {
@@ -23,151 +34,356 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    final auth = context.read<AuthProvider>();
+    if (auth.isLoading) return;
 
-    final authProvider = context.read<AuthProvider>();
-    await authProvider.login(
+    if (_usernameController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      setState(() => _localError = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบถ้วน');
+      return;
+    }
+    setState(() => _localError = null);
+    await auth.login(
       _usernameController.text.trim(),
       _passwordController.text,
     );
   }
 
+  void _clearError() {
+    if (_localError != null) setState(() => _localError = null);
+  }
+
+  TextStyle _head(double size, {FontWeight weight = FontWeight.w700, Color? color}) =>
+      GoogleFonts.anuphan(fontSize: size, fontWeight: weight, color: color ?? _ink);
+
+  TextStyle _body(double size, {FontWeight weight = FontWeight.w400, Color? color}) =>
+      GoogleFonts.notoSansThai(fontSize: size, fontWeight: weight, color: color ?? _ink);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(
-                    Icons.assignment,
-                    size: 80,
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'SE Survey',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'ระบบสำรวจภาคสนาม',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'ชื่อผู้ใช้',
-                      prefixIcon: Icon(Icons.person),
-                      border: OutlineInputBorder(),
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'กรุณากรอกชื่อผู้ใช้';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'รหัสผ่าน',
-                      prefixIcon: const Icon(Icons.lock),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(30, 40, 30, 30),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Logo (real SE mark, top-left)
+                        Image.asset(
+                          'assets/se-mark.png',
+                          width: 118,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _handleLogin(),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกรหัสผ่าน';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Consumer<AuthProvider>(
-                    builder: (context, auth, _) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (auth.error != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 30),
+                        // Heading
+                        Text('เข้าสู่ระบบ', style: _head(28)),
+                        const SizedBox(height: 42),
+                        // Fields
+                        _MinimalField(
+                          label: 'ชื่อผู้ใช้',
+                          icon: Icons.person_outline_rounded,
+                          controller: _usernameController,
+                          placeholder: 'กรอกชื่อผู้ใช้',
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => _clearError(),
+                          bodyStyle: _body(16),
+                          labelStyle: _body(13, weight: FontWeight.w500, color: _label),
+                        ),
+                        const SizedBox(height: 26),
+                        _MinimalField(
+                          label: 'รหัสผ่าน',
+                          icon: Icons.lock_outline_rounded,
+                          controller: _passwordController,
+                          placeholder: 'กรอกรหัสผ่าน',
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          onChanged: (_) => _clearError(),
+                          onSubmitted: (_) => _handleLogin(),
+                          bodyStyle: _body(16),
+                          labelStyle: _body(13, weight: FontWeight.w500, color: _label),
+                          trailing: GestureDetector(
+                            onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 20,
+                                color: const Color(0xFF9AA3B8),
                               ),
-                              child: Text(
-                                auth.error!,
-                                style: TextStyle(color: Colors.red.shade700),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          SizedBox(
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: auth.isLoading ? null : _handleLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: auth.isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'เข้าสู่ระบบ',
-                                      style: TextStyle(fontSize: 16),
-                                    ),
                             ),
                           ),
-                        ],
-                      );
-                    },
+                        ),
+                        // Error note
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) {
+                            final msg = _localError ?? auth.error;
+                            if (msg == null) return const SizedBox(height: 26);
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 18),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline,
+                                      size: 16, color: _errorRed),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(msg,
+                                        style: _body(13, color: _errorRed)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 26),
+                        // Remember + forgot
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                _ToggleSwitch(
+                                  value: _remember,
+                                  onChanged: (v) => setState(() => _remember = v),
+                                ),
+                                const SizedBox(width: 10),
+                                Text('จำฉันไว้',
+                                    style: _body(14, color: const Color(0xFF475067))),
+                              ],
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน'),
+                                  ),
+                                );
+                              },
+                              child: Text('ลืมรหัสผ่าน?',
+                                  style: _body(14,
+                                      weight: FontWeight.w500, color: _accent)),
+                            ),
+                          ],
+                        ),
+                        // Bottom: button + version
+                        const Spacer(),
+                        const SizedBox(height: 34),
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) =>
+                              _primaryButton(auth.isLoading),
+                        ),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Text('เวอร์ชัน 1.0.0',
+                              style: _body(12.5, color: _muted)),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _primaryButton(bool loading) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: _accent.withValues(alpha: 0.33),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: loading ? null : _handleLogin,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _accent,
+            disabledBackgroundColor: _accent.withValues(alpha: 0.92),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: loading
+              ? const SizedBox(
+                  width: 21,
+                  height: 21,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.6,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('เข้าสู่ระบบ',
+                        style: _head(16, weight: FontWeight.w600, color: Colors.white)),
+                    const SizedBox(width: 9),
+                    const Icon(Icons.arrow_forward_rounded, size: 18),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Underline field with focus-aware accent ──
+class _MinimalField extends StatefulWidget {
+  const _MinimalField({
+    required this.label,
+    required this.icon,
+    required this.controller,
+    required this.placeholder,
+    required this.bodyStyle,
+    required this.labelStyle,
+    this.obscureText = false,
+    this.trailing,
+    this.onChanged,
+    this.onSubmitted,
+    this.textInputAction,
+  });
+
+  final String label;
+  final IconData icon;
+  final TextEditingController controller;
+  final String placeholder;
+  final TextStyle bodyStyle;
+  final TextStyle labelStyle;
+  final bool obscureText;
+  final Widget? trailing;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction? textInputAction;
+
+  @override
+  State<_MinimalField> createState() => _MinimalFieldState();
+}
+
+class _MinimalFieldState extends State<_MinimalField> {
+  final FocusNode _focusNode = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus != _focused) {
+        setState(() => _focused = _focusNode.hasFocus);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = _focused ? _accent : _line;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label, style: widget.labelStyle),
+        const SizedBox(height: 9),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.only(left: 2, right: 2, bottom: 11),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: activeColor, width: 2),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon,
+                  size: 19, color: _focused ? _accent : _muted),
+              const SizedBox(width: 11),
+              Expanded(
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: _focusNode,
+                  obscureText: widget.obscureText,
+                  onChanged: widget.onChanged,
+                  onSubmitted: widget.onSubmitted,
+                  textInputAction: widget.textInputAction,
+                  cursorColor: _accent,
+                  style: widget.bodyStyle,
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    hintText: widget.placeholder,
+                    hintStyle: widget.bodyStyle.copyWith(color: const Color(0xFFAAB2C4)),
+                  ),
+                ),
+              ),
+              if (widget.trailing != null) widget.trailing!,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── iOS-style toggle (42×24) ──
+class _ToggleSwitch extends StatelessWidget {
+  const _ToggleSwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 42,
+        height: 24,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: value ? _accent : _toggleOff,
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
           ),
         ),
