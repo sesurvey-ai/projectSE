@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
+import '../screens/call_log_screen.dart';
 import '../screens/case_list_screen.dart';
 import '../screens/case_detail_screen.dart';
 import '../screens/survey_form_screen.dart';
@@ -36,6 +37,10 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/home',
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/calllog',
+        builder: (context, state) => const CallLogScreen(),
       ),
       GoRoute(
         path: '/cases',

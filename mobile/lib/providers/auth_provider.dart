@@ -4,6 +4,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/fcm_service.dart';
 import '../services/notification_service.dart';
+import '../services/consult_background.dart';
+import '../services/consult_sync.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
@@ -43,6 +45,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (_token != null) {
         await _initializeFcm();
+        _initConsultSync();
       }
     } catch (e) {
       _token = null;
@@ -84,6 +87,13 @@ class AuthProvider extends ChangeNotifier {
     await _fcmService.initialize();
   }
 
+  // ตั้ง background sync ประวัติการโทรปรึกษาหัวหน้า (เฉพาะ surveyor) + sync รอบแรกทันที
+  void _initConsultSync() {
+    if (_user?.role != 'surveyor') return;
+    ConsultBackground.schedule();
+    runConsultSync().then((_) {}).catchError((_) {});
+  }
+
   Future<bool> login(String username, String password) async {
     _isLoading = true;
     _error = null;
@@ -95,6 +105,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (_token != null) {
         await _initializeFcm();
+        _initConsultSync();
       }
 
       _isLoading = false;
@@ -109,6 +120,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await ConsultBackground.cancel();
     await _authService.logout();
     _user = null;
     _token = null;

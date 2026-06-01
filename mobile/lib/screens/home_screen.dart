@@ -124,6 +124,13 @@ class HomeScreen extends StatelessWidget {
               subtitle: 'ดูงานสำรวจที่ได้รับมอบหมาย',
               onTap: () => context.go('/cases'),
             ),
+            const SizedBox(height: 12),
+            _menuCard(
+              icon: Icons.phone_in_talk_outlined,
+              title: 'Call Log',
+              subtitle: 'ประวัติการโทรบนเครื่อง',
+              onTap: () => context.push('/calllog'),
+            ),
           ],
         ),
       ),

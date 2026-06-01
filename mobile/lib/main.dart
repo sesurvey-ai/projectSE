@@ -9,6 +9,7 @@ import 'providers/auth_provider.dart';
 import 'providers/case_provider.dart';
 import 'config/api_config.dart';
 import 'services/notification_service.dart';
+import 'services/consult_background.dart';
 import 'screens/incoming_survey_page.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
@@ -29,6 +30,13 @@ void main() async {
 
   // Initialize notification service
   await NotificationService().initialize();
+
+  // Initialize background sync (call consult log)
+  try {
+    await ConsultBackground.init();
+  } catch (e) {
+    debugPrint('ConsultBackground init failed: $e');
+  }
 
   // ขอ permission แสดง overlay ทับแอปอื่น
   try {

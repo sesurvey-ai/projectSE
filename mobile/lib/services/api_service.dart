@@ -144,4 +144,15 @@ class ApiService {
       'fcm_token': token,
     });
   }
+
+  // Call consult (โทรปรึกษาหัวหน้า)
+  Future<List<dynamic>> getConsultSupervisors() async {
+    final r = await _dio.get('/api/consult/supervisors');
+    return (r.data['data']?['supervisors'] as List?) ?? [];
+  }
+
+  Future<Map<String, dynamic>> syncConsult(List<Map<String, dynamic>> items) async {
+    final r = await _dio.post('/api/consult/sync', data: {'items': items});
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
 }
