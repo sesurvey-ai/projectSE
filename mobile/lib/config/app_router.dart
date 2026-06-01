@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
+import '../screens/home_screen.dart';
 import '../screens/case_list_screen.dart';
 import '../screens/case_detail_screen.dart';
 import '../screens/survey_form_screen.dart';
@@ -11,7 +12,7 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/cases',
+    initialLocation: '/home',
     refreshListenable: authProvider,
     redirect: (BuildContext context, GoRouterState state) {
       final isLoggedIn = authProvider.isLoggedIn;
@@ -22,7 +23,7 @@ GoRouter createRouter(AuthProvider authProvider) {
       }
 
       if (isLoggedIn && isLoggingIn) {
-        return '/cases';
+        return '/home';
       }
 
       return null;
@@ -31,6 +32,10 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: '/cases',

@@ -36,6 +36,11 @@ class _CaseListScreenState extends State<CaseListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'หน้าหลัก',
+          onPressed: () => context.go('/home'),
+        ),
         title: const Text('งานของฉัน'),
         actions: [
           IconButton(
