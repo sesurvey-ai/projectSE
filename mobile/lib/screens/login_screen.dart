@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -51,11 +50,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_localError != null) setState(() => _localError = null);
   }
 
+  // ใช้ font default ของ Flutter (เหมือนหน้าอื่นทั้งแอป) — กำหนดแค่ขนาด/น้ำหนัก/สี
   TextStyle _head(double size, {FontWeight weight = FontWeight.w700, Color? color}) =>
-      GoogleFonts.anuphan(fontSize: size, fontWeight: weight, color: color ?? _ink);
+      TextStyle(fontSize: size, fontWeight: weight, color: color ?? _ink);
 
   TextStyle _body(double size, {FontWeight weight = FontWeight.w400, Color? color}) =>
-      GoogleFonts.notoSansThai(fontSize: size, fontWeight: weight, color: color ?? _ink);
+      TextStyle(fontSize: size, fontWeight: weight, color: color ?? _ink);
 
   @override
   Widget build(BuildContext context) {
