@@ -155,4 +155,46 @@ class ApiService {
     final r = await _dio.post('/api/consult/sync', data: {'items': items});
     return (r.data['data'] as Map<String, dynamic>?) ?? {};
   }
+
+  // ── Leave (ใบลา) ──
+  Future<Map<String, dynamic>> createLeave(Map<String, dynamic> data) async {
+    final r = await _dio.post('/api/leave', data: data);
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<List<dynamic>> getMyLeaves() async {
+    final r = await _dio.get('/api/leave/mine');
+    return (r.data['data']?['requests'] as List?) ?? [];
+  }
+
+  // ── Attendance (ลงเวลาเข้า/ออกงาน) ──
+  Future<Map<String, dynamic>?> getTodayAttendance() async {
+    final r = await _dio.get('/api/attendance/today');
+    return r.data['data']?['record'] as Map<String, dynamic>?;
+  }
+
+  Future<Map<String, dynamic>> checkInAttendance({double? lat, double? lng, String? photoPath}) async {
+    // multipart: รูปถ่าย + พิกัด (ส่งเป็น field string ให้ backend แปลงเป็น number)
+    final form = FormData();
+    if (lat != null) form.fields.add(MapEntry('lat', lat.toString()));
+    if (lng != null) form.fields.add(MapEntry('lng', lng.toString()));
+    if (photoPath != null) {
+      form.files.add(MapEntry('photo', await MultipartFile.fromFile(photoPath, filename: 'checkin.jpg')));
+    }
+    final r = await _dio.post('/api/attendance/check-in', data: form);
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<Map<String, dynamic>> checkOutAttendance({double? lat, double? lng}) async {
+    final r = await _dio.post('/api/attendance/check-out', data: {
+      'lat': ?lat,
+      'lng': ?lng,
+    });
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<List<dynamic>> getMyAttendance() async {
+    final r = await _dio.get('/api/attendance/mine');
+    return (r.data['data']?['records'] as List?) ?? [];
+  }
 }

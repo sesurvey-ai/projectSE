@@ -126,6 +126,20 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _menuCard(
+              icon: Icons.access_time_rounded,
+              title: 'บันทึกเวลา เข้า / ออก',
+              subtitle: 'ลงเวลาเข้า–ออกงานพร้อมพิกัด',
+              onTap: () => context.push('/attendance'),
+            ),
+            const SizedBox(height: 12),
+            _menuCard(
+              icon: Icons.event_busy_outlined,
+              title: 'ลางาน',
+              subtitle: 'ยื่นใบลาและดูสถานะอนุมัติ',
+              onTap: () => context.push('/leave'),
+            ),
+            const SizedBox(height: 12),
+            _menuCard(
               icon: Icons.phone_in_talk_outlined,
               title: 'Call Log',
               subtitle: 'ประวัติการโทรบนเครื่อง',

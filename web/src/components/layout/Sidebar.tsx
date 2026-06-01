@@ -12,6 +12,8 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'จัดการเคส', href: '/admin/cases' },
     { label: 'จัดการรีวิว', href: '/admin/reviews' },
     { label: 'รายงานการโทร', href: '/admin/call-consult' },
+    { label: 'ใบลาพนักงาน', href: '/admin/leave' },
+    { label: 'เวลาเข้า–ออกงาน', href: '/admin/attendance' },
   ],
   callcenter: [
     { label: 'หน้าหลัก', href: '/callcenter' },

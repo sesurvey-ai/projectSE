@@ -7,6 +7,8 @@ import uploadRoutes from './upload.routes';
 import adminRoutes from './admin.routes';
 import ocrRoutes from './ocr.routes';
 import consultRoutes from './consult.routes';
+import leaveRoutes from './leave.routes';
+import attendanceRoutes from './attendance.routes';
 
 const router = Router();
 
@@ -18,5 +20,7 @@ router.use('/upload', uploadRoutes);
 router.use('/admin', adminRoutes);
 router.use('/ocr', ocrRoutes);
 router.use('/consult', consultRoutes);
+router.use('/leave', leaveRoutes);
+router.use('/attendance', attendanceRoutes);
 
 export default router;

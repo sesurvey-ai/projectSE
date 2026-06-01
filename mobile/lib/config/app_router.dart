@@ -4,6 +4,8 @@ import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/call_log_screen.dart';
+import '../screens/leave_screen.dart';
+import '../screens/attendance_screen.dart';
 import '../screens/case_list_screen.dart';
 import '../screens/case_detail_screen.dart';
 import '../screens/survey_form_screen.dart';
@@ -41,6 +43,14 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/calllog',
         builder: (context, state) => const CallLogScreen(),
+      ),
+      GoRoute(
+        path: '/leave',
+        builder: (context, state) => const LeaveScreen(),
+      ),
+      GoRoute(
+        path: '/attendance',
+        builder: (context, state) => const AttendanceScreen(),
       ),
       GoRoute(
         path: '/cases',
