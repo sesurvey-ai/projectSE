@@ -115,4 +115,14 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  /// เรียกเมื่อ API ตอบ 401 (token หมดอายุ) → เคลียร์ session + ให้ router เด้งกลับหน้า login
+  Future<void> handleSessionExpired() async {
+    if (_token == null) return; // ออกจากระบบไปแล้ว / กัน 401 ซ้อนหลายตัว
+    _token = null;
+    _user = null;
+    _error = 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง';
+    notifyListeners();
+    await _authService.logout(); // ล้าง token ในเครื่อง
+  }
 }

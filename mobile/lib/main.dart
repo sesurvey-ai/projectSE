@@ -74,6 +74,9 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
     );
     _caseProvider = CaseProvider(apiService: widget.apiService);
 
+    // token หมดอายุ (401) → เคลียร์ session แล้วให้ router เด้งกลับหน้า login
+    widget.apiService.onUnauthorized = () => _authProvider.handleSessionExpired();
+
     // Auto-refresh case list when a new case is assigned
     _authProvider.setOnCaseAssignedRefresh(() {
       _caseProvider.fetchMyCases();

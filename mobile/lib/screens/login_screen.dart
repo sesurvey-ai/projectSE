@@ -10,7 +10,6 @@ const Color _label = Color(0xFF6B7488);
 const Color _muted = Color(0xFFAEB5C6);
 const Color _line = Color(0xFFE6E9F0);
 const Color _errorRed = Color(0xFFDC3848);
-const Color _toggleOff = Color(0xFFD4D9E3);
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _remember = true;
   String? _localError;
 
   @override
@@ -145,34 +143,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 26),
-                        // Remember + forgot
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                _ToggleSwitch(
-                                  value: _remember,
-                                  onChanged: (v) => setState(() => _remember = v),
+                        // Forgot password (right-aligned)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน'),
                                 ),
-                                const SizedBox(width: 10),
-                                Text('จำฉันไว้',
-                                    style: _body(14, color: const Color(0xFF475067))),
-                              ],
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน'),
-                                  ),
-                                );
-                              },
-                              child: Text('ลืมรหัสผ่าน?',
-                                  style: _body(14,
-                                      weight: FontWeight.w500, color: _accent)),
-                            ),
-                          ],
+                              );
+                            },
+                            child: Text('ลืมรหัสผ่าน?',
+                                style: _body(14,
+                                    weight: FontWeight.w500, color: _accent)),
+                          ),
                         ),
                         // Bottom: button + version
                         const Spacer(),
@@ -344,50 +329,6 @@ class _MinimalFieldState extends State<_MinimalField> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── iOS-style toggle (42×24) ──
-class _ToggleSwitch extends StatelessWidget {
-  const _ToggleSwitch({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 42,
-        height: 24,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: value ? _accent : _toggleOff,
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 180),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

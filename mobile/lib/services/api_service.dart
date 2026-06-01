@@ -6,6 +6,9 @@ import '../config/api_config.dart';
 class ApiService {
   late final Dio _dio;
 
+  /// เรียกเมื่อ token หมดอายุ/ไม่ถูกต้อง (HTTP 401) — ตั้งค่าใน main.dart
+  void Function()? onUnauthorized;
+
   ApiService() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
@@ -26,6 +29,11 @@ class ApiService {
         handler.next(options);
       },
       onError: (error, handler) {
+        // token หมดอายุ/ไม่ถูกต้อง → แจ้งให้ออกจากระบบ (ยกเว้นตอนล็อกอินผิด)
+        if (error.response?.statusCode == 401 &&
+            !error.requestOptions.path.contains('/auth/login')) {
+          onUnauthorized?.call();
+        }
         handler.next(error);
       },
     ));
