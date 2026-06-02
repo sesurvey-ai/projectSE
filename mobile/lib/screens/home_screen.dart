@@ -92,17 +92,17 @@ class HomeScreen extends StatelessWidget {
                 boxShadow: [BoxShadow(color: _primary.withValues(alpha: 0.3), blurRadius: 18, offset: const Offset(0, 8))],
               ),
               child: Row(children: [
-                CircleAvatar(
+                const CircleAvatar(
                   radius: 27,
-                  backgroundColor: Colors.white.withValues(alpha: 0.22),
-                  child: const Icon(Icons.person, color: Colors.white, size: 30),
+                  backgroundColor: Color(0x38FFFFFF),
+                  backgroundImage: AssetImage('assets/avatar.png'),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('ยินดีต้อนรับ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      const Text('สวัสดี', style: TextStyle(color: Colors.white70, fontSize: 13)),
                       const SizedBox(height: 2),
                       Text(
                         name.isEmpty ? 'ผู้ใช้งาน' : name,
