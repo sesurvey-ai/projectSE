@@ -73,14 +73,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Logo (real SE mark, top-left)
+                        // Logo (full SE company logo, top-left)
                         Image.asset(
                           'assets/se-mark.png',
-                          width: 118,
+                          width: 150,
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
                         ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 28),
                         // Heading
                         Text('เข้าสู่ระบบ', style: _head(28)),
                         const SizedBox(height: 42),
