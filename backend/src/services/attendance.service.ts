@@ -13,56 +13,70 @@ const RET = `
   check_in_lat, check_in_lng, check_out_lat, check_out_lng, check_in_photo`;
 
 export const attendanceService = {
-  // ลงเวลาเข้างาน — 1 แถว/วัน; ถ้าเข้าไปแล้วจะไม่ทับเวลา/รูปเดิม (COALESCE เก็บครั้งแรก)
+  // ลงเวลาเข้างาน — เปิด "รอบใหม่" (1 แถว) ได้ก็ต่อเมื่อไม่มีรอบที่ยังไม่ลงเวลาออกค้างอยู่
+  // INSERT ... WHERE NOT EXISTS: ถ้ามีรอบเปิดค้าง จะ insert 0 แถว → คืน null ให้ controller แจ้งเตือน
   async checkIn(userId: number, lat: number | null, lng: number | null, photo: string | null) {
     const { rows } = await db.query(
       `INSERT INTO attendance_records (user_id, work_date, check_in_at, check_in_lat, check_in_lng, check_in_photo)
-       VALUES ($1, ${BKK_DATE}, ${BKK}, $2, $3, $4)
-       ON CONFLICT (user_id, work_date) DO UPDATE
-         SET check_in_at    = COALESCE(attendance_records.check_in_at,    EXCLUDED.check_in_at),
-             check_in_lat   = COALESCE(attendance_records.check_in_lat,   EXCLUDED.check_in_lat),
-             check_in_lng   = COALESCE(attendance_records.check_in_lng,   EXCLUDED.check_in_lng),
-             check_in_photo = COALESCE(attendance_records.check_in_photo, EXCLUDED.check_in_photo)
+       SELECT $1, ${BKK_DATE}, ${BKK}, $2, $3, $4
+       WHERE NOT EXISTS (
+         SELECT 1 FROM attendance_records WHERE user_id = $1 AND check_out_at IS NULL
+       )
        RETURNING ${RET}`,
       [userId, lat, lng, photo]
     );
-    return rows[0];
+    return rows[0] ?? null;
   },
 
-  // ลงเวลาออกงาน — ต้องมีแถวของวันนี้ (เข้างานแล้ว) ก่อน
+  // ลงเวลาออกงาน — ปิดรอบที่ยังเปิดค้างอยู่ล่าสุดของพนักงาน (ถ้าไม่มี → คืน null)
   async checkOut(userId: number, lat: number | null, lng: number | null) {
     const { rows } = await db.query(
       `UPDATE attendance_records
           SET check_out_at  = ${BKK},
               check_out_lat = $2,
               check_out_lng = $3
-        WHERE user_id = $1 AND work_date = ${BKK_DATE}
+        WHERE id = (
+          SELECT id FROM attendance_records
+            WHERE user_id = $1 AND check_out_at IS NULL
+            ORDER BY check_in_at DESC
+            LIMIT 1
+        )
         RETURNING ${RET}`,
       [userId, lat, lng]
     );
     return rows[0] ?? null;
   },
 
-  // สถานะวันนี้
+  // สถานะวันนี้ — รายการรอบของวันนี้ (เรียงตามเวลาเข้า) + รอบที่เปิดค้าง (ถ้ามี) ไว้กำหนดปุ่มเข้า/ออก
   async today(userId: number) {
-    const { rows } = await db.query(
-      `SELECT ${RET} FROM attendance_records WHERE user_id = $1 AND work_date = ${BKK_DATE}`,
+    const { rows: sessions } = await db.query(
+      `SELECT ${RET} FROM attendance_records
+        WHERE user_id = $1 AND work_date = ${BKK_DATE}
+        ORDER BY check_in_at ASC`,
       [userId]
     );
-    return rows[0] ?? null;
+    const { rows: open } = await db.query(
+      `SELECT ${RET} FROM attendance_records
+        WHERE user_id = $1 AND check_out_at IS NULL
+        ORDER BY check_in_at DESC LIMIT 1`,
+      [userId]
+    );
+    return { sessions, open: open[0] ?? null };
   },
 
-  // ประวัติของฉัน (ล่าสุดก่อน)
-  async listMine(userId: number, limit = 30) {
-    const lim = Math.min(Math.max(limit, 1), 100);
+  // ประวัติของฉัน (รอบล่าสุดก่อน)
+  async listMine(userId: number, limit = 50) {
+    const lim = Math.min(Math.max(limit, 1), 200);
     const { rows } = await db.query(
-      `SELECT ${RET} FROM attendance_records WHERE user_id = $1 ORDER BY work_date DESC LIMIT $2`,
+      `SELECT ${RET} FROM attendance_records
+        WHERE user_id = $1
+        ORDER BY check_in_at DESC LIMIT $2`,
       [userId, lim]
     );
     return rows;
   },
 
-  // รายงานสำหรับ admin/callcenter
+  // รายงานสำหรับ admin/callcenter — หลายรอบต่อวันได้ เรียงตามวัน/ชื่อ/เวลาเข้า
   async report(q: Record<string, unknown>) {
     const where: string[] = [];
     const params: unknown[] = [];
@@ -92,7 +106,7 @@ export const attendanceService = {
          FROM attendance_records ar
          JOIN users u ON u.id = ar.user_id
          ${whereSql}
-        ORDER BY ar.work_date DESC, user_name ASC
+        ORDER BY ar.work_date DESC, user_name ASC, ar.check_in_at ASC
         LIMIT 500`,
       params
     );

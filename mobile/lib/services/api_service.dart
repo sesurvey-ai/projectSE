@@ -168,9 +168,10 @@ class ApiService {
   }
 
   // ── Attendance (ลงเวลาเข้า/ออกงาน) ──
-  Future<Map<String, dynamic>?> getTodayAttendance() async {
+  // คืน { sessions: [...รอบของวันนี้], open: รอบที่เปิดค้าง|null }
+  Future<Map<String, dynamic>> getTodayAttendance() async {
     final r = await _dio.get('/api/attendance/today');
-    return r.data['data']?['record'] as Map<String, dynamic>?;
+    return (r.data['data'] as Map<String, dynamic>?) ?? {'sessions': <dynamic>[], 'open': null};
   }
 
   Future<Map<String, dynamic>> checkInAttendance({double? lat, double? lng, String? photoPath}) async {

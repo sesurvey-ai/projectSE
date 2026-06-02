@@ -12,6 +12,14 @@ const _muted = Color(0xFF737D90);
 const _line = Color(0xFFE8EBF1);
 const _tint = Color(0xFFEAF1FD);
 
+// สีเฉพาะของแต่ละเมนู (ไอคอน + พื้นไอคอนอ่อน ๆ)
+const _green = Color(0xFF1F9D6B);
+const _greenTint = Color(0xFFE4F5EE);
+const _amber = Color(0xFFE0901E);
+const _amberTint = Color(0xFFFBF1DD);
+const _purple = Color(0xFF7C4DD4);
+const _purpleTint = Color(0xFFF0EAFB);
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -129,6 +137,8 @@ class HomeScreen extends StatelessWidget {
               icon: Icons.access_time_rounded,
               title: 'บันทึกเวลา เข้า / ออก',
               subtitle: 'ลงเวลาเข้า–ออกงานพร้อมพิกัด',
+              color: _green,
+              tint: _greenTint,
               onTap: () => context.push('/attendance'),
             ),
             const SizedBox(height: 12),
@@ -136,6 +146,8 @@ class HomeScreen extends StatelessWidget {
               icon: Icons.event_busy_outlined,
               title: 'ลางาน',
               subtitle: 'ยื่นใบลาและดูสถานะอนุมัติ',
+              color: _amber,
+              tint: _amberTint,
               onTap: () => context.push('/leave'),
             ),
             const SizedBox(height: 12),
@@ -143,6 +155,8 @@ class HomeScreen extends StatelessWidget {
               icon: Icons.phone_in_talk_outlined,
               title: 'Call Log',
               subtitle: 'ประวัติการโทรบนเครื่อง',
+              color: _purple,
+              tint: _purpleTint,
               onTap: () => context.push('/calllog'),
             ),
           ],
@@ -151,7 +165,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _menuCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _menuCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap, Color color = _primary, Color tint = _tint}) {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
@@ -165,8 +179,8 @@ class HomeScreen extends StatelessWidget {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, color: _primary, size: 26),
+              decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: color, size: 26),
             ),
             const SizedBox(width: 14),
             Expanded(

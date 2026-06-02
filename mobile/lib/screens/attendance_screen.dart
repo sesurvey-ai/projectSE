@@ -43,7 +43,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final _location = LocationService();
   final _picker = ImagePicker();
 
-  Map<String, dynamic>? _today;
+  Map<String, dynamic>? _today; // { sessions: [...], open: {...}|null }
   List<dynamic> _history = [];
   bool _loading = true;
   bool _busy = false;
@@ -68,9 +68,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  String? get _checkIn => _today?['check_in_time']?.toString();
-  String? get _checkOut => _today?['check_out_time']?.toString();
-  String? get _checkInPhoto => _today?['check_in_photo']?.toString();
+  // รอบของ "วันนี้" (เรียงตามเวลาเข้า) + รอบที่ยังเปิดค้าง (ถ้ามี)
+  List<Map<String, dynamic>> get _sessions =>
+      ((_today?['sessions'] as List?) ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+
+  Map<String, dynamic>? get _open {
+    final o = _today?['open'];
+    return o == null ? null : Map<String, dynamic>.from(o as Map);
+  }
 
   String? _photoUrl(String? f) => (f == null || f.isEmpty) ? null : '${ApiConfig.baseUrl}/uploads/$f';
 
@@ -153,7 +160,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ? await _api.checkInAttendance(lat: lat, lng: lng, photoPath: photoPath)
           : await _api.checkOutAttendance(lat: lat, lng: lng);
       if (!mounted) return;
-      setState(() => _today = rec);
       _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
       await _load();
     } on DioException catch (e) {
@@ -193,6 +199,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   _todayCard(),
                   const SizedBox(height: 16),
                   _actionButton(),
+                  if (_open != null) ...[
+                    const SizedBox(height: 9),
+                    const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.info_outline, size: 13, color: _muted),
+                      SizedBox(width: 5),
+                      Text('ลงเวลาออกก่อน จึงจะลงเวลาเข้ารอบใหม่ได้', style: TextStyle(fontSize: 12, color: _muted)),
+                    ]),
+                  ],
                   if (_gpsNote.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -219,6 +233,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _todayCard() {
     final now = DateTime.now();
     final dow = _thaiDows[now.weekday];
+    final sessions = _sessions;
+    final open = _open;
+    // รอบเปิดค้างจาก "วันก่อน" (ลืมลงเวลาออก) — ไม่อยู่ในรายการของวันนี้
+    final carryOver = open != null && !sessions.any((s) => s['id'] == open['id']);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -229,68 +247,122 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('วัน$dow', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          const SizedBox(height: 2),
-          Text(_thaiShort(now), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 18),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _timeBox('เข้างาน', _checkIn, Icons.login)),
-              Container(width: 1, height: 44, color: Colors.white24),
-              Expanded(child: _timeBox('ออกงาน', _checkOut, Icons.logout)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('วัน$dow', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Text(_thaiShort(now), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+              if (sessions.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
+                  child: Text('${sessions.length} รอบ', style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                ),
             ],
           ),
-          if (_checkInPhoto != null) ...[
-            const SizedBox(height: 16),
-            Container(height: 1, color: Colors.white24),
-            const SizedBox(height: 14),
-            Row(children: [
-              Container(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(11), border: Border.all(color: Colors.white54, width: 1.5)),
-                child: _thumb(_checkInPhoto, size: 46),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(child: Text('รูปถ่ายตอนลงเวลาเข้างาน · แตะเพื่อดูเต็ม', style: TextStyle(color: Colors.white70, fontSize: 12))),
-            ]),
+          const SizedBox(height: 16),
+          Container(height: 1, color: Colors.white24),
+          const SizedBox(height: 14),
+          if (carryOver) _carryOverNote(open),
+          if (sessions.isEmpty && !carryOver)
+            Row(children: const [
+              Icon(Icons.schedule, size: 18, color: Colors.white70),
+              SizedBox(width: 8),
+              Text('ยังไม่ได้ลงเวลาวันนี้', style: TextStyle(color: Colors.white70, fontSize: 14)),
+            ])
+          else
+            ...sessions.asMap().entries.map((e) => _sessionRow(e.key, e.value)),
+        ],
+      ),
+    );
+  }
+
+  // หนึ่งรอบ: หมายเลขรอบ · เข้า → ออก/กำลังทำงาน · รูปถ่าย
+  Widget _sessionRow(int idx, Map<String, dynamic> s) {
+    final cin = s['check_in_time']?.toString();
+    final cout = s['check_out_time']?.toString();
+    final photo = s['check_in_photo']?.toString();
+    final isOpen = cout == null || cout.isEmpty;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
+            child: Text('${idx + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Row(
+              children: [
+                const Icon(Icons.login, size: 15, color: Colors.white70),
+                const SizedBox(width: 5),
+                Text(cin ?? '--:--', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 0.3)),
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 9), child: Icon(Icons.arrow_right_alt, size: 18, color: Colors.white54)),
+                if (isOpen)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(20)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                      _Dot(),
+                      SizedBox(width: 5),
+                      Text('กำลังทำงาน', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ]),
+                  )
+                else ...[
+                  const Icon(Icons.logout, size: 15, color: Colors.white70),
+                  const SizedBox(width: 5),
+                  Text(cout, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 0.3)),
+                ],
+              ],
+            ),
+          ),
+          if (photo != null && photo.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Container(
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(11), border: Border.all(color: Colors.white54, width: 1.5)),
+              child: _thumb(photo, size: 40),
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _timeBox(String label, String? time, IconData icon) {
-    return Column(
-      children: [
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 14, color: Colors.white70),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-        ]),
-        const SizedBox(height: 6),
-        Text(time ?? '--:--', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-      ],
+  Widget _carryOverNote(Map<String, dynamic> open) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 18, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'มีรอบค้างจากวันก่อน · เข้างาน ${open['check_in_time'] ?? '--:--'} — กรุณาลงเวลาออก',
+              style: const TextStyle(color: Colors.white, fontSize: 12.5, height: 1.3),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _actionButton() {
-    // สถานะ: ยังไม่เข้า -> เข้างาน; เข้าแล้วยังไม่ออก -> ออกงาน; ครบแล้ว -> ปิด
-    final hasIn = _checkIn != null;
-    final hasOut = _checkOut != null;
-
-    if (hasIn && hasOut) {
-      return Container(
-        height: 56,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: _green.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(15), border: Border.all(color: _green.withValues(alpha: 0.4))),
-        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.check_circle, color: _green, size: 22),
-          SizedBox(width: 8),
-          Text('ลงเวลาครบแล้ววันนี้', style: TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
-        ]),
-      );
-    }
-
-    final isCheckIn = !hasIn;
+    // มีรอบเปิดค้าง → ปุ่ม "ลงเวลาออกงาน"; ไม่มี → ปุ่ม "ลงเวลาเข้างาน" (เข้าใหม่ได้เรื่อย ๆ)
+    final isCheckIn = _open == null;
     final color = isCheckIn ? _primary : _orange;
     return SizedBox(
       width: double.infinity,
@@ -374,4 +446,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       Text('$label ${time ?? '--:--'}', style: TextStyle(fontSize: 12.5, color: time == null ? _muted : _ink, fontWeight: FontWeight.w500)),
     ]);
   }
+}
+
+// จุดวงกลมขาวเล็ก ๆ ใน pill "กำลังทำงาน"
+class _Dot extends StatelessWidget {
+  const _Dot();
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle));
 }
