@@ -40,8 +40,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val requestId = data["request_id"] ?: ""
         Log.d("FCM-Native", "Location request received: request_id=$requestId")
 
-        // อ่าน GPS ล่าสุด
-        val location = LocationHelper.getLastKnownLocation(this)
+        // จับ GPS สด (ให้แม่นเท่าตอนลงเวลา) — getFreshLocation จะ fallback เป็น last known ให้เองถ้าจับไม่ทัน
+        val location = LocationHelper.getFreshLocation(this)
         if (location != null) {
             // ส่ง GPS กลับ server ผ่าน REST API
             LocationHelper.postLocationToServer(
