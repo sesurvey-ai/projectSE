@@ -198,4 +198,9 @@ class ApiService {
     final r = await _dio.get('/api/attendance/mine');
     return (r.data['data']?['records'] as List?) ?? [];
   }
+
+  // เคลียร์พิกัดตัวเองตอนออกจากระบบ → หมุดหายจากแผนที่ Call Center
+  Future<void> clearMyLocation() async {
+    await _dio.delete('/api/users/me/location');
+  }
 }

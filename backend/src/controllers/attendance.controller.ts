@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { attendanceService } from '../services/attendance.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
+import { clearSurveyorLocation } from '../utils/clearSurveyorLocation';
+import { broadcastSurveyorLocation } from '../utils/broadcastSurveyorLocation';
 
 // แปลงค่าจาก multipart (เป็น string) -> number | null
 const toNum = (v: unknown): number | null => {
@@ -22,6 +24,10 @@ export const attendanceController = {
       sendError(res, 'คุณยังมีรอบที่ยังไม่ได้ลงเวลาออก กรุณาลงเวลาออกก่อนจึงจะลงเวลาเข้าใหม่ได้', 400);
       return;
     }
+    // ลงเวลาเข้างานสำเร็จ + มีพิกัด → ขึ้นหมุดบนแผนที่ Call Center ทันที (ไม่ต้องรอ FCM)
+    if (lat !== null && lng !== null) {
+      await broadcastSurveyorLocation(req.user!.id, lat, lng, 'check_in');
+    }
     sendSuccess(res, row);
   }),
 
@@ -34,6 +40,8 @@ export const attendanceController = {
       sendError(res, 'ยังไม่มีรอบที่ลงเวลาเข้าค้างอยู่', 400);
       return;
     }
+    // ลงเวลาออกงานแล้ว → เอาหมุดพิกัดออกจากแผนที่ Call Center
+    await clearSurveyorLocation(req.user!.id);
     sendSuccess(res, row);
   }),
 

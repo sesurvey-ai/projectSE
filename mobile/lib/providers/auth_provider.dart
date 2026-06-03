@@ -8,6 +8,7 @@ import '../services/consult_background.dart';
 import '../services/consult_sync.dart';
 
 class AuthProvider extends ChangeNotifier {
+  final ApiService _apiService;
   final AuthService _authService;
   final FcmService _fcmService;
   VoidCallback? _onCaseAssignedRefresh;
@@ -22,7 +23,8 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider({
     required ApiService apiService,
     required FcmService fcmService,
-  })  : _authService = AuthService(apiService),
+  })  : _apiService = apiService,
+        _authService = AuthService(apiService),
         _fcmService = fcmService;
 
   void setOnCaseAssignedRefresh(VoidCallback callback) {
@@ -120,6 +122,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // best-effort: เอาหมุดพิกัดออกจากแผนที่ Call Center ก่อนล้าง token
+    // (ต้องเรียกก่อน _authService.logout() เพราะยังต้องใช้ token ยิง API)
+    try {
+      await _apiService.clearMyLocation();
+    } catch (_) {}
     await ConsultBackground.cancel();
     await _authService.logout();
     _user = null;

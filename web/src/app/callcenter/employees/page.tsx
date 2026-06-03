@@ -41,8 +41,16 @@ export default function EmployeesPage() {
         return [...prev, data];
       });
     };
+    // surveyor ออกจากระบบ/ลงเวลาออกงาน → เอาหมุดออกจากแผนที่ทันที
+    const handleRemove = (data: { user_id: string }) => {
+      setSurveyors((prev) => prev.filter((s) => String(s.user_id) !== String(data.user_id)));
+    };
     socket.on('location_update', handle);
-    return () => { socket.off('location_update', handle); };
+    socket.on('location_remove', handleRemove);
+    return () => {
+      socket.off('location_update', handle);
+      socket.off('location_remove', handleRemove);
+    };
   }, [socket]);
 
   const handleRequestLocation = () => {

@@ -1,19 +1,20 @@
-import 'dart:io' show Platform, Socket;
+import 'dart:io' show Platform;
+import 'package:device_info_plus/device_info_plus.dart';
 
 class ApiConfig {
-  // เปลี่ยน IP นี้เป็น IP ของเครื่องที่รัน backend
+  // IP ของเครื่องที่รัน backend (ใช้กับ "มือถือจริง" ในวง LAN เดียวกัน)
   static const String _localIp = '192.168.1.135';
 
-  // emulator ใช้ 10.0.2.2, มือถือจริงใช้ IP จริง
+  // emulator ใช้ 10.0.2.2 (host loopback), มือถือจริงใช้ IP จริงในวง LAN
   static bool _isEmulator = false;
 
+  /// ตรวจว่าเป็น emulator หรือมือถือจริง — ใช้คุณสมบัติของอุปกรณ์ (ไม่พึ่ง network)
+  /// จึงไม่ผิดพลาดแม้เปิดแอปตอน backend/เครือข่ายยังไม่พร้อม (เช่น หลังรีบูต)
   static Future<void> init() async {
     if (!Platform.isAndroid) return;
     try {
-      final socket = await Socket.connect('10.0.2.2', 3001,
-          timeout: const Duration(milliseconds: 500));
-      socket.destroy();
-      _isEmulator = true;
+      final info = await DeviceInfoPlugin().androidInfo;
+      _isEmulator = !info.isPhysicalDevice;
     } catch (_) {
       _isEmulator = false;
     }

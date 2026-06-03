@@ -19,5 +19,6 @@ const locationSchema = z.object({
 router.get('/me', auth, userController.getMe);
 router.put('/me/fcm-token', auth, validate(fcmTokenSchema), userController.updateFcmToken);
 router.post('/me/location', auth, validate(locationSchema), userController.updateLocation);
+router.delete('/me/location', auth, userController.clearLocation);
 
 export default router;

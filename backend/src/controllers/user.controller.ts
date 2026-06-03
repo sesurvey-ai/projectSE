@@ -5,6 +5,7 @@ import { sendSuccess } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
 import { getIO } from '../socket';
 import { db } from '../config/database';
+import { clearSurveyorLocation } from '../utils/clearSurveyorLocation';
 
 export const userController = {
   getMe: asyncHandler(async (req: Request, res: Response) => {
@@ -44,5 +45,11 @@ export const userController = {
     }
 
     sendSuccess(res, { message: 'Location updated' });
+  }),
+
+  // เคลียร์พิกัดของตัวเอง (เรียกตอนออกจากระบบ) → หมุดหายจากแผนที่ Call Center
+  clearLocation: asyncHandler(async (req: Request, res: Response) => {
+    await clearSurveyorLocation(req.user!.id);
+    sendSuccess(res, { message: 'Location cleared' });
   }),
 };
