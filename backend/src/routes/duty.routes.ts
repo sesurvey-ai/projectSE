@@ -28,6 +28,7 @@ router.get('/stations', auth, requireRole('admin', 'callcenter'), dutyController
 router.get('/shifts', auth, requireRole('admin', 'callcenter'), dutyController.shifts);
 router.get('/surveyors', auth, requireRole('admin'), dutyController.surveyors);
 router.get('/slots', auth, requireRole('admin', 'callcenter'), dutyController.slots);
+router.get('/roster', auth, requireRole('admin', 'callcenter'), dutyController.roster);
 router.post('/slots', auth, requireRole('admin'), validate(slotSchema), dutyController.createSlot);
 router.put('/slots/:id', auth, requireRole('admin'), validate(slotSchema), dutyController.updateSlot);
 router.delete('/slots/:id', auth, requireRole('admin'), dutyController.deleteSlot);

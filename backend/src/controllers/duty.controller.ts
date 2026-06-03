@@ -20,6 +20,12 @@ export const dutyController = {
     sendSuccess(res, await dutyService.listSlots());
   }),
 
+  // ตารางเวร live ของวันหนึ่ง (?date=YYYY-MM-DD, ดีฟอลต์ = วันนี้ เวลาไทย)
+  roster: asyncHandler(async (req: Request, res: Response) => {
+    const date = typeof req.query.date === 'string' ? req.query.date : undefined;
+    sendSuccess(res, await dutyService.roster(date));
+  }),
+
   createSlot: asyncHandler(async (req: Request, res: Response) => {
     sendSuccess(res, await dutyService.createSlot(req.body));
   }),

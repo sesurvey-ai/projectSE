@@ -1,60 +1,50 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { IBM_Plex_Sans_Thai, IBM_Plex_Mono } from 'next/font/google';
+import api from '@/lib/api';
 import {
-  ROSTER, SHIFTS, REGIONS, STATUS_META, deriveStatus,
+  SHIFTS, SHIFT_ORDER, REGIONS, STATUS_META,
   type Person, type ShiftKey, type RegionKey, type Status,
 } from './roster-data';
 
 const plexThai = IBM_Plex_Sans_Thai({ subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'], variable: '--font-plex-thai', display: 'swap' });
 const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-plex-mono', display: 'swap' });
 
-const SHIFT_ORDER: ShiftKey[] = ['morning', 'afternoon', 'night', 'fix'];
-
 type Station = { name: string; people: Person[]; byShift: Partial<Record<ShiftKey, Person[]>> };
 
-const tagClass = (tag: string) => (tag.startsWith('FIX') ? 't-fix' : tag === 'อาสา' ? 't-vol' : 't-soft');
+const tagClass = (tag: string) => (/^fix/i.test(tag) ? 't-fix' : tag === 'อาสา' ? 't-vol' : 't-soft');
 
-// ── สถานะ (จุดสี) ──────────────────────────────────────
 function StatusDot({ status }: { status: Status }) {
   const m = STATUS_META[status];
   return <span className="dot" style={{ background: m.dot }} title={m.label} />;
 }
 
-// ── ชิปเวลาเข้างาน ──────────────────────────────────────
-function TimeChip({ t }: { t: string }) {
-  const status = deriveStatus(t);
-  const v = (t || '').trim();
-  const text = status === 'pending' ? '—' : v;
+// แสดงเวลาเข้างาน (ถ้า present) หรือสถานะ
+function StatusChip({ p }: { p: Person }) {
+  const text = p.status === 'present' ? (p.check_in || '✓') : p.status === 'leave' ? 'ลา' : p.status === 'off' ? 'หยุด' : '—';
   return (
-    <span className={`timechip s-${status}`}>
-      {status === 'present' && <span className="tc-ic">●</span>}
+    <span className={`timechip s-${p.status}`}>
+      {p.status === 'present' && <span className="tc-ic">●</span>}
       {text}
     </span>
   );
 }
 
-// ── แถวบุคคล ────────────────────────────────────────────
 function PersonRow({ p, onSelect, active }: { p: Person; onSelect: (p: Person) => void; active: boolean }) {
   return (
     <button className={`person ${active ? 'is-active' : ''}`} onClick={() => onSelect(p)}>
-      <span className="p-code">{p.c}</span>
+      <span className="p-code">{p.code}</span>
       <span className="p-main">
-        <span className="p-name">{p.n}</span>
-        <span className="p-phone">{p.p}</span>
+        <span className="p-name">{p.name}</span>
+        <span className="p-phone">{p.phone}</span>
       </span>
-      <span className="p-tags">
-        {p.tags.map((tag) => (
-          <span key={tag} className={`tag ${tagClass(tag)}`}>{tag}</span>
-        ))}
-      </span>
-      <span className="p-time"><TimeChip t={p.t} /></span>
+      <span className="p-tags">{p.tags.map((t) => <span key={t} className={`tag ${tagClass(t)}`}>{t}</span>)}</span>
+      <span className="p-time"><StatusChip p={p} /></span>
     </button>
   );
 }
 
-// ── กลุ่มเวรภายในการ์ดประจำจุด ─────────────────────────
 function ShiftGroup({ shiftKey, people, onSelect, selected }: { shiftKey: ShiftKey; people: Person[]; onSelect: (p: Person) => void; selected: Person | null }) {
   const sh = SHIFTS[shiftKey];
   return (
@@ -66,26 +56,20 @@ function ShiftGroup({ shiftKey, people, onSelect, selected }: { shiftKey: ShiftK
         <span className="sg-count">{people.length}</span>
       </div>
       <div className="sg-people">
-        {people.map((p) => (
-          <PersonRow key={p.c + p.n} p={p} onSelect={onSelect} active={!!selected && selected.c === p.c && selected.n === p.n} />
-        ))}
+        {people.map((p) => <PersonRow key={p.user_id} p={p} onSelect={onSelect} active={!!selected && selected.user_id === p.user_id} />)}
       </div>
     </div>
   );
 }
 
-// ── การ์ดประจำจุด ───────────────────────────────────────
 function StationCard({ station, onSelect, selected }: { station: Station; onSelect: (p: Person) => void; selected: Person | null }) {
-  const present = station.people.filter((p) => deriveStatus(p.t) === 'present').length;
+  const present = station.people.filter((p) => p.status === 'present').length;
   const total = station.people.length;
   const pct = total ? Math.round((present / total) * 100) : 0;
   return (
     <div className="card">
       <div className="card-head">
-        <div className="ch-left">
-          <span className="ch-pin">◈</span>
-          <h3 className="ch-name">{station.name}</h3>
-        </div>
+        <div className="ch-left"><span className="ch-pin">◈</span><h3 className="ch-name">{station.name}</h3></div>
         <div className="ch-meter" title={`เข้างาน ${present}/${total}`}>
           <span className="ch-frac"><b>{present}</b>/{total}</span>
           <span className="ch-bar"><span className="ch-fill" style={{ width: pct + '%' }} /></span>
@@ -100,81 +84,77 @@ function StationCard({ station, onSelect, selected }: { station: Station; onSele
   );
 }
 
-// ── ลิ้นชักรายละเอียด ───────────────────────────────────
 function DetailDrawer({ p, onClose }: { p: Person | null; onClose: () => void }) {
   if (!p) return null;
-  const status = deriveStatus(p.t);
-  const m = STATUS_META[status];
-  const sh = SHIFTS[p.sh];
+  const sh = SHIFTS[p.shift];
   return (
     <>
       <div className="scrim" onClick={onClose} />
       <aside className="drawer">
         <button className="dw-close" onClick={onClose}>✕</button>
         <div className="dw-top">
-          <span className="dw-code">{p.c}</span>
-          <span className="dw-status"><StatusDot status={status} />{m.label}</span>
+          <span className="dw-code">{p.code}</span>
+          <span className="dw-status"><StatusDot status={p.status} />{STATUS_META[p.status].label}</span>
         </div>
-        <h2 className="dw-name">{p.n}</h2>
-        <a className="dw-phone" href={`tel:${p.p.replace(/-/g, '')}`}>{p.p}</a>
-
+        <h2 className="dw-name">{p.name}</h2>
+        <a className="dw-phone" href={`tel:${(p.phone || '').replace(/-/g, '')}`}>{p.phone}</a>
         <div className="dw-grid">
-          <div className="dw-cell"><span className="dw-k">ประจำจุด</span><span className="dw-v">{p.s}</span></div>
+          <div className="dw-cell"><span className="dw-k">ประจำจุด</span><span className="dw-v">{p.station}</span></div>
           <div className="dw-cell"><span className="dw-k">ภูมิภาค</span><span className="dw-v">{REGIONS[p.region]}</span></div>
-          <div className="dw-cell"><span className="dw-k">เวร</span><span className="dw-v">{sh.label}</span></div>
+          <div className="dw-cell"><span className="dw-k">เวร</span><span className="dw-v">{p.shift_label || sh.label}</span></div>
           <div className="dw-cell"><span className="dw-k">ช่วงเวลา</span><span className="dw-v">{sh.range}</span></div>
-          <div className="dw-cell"><span className="dw-k">เวลาเข้างาน</span><span className="dw-v"><TimeChip t={p.t} /></span></div>
+          <div className="dw-cell"><span className="dw-k">เวลาเข้างาน</span><span className="dw-v"><StatusChip p={p} /></span></div>
         </div>
-
-        {p.tags.length > 0 && (
-          <div className="dw-tags">
-            {p.tags.map((tag) => (<span key={tag} className={`tag ${tagClass(tag)}`}>{tag}</span>))}
-          </div>
-        )}
-
-        {p.note && (
-          <div className="dw-note"><span className="dw-k">หมายเหตุ</span><p>{p.note}</p></div>
-        )}
+        {p.tags.length > 0 && <div className="dw-tags">{p.tags.map((t) => <span key={t} className={`tag ${tagClass(t)}`}>{t}</span>)}</div>}
+        {p.note && <div className="dw-note"><span className="dw-k">หมายเหตุ</span><p>{p.note}</p></div>}
       </aside>
     </>
   );
 }
 
-// ── สรุปยอด ─────────────────────────────────────────────
 function StatPills({ rows }: { rows: Person[] }) {
-  const counts = useMemo(() => {
-    const c: Record<Status, number> & { fix: number } = { present: 0, pending: 0, leave: 0, off: 0, watch: 0, fix: 0 };
-    rows.forEach((p) => { c[deriveStatus(p.t)]++; if (p.sh === 'fix') c.fix++; });
-    return c;
+  const c = useMemo(() => {
+    const x = { present: 0, pending: 0, leave: 0, off: 0, fix: 0 };
+    rows.forEach((p) => { x[p.status]++; if (p.shift === 'fix1' || p.shift === 'fix2') x.fix++; });
+    return x;
   }, [rows]);
   const items = [
     { k: 'total', label: 'ทั้งหมด', v: rows.length, cls: 'st-total' },
-    { k: 'present', label: 'เข้างานแล้ว', v: counts.present, cls: 'st-ok' },
-    { k: 'pending', label: 'รอเข้างาน', v: counts.pending, cls: 'st-pending' },
-    { k: 'leave', label: 'ลา', v: counts.leave, cls: 'st-leave' },
-    { k: 'off', label: 'วันหยุด', v: counts.off, cls: 'st-off' },
-    { k: 'fix', label: 'FIX', v: counts.fix, cls: 'st-fix' },
+    { k: 'present', label: 'เข้างานแล้ว', v: c.present, cls: 'st-ok' },
+    { k: 'pending', label: 'รอเข้างาน', v: c.pending, cls: 'st-pending' },
+    { k: 'leave', label: 'ลา', v: c.leave, cls: 'st-leave' },
+    { k: 'off', label: 'วันหยุด', v: c.off, cls: 'st-off' },
+    { k: 'fix', label: 'FIX', v: c.fix, cls: 'st-fix' },
   ];
-  return (
-    <div className="stats">
-      {items.map((it) => (
-        <div key={it.k} className={`stat ${it.cls}`}>
-          <span className="stat-v">{it.v}</span>
-          <span className="stat-l">{it.label}</span>
-        </div>
-      ))}
-    </div>
-  );
+  return <div className="stats">{items.map((it) => <div key={it.k} className={`stat ${it.cls}`}><span className="stat-v">{it.v}</span><span className="stat-l">{it.label}</span></div>)}</div>;
 }
 
-// ── หน้าหลัก ─────────────────────────────────────────────
 export default function DutyRosterPage() {
+  const [people, setPeople] = useState<Person[]>([]);
+  const [meta, setMeta] = useState({ date: '', anchor: '' });
+  const [date, setDate] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
   const [q, setQ] = useState('');
   const [shift, setShift] = useState<ShiftKey | 'all'>('all');
   const [region, setRegion] = useState<RegionKey | 'all'>('all');
   const [statusF, setStatusF] = useState<Status | 'all'>('all');
   const [sortMode, setSortMode] = useState<'name' | 'count'>('name');
   const [selected, setSelected] = useState<Person | null>(null);
+
+  const fetchRoster = useCallback(async (d: string) => {
+    setLoading(true); setErr('');
+    try {
+      const r = await api.get('/api/duty/roster' + (d ? `?date=${d}` : ''));
+      setPeople(r.data.data.people);
+      setMeta({ date: r.data.data.date, anchor: r.data.data.anchor });
+    } catch {
+      setErr('โหลดข้อมูลไม่สำเร็จ');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchRoster(date); }, [date, fetchRoster]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); };
@@ -184,30 +164,26 @@ export default function DutyRosterPage() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return ROSTER.filter((p) => {
-      if (shift !== 'all' && p.sh !== shift) return false;
+    return people.filter((p) => {
+      if (shift !== 'all' && p.shift !== shift) return false;
       if (region !== 'all' && p.region !== region) return false;
-      if (statusF !== 'all' && deriveStatus(p.t) !== statusF) return false;
-      if (term) {
-        const hay = `${p.c} ${p.n} ${p.p} ${p.s}`.toLowerCase();
-        if (!hay.includes(term)) return false;
-      }
+      if (statusF !== 'all' && p.status !== statusF) return false;
+      if (term && !`${p.code} ${p.name} ${p.phone} ${p.station}`.toLowerCase().includes(term)) return false;
       return true;
     });
-  }, [q, shift, region, statusF]);
+  }, [people, q, shift, region, statusF]);
 
-  // จัดกลุ่มตามภูมิภาค → ประจำจุด
   const regionGroups = useMemo(() => {
     const order: RegionKey[] = ['bkk', 'upc'];
     return order.map((rk) => {
       const rows = filtered.filter((p) => p.region === rk);
       const byStation: Record<string, Person[]> = {};
-      rows.forEach((p) => { (byStation[p.s] = byStation[p.s] || []).push(p); });
+      rows.forEach((p) => { (byStation[p.station] = byStation[p.station] || []).push(p); });
       const stations: Station[] = Object.keys(byStation).map((name) => {
-        const people = byStation[name];
+        const ppl = byStation[name];
         const byShift: Partial<Record<ShiftKey, Person[]>> = {};
-        people.forEach((p) => { (byShift[p.sh] = byShift[p.sh] || []).push(p); });
-        return { name, people, byShift };
+        ppl.forEach((p) => { (byShift[p.shift] = byShift[p.shift] || []).push(p); });
+        return { name, people: ppl, byShift };
       });
       if (sortMode === 'count') stations.sort((a, b) => b.people.length - a.people.length);
       else stations.sort((a, b) => a.name.localeCompare(b.name, 'th'));
@@ -216,25 +192,11 @@ export default function DutyRosterPage() {
   }, [filtered, sortMode]);
 
   const shiftChips = [
-    { k: 'all', label: 'ทุกเวร' },
-    { k: 'morning', label: 'เช้า' },
-    { k: 'afternoon', label: 'บ่าย' },
-    { k: 'night', label: 'ดึก' },
-    { k: 'fix', label: 'FIX' },
+    { k: 'all', label: 'ทุกเวร' }, { k: 'shift1', label: 'เวร 1' }, { k: 'shift2', label: 'เวร 2' },
+    { k: 'shift3', label: 'เวร 3' }, { k: 'fix1', label: 'Fix 1' }, { k: 'fix2', label: 'Fix 2' },
   ];
-  const regionChips = [
-    { k: 'all', label: 'ทั้งหมด' },
-    { k: 'bkk', label: 'กรุงเทพฯ–ปริมณฑล' },
-    { k: 'upc', label: 'ต่างจังหวัด' },
-  ];
-  const statusChips = [
-    { k: 'all', label: 'ทุกสถานะ' },
-    { k: 'present', label: 'เข้างานแล้ว' },
-    { k: 'pending', label: 'รอเข้างาน' },
-    { k: 'leave', label: 'ลา' },
-    { k: 'off', label: 'หยุด' },
-    { k: 'watch', label: 'เฝ้าระวัง' },
-  ];
+  const regionChips = [{ k: 'all', label: 'ทั้งหมด' }, { k: 'bkk', label: 'กรุงเทพฯ–ปริมณฑล' }, { k: 'upc', label: 'ต่างจังหวัด' }];
+  const statusChips = [{ k: 'all', label: 'ทุกสถานะ' }, { k: 'present', label: 'เข้างานแล้ว' }, { k: 'pending', label: 'รอเข้างาน' }, { k: 'leave', label: 'ลา' }, { k: 'off', label: 'วันหยุด' }];
 
   return (
     <div className={`dr ${plexThai.variable} ${plexMono.variable}`}>
@@ -245,37 +207,22 @@ export default function DutyRosterPage() {
           <div className="tb-mark">SE<span>·</span>AISI</div>
           <div className="tb-title">
             <h1>ตารางเวรประจำจุด</h1>
-            <p>รายชื่อพนักงาน · ประจำวันที่ 28 พฤษภาคม 2569</p>
+            <p>เวรตั้งต้น {meta.anchor || '—'} · หมุนเวร 1-3 อัตโนมัติทุกเดือน</p>
           </div>
         </div>
         <StatPills rows={filtered} />
       </header>
 
       <div className="toolbar">
+        <input className="datepick mono" type="date" value={date || meta.date} onChange={(e) => setDate(e.target.value)} title="เลือกวันที่" />
         <div className="search">
           <span className="search-ic">⌕</span>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหา ชื่อ · รหัส · เบอร์ · ประจำจุด" />
           {q && <button className="search-clear" onClick={() => setQ('')}>✕</button>}
         </div>
-
-        <div className="chips">
-          {shiftChips.map((c) => (
-            <button key={c.k} className={`chip ${shift === c.k ? 'on' : ''} ck-${c.k}`} onClick={() => setShift(c.k as ShiftKey | 'all')}>{c.label}</button>
-          ))}
-        </div>
-
-        <div className="chips">
-          {regionChips.map((c) => (
-            <button key={c.k} className={`chip ${region === c.k ? 'on' : ''}`} onClick={() => setRegion(c.k as RegionKey | 'all')}>{c.label}</button>
-          ))}
-        </div>
-
-        <div className="chips">
-          {statusChips.map((c) => (
-            <button key={c.k} className={`chip soft ${statusF === c.k ? 'on' : ''}`} onClick={() => setStatusF(c.k as Status | 'all')}>{c.label}</button>
-          ))}
-        </div>
-
+        <div className="chips">{shiftChips.map((c) => <button key={c.k} className={`chip ${shift === c.k ? 'on' : ''} ck-${c.k}`} onClick={() => setShift(c.k as ShiftKey | 'all')}>{c.label}</button>)}</div>
+        <div className="chips">{regionChips.map((c) => <button key={c.k} className={`chip ${region === c.k ? 'on' : ''}`} onClick={() => setRegion(c.k as RegionKey | 'all')}>{c.label}</button>)}</div>
+        <div className="chips">{statusChips.map((c) => <button key={c.k} className={`chip soft ${statusF === c.k ? 'on' : ''}`} onClick={() => setStatusF(c.k as Status | 'all')}>{c.label}</button>)}</div>
         <div className="sort">
           <span>เรียง</span>
           <button className={sortMode === 'name' ? 'on' : ''} onClick={() => setSortMode('name')}>ชื่อจุด</button>
@@ -284,18 +231,15 @@ export default function DutyRosterPage() {
       </div>
 
       <main className="board">
-        {regionGroups.length === 0 && (<div className="empty">ไม่พบรายการที่ตรงกับเงื่อนไข</div>)}
-        {regionGroups.map((g) => (
+        {loading && <div className="empty">กำลังโหลด…</div>}
+        {!loading && err && <div className="empty">{err}</div>}
+        {!loading && !err && regionGroups.length === 0 && (
+          <div className="empty">{people.length === 0 ? 'ยังไม่มีข้อมูลเวร — จัดสล๊อตที่หน้า admin “จัดตารางเวร”' : 'ไม่พบรายการที่ตรงกับเงื่อนไข'}</div>
+        )}
+        {!loading && regionGroups.map((g) => (
           <section key={g.rk} className="region">
-            <div className="region-head">
-              <h2>{REGIONS[g.rk]}</h2>
-              <span className="region-meta">{g.stations.length} จุด · {g.total} คน</span>
-            </div>
-            <div className="grid">
-              {g.stations.map((st) => (
-                <StationCard key={st.name} station={st} onSelect={setSelected} selected={selected} />
-              ))}
-            </div>
+            <div className="region-head"><h2>{REGIONS[g.rk]}</h2><span className="region-meta">{g.stations.length} จุด · {g.total} คน</span></div>
+            <div className="grid">{g.stations.map((st) => <StationCard key={st.name} station={st} onSelect={setSelected} selected={selected} />)}</div>
           </section>
         ))}
       </main>
@@ -305,7 +249,6 @@ export default function DutyRosterPage() {
   );
 }
 
-// ── สไตล์ (scope ไว้ใต้ .dr เพื่อไม่ชนกับ Tailwind ของแอป) ──
 const DR_CSS = `
 .dr {
   --bg: oklch(0.97 0.005 250); --surface: #ffffff; --surface-2: oklch(0.985 0.004 250);
@@ -317,8 +260,7 @@ const DR_CSS = `
   --r: 14px; --shadow: 0 1px 2px oklch(0.4 0.02 255 / 0.05), 0 6px 20px oklch(0.4 0.02 255 / 0.06);
   font-family: var(--font-plex-thai), system-ui, sans-serif;
   background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased;
-  font-size: 15px; line-height: 1.45;
-  margin: -24px; min-height: calc(100vh - 52px);
+  font-size: 15px; line-height: 1.45; margin: -24px; min-height: calc(100vh - 52px);
 }
 .dr * { box-sizing: border-box; margin: 0; padding: 0; }
 .dr .mono { font-family: var(--font-plex-mono), monospace; }
@@ -345,7 +287,9 @@ const DR_CSS = `
 .dr .st-total .stat-l { color: oklch(0.8 0.01 255); }
 
 .dr .toolbar { position: sticky; top: 73px; z-index: 20; display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; padding: 12px 28px; background: oklch(0.99 0.003 250 / 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-.dr .search { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; height: 38px; min-width: 280px; flex: 1 1 280px; max-width: 360px; }
+.dr .datepick { font: inherit; font-size: 13px; padding: 0 10px; height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.dr .datepick:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.dr .search { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; height: 38px; min-width: 240px; flex: 1 1 240px; max-width: 320px; }
 .dr .search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
 .dr .search-ic { color: var(--muted); font-size: 17px; }
 .dr .search input { border: none; outline: none; background: none; flex: 1; font: inherit; color: var(--ink); }
@@ -356,10 +300,10 @@ const DR_CSS = `
 .dr .chip:hover { border-color: oklch(0.82 0.01 255); }
 .dr .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 .dr .chip.soft.on { background: var(--brand); border-color: var(--brand); }
-.dr .chip.ck-morning.on { background: var(--ok); border-color: var(--ok); }
-.dr .chip.ck-afternoon.on { background: var(--watch); border-color: var(--watch); color: oklch(0.3 0.05 78); }
-.dr .chip.ck-night.on { background: oklch(0.42 0.08 262); border-color: oklch(0.42 0.08 262); color: #fff; }
-.dr .chip.ck-fix.on { background: var(--fix); border-color: var(--fix); color: #fff; }
+.dr .chip.ck-shift1.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+.dr .chip.ck-shift2.on { background: var(--watch); border-color: var(--watch); color: oklch(0.3 0.05 78); }
+.dr .chip.ck-shift3.on { background: oklch(0.42 0.08 262); border-color: oklch(0.42 0.08 262); color: #fff; }
+.dr .chip.ck-fix1.on, .dr .chip.ck-fix2.on { background: var(--fix); border-color: var(--fix); color: #fff; }
 
 .dr .sort { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-left: auto; }
 .dr .sort button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 8px; cursor: pointer; background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
@@ -389,10 +333,10 @@ const DR_CSS = `
 .dr .shiftgroup { padding: 6px 6px 4px; }
 .dr .sg-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px; }
 .dr .sg-bar { width: 3px; height: 13px; border-radius: 2px; background: var(--off); }
-.dr .sg-morning .sg-bar { background: var(--ok); }
-.dr .sg-afternoon .sg-bar { background: var(--watch); }
-.dr .sg-night .sg-bar { background: oklch(0.5 0.09 262); }
-.dr .sg-fix .sg-bar { background: var(--fix); }
+.dr .sg-shift1 .sg-bar { background: var(--ok); }
+.dr .sg-shift2 .sg-bar { background: var(--watch); }
+.dr .sg-shift3 .sg-bar { background: oklch(0.5 0.09 262); }
+.dr .sg-fix1 .sg-bar, .dr .sg-fix2 .sg-bar { background: var(--fix); }
 .dr .sg-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
 .dr .sg-range { font-family: var(--font-plex-mono), monospace; font-size: 11px; color: var(--muted); }
 .dr .sg-count { margin-left: auto; font-family: var(--font-plex-mono), monospace; font-size: 11px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 1px 7px; }
@@ -401,7 +345,7 @@ const DR_CSS = `
 .dr .person { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; cursor: pointer; background: none; border: 1px solid transparent; border-radius: 9px; padding: 7px 8px; transition: background 0.1s, border-color 0.1s; }
 .dr .person:hover { background: var(--surface-2); border-color: var(--line-2); }
 .dr .person.is-active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
-.dr .p-code { font-family: var(--font-plex-mono), monospace; font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 2px 6px; min-width: 34px; text-align: center; }
+.dr .p-code { font-family: var(--font-plex-mono), monospace; font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 2px 6px; min-width: 34px; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dr .p-main { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .dr .p-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dr .p-phone { font-family: var(--font-plex-mono), monospace; font-size: 11px; color: var(--muted); }
@@ -418,7 +362,6 @@ const DR_CSS = `
 .dr .s-present .tc-ic { color: var(--ok); }
 .dr .s-leave { background: oklch(0.96 0.04 25); color: var(--leave); }
 .dr .s-off { background: var(--surface-2); color: var(--off); border: 1px solid var(--line-2); }
-.dr .s-watch { background: oklch(0.96 0.07 82); color: oklch(0.48 0.13 60); }
 .dr .s-pending { background: var(--surface-2); color: var(--pending); border: 1px dashed var(--line); }
 
 .dr .dot { width: 9px; height: 9px; border-radius: 99px; display: inline-block; }

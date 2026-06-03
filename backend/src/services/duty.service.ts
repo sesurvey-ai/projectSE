@@ -1,5 +1,12 @@
 import { db } from '../config/database';
 
+// เดือนตั้งต้นของการหมุนเวร (rotate_offset อ้างอิงเดือนนี้): มิ.ย. 2569 = 2026-06
+const ANCHOR_YM = 2026 * 12 + 6;
+const ROTATE_CYCLE = ['shift1', 'shift2', 'shift3'];
+const SHIFT_LABEL: Record<string, string> = {
+  shift1: 'เวร 1', shift2: 'เวร 2', shift3: 'เวร 3', fix1: 'Fix 1', fix2: 'Fix 2',
+};
+
 export type SlotInput = {
   station_id: number;
   kind: 'rotate' | 'fix';
@@ -64,5 +71,71 @@ export const dutyService = {
 
   deleteSlot: async (id: number) => {
     await db.query('DELETE FROM duty_slots WHERE id = $1', [id]);
+  },
+
+  // ── ตารางเวร "live" ของวันหนึ่ง ──────────────────────────
+  // คำนวณเวรของแต่ละสล๊อตจากเดือน (เวร1-3 หมุนจาก anchor, Fix คงที่)
+  // + สถานะจาก attendance (เข้างานแล้ว/เวลา) / leave (ลา) / weekly_off (วันหยุด)
+  roster: async (date?: string) => {
+    const d = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : (await db.query("SELECT to_char(NOW() AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS d")).rows[0].d;
+    const [y, mo, day] = d.split('-').map(Number);
+    const monthsSince = (y * 12 + mo) - ANCHOR_YM;
+    const dow = new Date(Date.UTC(y, mo - 1, day)).getUTCDay(); // 0=อา..6=ส
+
+    const slots = (await db.query(
+      `SELECT s.kind, s.rotate_offset, s.fixed_shift, s.weekly_off, s.note,
+              st.name AS station, st.region,
+              s.user_id, u.username, u.first_name, u.last_name, u.phone
+         FROM duty_slots s
+         JOIN stations st ON st.id = s.station_id
+         LEFT JOIN users u ON u.id = s.user_id
+        WHERE s.active`
+    )).rows;
+
+    const att = (await db.query(
+      `SELECT user_id, to_char(MIN(check_in_at), 'HH24:MI') AS check_in
+         FROM attendance_records
+        WHERE work_date = $1 AND check_in_at IS NOT NULL
+        GROUP BY user_id`, [d]
+    )).rows;
+    const checkInBy = new Map<number, string>(att.map((r: any) => [r.user_id, r.check_in]));
+
+    const lv = (await db.query(
+      `SELECT DISTINCT user_id FROM leave_requests
+        WHERE status = 'approved' AND start_date <= $1 AND end_date >= $1`, [d]
+    )).rows;
+    const onLeave = new Set<number>(lv.map((r: any) => r.user_id));
+
+    const people = slots
+      .filter((s: any) => s.user_id)
+      .map((s: any) => {
+        const shift = s.kind === 'fix'
+          ? s.fixed_shift
+          : ROTATE_CYCLE[(((s.rotate_offset + monthsSince) % 3) + 3) % 3];
+        let status: 'present' | 'pending' | 'leave' | 'off';
+        let check_in: string | null = null;
+        if (onLeave.has(s.user_id)) status = 'leave';
+        else if (s.weekly_off != null && s.weekly_off === dow) status = 'off';
+        else if (checkInBy.has(s.user_id)) { status = 'present'; check_in = checkInBy.get(s.user_id)!; }
+        else status = 'pending';
+        return {
+          user_id: s.user_id,
+          code: s.username,
+          name: [s.first_name, s.last_name].filter(Boolean).join(' ') || s.username,
+          phone: s.phone || '',
+          station: s.station,
+          region: s.region,
+          shift,
+          shift_label: SHIFT_LABEL[shift] || shift,
+          status,
+          check_in,
+          tags: s.kind === 'fix' ? [SHIFT_LABEL[s.fixed_shift] || 'FIX'] : [],
+          note: s.note || null,
+        };
+      });
+
+    return { date: d, anchor: 'มิ.ย. 2569', people };
   },
 };
