@@ -121,29 +121,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _punch(bool isCheckIn) async {
-    String? photoPath;
-    if (isCheckIn) {
-      // ถ่ายรูปก่อนลงเวลาเข้างาน (เป็นหลักฐาน) — ยกเลิกกล้อง = ยกเลิกการลงเวลา
-      try {
-        final shot = await _picker.pickImage(
-          source: ImageSource.camera,
-          preferredCameraDevice: CameraDevice.front,
-          imageQuality: 70,
-          maxWidth: 1280,
-        );
-        if (shot == null) return; // ผู้ใช้ยกเลิก
-        photoPath = shot.path;
-      } catch (_) {
-        if (mounted) _snack('เปิดกล้องไม่สำเร็จ', _red);
-        return;
-      }
-    }
-
     setState(() { _busy = true; _gpsNote = 'กำลังระบุตำแหน่ง…'; });
+
+    // หาพิกัด GPS ก่อน (จำกัดเวลา 8 วิ)
     double? lat;
     double? lng;
     try {
-      // จำกัดเวลาหาพิกัด — ถ้าหาไม่ได้ใน 8 วิ ให้ลงเวลาต่อโดยไม่มี GPS (ไม่ค้างหน้าจอ)
       final pos = await _location.getCurrentPosition().timeout(
         const Duration(seconds: 8),
         onTimeout: () => null,
@@ -153,7 +136,40 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         lng = pos.longitude;
       }
     } catch (_) {}
-    if (mounted) setState(() => _gpsNote = (lat == null) ? 'บันทึกโดยไม่มีพิกัด GPS' : '');
+
+    // ลงเวลา "เข้างาน" ต้องมี GPS — ถ้าไม่มี แจ้งเตือนให้เปิด GPS แล้วไม่ลงเวลา (ไม่ถ่ายรูป/ไม่ส่ง)
+    if (isCheckIn && (lat == null || lng == null)) {
+      if (mounted) {
+        setState(() { _busy = false; _gpsNote = ''; });
+        _snack('กรุณาเปิด GPS และอนุญาตการเข้าถึงตำแหน่ง แล้วลงเวลาเข้างานอีกครั้ง', _red);
+      }
+      return;
+    }
+    if (mounted) setState(() => _gpsNote = '');
+
+    // ถ่ายรูปก่อนลงเวลาเข้างาน (เป็นหลักฐาน) — ทำหลังได้ GPS แล้ว; ยกเลิกกล้อง = ยกเลิกการลงเวลา
+    String? photoPath;
+    if (isCheckIn) {
+      try {
+        final shot = await _picker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.front,
+          imageQuality: 70,
+          maxWidth: 1280,
+        );
+        if (shot == null) {
+          if (mounted) setState(() => _busy = false);
+          return; // ผู้ใช้ยกเลิก
+        }
+        photoPath = shot.path;
+      } catch (_) {
+        if (mounted) {
+          setState(() => _busy = false);
+          _snack('เปิดกล้องไม่สำเร็จ', _red);
+        }
+        return;
+      }
+    }
 
     try {
       final rec = isCheckIn

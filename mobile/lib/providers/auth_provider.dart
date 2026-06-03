@@ -122,8 +122,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // best-effort: เอาหมุดพิกัดออกจากแผนที่ Call Center ก่อนล้าง token
-    // (ต้องเรียกก่อน _authService.logout() เพราะยังต้องใช้ token ยิง API)
+    // best-effort (ต้องเรียกก่อน _authService.logout() เพราะยังต้องใช้ token):
+    // 1) ปิดรอบเข้างานที่ค้างอยู่ → สถานะเข้างาน = ไม่ (check-out ลบหมุดให้ฝั่ง server ด้วย)
+    try {
+      await _apiService.checkOutAttendance();
+    } catch (_) {}
+    // 2) เผื่อไม่มีรอบเปิดค้างแต่ยังมีหมุดค้าง → ลบหมุดอีกชั้น
     try {
       await _apiService.clearMyLocation();
     } catch (_) {}

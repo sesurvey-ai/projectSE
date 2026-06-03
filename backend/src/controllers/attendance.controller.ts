@@ -18,16 +18,19 @@ export const attendanceController = {
   checkIn: asyncHandler(async (req: Request, res: Response) => {
     const lat = toNum(req.body?.lat);
     const lng = toNum(req.body?.lng);
+    // ต้องเปิด GPS ถึงจะลงเวลาเข้างานได้ — ไม่มีพิกัด = ไม่ให้เข้างาน
+    if (lat === null || lng === null) {
+      sendError(res, 'ต้องเปิด GPS เพื่อลงเวลาเข้างาน กรุณาเปิดการเข้าถึงตำแหน่งแล้วลองใหม่', 400);
+      return;
+    }
     const photo = (req.file as Express.Multer.File | undefined)?.filename ?? null;
     const row = await attendanceService.checkIn(req.user!.id, lat, lng, photo);
     if (!row) {
       sendError(res, 'คุณยังมีรอบที่ยังไม่ได้ลงเวลาออก กรุณาลงเวลาออกก่อนจึงจะลงเวลาเข้าใหม่ได้', 400);
       return;
     }
-    // ลงเวลาเข้างานสำเร็จ + มีพิกัด → ขึ้นหมุดบนแผนที่ Call Center ทันที (ไม่ต้องรอ FCM)
-    if (lat !== null && lng !== null) {
-      await broadcastSurveyorLocation(req.user!.id, lat, lng, 'check_in');
-    }
+    // ลงเวลาเข้างานสำเร็จ (มีพิกัดแน่นอน) → ขึ้นหมุดบนแผนที่ Call Center ทันที (ไม่ต้องรอ FCM)
+    await broadcastSurveyorLocation(req.user!.id, lat, lng, 'check_in');
     sendSuccess(res, row);
   }),
 
