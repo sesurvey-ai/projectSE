@@ -136,6 +136,68 @@ export const dutyService = {
         };
       });
 
+    // อาสา (volunteer) ของวันนั้น → เพิ่ม entry ที่จุดตัวเอง (tag อาสา + ช่วงเวลา)
+    const userShift = new Map<number, string>(people.map((p) => [p.user_id, p.shift] as [number, string]));
+    const vols = (await db.query(
+      `SELECT v.user_id, to_char(v.start_time,'HH24:MI') AS s, to_char(v.end_time,'HH24:MI') AS e, v.note,
+              u.username, u.first_name, u.last_name, u.phone, st.name AS station, st.region
+         FROM volunteers v
+         JOIN users u ON u.id = v.user_id
+         JOIN stations st ON st.id = v.station_id
+        WHERE v.work_date = $1`, [d]
+    )).rows as any[];
+    for (const v of vols) {
+      const shift = userShift.get(v.user_id) || 'fix1';
+      people.push({
+        user_id: v.user_id,
+        code: v.username,
+        name: [v.first_name, v.last_name].filter(Boolean).join(' ') || v.username,
+        phone: v.phone || '',
+        station: v.station,
+        region: v.region,
+        shift,
+        shift_label: SHIFT_LABEL[shift] || shift,
+        status: 'present',
+        check_in: `${v.s}–${v.e}`,
+        tags: ['อาสา'],
+        note: v.note || null,
+      });
+    }
+
     return { date: d, anchor: 'มิ.ย. 2569', people };
+  },
+
+  // ── อาสา (volunteer) ──────────────────────────────────────
+  // จุด = จุดประจำของตัวเอง (จาก duty_slots); วันที่ = วันนี้ (เวลาไทย) ถ้าไม่ระบุ
+  submitVolunteer: async (userId: number, start: string, end: string, date?: string) => {
+    const d = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : (await db.query("SELECT to_char(NOW() AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS d")).rows[0].d;
+    const slot = (await db.query('SELECT station_id FROM duty_slots WHERE user_id = $1 AND active ORDER BY id LIMIT 1', [userId])).rows[0];
+    const row = (await db.query(
+      `INSERT INTO volunteers (user_id, work_date, start_time, end_time, station_id)
+       VALUES ($1,$2,$3,$4,$5)
+       RETURNING id, to_char(work_date,'YYYY-MM-DD') AS work_date,
+                 to_char(start_time,'HH24:MI') AS start_time, to_char(end_time,'HH24:MI') AS end_time`,
+      [userId, d, start, end, slot ? slot.station_id : null]
+    )).rows[0];
+    return row;
+  },
+
+  myVolunteers: async (userId: number, date?: string) => {
+    const d = date && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : (await db.query("SELECT to_char(NOW() AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS d")).rows[0].d;
+    return (await db.query(
+      `SELECT id, to_char(work_date,'YYYY-MM-DD') AS work_date,
+              to_char(start_time,'HH24:MI') AS start_time, to_char(end_time,'HH24:MI') AS end_time
+         FROM volunteers WHERE user_id = $1 AND work_date = $2 ORDER BY start_time`,
+      [userId, d]
+    )).rows;
+  },
+
+  cancelVolunteer: async (userId: number, id: number) => {
+    const r = await db.query('DELETE FROM volunteers WHERE id = $1 AND user_id = $2', [id, userId]);
+    return (r.rowCount ?? 0) > 0;
   },
 };

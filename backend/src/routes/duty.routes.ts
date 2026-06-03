@@ -29,6 +29,16 @@ router.get('/shifts', auth, requireRole('admin', 'callcenter'), dutyController.s
 router.get('/surveyors', auth, requireRole('admin'), dutyController.surveyors);
 router.get('/slots', auth, requireRole('admin', 'callcenter'), dutyController.slots);
 router.get('/roster', auth, requireRole('admin', 'callcenter'), dutyController.roster);
+
+// อาสา (surveyor แจ้งเอง) — แจ้งช่วงเวลา ที่จุดตัวเอง ขึ้นตารางทันที
+const volunteerSchema = z.object({
+  start_time: z.string().regex(/^\d{2}:\d{2}$/, 'เวลาเริ่มต้องเป็น HH:MM'),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/, 'เวลาสิ้นสุดต้องเป็น HH:MM'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+router.post('/volunteer', auth, requireRole('surveyor'), validate(volunteerSchema), dutyController.submitVolunteer);
+router.get('/volunteer/mine', auth, requireRole('surveyor'), dutyController.myVolunteers);
+router.delete('/volunteer/:id', auth, requireRole('surveyor'), dutyController.cancelVolunteer);
 router.post('/slots', auth, requireRole('admin'), validate(slotSchema), dutyController.createSlot);
 router.put('/slots/:id', auth, requireRole('admin'), validate(slotSchema), dutyController.updateSlot);
 router.delete('/slots/:id', auth, requireRole('admin'), dutyController.deleteSlot);

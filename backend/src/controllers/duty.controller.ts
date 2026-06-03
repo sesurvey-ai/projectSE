@@ -26,6 +26,22 @@ export const dutyController = {
     sendSuccess(res, await dutyService.roster(date));
   }),
 
+  // ── อาสา (surveyor) ──
+  submitVolunteer: asyncHandler(async (req: Request, res: Response) => {
+    sendSuccess(res, await dutyService.submitVolunteer(req.user!.id, req.body.start_time, req.body.end_time, req.body.date));
+  }),
+
+  myVolunteers: asyncHandler(async (req: Request, res: Response) => {
+    const date = typeof req.query.date === 'string' ? req.query.date : undefined;
+    sendSuccess(res, await dutyService.myVolunteers(req.user!.id, date));
+  }),
+
+  cancelVolunteer: asyncHandler(async (req: Request, res: Response) => {
+    const ok = await dutyService.cancelVolunteer(req.user!.id, Number(req.params.id));
+    if (!ok) { sendError(res, 'ไม่พบรายการอาสา', 404); return; }
+    sendSuccess(res, { message: 'ยกเลิกอาสาแล้ว' });
+  }),
+
   createSlot: asyncHandler(async (req: Request, res: Response) => {
     sendSuccess(res, await dutyService.createSlot(req.body));
   }),

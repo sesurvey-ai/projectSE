@@ -203,4 +203,19 @@ class ApiService {
   Future<void> clearMyLocation() async {
     await _dio.delete('/api/users/me/location');
   }
+
+  // ── อาสา (ทำงานนอกเวรของตัวเอง) ──
+  Future<Map<String, dynamic>> submitVolunteer({required String start, required String end}) async {
+    final r = await _dio.post('/api/duty/volunteer', data: {'start_time': start, 'end_time': end});
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
+
+  Future<List<dynamic>> getMyVolunteers() async {
+    final r = await _dio.get('/api/duty/volunteer/mine');
+    return (r.data['data'] as List?) ?? [];
+  }
+
+  Future<void> cancelVolunteer(int id) async {
+    await _dio.delete('/api/duty/volunteer/$id');
+  }
 }

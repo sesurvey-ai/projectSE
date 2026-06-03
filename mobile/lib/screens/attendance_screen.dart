@@ -48,6 +48,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _loading = true;
   bool _busy = false;
   String _gpsNote = '';
+  List<dynamic> _volunteers = [];
 
   @override
   void initState() {
@@ -60,7 +61,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final today = await _api.getTodayAttendance();
       final hist = await _api.getMyAttendance();
-      if (mounted) setState(() { _today = today; _history = hist; });
+      List<dynamic> vols = [];
+      try { vols = await _api.getMyVolunteers(); } catch (_) {}
+      if (mounted) setState(() { _today = today; _history = hist; _volunteers = vols; });
     } catch (_) {
       // เงียบ
     } finally {
@@ -192,6 +195,110 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating));
   }
 
+  // ── อาสา (ทำงานนอกเวรของตัวเอง) ──────────────────────────
+  String _fmtTod(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Widget _volunteerCard() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.volunteer_activism_outlined, size: 18, color: _primary),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('อาสา', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _ink))),
+            TextButton.icon(onPressed: _busy ? null : _showVolunteerSheet, icon: const Icon(Icons.add, size: 18), label: const Text('แจ้งอาสา')),
+          ]),
+          if (_volunteers.isEmpty)
+            const Padding(padding: EdgeInsets.fromLTRB(2, 2, 0, 0), child: Text('ยังไม่ได้แจ้งอาสาวันนี้', style: TextStyle(fontSize: 12.5, color: _muted)))
+          else
+            ..._volunteers.map((v) {
+              final m = Map<String, dynamic>.from(v as Map);
+              return Padding(
+                padding: const EdgeInsets.only(top: 6, left: 2),
+                child: Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFFEAF7F0), borderRadius: BorderRadius.circular(8)),
+                    child: Text('${m['start_time']} – ${m['end_time']} น.', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _green)),
+                  ),
+                  const Spacer(),
+                  IconButton(onPressed: () => _cancelVolunteer(m['id'] as int), icon: const Icon(Icons.close, size: 18, color: _muted), tooltip: 'ยกเลิก', visualDensity: VisualDensity.compact),
+                ]),
+              );
+            }),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(2, 8, 8, 0),
+            child: Text('ทำงานนอกเวรของตัวเอง — แจ้งช่วงเวลาเอง แล้วขึ้นตารางเวรทันที', style: TextStyle(fontSize: 11.5, color: _muted, height: 1.4)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVolunteerSheet() {
+    TimeOfDay? start, end;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          Widget timeBtn(TimeOfDay? val, void Function(TimeOfDay) onPick) => OutlinedButton(
+                onPressed: () async {
+                  final t = await showTimePicker(context: ctx, initialTime: val ?? TimeOfDay.now());
+                  if (t != null) setLocal(() => onPick(t));
+                },
+                child: Text(val == null ? 'เลือกเวลา' : '${_fmtTod(val)} น.'),
+              );
+          return AlertDialog(
+            title: const Text('แจ้งอาสา', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(children: [const SizedBox(width: 52, child: Text('เริ่ม', style: TextStyle(color: _muted))), Expanded(child: timeBtn(start, (t) => start = t))]),
+                const SizedBox(height: 10),
+                Row(children: [const SizedBox(width: 52, child: Text('สิ้นสุด', style: TextStyle(color: _muted))), Expanded(child: timeBtn(end, (t) => end = t))]),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ยกเลิก')),
+              FilledButton(
+                onPressed: (start != null && end != null) ? () { Navigator.pop(ctx); _submitVolunteer(start!, end!); } : null,
+                child: const Text('แจ้งอาสา'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _submitVolunteer(TimeOfDay start, TimeOfDay end) async {
+    setState(() => _busy = true);
+    try {
+      await _api.submitVolunteer(start: _fmtTod(start), end: _fmtTod(end));
+      if (mounted) _snack('แจ้งอาสาแล้ว ${_fmtTod(start)}–${_fmtTod(end)} น.', _green);
+      await _load();
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? (e.response?.data['message']?.toString() ?? 'แจ้งอาสาไม่สำเร็จ') : 'แจ้งอาสาไม่สำเร็จ';
+      if (mounted) _snack(msg, _red);
+    } catch (_) {
+      if (mounted) _snack('แจ้งอาสาไม่สำเร็จ', _red);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _cancelVolunteer(int id) async {
+    try {
+      await _api.cancelVolunteer(id);
+      await _load();
+    } catch (_) {
+      if (mounted) _snack('ยกเลิกไม่สำเร็จ', _red);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,6 +338,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Text(_gpsNote, style: const TextStyle(fontSize: 12, color: _muted)),
                     ]),
                   ],
+                  const SizedBox(height: 18),
+                  _volunteerCard(),
                   const SizedBox(height: 24),
                   const Padding(
                     padding: EdgeInsets.only(left: 4, bottom: 10),
