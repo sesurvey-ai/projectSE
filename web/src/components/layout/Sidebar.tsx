@@ -14,12 +14,14 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'รายงานการโทร', href: '/admin/call-consult' },
     { label: 'ใบลาพนักงาน', href: '/admin/leave' },
     { label: 'เวลาเข้า–ออกงาน', href: '/admin/attendance' },
+    { label: 'จัดตารางเวร', href: '/admin/duty-roster' },
   ],
   callcenter: [
     { label: 'หน้าหลัก', href: '/callcenter' },
     { label: 'สร้างเคสใหม่', href: '/callcenter/cases/new' },
     { label: 'พนักงานทั้งหมด', href: '/callcenter/employees' },
     { label: 'เวลาเข้างานพนักงาน', href: '/callcenter/attendance' },
+    { label: 'ตารางเวรประจำจุด', href: '/callcenter/duty-roster' },
   ],
   checker: [
     { label: 'รายการงาน', href: '/inspector' },

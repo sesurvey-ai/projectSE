@@ -18,6 +18,12 @@ app.use(express.json());
 // Static files (uploaded photos)
 app.use('/uploads', express.static(path.resolve(env.UPLOAD_DIR)));
 
+// API responses ต้องไม่ถูก cache — กัน browser เสิร์ฟข้อมูลเก่า (304) หลัง create/update/delete
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // API routes
 app.use('/api', routes);
 

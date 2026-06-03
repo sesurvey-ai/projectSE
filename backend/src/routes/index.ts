@@ -9,6 +9,7 @@ import ocrRoutes from './ocr.routes';
 import consultRoutes from './consult.routes';
 import leaveRoutes from './leave.routes';
 import attendanceRoutes from './attendance.routes';
+import dutyRoutes from './duty.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/ocr', ocrRoutes);
 router.use('/consult', consultRoutes);
 router.use('/leave', leaveRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/duty', dutyRoutes);
 
 export default router;
