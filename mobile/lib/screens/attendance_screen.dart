@@ -120,7 +120,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Future<void> _punch(bool isCheckIn, {String? shift, bool volunteer = false}) async {
+  Future<void> _punch(bool isCheckIn, {String? volStart, String? volEnd}) async {
     setState(() { _busy = true; _gpsNote = 'กำลังระบุตำแหน่ง…'; });
 
     // หาพิกัด GPS ก่อน (จำกัดเวลา 8 วิ)
@@ -173,13 +173,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       final rec = isCheckIn
-          ? await _api.checkInAttendance(lat: lat, lng: lng, photoPath: photoPath, shift: shift, volunteer: volunteer)
+          ? await _api.checkInAttendance(lat: lat, lng: lng, photoPath: photoPath)
           : await _api.checkOutAttendance(lat: lat, lng: lng);
       if (!mounted) return;
-      final tags = <String>[];
-      if (shift != null) tags.add(const {'s1': 'เวร 1', 's2': 'เวร 2', 's3': 'เวร 3 ดึก', 'fix': 'FIX'}[shift] ?? shift);
-      if (volunteer) tags.add('อาสา');
-      final extra = tags.isEmpty ? '' : ' · ${tags.join(' + ')}';
+      // อาสา: บันทึกช่วงเวลาที่อาสาแทน (volunteer entry แยกจากการลงเวลา)
+      String extra = '';
+      if (isCheckIn && volStart != null && volEnd != null) {
+        try { await _api.submitVolunteer(start: volStart, end: volEnd); extra = ' · อาสา $volStart–$volEnd'; }
+        catch (_) { extra = ' · (บันทึกอาสาไม่สำเร็จ)'; }
+      }
       _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}$extra' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
       await _load();
     } on DioException catch (e) {
@@ -196,16 +198,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating));
   }
 
-  // ── ตัวเลือกตอนลงเวลาเข้างาน: เลือกเวร + อาสา (อาสาติ๊กพร้อมเวรได้) ──
+  // ── ตัวเลือกตอนลงเวลาเข้างาน: เวรอ้างอิงจากตาราง, เลือกแค่ "อาสา" + ช่วงเวลา ──
   void _showCheckInOptions() {
-    const shifts = [
-      {'key': 's1', 'label': 'เวร 1', 'time': '07:00 – 16:00'},
-      {'key': 's2', 'label': 'เวร 2', 'time': '15:00 – 24:00'},
-      {'key': 's3', 'label': 'เวร 3 ดึก', 'time': '23:00 – 08:00'},
-      {'key': 'fix', 'label': 'FIX', 'time': '11–20 / 14–23'},
-    ];
-    String? sel;
     bool vol = false;
+    TimeOfDay? vStart;
+    TimeOfDay? vEnd;
+    String fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -213,7 +211,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) {
-          final canGo = sel != null || vol;
+          final volOk = !vol || (vStart != null && vEnd != null);
           return Padding(
             padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
             child: Column(
@@ -224,34 +222,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 const SizedBox(height: 16),
                 const Text('ลงเวลาเข้างาน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink)),
                 const SizedBox(height: 2),
-                const Text('เลือกเวรที่เข้างาน', style: TextStyle(fontSize: 13, color: _muted)),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: shifts.map((s) {
-                    final on = sel == s['key'];
-                    return GestureDetector(
-                      onTap: () => setLocal(() => sel = on ? null : s['key']),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: on ? _primary : _fill,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: on ? _primary : _line),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(s['label']!, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: on ? Colors.white : _ink)),
-                            Text(s['time']!, style: TextStyle(fontSize: 11, color: on ? Colors.white70 : _muted)),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                const Text('เวรอ้างอิงจากตารางเวรอัตโนมัติ — ถ่ายรูปแล้วลงเวลาได้เลย', style: TextStyle(fontSize: 13, color: _muted)),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.fromLTRB(14, 4, 10, 4),
@@ -269,20 +240,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('อาสา', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: vol ? _green : _ink)),
-                            const Text('ทำงานก่อน/หลังเวร หรือวันหยุด (ติ๊กพร้อมเวรได้)', style: TextStyle(fontSize: 11.5, color: _muted)),
+                            const Text('ทำงานแทน/นอกเวร — เลือกช่วงเวลาที่อาสา', style: TextStyle(fontSize: 11.5, color: _muted)),
                           ],
                         ),
                       ),
-                      Switch(value: vol, activeColor: _green, onChanged: (v) => setLocal(() => vol = v)),
+                      Switch(value: vol, activeColor: _green, onChanged: (v) => setLocal(() { vol = v; if (!v) { vStart = null; vEnd = null; } })),
                     ],
                   ),
                 ),
+                if (vol) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: _timeField('เวลาเริ่ม', vStart, () async {
+                        final t = await showTimePicker(context: ctx, initialTime: vStart ?? TimeOfDay.now());
+                        if (t != null) setLocal(() => vStart = t);
+                      })),
+                      const SizedBox(width: 10),
+                      Expanded(child: _timeField('เวลาสิ้นสุด', vEnd, () async {
+                        final t = await showTimePicker(context: ctx, initialTime: vEnd ?? TimeOfDay.now());
+                        if (t != null) setLocal(() => vEnd = t);
+                      })),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: canGo ? () { Navigator.pop(ctx); _punch(true, shift: sel, volunteer: vol); } : null,
+                    onPressed: volOk ? () { Navigator.pop(ctx); _punch(true, volStart: vol ? fmt(vStart!) : null, volEnd: vol ? fmt(vEnd!) : null); } : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _primary,
                       foregroundColor: Colors.white,
@@ -290,13 +277,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('ลงเวลาเข้างาน', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    child: Text(vol ? 'ลงเวลา + บันทึกอาสา' : 'ถ่ายรูปแล้วลงเวลา', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   ),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ปุ่มเลือกเวลา (สำหรับช่วงเวลาอาสา)
+  Widget _timeField(String label, TimeOfDay? val, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(12), border: Border.all(color: _line)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 11, color: _muted)),
+            const SizedBox(height: 2),
+            Text(val == null ? 'เลือกเวลา' : '${val.hour.toString().padLeft(2, '0')}:${val.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: val == null ? _muted : _ink)),
+          ],
+        ),
       ),
     );
   }

@@ -174,13 +174,11 @@ class ApiService {
     return (r.data['data'] as Map<String, dynamic>?) ?? {'sessions': <dynamic>[], 'open': null};
   }
 
-  Future<Map<String, dynamic>> checkInAttendance({double? lat, double? lng, String? photoPath, String? shift, bool volunteer = false}) async {
-    // multipart: รูปถ่าย + พิกัด + เวร/อาสา (backend เก็บเพิ่มได้ภายหลัง — ตอนนี้ส่งไว้เฉย ๆ)
+  Future<Map<String, dynamic>> checkInAttendance({double? lat, double? lng, String? photoPath}) async {
+    // multipart: รูปถ่าย + พิกัด (เวรอ้างอิงจากตารางเวร, อาสาแยกไปที่ submitVolunteer)
     final form = FormData();
     if (lat != null) form.fields.add(MapEntry('lat', lat.toString()));
     if (lng != null) form.fields.add(MapEntry('lng', lng.toString()));
-    if (shift != null) form.fields.add(MapEntry('shift', shift));
-    if (volunteer) form.fields.add(const MapEntry('volunteer', 'true'));
     if (photoPath != null) {
       form.files.add(MapEntry('photo', await MultipartFile.fromFile(photoPath, filename: 'checkin.jpg')));
     }
