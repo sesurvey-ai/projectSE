@@ -21,6 +21,7 @@ const createUserSchema = z.object({
   last_name: z.string().min(1, 'Last name is required'),
   role: z.enum(['admin', 'surveyor', 'callcenter', 'checker']),
   supervisor_id: z.number().int().positive().optional(),
+  code: z.string().max(16).optional(),
 });
 
 const updateUserSchema = z.object({

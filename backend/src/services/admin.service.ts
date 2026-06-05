@@ -100,16 +100,16 @@ export const adminService = {
     return result.rows[0];
   },
 
-  async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number }) {
+  async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number; code?: string }) {
     const existing = await db.query('SELECT id FROM users WHERE username = $1', [data.username]);
     if (existing.rows.length > 0) throw new AppError(409, 'Username already exists');
 
     const hash = await bcrypt.hash(data.password, 10);
     const result = await db.query(
-      `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id, code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at`,
-      [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null]
+      [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null, data.code || null]
     );
     return result.rows[0];
   },
