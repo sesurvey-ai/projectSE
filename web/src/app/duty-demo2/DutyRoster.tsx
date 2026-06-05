@@ -124,11 +124,18 @@ function shiftCssVars(colors: Record<string, string>) {
     const p = SHIFT_VAR_PREFIX[k];
     const n = parseInt(base.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
     const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    out['--' + p + '-solid'] = base;
-    out['--' + p + '-tint'] = mixHex(base, 255, 0.86);
-    out['--' + p + '-strong'] = mixHex(base, 255, 0.72);
-    out['--' + p + '-ink'] = mixHex(base, 0, 0.32);
-    out['--' + p + '-on'] = lum > 0.68 ? '#2B2F36' : '#ffffff';
+    if (k === 'off') {
+      // เวรหยุด = ใช้สีที่เลือกเป๊ะ ๆ เป็นพื้นทึบ (WYSIWYG: swatch = ช่องในตาราง) · ตัวอักษรปรับ contrast เอง
+      const onc = lum > 0.6 ? '#1A1C1E' : '#FFFFFF';
+      out['--off-tint'] = base; out['--off-strong'] = base; out['--off-solid'] = base;
+      out['--off-ink'] = onc; out['--off-on'] = onc;
+    } else {
+      out['--' + p + '-solid'] = base;
+      out['--' + p + '-tint'] = mixHex(base, 255, 0.86);
+      out['--' + p + '-strong'] = mixHex(base, 255, 0.72);
+      out['--' + p + '-ink'] = mixHex(base, 0, 0.32);
+      out['--' + p + '-on'] = lum > 0.68 ? '#2B2F36' : '#ffffff';
+    }
   }
   return out;
 }
