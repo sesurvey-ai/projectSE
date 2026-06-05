@@ -79,7 +79,7 @@ function Tag({ tag }: { tag: string }) {
 
 function PersonRow({ p, onSelect, active }: { p: Person; onSelect: (p: Person) => void; active: boolean }) {
   return (
-    <button className={`person ${active ? 'is-active' : ''}`} onClick={() => onSelect(p)}>
+    <button className={`person ${p.status} ${active ? 'is-active' : ''}`} onClick={() => onSelect(p)}>
       <span className="p-code mono">{p.c}</span>
       <span className="p-main">
         <span className="p-name">{p.n}</span>
@@ -416,6 +416,9 @@ const ATB_CSS = `
 .atb .person { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; cursor: pointer; background: none; border: 1px solid transparent; border-radius: 9px; padding: 7px 8px; transition: background 0.1s, border-color 0.1s; }
 .atb .person:hover { background: var(--surface-2); border-color: var(--line-2); }
 .atb .person.is-active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
+/* คนที่เข้างานแล้ว = พื้นหลังเขียว มองเห็นง่าย */
+.atb .person.present { background: oklch(0.95 0.045 152); border-color: oklch(0.83 0.08 152); }
+.atb .person.present:hover { background: oklch(0.93 0.06 152); border-color: oklch(0.76 0.1 152); }
 .atb .p-code { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 2px 6px; min-width: 40px; text-align: center; }
 .atb .p-main { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .atb .p-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
