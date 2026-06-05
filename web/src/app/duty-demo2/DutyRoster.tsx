@@ -14,15 +14,18 @@ const authToken = (): string | null => (typeof window !== 'undefined' ? localSto
 //  • All CSS scoped under .d2 (avoid Tailwind utility clashes); table class = gtbl (not grid)
 // ─────────────────────────────────────────────────────────────
 
-type ShiftKey = 's1' | 's2' | 's3' | 'off' | 'none';
+type ShiftKey = 's1' | 's2' | 's3' | 'fix7' | 'fix11' | 'fix14' | 'off' | 'none';
 const SHIFTS: Record<ShiftKey, { code: string; label: string; time: string; short: string; tone: string }> = {
   s1: { code: '1', label: 'เวร 1', time: '07.00–16.00', short: 'เช้า', tone: 'morning' },
   s2: { code: '2', label: 'เวร 2', time: '15.00–24.00', short: 'บ่าย', tone: 'afternoon' },
   s3: { code: '3', label: 'เวร 3', time: '23.00–08.00', short: 'ดึก', tone: 'night' },
+  fix7: { code: 'F7', label: 'FIX 7', time: '07.00–16.00', short: 'FIX7', tone: 'fix' },
+  fix11: { code: 'F11', label: 'FIX 11', time: '11.00–20.00', short: 'FIX11', tone: 'fix' },
+  fix14: { code: 'F14', label: 'FIX 14', time: '14.00–23.00', short: 'FIX14', tone: 'fix' },
   off: { code: '—', label: 'เวรหยุด', time: 'หยุดพัก', short: 'หยุด', tone: 'off' },
   none: { code: '·', label: 'ว่าง', time: 'ยังไม่จัด', short: 'ว่าง', tone: 'none' },
 };
-const SHIFT_ORDER: ShiftKey[] = ['s1', 's2', 's3', 'off', 'none'];
+const SHIFT_ORDER: ShiftKey[] = ['s1', 's2', 's3', 'fix7', 'fix11', 'fix14', 'off', 'none'];
 
 // zones = ศูนย์จริง 14 แห่ง (ข้อมูลพนักงาน/เวร จากไฟล์จริง มิ.ย. 2026 → roster-jun.ts) จัดกลุ่มตามภาค
 // สีประจำภาค — เลือกให้ต่างจากสีกะในตาราง (เขียว/ส้ม/คราม/เทา): กรุงเทพ=ชมพู, ปริมณฑล=ฟ้า cyan
@@ -55,7 +58,7 @@ type Day = { day: number; dow: string; isSat: boolean; isSun: boolean; isWeekend
 
 // เวรคงที่ผูกกับ "วันที่" 1..31 — เปลี่ยนเดือนเปลี่ยนแค่ปฏิทิน (วัน/จำนวนวัน) เวรไม่ขยับ
 // map shift keys จาก roster-jun → ชุดของ demo2 (FIX → ประมาณ)
-const MAP_SHIFT: Record<string, ShiftKey> = { s1: 's1', s2: 's2', s3: 's3', off: 'off', none: 'none', f1120: 's1', f1423: 's2' };
+const MAP_SHIFT: Record<string, ShiftKey> = { s1: 's1', s2: 's2', s3: 's3', fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', off: 'off', none: 'none', f1120: 'fix11', f1423: 'fix14' };
 type ZoneData = { staff: Staff[]; schedule: Record<string, Record<number, ShiftKey>> };
 
 function buildZoneData(): Record<string, ZoneData> {
@@ -77,8 +80,8 @@ function buildZoneData(): Record<string, ZoneData> {
 }
 const INITIAL_ZONE_DATA = buildZoneData();
 
-const TONE_OF: Record<ShiftKey, string> = { s1: 'morning', s2: 'afternoon', s3: 'night', off: 'off', none: 'none' };
-const SOLID_VAR: Record<ShiftKey, string> = { s1: 'var(--morning-solid)', s2: 'var(--after-solid)', s3: 'var(--night-solid)', off: 'var(--off-solid)', none: 'var(--warn)' };
+const TONE_OF: Record<ShiftKey, string> = { s1: 'morning', s2: 'afternoon', s3: 'night', fix7: 'fix', fix11: 'fix', fix14: 'fix', off: 'off', none: 'none' };
+const SOLID_VAR: Record<ShiftKey, string> = { s1: 'var(--morning-solid)', s2: 'var(--after-solid)', s3: 'var(--night-solid)', fix7: 'var(--fix-solid)', fix11: 'var(--fix-solid)', fix14: 'var(--fix-solid)', off: 'var(--off-solid)', none: 'var(--warn)' };
 
 const VARIANTS = [
   { key: 'pills', label: 'พิลล์นุ่ม', desc: 'ป้ายกลมโทนอ่อน' },
@@ -204,7 +207,7 @@ function ShiftPicker({ anchor, staff, day, current, onPick, onClose }: {
   useLayoutEffect(() => {
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
-    const w = 234, h = 320;
+    const w = 234, h = 430;
     let left = r.left;
     let top = r.bottom + 6;
     if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
@@ -357,7 +360,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const counts = useMemo(() => {
     const out: Record<string, Record<ShiftKey, number>> = {};
     staff.forEach((s) => {
-      const c: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, off: 0, none: 0 };
+      const c: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, fix7: 0, fix11: 0, fix14: 0, off: 0, none: 0 };
       days.forEach((d) => { c[schedule[s.id]?.[d.day] ?? 'none']++; });
       out[s.id] = c;
     });
@@ -368,14 +371,14 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
     let work = 0, empty = 0;
     staff.forEach((s) => {
       const k = schedule[s.id]?.[d.day] ?? 'none';
-      if (k === 's1' || k === 's2' || k === 's3') work++;
+      if (k !== 'off' && k !== 'none') work++;
       if (k === 'none') empty++;
     });
     return { day: d.day, work, empty, low: work < coverWarn };
   }), [schedule, coverWarn, staff, days]);
 
   const totals = useMemo(() => {
-    const tot: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, off: 0, none: 0 };
+    const tot: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, fix7: 0, fix11: 0, fix14: 0, off: 0, none: 0 };
     staff.forEach((s) => SHIFT_ORDER.forEach((k) => { tot[k] += counts[s.id]?.[k] ?? 0; }));
     return tot;
   }, [counts, staff]);
@@ -454,6 +457,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--morning-solid)' }}></span>เวร 1 · เช้า</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--after-solid)' }}></span>เวร 2 · บ่าย</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--night-solid)' }}></span>เวร 3 · ดึก</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 7/11/14</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--off-solid)' }}></span>หยุด</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--warn)' }}></span>ว่าง</span>
         </div>
@@ -600,6 +604,7 @@ const D2_CSS = `
   --night-tint:#EBEAFB; --night-ink:#4A45C2; --night-solid:#6366E8; --night-strong:#DBDBF7;
   --off-tint:#EFF1F4; --off-ink:#707888; --off-solid:#9AA3B2; --off-strong:#E5E8ED;
   --warn:#E06A3A; --warn-tint:#FFF3EE;
+  --fix-tint:#F3E8FF; --fix-ink:#7E22CE; --fix-solid:#A855F7; --fix-strong:#E9D5FF;
   --radius:14px; --radius-sm:9px;
   --shadow-sm:0 1px 2px rgba(20,24,40,.05),0 1px 1px rgba(20,24,40,.03);
   --shadow:0 6px 24px -8px rgba(20,24,40,.16),0 2px 6px -2px rgba(20,24,40,.08);
@@ -710,6 +715,7 @@ const D2_CSS = `
 .d2 .cell[data-tone="afternoon"] { --tint:var(--after-tint); --ink-c:var(--after-ink); --solid:var(--after-solid); --strong:var(--after-strong); --on:var(--after-on,#fff); }
 .d2 .cell[data-tone="night"] { --tint:var(--night-tint); --ink-c:var(--night-ink); --solid:var(--night-solid); --strong:var(--night-strong); --on:var(--night-on,#fff); }
 .d2 .cell[data-tone="off"] { --tint:var(--off-tint); --ink-c:var(--off-ink); --solid:var(--off-solid); --strong:var(--off-strong); --on:var(--off-on,#fff); }
+.d2 .cell[data-tone="fix"] { --tint:var(--fix-tint); --ink-c:var(--fix-ink); --solid:var(--fix-solid); --strong:var(--fix-strong); --on:#fff; }
 .d2 .cell[data-tone="none"] { --tint:#fff; --ink-c:var(--warn); --solid:var(--warn); --strong:var(--warn-tint); }
 
 .d2[data-variant="pills"] .cell { padding:0 7px; justify-content:flex-start; }
@@ -769,7 +775,7 @@ const D2_CSS = `
 .d2 .col-dim { opacity:.28; filter:grayscale(.4); }
 
 .d2 .pop-backdrop { position:fixed; inset:0; z-index:40; }
-.d2 .popover { position:fixed; z-index:41; width:234px; background:var(--surface); border:1px solid var(--line-2); border-radius:14px; box-shadow:var(--shadow-lg); padding:7px; animation:d2pop .14s cubic-bezier(.2,.9,.3,1.2); }
+.d2 .popover { position:fixed; z-index:41; width:234px; max-height:calc(100vh - 24px); overflow-y:auto; background:var(--surface); border:1px solid var(--line-2); border-radius:14px; box-shadow:var(--shadow-lg); padding:7px; animation:d2pop .14s cubic-bezier(.2,.9,.3,1.2); }
 @keyframes d2pop { from { transform:translateY(-6px) scale(.985); } to { transform:none; } }
 .d2 .pop-head { padding:7px 9px 8px; display:flex; align-items:center; justify-content:space-between; }
 .d2 .pop-head .pt { font-size:12px; color:var(--ink-3); }

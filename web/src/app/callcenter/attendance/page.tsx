@@ -38,7 +38,7 @@ const SH_META: Record<Band, { label: string; short: string; range: string }> = {
 };
 // raw shift key (จากตาราง) → แถบเวรในการ์ด; off/none = ไม่ขึ้นเวร (ข้าม)
 const RAW_TO_BAND: Record<string, Band | null> = {
-  s1: 'morning', s2: 'afternoon', s3: 'night', f1120: 'fix', f1423: 'fix', off: null, none: null,
+  s1: 'morning', s2: 'afternoon', s3: 'night', fix7: 'fix', fix11: 'fix', fix14: 'fix', f1120: 'fix', f1423: 'fix', off: null, none: null,
 };
 
 type Status = 'present' | 'pending';
