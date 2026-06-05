@@ -87,7 +87,7 @@ const VARIANTS = [
   { key: 'minimal', label: 'มินิมอล', desc: 'เลขกะ + เส้นบาง' },
 ];
 const FONTS = [
-  { value: 'Arial, Helvetica, sans-serif', label: 'เหมือนหน้าอื่น (Arial)' },
+  { value: 'Arial, Helvetica, sans-serif', label: 'Arial' },
   { value: 'Anuphan', label: 'Anuphan' },
   { value: "'IBM Plex Sans Thai'", label: 'IBM Plex Thai' },
   { value: "'Noto Sans Thai'", label: 'Noto Sans Thai' },
