@@ -48,7 +48,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _loading = true;
   bool _busy = false;
   String _gpsNote = '';
-  List<dynamic> _volunteers = [];
 
   @override
   void initState() {
@@ -61,9 +60,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final today = await _api.getTodayAttendance();
       final hist = await _api.getMyAttendance();
-      List<dynamic> vols = [];
-      try { vols = await _api.getMyVolunteers(); } catch (_) {}
-      if (mounted) setState(() { _today = today; _history = hist; _volunteers = vols; });
+      if (mounted) setState(() { _today = today; _history = hist; });
     } catch (_) {
       // เงียบ
     } finally {
@@ -123,7 +120,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Future<void> _punch(bool isCheckIn) async {
+  Future<void> _punch(bool isCheckIn, {String? shift, bool volunteer = false}) async {
     setState(() { _busy = true; _gpsNote = 'กำลังระบุตำแหน่ง…'; });
 
     // หาพิกัด GPS ก่อน (จำกัดเวลา 8 วิ)
@@ -176,10 +173,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       final rec = isCheckIn
-          ? await _api.checkInAttendance(lat: lat, lng: lng, photoPath: photoPath)
+          ? await _api.checkInAttendance(lat: lat, lng: lng, photoPath: photoPath, shift: shift, volunteer: volunteer)
           : await _api.checkOutAttendance(lat: lat, lng: lng);
       if (!mounted) return;
-      _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
+      final tags = <String>[];
+      if (shift != null) tags.add(const {'s1': 'เวร 1', 's2': 'เวร 2', 's3': 'เวร 3 ดึก', 'fix': 'FIX'}[shift] ?? shift);
+      if (volunteer) tags.add('อาสา');
+      final extra = tags.isEmpty ? '' : ' · ${tags.join(' + ')}';
+      _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}$extra' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
       await _load();
     } on DioException catch (e) {
       final msg = e.response?.data is Map ? (e.response?.data['message']?.toString() ?? 'บันทึกเวลาไม่สำเร็จ') : 'บันทึกเวลาไม่สำเร็จ';
@@ -195,108 +196,109 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating));
   }
 
-  // ── อาสา (ทำงานนอกเวรของตัวเอง) ──────────────────────────
-  String _fmtTod(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-
-  Widget _volunteerCard() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.volunteer_activism_outlined, size: 18, color: _primary),
-            const SizedBox(width: 8),
-            const Expanded(child: Text('อาสา', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _ink))),
-            TextButton.icon(onPressed: _busy ? null : _showVolunteerSheet, icon: const Icon(Icons.add, size: 18), label: const Text('แจ้งอาสา')),
-          ]),
-          if (_volunteers.isEmpty)
-            const Padding(padding: EdgeInsets.fromLTRB(2, 2, 0, 0), child: Text('ยังไม่ได้แจ้งอาสาวันนี้', style: TextStyle(fontSize: 12.5, color: _muted)))
-          else
-            ..._volunteers.map((v) {
-              final m = Map<String, dynamic>.from(v as Map);
-              return Padding(
-                padding: const EdgeInsets.only(top: 6, left: 2),
-                child: Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFEAF7F0), borderRadius: BorderRadius.circular(8)),
-                    child: Text('${m['start_time']} – ${m['end_time']} น.', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _green)),
-                  ),
-                  const Spacer(),
-                  IconButton(onPressed: () => _cancelVolunteer(m['id'] as int), icon: const Icon(Icons.close, size: 18, color: _muted), tooltip: 'ยกเลิก', visualDensity: VisualDensity.compact),
-                ]),
-              );
-            }),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(2, 8, 8, 0),
-            child: Text('ทำงานนอกเวรของตัวเอง — แจ้งช่วงเวลาเอง แล้วขึ้นตารางเวรทันที', style: TextStyle(fontSize: 11.5, color: _muted, height: 1.4)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showVolunteerSheet() {
-    TimeOfDay? start, end;
-    showDialog(
+  // ── ตัวเลือกตอนลงเวลาเข้างาน: เลือกเวร + อาสา (อาสาติ๊กพร้อมเวรได้) ──
+  void _showCheckInOptions() {
+    const shifts = [
+      {'key': 's1', 'label': 'เวร 1', 'time': '07:00 – 16:00'},
+      {'key': 's2', 'label': 'เวร 2', 'time': '15:00 – 24:00'},
+      {'key': 's3', 'label': 'เวร 3 ดึก', 'time': '23:00 – 08:00'},
+      {'key': 'fix', 'label': 'FIX', 'time': '11–20 / 14–23'},
+    ];
+    String? sel;
+    bool vol = false;
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) {
-          Widget timeBtn(TimeOfDay? val, void Function(TimeOfDay) onPick) => OutlinedButton(
-                onPressed: () async {
-                  final t = await showTimePicker(context: ctx, initialTime: val ?? TimeOfDay.now());
-                  if (t != null) setLocal(() => onPick(t));
-                },
-                child: Text(val == null ? 'เลือกเวลา' : '${_fmtTod(val)} น.'),
-              );
-          return AlertDialog(
-            title: const Text('แจ้งอาสา', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            content: Column(
+          final canGo = sel != null || vol;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [const SizedBox(width: 52, child: Text('เริ่ม', style: TextStyle(color: _muted))), Expanded(child: timeBtn(start, (t) => start = t))]),
-                const SizedBox(height: 10),
-                Row(children: [const SizedBox(width: 52, child: Text('สิ้นสุด', style: TextStyle(color: _muted))), Expanded(child: timeBtn(end, (t) => end = t))]),
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                const Text('ลงเวลาเข้างาน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink)),
+                const SizedBox(height: 2),
+                const Text('เลือกเวรที่เข้างาน', style: TextStyle(fontSize: 13, color: _muted)),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: shifts.map((s) {
+                    final on = sel == s['key'];
+                    return GestureDetector(
+                      onTap: () => setLocal(() => sel = on ? null : s['key']),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: on ? _primary : _fill,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: on ? _primary : _line),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(s['label']!, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: on ? Colors.white : _ink)),
+                            Text(s['time']!, style: TextStyle(fontSize: 11, color: on ? Colors.white70 : _muted)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 4, 10, 4),
+                  decoration: BoxDecoration(
+                    color: vol ? const Color(0xFFEAF7F0) : _fill,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: vol ? _green : _line),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.volunteer_activism_outlined, size: 20, color: vol ? _green : _muted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('อาสา', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: vol ? _green : _ink)),
+                            const Text('ทำงานก่อน/หลังเวร หรือวันหยุด (ติ๊กพร้อมเวรได้)', style: TextStyle(fontSize: 11.5, color: _muted)),
+                          ],
+                        ),
+                      ),
+                      Switch(value: vol, activeColor: _green, onChanged: (v) => setLocal(() => vol = v)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: canGo ? () { Navigator.pop(ctx); _punch(true, shift: sel, volunteer: vol); } : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _primary.withValues(alpha: 0.4),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('ลงเวลาเข้างาน', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  ),
+                ),
               ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ยกเลิก')),
-              FilledButton(
-                onPressed: (start != null && end != null) ? () { Navigator.pop(ctx); _submitVolunteer(start!, end!); } : null,
-                child: const Text('แจ้งอาสา'),
-              ),
-            ],
           );
         },
       ),
     );
-  }
-
-  Future<void> _submitVolunteer(TimeOfDay start, TimeOfDay end) async {
-    setState(() => _busy = true);
-    try {
-      await _api.submitVolunteer(start: _fmtTod(start), end: _fmtTod(end));
-      if (mounted) _snack('แจ้งอาสาแล้ว ${_fmtTod(start)}–${_fmtTod(end)} น.', _green);
-      await _load();
-    } on DioException catch (e) {
-      final msg = e.response?.data is Map ? (e.response?.data['message']?.toString() ?? 'แจ้งอาสาไม่สำเร็จ') : 'แจ้งอาสาไม่สำเร็จ';
-      if (mounted) _snack(msg, _red);
-    } catch (_) {
-      if (mounted) _snack('แจ้งอาสาไม่สำเร็จ', _red);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _cancelVolunteer(int id) async {
-    try {
-      await _api.cancelVolunteer(id);
-      await _load();
-    } catch (_) {
-      if (mounted) _snack('ยกเลิกไม่สำเร็จ', _red);
-    }
   }
 
   @override
@@ -338,8 +340,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Text(_gpsNote, style: const TextStyle(fontSize: 12, color: _muted)),
                     ]),
                   ],
-                  const SizedBox(height: 18),
-                  _volunteerCard(),
                   const SizedBox(height: 24),
                   const Padding(
                     padding: EdgeInsets.only(left: 4, bottom: 10),
@@ -493,7 +493,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _busy ? null : () => _punch(isCheckIn),
+        onPressed: _busy ? null : () => isCheckIn ? _showCheckInOptions() : _punch(false),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
