@@ -200,4 +200,28 @@ export const dutyService = {
     const r = await db.query('DELETE FROM volunteers WHERE id = $1 AND user_id = $2', [id, userId]);
     return (r.rowCount ?? 0) > 0;
   },
+
+  // ── ตารางเวรราย เดือน/ศูนย์ (กริด JSONB จากหน้า duty-demo2) ──────────
+  // โหลดทุกศูนย์ของเดือนหนึ่งทีเดียว → { centerId: data } (ศูนย์ที่ยังไม่เคยเซฟจะไม่มี key)
+  getSchedules: async (year: number, month: number) => {
+    const rows = (await db.query(
+      'SELECT center_id, data FROM duty_schedules WHERE year = $1 AND month = $2',
+      [year, month]
+    )).rows;
+    const out: Record<string, unknown> = {};
+    for (const r of rows) out[r.center_id] = r.data;
+    return out;
+  },
+
+  // บันทึก/ทับ กริดของ 1 ศูนย์ ต่อ 1 เดือน (upsert ด้วย unique center_id+year+month)
+  saveSchedule: async (centerId: string, year: number, month: number, data: unknown, userId: number) =>
+    (await db.query(
+      `INSERT INTO duty_schedules (center_id, year, month, data, updated_by)
+       VALUES ($1,$2,$3,$4::jsonb,$5)
+       ON CONFLICT (center_id, year, month)
+       DO UPDATE SET data = EXCLUDED.data, updated_by = EXCLUDED.updated_by, updated_at = NOW()
+       RETURNING center_id, year, month,
+                 to_char(updated_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI') AS updated_at`,
+      [centerId, year, month, JSON.stringify(data), userId]
+    )).rows[0],
 };

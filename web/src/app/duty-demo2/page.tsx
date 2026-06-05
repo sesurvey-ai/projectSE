@@ -3,6 +3,11 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { ROSTER_JUN } from './roster-jun';
 
+// ── persistence: เซฟกริดลง DB จริงผ่าน backend /api/duty/schedule(s) ──
+// ใช้ fetch + token ตรง ๆ (เลี่ยง axios interceptor ที่ 401 แล้วเด้ง /login — หน้านี้ยังเปิดแบบไม่ล็อกอินได้)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const authToken = (): string | null => (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+
 // ─────────────────────────────────────────────────────────────
 // duty-demo2 — recreated from Claude Design "ตารางเวร" handoff bundle
 //  • SaaS-clean premium roster · 4 switchable styles (on-page) · editable shifts
@@ -255,12 +260,18 @@ export default function DutyDemo2() {
   const [view, setView] = useState({ y: 2026, m: 6 });
   const [dataByZone, setDataByZone] = useState<Record<string, ZoneData>>(() => INITIAL_ZONE_DATA);
   const nextSe = useRef(900);
+  const [saving, setSaving] = useState(false);
+  const [authMissing, setAuthMissing] = useState(false);
+  const [dirty, setDirty] = useState<Record<string, boolean>>({});       // zoneId → มีแก้ไขยังไม่บันทึก
+  const [savedZones, setSavedZones] = useState<Record<string, string>>({}); // zoneId → เวลาเซฟ ('db' = โหลดจาก DB)
 
   const zd = dataByZone[zoneId] ?? { staff: [], schedule: {} };
   const staff = zd.staff;
   const schedule = zd.schedule;
-  const updateZone = (fn: (z: ZoneData) => ZoneData) =>
+  const updateZone = (fn: (z: ZoneData) => ZoneData) => {
     setDataByZone((d) => ({ ...d, [zoneId]: fn(d[zoneId] ?? { staff: [], schedule: {} }) }));
+    setDirty((dz) => ({ ...dz, [zoneId]: true }));
+  };
 
   const days = useMemo(() => {
     const n = new Date(view.y, view.m, 0).getDate();
@@ -276,6 +287,54 @@ export default function DutyDemo2() {
     if (m < 1) { m = 12; y -= 1; }
     return { y, m };
   });
+
+  // โหลดตารางที่เคยบันทึกของเดือนนี้จาก DB → ทับ seed รายศูนย์ (ศูนย์ที่ยังไม่เคยเซฟ = ใช้ seed)
+  // ไม่ล็อกอิน/ออฟไลน์ → คง seed ไว้ (หน้านี้ยังใช้แบบเดโมได้)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = authToken();
+        const res = await fetch(`${API_BASE}/api/duty/schedules?y=${view.y}&m=${view.m}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.status === 401) { if (!cancelled) setAuthMissing(true); return; }
+        if (!res.ok || cancelled) return;
+        const saved = ((await res.json()).data ?? {}) as Record<string, ZoneData>;
+        if (cancelled) return;
+        setAuthMissing(false);
+        const merged: Record<string, ZoneData> = {};
+        for (const c of CENTERS) merged[c.id] = saved[c.id] ?? INITIAL_ZONE_DATA[c.id] ?? { staff: [], schedule: {} };
+        setDataByZone(merged);
+        setDirty({});
+        const sv: Record<string, string> = {};
+        for (const id of Object.keys(saved)) sv[id] = 'db';
+        setSavedZones(sv);
+      } catch { /* ออฟไลน์ → คง seed */ }
+    })();
+    return () => { cancelled = true; };
+  }, [view]);
+
+  // บันทึกศูนย์ปัจจุบัน (zone) ของเดือนปัจจุบัน ลง DB
+  const saveZone = async () => {
+    const token = authToken();
+    if (!token) { setAuthMissing(true); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/duty/schedule`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ center_id: zoneId, year: view.y, month: view.m, data: dataByZone[zoneId] }),
+      });
+      if (res.status === 401) { setAuthMissing(true); return; }
+      if (!res.ok) return;
+      const out = (await res.json()).data;
+      setAuthMissing(false);
+      setDirty((d) => ({ ...d, [zoneId]: false }));
+      setSavedZones((s) => ({ ...s, [zoneId]: out?.updated_at ?? 'db' }));
+    } catch { /* network error → คง dirty ไว้ */ }
+    finally { setSaving(false); }
+  };
 
   const addStaff = () => {
     const id = 'NEW' + nextSe.current++;
@@ -335,6 +394,12 @@ export default function DutyDemo2() {
     fontFamily: `${font}, system-ui, sans-serif`,
   } as React.CSSProperties;
 
+  const saveTone = saving ? 'busy' : dirty[zoneId] ? 'dirty' : savedZones[zoneId] ? 'ok' : 'none';
+  const saveText = saving ? 'กำลังบันทึก…'
+    : dirty[zoneId] ? 'ยังไม่บันทึก'
+    : savedZones[zoneId] ? ('บันทึกแล้ว' + (savedZones[zoneId] !== 'db' ? ' · ' + savedZones[zoneId].slice(11) : ''))
+    : 'ยังไม่เคยบันทึก';
+
   return (
     <div className="d2" data-variant={variant} style={wrapStyle}>
       <style dangerouslySetInnerHTML={{ __html: D2_CSS }} />
@@ -345,6 +410,14 @@ export default function DutyDemo2() {
         <div className="brand-text">
           <h1>ตารางเวร — โซน{CENTERS.find((c) => c.id === zoneId)?.name}</h1>
           <p>ระบบจัดเวรพนักงานรักษาความปลอดภัย</p>
+        </div>
+        <div className="save-group">
+          <span className={'save-status ' + saveTone}>
+            {saveTone === 'ok' && Icon.check({ width: 13, height: 13 })}
+            {saveText}
+          </span>
+          <button className="save-btn" onClick={saveZone} disabled={saving}>บันทึกศูนย์นี้</button>
+          {authMissing && <span className="save-note">ต้องล็อกอิน admin ก่อน</span>}
         </div>
         <div className="month-chip">
           <span className="nav"><button aria-label="เดือนก่อน" onClick={() => changeMonth(-1)}>{Icon.chevL({ width: 16, height: 16 })}</button></span>
@@ -540,7 +613,17 @@ const D2_CSS = `
 .d2 .brand-mark svg { width:20px; height:20px; }
 .d2 .brand-text h1 { margin:0; font-size:17px; font-weight:600; letter-spacing:-.01em; }
 .d2 .brand-text p { margin:1px 0 0; font-size:12.5px; color:var(--ink-3); }
-.d2 .month-chip { margin-left:auto; display:flex; align-items:center; gap:10px; padding:7px 8px 7px 14px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:11px; font-weight:500; }
+.d2 .save-group { margin-left:auto; display:flex; align-items:center; gap:11px; }
+.d2 .save-status { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; white-space:nowrap; }
+.d2 .save-status.dirty { color:#B45309; }
+.d2 .save-status.ok { color:#0C7A53; }
+.d2 .save-status.busy { color:var(--ink-3); }
+.d2 .save-status.none { color:var(--ink-3); font-weight:500; }
+.d2 .save-btn { padding:8px 16px; border-radius:10px; border:1px solid var(--brand); background:var(--brand); color:#fff; font:inherit; font-size:13px; font-weight:600; cursor:pointer; box-shadow:var(--shadow-sm); transition:.15s; white-space:nowrap; }
+.d2 .save-btn:hover:not(:disabled) { filter:brightness(1.07); }
+.d2 .save-btn:disabled { opacity:.6; cursor:default; }
+.d2 .save-note { font-size:11px; color:#B45309; white-space:nowrap; }
+.d2 .month-chip { display:flex; align-items:center; gap:10px; padding:7px 8px 7px 14px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:11px; font-weight:500; }
 .d2 .month-chip .nav { display:flex; gap:4px; }
 .d2 .month-chip button { width:28px; height:28px; border-radius:8px; border:1px solid var(--line-2); background:#fff; color:var(--ink-2); cursor:pointer; display:grid; place-items:center; transition:.15s; }
 .d2 .month-chip button:hover { background:var(--brand-soft); color:var(--brand-ink); border-color:#D6D8FB; }
