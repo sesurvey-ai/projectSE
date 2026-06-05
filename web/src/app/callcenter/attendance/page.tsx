@@ -28,17 +28,22 @@ const CENTERS: { id: string; name: string; region: string }[] = [
   { id: 'nonthaburi', name: 'นนทบุรี', region: 'pmt' },
   { id: 'samutprakan', name: 'สมุทรปราการ', region: 'pmt' },
 ];
-type Band = 'morning' | 'afternoon' | 'night' | 'fix';
-const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix'];
+type Band = 'morning' | 'afternoon' | 'night' | 'fix7' | 'fix11' | 'fix14';
+const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix7', 'fix11', 'fix14'];
 const SH_META: Record<Band, { label: string; short: string; range: string }> = {
   morning: { label: 'เวร 1 · เช้า', short: 'เช้า', range: '07.00–16.00' },
   afternoon: { label: 'เวร 2 · บ่าย', short: 'บ่าย', range: '15.00–24.00' },
   night: { label: 'เวร 3 · ดึก', short: 'ดึก', range: '23.00–08.00' },
-  fix: { label: 'เวร FIX', short: 'FIX', range: 'เวรพิเศษ' },
+  fix7: { label: 'FIX 7', short: 'FIX7', range: '07.00–16.00' },
+  fix11: { label: 'FIX 11', short: 'FIX11', range: '11.00–20.00' },
+  fix14: { label: 'FIX 14', short: 'FIX14', range: '14.00–23.00' },
 };
+const isFix = (b: string) => b === 'fix7' || b === 'fix11' || b === 'fix14';
 // raw shift key (จากตาราง) → แถบเวรในการ์ด; off/none = ไม่ขึ้นเวร (ข้าม)
 const RAW_TO_BAND: Record<string, Band | null> = {
-  s1: 'morning', s2: 'afternoon', s3: 'night', fix7: 'fix', fix11: 'fix', fix14: 'fix', f1120: 'fix', f1423: 'fix', off: null, none: null,
+  s1: 'morning', s2: 'afternoon', s3: 'night',
+  fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', f1120: 'fix11', f1423: 'fix14',
+  off: null, none: null,
 };
 
 type Status = 'present' | 'pending';
@@ -83,7 +88,7 @@ function PersonRow({ p, onSelect, active }: { p: Person; onSelect: (p: Person) =
       <span className="p-code mono">{p.c}</span>
       <span className="p-main">
         <span className="p-name">{p.n}</span>
-        <span className="p-phone mono">{p.p || '—'}</span>
+        {p.p && <span className="p-phone mono">{p.p}</span>}
       </span>
       <span className="p-tags">{p.tags.map((t) => <Tag key={t} tag={t} />)}</span>
       <span className="p-time"><TimeChip status={p.status} t={p.t} /></span>
@@ -166,7 +171,7 @@ export default function CallcenterAttendancePage() {
   const [att, setAtt] = useState<AttRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
-  const [shift, setShift] = useState<'all' | Band>('all');
+  const [shift, setShift] = useState<'all' | Band | 'fix'>('all');
   const [region, setRegion] = useState('all');
   const [statusF, setStatusF] = useState<'all' | Status>('all');
   const [sortMode, setSortMode] = useState<'name' | 'count'>('name');
@@ -224,7 +229,7 @@ export default function CallcenterAttendancePage() {
         const ci = attIndex.byCode[codeDigits] ?? attIndex.byName[r.name.trim()];
         out.push({
           c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
-          sh: band, status: ci ? 'present' : 'pending', t: ci || '', tags: band === 'fix' ? ['FIX'] : [],
+          sh: band, status: ci ? 'present' : 'pending', t: ci || '', tags: isFix(band) ? [SH_META[band].short] : [],
         });
       });
     }
@@ -234,7 +239,7 @@ export default function CallcenterAttendancePage() {
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return allPeople.filter((p) => {
-      if (shift !== 'all' && p.sh !== shift) return false;
+      if (shift !== 'all' && p.sh !== shift && !(shift === 'fix' && isFix(p.sh))) return false;
       if (region !== 'all' && p.region !== region) return false;
       if (statusF !== 'all' && p.status !== statusF) return false;
       if (term && !`${p.c} ${p.n} ${p.p} ${p.s}`.toLowerCase().includes(term)) return false;
@@ -244,7 +249,7 @@ export default function CallcenterAttendancePage() {
 
   const stats = useMemo(() => {
     const present = filtered.filter((p) => p.status === 'present').length;
-    const fix = filtered.filter((p) => p.sh === 'fix').length;
+    const fix = filtered.filter((p) => isFix(p.sh)).length;
     return { total: filtered.length, present, pending: filtered.length - present, fix };
   }, [filtered]);
 
@@ -260,7 +265,7 @@ export default function CallcenterAttendancePage() {
     }).filter((g) => g.stations.length);
   }, [filtered, sortMode]);
 
-  const shiftChips: { k: 'all' | Band; label: string }[] = [
+  const shiftChips: { k: 'all' | Band | 'fix'; label: string }[] = [
     { k: 'all', label: 'ทุกเวร' }, { k: 'morning', label: 'เช้า' }, { k: 'afternoon', label: 'บ่าย' }, { k: 'night', label: 'ดึก' }, { k: 'fix', label: 'FIX' },
   ];
   const statusChips: { k: 'all' | Status; label: string }[] = [
@@ -407,7 +412,7 @@ const ATB_CSS = `
 .atb .sg-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px; }
 .atb .sg-bar { width: 3px; height: 13px; border-radius: 2px; background: var(--off); }
 .atb .sg-morning .sg-bar { background: var(--ok); } .atb .sg-afternoon .sg-bar { background: var(--watch); }
-.atb .sg-night .sg-bar { background: oklch(0.5 0.09 262); } .atb .sg-fix .sg-bar { background: var(--fix); }
+.atb .sg-night .sg-bar { background: oklch(0.5 0.09 262); } .atb .sg-fix7 .sg-bar, .atb .sg-fix11 .sg-bar, .atb .sg-fix14 .sg-bar { background: var(--fix); }
 .atb .sg-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
 .atb .sg-range { font-size: 11px; color: var(--muted); }
 .atb .sg-count { margin-left: auto; font-size: 11px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 1px 7px; }
