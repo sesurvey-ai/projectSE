@@ -87,10 +87,12 @@ const VARIANTS = [
   { key: 'minimal', label: 'มินิมอล', desc: 'เลขกะ + เส้นบาง' },
 ];
 const FONTS = [
+  { value: 'Arial, Helvetica, sans-serif', label: 'เหมือนหน้าอื่น (Arial)' },
   { value: 'Anuphan', label: 'Anuphan' },
   { value: "'IBM Plex Sans Thai'", label: 'IBM Plex Thai' },
   { value: "'Noto Sans Thai'", label: 'Noto Sans Thai' },
 ];
+const DEFAULT_FONT = 'Arial, Helvetica, sans-serif'; // ฟอนต์เดียวกับหน้าอื่นในแอป (globals.css body)
 const ACCENTS = ['#4F46E5', '#0E9F6E', '#0EA5E9', '#E0651F', '#111827'];
 const DENSITY_PAD: Record<string, number> = { compact: 38, regular: 46, comfy: 56 };
 
@@ -247,7 +249,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const [variant, setVariant] = useState('blocks');
   const [accent, setAccent] = useState('#4F46E5');
   const [shiftColors, setShiftColors] = useState<Record<string, string>>(DEFAULT_SHIFT_COLORS);
-  const [font, setFont] = useState('Anuphan');
+  const [font, setFont] = useState(DEFAULT_FONT);
   const [density, setDensity] = useState('regular');
   const [weekendHi, setWeekendHi] = useState(true);
   const [coverWarn, setCoverWarn] = useState(4);
