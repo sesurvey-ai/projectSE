@@ -335,7 +335,7 @@ export default function CallcenterAttendancePage() {
 }
 
 const ATB_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 .atb {
   --bg: oklch(0.97 0.005 250); --surface: #fff; --surface-2: oklch(0.985 0.004 250);
   --ink: oklch(0.27 0.02 255); --ink-2: oklch(0.45 0.02 255); --muted: oklch(0.60 0.015 255);
@@ -344,7 +344,7 @@ const ATB_CSS = `
   --ok: oklch(0.62 0.13 152); --leave: oklch(0.60 0.19 25); --off: oklch(0.68 0.02 255);
   --watch: oklch(0.74 0.15 78); --pending: oklch(0.70 0.015 255); --fix: oklch(0.55 0.16 305);
   --r: 14px; --shadow: 0 1px 2px oklch(0.4 0.02 255 / 0.05), 0 6px 20px oklch(0.4 0.02 255 / 0.06);
-  font-family: 'IBM Plex Sans Thai', system-ui, sans-serif; color: var(--ink); font-size: 15px; line-height: 1.45;
+  font-family: Arial, Helvetica, sans-serif; color: var(--ink); font-size: 15px; line-height: 1.45;
   margin: -24px; background: var(--bg); min-height: calc(100vh - 64px);
 }
 .atb * { box-sizing: border-box; }
