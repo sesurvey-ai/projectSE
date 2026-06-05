@@ -30,6 +30,7 @@ const updateUserSchema = z.object({
   supervisor_id: z.number().int().positive().nullable().optional(),
   is_active: z.boolean().optional(),
   password: z.string().min(6).optional(),
+  code: z.string().max(16).nullable().optional(),
 });
 
 router.get('/users', adminController.getUsers);

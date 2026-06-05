@@ -13,6 +13,7 @@ export default function EditUserPage() {
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
+    code: '',
     role: '',
     is_active: true,
     password: '',
@@ -31,6 +32,7 @@ export default function EditUserPage() {
           setForm({
             first_name: u.first_name,
             last_name: u.last_name,
+            code: u.code || '',
             role: u.role,
             is_active: u.is_active,
             password: '',
@@ -49,6 +51,7 @@ export default function EditUserPage() {
       const payload: Record<string, unknown> = {
         first_name: form.first_name,
         last_name: form.last_name,
+        code: form.code.trim() || null,
         role: form.role,
         is_active: form.is_active,
       };
@@ -91,6 +94,11 @@ export default function EditUserPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">นามสกุล</label>
               <input type="text" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" required />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">รหัส SE <span className="text-gray-400 font-normal">(เลขในตารางเวร — ใช้จับคู่การลงเวลากับเวร/จุด)</span></label>
+            <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="เช่น SE 468 หรือ 468" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900" />
           </div>
 
           <div>

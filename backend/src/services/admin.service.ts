@@ -75,7 +75,7 @@ export const adminService = {
 
     const [dataResult, countResult] = await Promise.all([
       db.query(
-        `SELECT id, username, first_name, last_name, role, supervisor_id, is_active, created_at
+        `SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at
          FROM users ${where} ORDER BY id ASC LIMIT $${idx} OFFSET $${idx + 1}`,
         [...params, limit, offset]
       ),
@@ -93,7 +93,7 @@ export const adminService = {
 
   async getUserById(id: number) {
     const result = await db.query(
-      'SELECT id, username, first_name, last_name, role, supervisor_id, is_active, created_at FROM users WHERE id = $1',
+      'SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at FROM users WHERE id = $1',
       [id]
     );
     if (result.rows.length === 0) throw new NotFoundError('User not found');
@@ -108,13 +108,13 @@ export const adminService = {
     const result = await db.query(
       `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, username, first_name, last_name, role, supervisor_id, is_active, created_at`,
+       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at`,
       [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null]
     );
     return result.rows[0];
   },
 
-  async updateUser(id: number, data: { first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string }) {
+  async updateUser(id: number, data: { first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string; code?: string | null }) {
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -124,6 +124,7 @@ export const adminService = {
     if (data.role !== undefined) { fields.push(`role = $${idx++}`); params.push(data.role); }
     if (data.supervisor_id !== undefined) { fields.push(`supervisor_id = $${idx++}`); params.push(data.supervisor_id); }
     if (data.is_active !== undefined) { fields.push(`is_active = $${idx++}`); params.push(data.is_active); }
+    if (data.code !== undefined) { fields.push(`code = $${idx++}`); params.push(data.code || null); }
     if (data.password) {
       const hash = await bcrypt.hash(data.password, 10);
       fields.push(`password_hash = $${idx++}`);
@@ -135,7 +136,7 @@ export const adminService = {
     params.push(id);
     const result = await db.query(
       `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}
-       RETURNING id, username, first_name, last_name, role, supervisor_id, is_active, created_at`,
+       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at`,
       params
     );
     if (result.rows.length === 0) throw new NotFoundError('User not found');

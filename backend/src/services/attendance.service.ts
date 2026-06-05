@@ -102,7 +102,7 @@ export const attendanceService = {
               to_char(ar.check_in_at,  'HH24:MI')    AS check_in_time,
               to_char(ar.check_out_at, 'HH24:MI')    AS check_out_time,
               ar.check_in_lat, ar.check_in_lng, ar.check_out_lat, ar.check_out_lng, ar.check_in_photo,
-              (u.first_name || ' ' || u.last_name) AS user_name, u.username
+              (u.first_name || ' ' || u.last_name) AS user_name, u.username, u.code
          FROM attendance_records ar
          JOIN users u ON u.id = ar.user_id
          ${whereSql}

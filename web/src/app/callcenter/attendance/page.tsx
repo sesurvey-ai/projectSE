@@ -52,7 +52,7 @@ type Person = {
   sh: Band; status: Status; t: string; tags: string[];
 };
 
-type AttRow = { user_id: number; username?: string; user_name?: string; check_in_time?: string | null };
+type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null };
 type ZoneData = { staff: { id: string; code: string; name: string }[]; schedule: Record<string, Record<number, string>> };
 
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -197,7 +197,7 @@ export default function CallcenterAttendancePage() {
     const byCode: Record<string, string> = {}, byName: Record<string, string> = {};
     att.forEach((r) => {
       const t = r.check_in_time || 'เข้างานแล้ว';
-      const code = onlyDigits(r.username || '');
+      const code = onlyDigits(r.code || r.username || '');
       if (code) byCode[code] = t;
       if (r.user_name) byName[r.user_name.trim()] = t;
     });
