@@ -108,7 +108,7 @@ const SHIFT_COLOR_KEYS: { key: ShiftKey; label: string; short: string }[] = [
 ];
 // แต่ละเวร map → ชุด CSS var (--<prefix>-tint/-strong/-solid/-ink)
 const SHIFT_VAR_PREFIX: Record<string, string> = { s1: 'morning', s2: 'after', s3: 'night', off: 'off' };
-const DEFAULT_SHIFT_COLORS: Record<string, string> = { s1: '#13A06B', s2: '#E0991A', s3: '#6366E8', off: '#9AA3B2' };
+const DEFAULT_SHIFT_COLORS: Record<string, string> = { s1: '#13A06B', s2: '#E0991A', s3: '#6366E8', off: '#000000' };
 const hx2 = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
 function mixHex(hex: string, target: number, t: number) {
   const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
@@ -602,7 +602,7 @@ const D2_CSS = `
   --morning-tint:#E7F4EE; --morning-ink:#0C7A53; --morning-solid:#13A06B; --morning-strong:#CDEBDC;
   --after-tint:#FBF0D9; --after-ink:#9C6206; --after-solid:#E0991A; --after-strong:#F6E2B8;
   --night-tint:#EBEAFB; --night-ink:#4A45C2; --night-solid:#6366E8; --night-strong:#DBDBF7;
-  --off-tint:#EFF1F4; --off-ink:#707888; --off-solid:#9AA3B2; --off-strong:#E5E8ED;
+  --off-tint:#000000; --off-ink:#FFFFFF; --off-solid:#000000; --off-strong:#000000;
   --warn:#E06A3A; --warn-tint:#FFF3EE;
   --fix-tint:#F3E8FF; --fix-ink:#7E22CE; --fix-solid:#A855F7; --fix-strong:#E9D5FF;
   --radius:14px; --radius-sm:9px;
