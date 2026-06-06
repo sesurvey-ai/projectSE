@@ -3,7 +3,7 @@
 // เวลาเข้างานพนักงาน — บอร์ดการ์ดตามพื้นที่ (จุด → เวร) ตามดีไซน์ "ตารางเวรประจำจุด"
 // ข้อมูล: จุด+เวร+คน จากตารางจัดเวร (DB duty_schedules + seed roster-jun เหมือน duty-demo2)
 //         overlay การลงเวลาจากแอป (attendance) จับคู่ด้วยรหัส SE → ใครเข้างานแล้ว + เวลา
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import api from '@/lib/api';
 import { ROSTER_JUN } from '../../duty-demo2/roster-jun';
 
@@ -59,7 +59,7 @@ type Person = {
   sh: Band; status: Status; t: string; tOut: string; tags: string[];
 };
 
-type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null };
+type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null; work_date?: string };
 type ZoneData = { staff: { id: string; code: string; name: string }[]; schedule: Record<string, Record<number, string>> };
 
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -67,6 +67,21 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d
 const onlyDigits = (s: string) => (s || '').replace(/\D/g, '');
 const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch { return s; } };
 
+// ── การ์ดดีไซน์ใหม่ (เฉพาะลาดพร้าว) ──
+const fmtThaiShort = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return s; } };
+const BAND_COLOR: Record<string, string> = {
+  morning: 'var(--ok)', afternoon: 'var(--watch)', night: 'oklch(0.5 0.09 262)',
+  fix7: 'oklch(0.6 0.13 230)', fix11: 'oklch(0.58 0.18 18)', fix14: 'oklch(0.62 0.1 175)',
+};
+const ST_PILL: Record<Status, { cls: string; label: string }> = {
+  present: { cls: 'ok', label: 'เข้างาน' },
+  done: { cls: 'out', label: 'ออกแล้ว' },
+  pending: { cls: 'wait', label: 'ยังไม่มา' },
+};
+function lpcInitials(name: string) {
+  const first = (name || '').trim().split(/\s+/)[0] || '';
+  return first.slice(0, 2) || '–';
+}
 // ── ป้าย/ชิ้นเล็ก ──
 function StatusDot({ status }: { status: Status }) {
   return <span className="dot" style={{ background: ST_META[status].dot }} title={ST_META[status].label} />;
@@ -138,6 +153,166 @@ function StationCard({ name, people, onSelect, selected }: { name: string; peopl
   );
 }
 
+// ไอคอน (โทร/แชท/แก้ไขกะ) — จากดีไซน์ "การ์ดเช็คอิน B"
+const IcPhone = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z" /></svg>);
+const IcChat = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-4-1L3 20l1.1-4.9a8.4 8.4 0 0 1-.9-3.6 8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.8 8Z" /></svg>);
+const IcEdit = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>);
+const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').replace('.', ':') || '—';
+
+function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean; showShift?: boolean }) {
+  const [hover, setHover] = useState(false);
+  const timeText = p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : 'ยังไม่มา';
+  return (
+    <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
+      <span className="lpc-av">
+        <span className="lpc-av-ring"><span className="lpc-av-in">{lpcInitials(p.n)}</span></span>
+        {p.status !== 'pending' && <span className="lpc-av-badge">✓</span>}
+      </span>
+      <span className="lpc-main">
+        <span className="lpc-r1">
+          <span className="lpc-code mono">{p.c}</span>
+          <span className="lpc-name">{p.n}</span>
+          {!showShift && <span className={`lpc-time ${p.status}`}>{timeText}</span>}
+        </span>
+        {showShift && (
+          <span className="lpc-r2">
+            <span className="lpc-shift">{SH_META[p.sh].short} · {SH_META[p.sh].range}</span>
+            <span className={`lpc-time ${p.status}`}>{timeText}</span>
+          </span>
+        )}
+      </span>
+      {hover && (
+        <span className="lpc-acts" onClick={(e) => e.stopPropagation()}>
+          <button className="lpc-act accent" title="โทร" onClick={() => onToast(`กำลังโทรหา ${p.n}…`)}>{IcPhone}</button>
+          <button className="lpc-act" title="แชท" onClick={() => onToast(`เปิดแชทกับ ${p.n}`)}>{IcChat}</button>
+        </span>
+      )}
+    </div>
+  );
+}
+
+function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: string; people: Person[]; date: string; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
+  const [doneMode, setDoneMode] = useState<'inline' | 'separate'>('separate');
+  const came = people.filter((p) => arrived(p.status)).length;
+  const absent = people.filter((p) => p.status === 'pending').length;
+  const byBand: Record<string, Person[]> = {};
+  people.forEach((p) => { (byBand[p.sh] = byBand[p.sh] || []).push(p); });
+  const doneList = people.filter((p) => p.status === 'done');
+  const isActive = (p: Person) => !!selected && selected.c === p.c && selected.n === p.n && selected.centerId === p.centerId;
+  return (
+    <div className="lpc">
+      <div className="lpc-head">
+        <div className="lpc-htitle">
+          <span className="lpc-today">{date === todayStr() ? 'วันนี้ · ' : ''}{fmtThaiShort(date)}</span>
+          <h3 className="lpc-name-h">{name}</h3>
+        </div>
+        <div className="lpc-counts">
+          <span className="lpc-count ok"><b>{came}</b> เช็คอิน</span>
+          <span className="lpc-count wait"><b>{absent}</b> ยังไม่มา</span>
+        </div>
+      </div>
+      <div className="lpc-toggle">
+        <button className={doneMode === 'inline' ? 'on' : ''} onClick={() => setDoneMode('inline')}>A · ออกแล้วท้ายเวร</button>
+        <button className={doneMode === 'separate' ? 'on' : ''} onClick={() => setDoneMode('separate')}>B · แยกนอกระบบ</button>
+      </div>
+      <div className="lpc-body">
+        {SHIFT_ORDER.filter((k) => byBand[k]?.length).map((band) => {
+          let rows = byBand[band];
+          if (doneMode === 'separate') rows = rows.filter((p) => p.status !== 'done');
+          else rows = [...rows].sort((a, b) => (a.status === 'done' ? 1 : 0) - (b.status === 'done' ? 1 : 0));
+          if (!rows.length) return null;
+          return (
+            <div className="lpc-shift" key={band}>
+              <div className="lpc-shead">
+                <span className="lpc-sdot" style={{ background: BAND_COLOR[band] }} />
+                {isFix(band)
+                  ? <span className="lpc-fix" style={{ color: BAND_COLOR[band], borderColor: BAND_COLOR[band] }}>{SH_META[band].short}</span>
+                  : <span className="lpc-slabel">{SH_META[band].short}</span>}
+                <span className="lpc-srange mono">{SH_META[band].range}</span>
+              </div>
+              {rows.map((p) => (
+                <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
+              ))}
+            </div>
+          );
+        })}
+        {doneMode === 'separate' && doneList.length > 0 && (
+          <div className="lpc-shift lpc-out">
+            <div className="lpc-shead">
+              <span className="lpc-sdot" style={{ background: 'var(--muted)' }} />
+              <span className="lpc-slabel">ออกงานแล้ว · นอกระบบ</span>
+              <span className="lpc-srange mono">{doneList.length} คน</span>
+            </div>
+            {doneList.map((p) => (
+              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} showShift />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Field2({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (<div className="lpc-field"><div className="lpc-fl">{label}</div><div className={'lpc-fv' + (mono ? ' mono' : '')}>{value}</div></div>);
+}
+
+// แผงรายละเอียด (คลิกแถว) — เช็คอินวันนี้ + ประวัติย้อนหลัง + ปุ่มโทร/แชท/แก้ไขกะ (จากดีไซน์ B)
+function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; onToast: (m: string) => void }) {
+  const pill = ST_PILL[p.status];
+  const [hist, setHist] = useState<{ d: string; t: string }[] | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const code = onlyDigits(p.c);
+    const now = new Date();
+    const mk = (back: number) => { const x = new Date(now); x.setDate(now.getDate() - back); return `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}`; };
+    api.get(`/api/attendance/report?from=${mk(7)}&to=${mk(1)}`).then((r) => {
+      const rows: AttRow[] = r.data?.data?.rows ?? [];
+      const byDay: Record<string, string> = {};
+      rows.forEach((x) => { const wd = x.work_date; if (wd && x.check_in_time && onlyDigits(x.code || x.username || '') === code && !byDay[wd]) byDay[wd] = x.check_in_time; });
+      setHist(Object.keys(byDay).sort().reverse().slice(0, 4).map((wd) => ({ d: fmtThaiShort(wd), t: byDay[wd] })));
+    }).catch(() => setHist([]));
+    return () => window.removeEventListener('keydown', onKey);
+  }, [p, onClose]);
+  return (
+    <div className="lpc-modal" onClick={onClose}>
+      <div className="lpc-card" onClick={(e) => e.stopPropagation()}>
+        <div className="lpc-mhead">
+          <span className={`lpc-mav ${p.status}`}>{lpcInitials(p.n)}</span>
+          <div className="lpc-mid">
+            <div className="lpc-mname">{p.n}</div>
+            <div className="lpc-mse">{p.s} · <span className="mono">{p.c}</span></div>
+          </div>
+          <span className={`lpc-pill ${pill.cls}`}>{pill.label}</span>
+        </div>
+        <div className="lpc-msec">
+          <div className="lpc-mlabel">เช็คอินวันนี้</div>
+          <div className="lpc-mgrid">
+            <Field2 label="กะ" value={`${SH_META[p.sh].short} · ${SH_META[p.sh].range}`} />
+            <Field2 label="เวลาเข้างาน" value={shiftStart(p.sh)} mono />
+            <Field2 label="เช็คอินจริง" value={p.status === 'pending' ? '—' : (p.t || '—')} mono />
+            <Field2 label={p.status === 'done' ? 'เวลาออก' : 'สถานะ'} value={p.status === 'done' ? (p.tOut || '—') : pill.label} mono={p.status === 'done'} />
+          </div>
+        </div>
+        <div className="lpc-msec">
+          <div className="lpc-mlabel">ประวัติเช็คอินล่าสุด</div>
+          {hist === null ? <div className="lpc-mempty">กำลังโหลด…</div>
+            : hist.length === 0 ? <div className="lpc-mempty">ยังไม่มีประวัติย้อนหลัง</div>
+            : <div className="lpc-mhist">{hist.map((h, i) => (
+                <div className="lpc-hrow" key={i}><span className="lpc-hdot" /><span className="lpc-hd">{h.d}</span><span className="lpc-ht mono">{h.t}</span></div>
+              ))}</div>}
+        </div>
+        <div className="lpc-macts">
+          <button className="lpc-mact primary" onClick={() => onToast(`กำลังโทรหา ${p.n}…`)}>{IcPhone}โทร</button>
+          <button className="lpc-mact" onClick={() => onToast(`เปิดแชทกับ ${p.n}`)}>{IcChat}แชท</button>
+          <button className="lpc-mact" onClick={() => onToast(`แก้ไข/มอบหมายกะของ ${p.n}`)}>{IcEdit}แก้ไขกะ</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailDrawer({ p, onClose }: { p: Person | null; onClose: () => void }) {
   if (!p) return null;
   const m = ST_META[p.status];
@@ -175,6 +350,10 @@ export default function CallcenterAttendancePage() {
   const [statusF, setStatusF] = useState<'all' | Status>('all');
   const [sortMode, setSortMode] = useState<'name' | 'count'>('name');
   const [selected, setSelected] = useState<Person | null>(null);
+  const [lpSel, setLpSel] = useState<Person | null>(null); // ลาดพร้าว: คลิกเปิดแผงรายละเอียด
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((m: string) => { setToast(m); if (toastTimer.current) clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 1900); }, []);
   const [updatedAt, setUpdatedAt] = useState('');
 
   const isToday = date === todayStr();
@@ -340,7 +519,9 @@ export default function CallcenterAttendancePage() {
             <section key={g.rk} className="region">
               <div className="region-head"><h2>{g.label}</h2><span className="region-meta mono">{g.stations.length} จุด · {g.total} คน</span></div>
               <div className="cardgrid">
-                {g.stations.map((st) => <StationCard key={st.name} name={st.name} people={st.people} onSelect={setSelected} selected={selected} />)}
+                {g.stations.map((st) => st.name === 'ลาดพร้าว'
+                  ? <LadpraoCard key={st.name} name={st.name} people={st.people} date={date} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
+                  : <StationCard key={st.name} name={st.name} people={st.people} onSelect={setSelected} selected={selected} />)}
               </div>
             </section>
           ))
@@ -348,6 +529,8 @@ export default function CallcenterAttendancePage() {
       </main>
 
       <DetailDrawer p={selected} onClose={() => setSelected(null)} />
+      {lpSel && <LpcDetail p={lpSel} onClose={() => setLpSel(null)} onToast={showToast} />}
+      <div className={'lpc-toast' + (toast ? ' show' : '')}>{toast}</div>
     </div>
   );
 }
@@ -474,6 +657,99 @@ const ATB_CSS = `
 .atb .dw-k { font-size: 11.5px; color: var(--muted); }
 .atb .dw-v { font-size: 14.5px; font-weight: 500; }
 .atb .dw-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── การ์ดดีไซน์ใหม่ (ลาดพร้าว) ── */
+.atb .lpc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+.atb .lpc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 15px 18px 13px; border-bottom: 1px solid var(--line-2); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.atb .lpc-today { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.atb .lpc-name-h { font-size: 19px; font-weight: 700; margin-top: 2px; letter-spacing: -0.01em; }
+.atb .lpc-counts { display: flex; gap: 6px; flex-shrink: 0; }
+.atb .lpc-count { font-size: 11.5px; padding: 5px 10px; border-radius: 10px; font-weight: 500; white-space: nowrap; }
+.atb .lpc-count b { font-size: 14px; font-weight: 700; margin-right: 2px; }
+.atb .lpc-count.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
+.atb .lpc-count.wait { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.atb .lpc-body { padding: 8px 12px 14px; display: flex; flex-direction: column; gap: 3px; }
+.atb .lpc-shift { padding: 5px 0 2px; }
+.atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 6px 6px 7px; }
+.atb .lpc-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.atb .lpc-slabel { font-size: 13px; font-weight: 700; color: var(--ink); }
+.atb .lpc-fix { font-size: 11px; font-weight: 700; padding: 1px 9px; border-radius: 999px; border: 1.5px solid; background: transparent; }
+.atb .lpc-srange { margin-left: auto; font-size: 11px; color: var(--muted); }
+.atb .lpc-toggle { display: flex; margin: 2px 14px 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.atb .lpc-toggle button { flex: 1; font: inherit; font-size: 11.5px; font-weight: 600; padding: 6px 8px; border: none; background: transparent; color: var(--muted); border-radius: 7px; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; }
+.atb .lpc-toggle button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px oklch(0.4 0.02 255 / 0.14); }
+.atb .lpc-r2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; white-space: nowrap; }
+.atb .lpc-shift { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.atb .lpc-out { margin: 8px 4px 2px; padding: 2px 6px 4px; background: oklch(0.975 0.002 255); border: 1px dashed var(--line); border-radius: 12px; }
+.atb .lpc-out .lpc-slabel { color: var(--muted); }
+
+.atb .lpc-person { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 8px; border-radius: 12px; cursor: pointer; border: 1px solid transparent; transition: background 0.1s, border-color 0.1s; }
+.atb .lpc-person:hover { background: var(--surface-2); }
+.atb .lpc-person.active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
+
+.atb .lpc-av { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
+.atb .lpc-av-ring { width: 42px; height: 42px; border-radius: 50%; border: 2.5px solid var(--line); display: grid; place-items: center; }
+.atb .lpc-av-in { font-size: 13.5px; font-weight: 700; }
+.atb .lpc-av-badge { position: absolute; right: -1px; bottom: -1px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; color: #fff; border: 2px solid var(--surface); background: var(--ok); }
+.atb .lpc-person.present .lpc-av-ring { border-color: oklch(0.72 0.13 152); background: oklch(0.96 0.04 152); }
+.atb .lpc-person.present .lpc-av-in { color: oklch(0.42 0.12 152); }
+.atb .lpc-person.present .lpc-av-badge { background: var(--ok); }
+.atb .lpc-person.done .lpc-av-ring { border-color: oklch(0.84 0.01 255); background: oklch(0.96 0.004 255); }
+.atb .lpc-person.done .lpc-av-in { color: oklch(0.52 0.01 255); }
+.atb .lpc-person.done .lpc-av-badge { background: oklch(0.72 0.02 255); }
+.atb .lpc-person.pending .lpc-av-ring { border-color: oklch(0.88 0.008 255); background: oklch(0.975 0.003 255); }
+.atb .lpc-person.pending .lpc-av-in { color: oklch(0.62 0.01 255); }
+
+.atb .lpc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.atb .lpc-r1 { display: flex; align-items: center; gap: 7px; }
+.atb .lpc-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.atb .lpc-code { font-size: 10.5px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 6px; flex-shrink: 0; }
+.atb .lpc-pill { font-size: 10.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; flex-shrink: 0; }
+.atb .lpc-pill.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
+.atb .lpc-pill.out { background: var(--surface-2); color: var(--muted); }
+.atb .lpc-pill.wait { background: oklch(0.96 0.05 78); color: oklch(0.5 0.12 78); }
+.atb .lpc-time { font-size: 12.5px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+.atb .lpc-time.present { color: oklch(0.45 0.12 152); }
+.atb .lpc-time.done { color: var(--muted); font-weight: 600; }
+.atb .lpc-time.pending { color: var(--pending); font-weight: 500; font-family: inherit; font-size: 11.5px; }
+
+.atb .lpc-acts { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; background: var(--surface); padding: 3px; border-radius: 11px; box-shadow: 0 2px 8px oklch(0.4 0.02 255 / 0.18); }
+.atb .lpc-act { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); transition: background .12s, color .12s, transform .12s, border-color .12s; }
+.atb .lpc-act:hover { background: var(--surface-2); transform: translateY(-1px); }
+.atb .lpc-act.accent { color: #0f766e; }
+.atb .lpc-act.accent:hover { background: #effaf7; border-color: #0f766e; }
+
+/* แผงรายละเอียด (คลิกแถว) + toast — ดีไซน์ B */
+.atb .lpc-modal { position: fixed; inset: 0; background: rgba(15,23,42,.32); backdrop-filter: blur(3px); display: grid; place-items: center; z-index: 50; padding: 16px; animation: atbfade .15s; }
+.atb .lpc-card { width: 100%; max-width: 392px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px -12px rgba(15,23,42,.4); overflow: hidden; animation: lpcpop .18s cubic-bezier(.2,.8,.2,1); }
+@keyframes lpcpop { from { transform: scale(.96); opacity: 0; } }
+.atb .lpc-mhead { display: flex; align-items: center; gap: 13px; padding: 18px 20px; border-bottom: 1px solid #f1f4f7; }
+.atb .lpc-mav { width: 50px; height: 50px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; font-size: 17px; flex-shrink: 0; border: 2px solid var(--line); background: var(--surface-2); }
+.atb .lpc-mav.present { border-color: oklch(0.72 0.13 152); background: oklch(0.96 0.04 152); color: oklch(0.42 0.12 152); }
+.atb .lpc-mav.done { border-color: oklch(0.84 0.01 255); background: oklch(0.96 0.004 255); color: oklch(0.52 0.01 255); }
+.atb .lpc-mav.pending { border-color: oklch(0.88 0.008 255); color: oklch(0.6 0.01 255); }
+.atb .lpc-mid { flex: 1; min-width: 0; }
+.atb .lpc-mname { font-size: 16.5px; font-weight: 700; color: #0f172a; }
+.atb .lpc-mse { font-size: 12.5px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+.atb .lpc-msec { padding: 15px 20px; border-bottom: 1px solid #f6f8fa; }
+.atb .lpc-mlabel { font-size: 11.5px; font-weight: 700; color: var(--muted); letter-spacing: .03em; margin-bottom: 10px; }
+.atb .lpc-mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.atb .lpc-field { background: var(--surface-2); border-radius: 11px; padding: 9px 12px; }
+.atb .lpc-fl { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+.atb .lpc-fv { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.atb .lpc-mhist { display: flex; flex-direction: column; }
+.atb .lpc-hrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #f4f6f8; }
+.atb .lpc-hrow:first-child { border-top: none; }
+.atb .lpc-hdot { width: 7px; height: 7px; border-radius: 99px; background: var(--ok); flex-shrink: 0; }
+.atb .lpc-hd { font-size: 13px; color: var(--ink-2); flex: 1; }
+.atb .lpc-ht { font-size: 13px; font-weight: 700; color: oklch(0.42 0.12 152); }
+.atb .lpc-mempty { font-size: 12.5px; color: var(--muted); padding: 2px 0 4px; }
+.atb .lpc-macts { display: flex; gap: 8px; padding: 14px 20px 18px; }
+.atb .lpc-mact { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 8px; border-radius: 12px; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; border: 1px solid var(--line); background: #fff; color: var(--ink-2); transition: filter .15s; }
+.atb .lpc-mact:hover { filter: brightness(.97); }
+.atb .lpc-mact.primary { border: none; background: #0f766e; color: #fff; }
+.atb .lpc-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%) translateY(8px); background: #0f172a; color: #fff; font-size: 13.5px; font-weight: 600; padding: 11px 18px; border-radius: 12px; box-shadow: 0 12px 30px -8px rgba(15,23,42,.5); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60; }
+.atb .lpc-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 720px) {
   .atb .topbar, .atb .toolbar { position: static; }
