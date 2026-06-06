@@ -18,6 +18,10 @@ build/
 backend/src/uploads/*
 !backend/src/uploads/.gitkeep
 
+# Avatar photos (รูปพนักงานจริง — เก็บนอก git เหมือน uploads, ของจริงเสิร์ฟจาก storage/DB)
+web/public/avatars/*
+!web/public/avatars/.gitkeep
+
 # Flutter
 mobile/build/
 mobile/.dart_tool/

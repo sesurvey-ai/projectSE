@@ -82,6 +82,12 @@ function lpcInitials(name: string) {
   const first = (name || '').trim().split(/\s+/)[0] || '';
   return first.slice(0, 2) || '–';
 }
+// ทดสอบ: รูปอวตาร (key = เลขรหัสพนักงาน) — ถ้ามีรูปโชว์รูป ไม่มีโชว์ตัวย่อ (อนาคตดึงจาก DB)
+const LPC_PHOTOS: Record<string, string> = {
+  '225': '/avatars/se225.jpg', '351': '/avatars/se351.jpg', '37': '/avatars/se37.jpg',
+  '400': '/avatars/se400.jpg', '393': '/avatars/se393.jpg', '480': '/avatars/se480.jpg',
+};
+const photoOf = (code: string) => LPC_PHOTOS[onlyDigits(code)];
 // ── ป้าย/ชิ้นเล็ก ──
 function StatusDot({ status }: { status: Status }) {
   return <span className="dot" style={{ background: ST_META[status].dot }} title={ST_META[status].label} />;
@@ -165,7 +171,9 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
       <span className="lpc-av">
-        <span className="lpc-av-ring"><span className="lpc-av-in">{lpcInitials(p.n)}</span></span>
+        <span className="lpc-av-ring">{photoOf(p.c)
+          ? <img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} />
+          : <span className="lpc-av-in">{lpcInitials(p.n)}</span>}</span>
         {p.status !== 'pending' && <span className="lpc-av-badge">✓</span>}
       </span>
       <span className="lpc-main">
@@ -279,7 +287,9 @@ function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; on
     <div className="lpc-modal" onClick={onClose}>
       <div className="lpc-card" onClick={(e) => e.stopPropagation()}>
         <div className="lpc-mhead">
-          <span className={`lpc-mav ${p.status}`}>{lpcInitials(p.n)}</span>
+          <span className={`lpc-mav ${p.status}`}>{photoOf(p.c)
+            ? <img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} />
+            : lpcInitials(p.n)}</span>
           <div className="lpc-mid">
             <div className="lpc-mname">{p.n}</div>
             <div className="lpc-mse">{p.s} · <span className="mono">{p.c}</span></div>
@@ -690,6 +700,7 @@ const ATB_CSS = `
 .atb .lpc-av { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
 .atb .lpc-av-ring { width: 42px; height: 42px; border-radius: 50%; border: 2.5px solid var(--line); display: grid; place-items: center; }
 .atb .lpc-av-in { font-size: 13.5px; font-weight: 700; }
+.atb .lpc-av-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .atb .lpc-av-badge { position: absolute; right: -1px; bottom: -1px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; color: #fff; border: 2px solid var(--surface); background: var(--ok); }
 .atb .lpc-person.present .lpc-av-ring { border-color: oklch(0.72 0.13 152); background: oklch(0.96 0.04 152); }
 .atb .lpc-person.present .lpc-av-in { color: oklch(0.42 0.12 152); }
@@ -703,7 +714,10 @@ const ATB_CSS = `
 .atb .lpc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .atb .lpc-r1 { display: flex; align-items: center; gap: 7px; }
 .atb .lpc-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atb .lpc-code { font-size: 10.5px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 6px; flex-shrink: 0; }
+.atb .lpc-code { font-size: 10.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 6px; flex-shrink: 0; }
+.atb .lpc-person.present .lpc-code { color: oklch(0.42 0.12 152); background: oklch(0.96 0.04 152); border-color: oklch(0.78 0.1 152); }
+.atb .lpc-person.done .lpc-code { color: oklch(0.5 0.012 255); background: oklch(0.965 0.004 255); border-color: oklch(0.86 0.01 255); }
+.atb .lpc-person.pending .lpc-code { color: oklch(0.6 0.012 255); background: oklch(0.975 0.003 255); border-color: oklch(0.88 0.008 255); }
 .atb .lpc-pill { font-size: 10.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; flex-shrink: 0; }
 .atb .lpc-pill.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-pill.out { background: var(--surface-2); color: var(--muted); }
