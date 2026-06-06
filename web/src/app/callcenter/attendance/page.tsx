@@ -46,18 +46,20 @@ const RAW_TO_BAND: Record<string, Band | null> = {
   off: null, none: null,
 };
 
-type Status = 'present' | 'pending';
+type Status = 'present' | 'pending' | 'done';
 const ST_META: Record<Status, { label: string; dot: string }> = {
   present: { label: 'เข้างานแล้ว', dot: 'var(--ok)' },
+  done: { label: 'ออกงานแล้ว', dot: 'oklch(0.6 0.06 245)' },
   pending: { label: 'รอเข้างาน', dot: 'var(--pending)' },
 };
+const arrived = (s: Status) => s === 'present' || s === 'done'; // มาทำงานแล้ว (ยังอยู่ หรือ ออกแล้ว)
 
 type Person = {
   c: string; n: string; p: string; centerId: string; s: string; region: string;
-  sh: Band; status: Status; t: string; tags: string[];
+  sh: Band; status: Status; t: string; tOut: string; tags: string[];
 };
 
-type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null };
+type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null };
 type ZoneData = { staff: { id: string; code: string; name: string }[]; schedule: Record<string, Record<number, string>> };
 
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -69,13 +71,10 @@ const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLo
 function StatusDot({ status }: { status: Status }) {
   return <span className="dot" style={{ background: ST_META[status].dot }} title={ST_META[status].label} />;
 }
-function TimeChip({ status, t }: { status: Status; t: string }) {
-  return (
-    <span className={`timechip s-${status}`}>
-      {status === 'present' && <span className="tc-ic">●</span>}
-      {status === 'present' ? (t || 'เข้างานแล้ว') : '—'}
-    </span>
-  );
+function TimeChip({ status, t, tOut }: { status: Status; t: string; tOut?: string }) {
+  if (status === 'pending') return <span className="timechip s-pending">—</span>;
+  if (status === 'done') return <span className="timechip s-done">{(t || '—') + ' – ' + (tOut || '—')}</span>;
+  return <span className="timechip s-present"><span className="tc-ic">●</span>{t || 'เข้างานแล้ว'}</span>;
 }
 function Tag({ tag }: { tag: string }) {
   const cls = tag.startsWith('FIX') ? 't-fix' : tag === 'อาสา' ? 't-vol' : 't-soft';
@@ -91,7 +90,7 @@ function PersonRow({ p, onSelect, active }: { p: Person; onSelect: (p: Person) =
         {p.p && <span className="p-phone mono">{p.p}</span>}
       </span>
       <span className="p-tags">{p.tags.map((t) => <Tag key={t} tag={t} />)}</span>
-      <span className="p-time"><TimeChip status={p.status} t={p.t} /></span>
+      <span className="p-time"><TimeChip status={p.status} t={p.t} tOut={p.tOut} /></span>
     </button>
   );
 }
@@ -116,7 +115,7 @@ function ShiftGroup({ band, people, onSelect, selected }: { band: Band; people: 
 }
 
 function StationCard({ name, people, onSelect, selected }: { name: string; people: Person[]; onSelect: (p: Person) => void; selected: Person | null }) {
-  const present = people.filter((p) => p.status === 'present').length;
+  const present = people.filter((p) => arrived(p.status)).length;
   const total = people.length;
   const pct = total ? Math.round((present / total) * 100) : 0;
   const byBand: Record<string, Person[]> = {};
@@ -157,7 +156,7 @@ function DetailDrawer({ p, onClose }: { p: Person | null; onClose: () => void })
           <div className="dw-cell"><span className="dw-k">ภูมิภาค</span><span className="dw-v">{rg?.label || p.region}</span></div>
           <div className="dw-cell"><span className="dw-k">เวร</span><span className="dw-v">{sh.label}</span></div>
           <div className="dw-cell"><span className="dw-k">ช่วงเวลา</span><span className="dw-v">{sh.range}</span></div>
-          <div className="dw-cell"><span className="dw-k">เวลาเข้างาน</span><span className="dw-v"><TimeChip status={p.status} t={p.t} /></span></div>
+          <div className="dw-cell"><span className="dw-k">{p.status === 'done' ? 'เวลาเข้า–ออก' : 'เวลาเข้างาน'}</span><span className="dw-v"><TimeChip status={p.status} t={p.t} tOut={p.tOut} /></span></div>
         </div>
         {p.tags.length > 0 && <div className="dw-tags">{p.tags.map((t) => <Tag key={t} tag={t} />)}</div>}
       </aside>
@@ -197,14 +196,24 @@ export default function CallcenterAttendancePage() {
   useEffect(() => { if (!isToday) return; const t = setInterval(() => load(true), 30000); return () => clearInterval(t); }, [isToday, load]);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, []);
 
-  // index การลงเวลา: รหัส(ตัวเลข) → เวลาเข้า, ชื่อ → เวลาเข้า (จับคู่ดีที่สุด)
+  // index การลงเวลา: รหัส(ตัวเลข)/ชื่อ → { เข้าเร็วสุด, ออกช้าสุด, ยังเปิดอยู่ไหม }
+  // open=true ถ้ามี "รอบ" ที่ยังไม่ลงเวลาออก (check_out ว่าง) → ยังทำงานอยู่; ถ้าปิดหมด → ออกงานแล้ว
   const attIndex = useMemo(() => {
-    const byCode: Record<string, string> = {}, byName: Record<string, string> = {};
+    type Rec = { in: string; out: string | null; open: boolean };
+    const byCode: Record<string, Rec> = {}, byName: Record<string, Rec> = {};
+    const merge = (map: Record<string, Rec>, key: string, inT: string, outT: string | null) => {
+      if (!key) return;
+      const ex = map[key];
+      if (!ex) { map[key] = { in: inT, out: outT, open: !outT }; return; }
+      if (inT && (!ex.in || inT < ex.in)) ex.in = inT;        // เข้าเร็วสุด
+      if (outT && (!ex.out || outT > ex.out)) ex.out = outT;  // ออกช้าสุด
+      if (!outT) ex.open = true;                              // มีรอบเปิดค้าง → ยังทำงานอยู่
+    };
     att.forEach((r) => {
-      const t = r.check_in_time || 'เข้างานแล้ว';
-      const code = onlyDigits(r.code || r.username || '');
-      if (code) byCode[code] = t;
-      if (r.user_name) byName[r.user_name.trim()] = t;
+      const inT = r.check_in_time || '';
+      const outT = r.check_out_time || null;
+      merge(byCode, onlyDigits(r.code || r.username || ''), inT, outT);
+      merge(byName, (r.user_name || '').trim(), inT, outT);
     });
     return { byCode, byName };
   }, [att]);
@@ -226,10 +235,12 @@ export default function CallcenterAttendancePage() {
         const band = RAW_TO_BAND[r.raw];
         if (!band) return; // off/none = ไม่ขึ้นเวรวันนี้
         const codeDigits = onlyDigits(r.code);
-        const ci = attIndex.byCode[codeDigits] ?? attIndex.byName[r.name.trim()];
+        const rec = attIndex.byCode[codeDigits] ?? attIndex.byName[r.name.trim()];
+        const status: Status = !rec ? 'pending' : rec.open ? 'present' : 'done';
         out.push({
           c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
-          sh: band, status: ci ? 'present' : 'pending', t: ci || '', tags: isFix(band) ? [SH_META[band].short] : [],
+          sh: band, status, t: rec?.in || '', tOut: rec && !rec.open ? (rec.out || '') : '',
+          tags: isFix(band) ? [SH_META[band].short] : [],
         });
       });
     }
@@ -241,16 +252,17 @@ export default function CallcenterAttendancePage() {
     return allPeople.filter((p) => {
       if (shift !== 'all' && p.sh !== shift && !(shift === 'fix' && isFix(p.sh))) return false;
       if (region !== 'all' && p.region !== region) return false;
-      if (statusF !== 'all' && p.status !== statusF) return false;
+      if (statusF !== 'all' && (statusF === 'present' ? !arrived(p.status) : p.status !== statusF)) return false;
       if (term && !`${p.c} ${p.n} ${p.p} ${p.s}`.toLowerCase().includes(term)) return false;
       return true;
     });
   }, [allPeople, q, shift, region, statusF]);
 
   const stats = useMemo(() => {
-    const present = filtered.filter((p) => p.status === 'present').length;
+    const present = filtered.filter((p) => arrived(p.status)).length;
+    const out = filtered.filter((p) => p.status === 'done').length;
     const fix = filtered.filter((p) => isFix(p.sh)).length;
-    return { total: filtered.length, present, pending: filtered.length - present, fix };
+    return { total: filtered.length, present, out, pending: filtered.length - present, fix };
   }, [filtered]);
 
   const regionGroups = useMemo(() => {
@@ -287,6 +299,7 @@ export default function CallcenterAttendancePage() {
         <div className="stats">
           <div className="stat st-total"><span className="stat-v mono">{stats.total}</span><span className="stat-l">ทั้งหมด</span></div>
           <div className="stat st-ok"><span className="stat-v mono">{stats.present}</span><span className="stat-l">เข้างานแล้ว</span></div>
+          <div className="stat st-out"><span className="stat-v mono">{stats.out}</span><span className="stat-l">ออกแล้ว</span></div>
           <div className="stat st-pending"><span className="stat-v mono">{stats.pending}</span><span className="stat-l">รอเข้างาน</span></div>
           <div className="stat st-fix"><span className="stat-v mono">{stats.fix}</span><span className="stat-l">FIX</span></div>
         </div>
@@ -366,7 +379,7 @@ const ATB_CSS = `
 .atb .stat { display: flex; flex-direction: column; align-items: flex-start; min-width: 80px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .atb .stat-v { font-size: 22px; font-weight: 600; line-height: 1.1; }
 .atb .stat-l { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
-.atb .st-ok .stat-v { color: var(--ok); } .atb .st-pending .stat-v { color: oklch(0.55 0.015 255); } .atb .st-fix .stat-v { color: var(--fix); }
+.atb .st-ok .stat-v { color: var(--ok); } .atb .st-pending .stat-v { color: oklch(0.55 0.015 255); } .atb .st-fix .stat-v { color: var(--fix); } .atb .st-out .stat-v { color: oklch(0.52 0.06 245); }
 .atb .st-total { background: var(--ink); border-color: var(--ink); } .atb .st-total .stat-v { color: #fff; } .atb .st-total .stat-l { color: oklch(0.8 0.01 255); }
 
 .atb .toolbar { position: sticky; top: 73px; z-index: 11; display: flex; align-items: center; gap: 12px 14px; flex-wrap: wrap; padding: 12px 28px; background: oklch(0.99 0.003 250 / 0.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
@@ -424,6 +437,9 @@ const ATB_CSS = `
 /* คนที่เข้างานแล้ว = พื้นหลังเขียว มองเห็นง่าย */
 .atb .person.present { background: oklch(0.95 0.045 152); border-color: oklch(0.83 0.08 152); }
 .atb .person.present:hover { background: oklch(0.93 0.06 152); border-color: oklch(0.76 0.1 152); }
+/* คนที่ออกงานแล้ว (checkout/logout) = เทาอ่อน ไม่เขียว */
+.atb .person.done { background: oklch(0.945 0.005 255); border-color: oklch(0.88 0.008 255); }
+.atb .person.done:hover { background: oklch(0.925 0.008 255); border-color: oklch(0.82 0.014 255); }
 .atb .p-code { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 2px 6px; min-width: 40px; text-align: center; }
 .atb .p-main { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .atb .p-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -438,6 +454,7 @@ const ATB_CSS = `
 .atb .tc-ic { font-size: 7px; }
 .atb .s-present { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); } .atb .s-present .tc-ic { color: var(--ok); }
 .atb .s-pending { background: var(--surface-2); color: var(--pending); border: 1px dashed var(--line); }
+.atb .s-done { background: oklch(0.94 0.025 245); color: oklch(0.45 0.08 245); border: 1px solid oklch(0.86 0.04 245); }
 .atb .dot { width: 9px; height: 9px; border-radius: 99px; display: inline-block; }
 .atb .empty { text-align: center; color: var(--muted); padding: 80px 0; font-size: 15px; line-height: 1.8; }
 
