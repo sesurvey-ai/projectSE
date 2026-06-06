@@ -49,7 +49,7 @@ const RAW_TO_BAND: Record<string, Band | null> = {
 type Status = 'present' | 'pending' | 'done';
 const ST_META: Record<Status, { label: string; dot: string }> = {
   present: { label: 'เข้างานแล้ว', dot: 'var(--ok)' },
-  done: { label: 'ออกงานแล้ว', dot: 'oklch(0.6 0.06 245)' },
+  done: { label: 'ออกงานแล้ว', dot: 'oklch(0.62 0.01 255)' },
   pending: { label: 'รอเข้างาน', dot: 'var(--pending)' },
 };
 const arrived = (s: Status) => s === 'present' || s === 'done'; // มาทำงานแล้ว (ยังอยู่ หรือ ออกแล้ว)
@@ -435,11 +435,11 @@ const ATB_CSS = `
 .atb .person:hover { background: var(--surface-2); border-color: var(--line-2); }
 .atb .person.is-active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
 /* คนที่เข้างานแล้ว = พื้นหลังเขียว มองเห็นง่าย */
-.atb .person.present { background: oklch(0.95 0.045 152); border-color: oklch(0.83 0.08 152); }
-.atb .person.present:hover { background: oklch(0.93 0.06 152); border-color: oklch(0.76 0.1 152); }
+.atb .person.present { background: oklch(0.95 0.045 152); border-color: transparent; }
+.atb .person.present:hover { background: oklch(0.93 0.06 152); border-color: transparent; }
 /* คนที่ออกงานแล้ว (checkout/logout) = เทาอ่อน ไม่เขียว */
-.atb .person.done { background: oklch(0.945 0.005 255); border-color: oklch(0.88 0.008 255); }
-.atb .person.done:hover { background: oklch(0.925 0.008 255); border-color: oklch(0.82 0.014 255); }
+.atb .person.done { background: oklch(0.96 0.003 255); border-color: transparent; }
+.atb .person.done:hover { background: oklch(0.945 0.004 255); border-color: transparent; }
 .atb .p-code { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 2px 6px; min-width: 40px; text-align: center; }
 .atb .p-main { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .atb .p-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -454,7 +454,7 @@ const ATB_CSS = `
 .atb .tc-ic { font-size: 7px; }
 .atb .s-present { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); } .atb .s-present .tc-ic { color: var(--ok); }
 .atb .s-pending { background: var(--surface-2); color: var(--pending); border: 1px dashed var(--line); }
-.atb .s-done { background: oklch(0.94 0.025 245); color: oklch(0.45 0.08 245); border: 1px solid oklch(0.86 0.04 245); }
+.atb .s-done { background: transparent; color: oklch(0.62 0.003 255); border: none; }
 .atb .dot { width: 9px; height: 9px; border-radius: 99px; display: inline-block; }
 .atb .empty { text-align: center; color: var(--muted); padding: 80px 0; font-size: 15px; line-height: 1.8; }
 
