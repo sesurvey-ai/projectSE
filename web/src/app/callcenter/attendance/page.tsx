@@ -3,7 +3,7 @@
 // เวลาเข้างานพนักงาน — บอร์ดการ์ดตามพื้นที่ (จุด → เวร) ตามดีไซน์ "ตารางเวรประจำจุด"
 // ข้อมูล: จุด+เวร+คน จากตารางจัดเวร (DB duty_schedules + seed roster-jun เหมือน duty-demo2)
 //         overlay การลงเวลาจากแอป (attendance) จับคู่ด้วยรหัส SE → ใครเข้างานแล้ว + เวลา
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, CSSProperties } from 'react';
 import api from '@/lib/api';
 import { ROSTER_JUN } from '../../duty-demo2/roster-jun';
 
@@ -230,11 +230,11 @@ function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: 
           else rows = [...rows].sort((a, b) => (a.status === 'done' ? 1 : 0) - (b.status === 'done' ? 1 : 0));
           if (!rows.length) return null;
           return (
-            <div className="lpc-shift" key={band}>
+            <div className="lpc-shift" key={band} style={{ '--band': BAND_COLOR[band] } as CSSProperties}>
               <div className="lpc-shead">
-                <span className="lpc-sdot" style={{ background: BAND_COLOR[band] }} />
+                <span className="lpc-sdot" />
                 {isFix(band)
-                  ? <span className="lpc-fix" style={{ color: BAND_COLOR[band], borderColor: BAND_COLOR[band] }}>{SH_META[band].short}</span>
+                  ? <span className="lpc-fix">{SH_META[band].short}</span>
                   : <span className="lpc-slabel">{SH_META[band].short}</span>}
                 <span className="lpc-srange mono">{SH_META[band].range}</span>
               </div>
@@ -245,9 +245,9 @@ function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: 
           );
         })}
         {doneMode === 'separate' && doneList.length > 0 && (
-          <div className="lpc-shift lpc-out">
+          <div className="lpc-shift lpc-out" style={{ '--band': 'var(--muted)' } as CSSProperties}>
             <div className="lpc-shead">
-              <span className="lpc-sdot" style={{ background: 'var(--muted)' }} />
+              <span className="lpc-sdot" />
               <span className="lpc-slabel">ออกงานแล้ว · นอกระบบ</span>
               <span className="lpc-srange mono">{doneList.length} คน</span>
             </div>
@@ -679,11 +679,11 @@ const ATB_CSS = `
 .atb .lpc-count.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-count.wait { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .atb .lpc-body { padding: 8px 12px 14px; display: flex; flex-direction: column; gap: 3px; }
-.atb .lpc-shift { padding: 5px 0 2px; }
-.atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 6px 6px 7px; }
-.atb .lpc-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.atb .lpc-slabel { font-size: 13px; font-weight: 700; color: var(--ink); }
-.atb .lpc-fix { font-size: 11px; font-weight: 700; padding: 1px 9px; border-radius: 999px; border: 1.5px solid; background: transparent; }
+.atb .lpc-shift { padding: 4px 0 6px 9px; border-left: 3px solid var(--band); margin-bottom: 2px; }
+.atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 4px 11px; background: color-mix(in srgb, var(--band) 13%, transparent); border-radius: 8px; margin-bottom: 3px; }
+.atb .lpc-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--band); }
+.atb .lpc-slabel { font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--band) 80%, black); }
+.atb .lpc-fix { font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--band) 80%, black); }
 .atb .lpc-srange { margin-left: auto; font-size: 11px; color: var(--muted); }
 .atb .lpc-toggle { display: flex; margin: 2px 14px 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
 .atb .lpc-toggle button { flex: 1; font: inherit; font-size: 11.5px; font-weight: 600; padding: 6px 8px; border: none; background: transparent; color: var(--muted); border-radius: 7px; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; }
