@@ -225,7 +225,7 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
   const inList = [...people].filter((p) => p.status === 'present').sort(byShift);   // ในระบบ = เช็คอินอยู่
   const outList = [...people].filter((p) => p.status !== 'present').sort(byShift);  // นอกระบบ = ออกแล้ว + ยังไม่มา
   const isActive = (p: Person) => !!selected && selected.c === p.c && selected.n === p.n && selected.centerId === p.centerId;
-  const GREEN = { '--band': 'oklch(0.62 0.13 152)', '--band-ink': 'oklch(0.42 0.12 152)', '--band-tint': 'oklch(0.96 0.04 152)' } as CSSProperties;
+  const BLUE = { '--band': '#0ea5e9', '--band-ink': '#0369a1', '--band-tint': '#e0f2fe' } as CSSProperties;
   const GREY = { '--band': 'var(--muted)', '--band-ink': 'var(--muted)', '--band-tint': 'var(--surface-2)' } as CSSProperties;
   return (
     <div className="lpc">
@@ -240,7 +240,7 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
       </div>
       <div className="lpc-body">
         {inList.length > 0 && (
-          <div className="lpc-shift lpc-in" style={GREEN}>
+          <div className="lpc-shift lpc-in" style={BLUE}>
             <div className="lpc-shead">
               <span className="lpc-sdot" />
               <span className="lpc-slabel">ในระบบ</span>
