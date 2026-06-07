@@ -55,6 +55,18 @@ const SHIFT_LEGEND: { dot: string; label: string }[] = [
   { dot: '#A855F7', label: 'FIX 11 · 11.00–20.00' },
   { dot: '#A855F7', label: 'FIX 14 · 14.00–23.00' },
 ];
+// สี badge เวร (ในแต่ละแถว) — bg(tint) · text(ink) · border แยกตามเวร ตรงกับ legend
+const SH_BADGE: Record<string, { ink: string; bg: string; bd: string }> = {
+  morning:   { ink: '#0d6b6d', bg: '#def1f2', bd: '#8fd2d4' },
+  afternoon: { ink: '#9C6206', bg: '#FBF0D9', bd: '#e6c98a' },
+  night:     { ink: '#4A45C2', bg: '#EBEAFB', bd: '#bcb9f0' },
+  fix7:      { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  fix11:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  fix14:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+};
+// ทดสอบ: badge "อาสา" (กรอบเหมือนเวร คนละสี) + รหัสที่กำหนดเป็นอาสา (ชั่วคราว)
+const VOL_BADGE = { ink: '#be123c', bg: '#ffe4e6', bd: '#f6a9bf' };
+const VOL_TEST = new Set(['225', '468']);
 
 type Status = 'present' | 'pending' | 'done';
 const ST_META: Record<Status, { label: string; dot: string }> = {
@@ -169,7 +181,7 @@ const IcEdit = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stro
 const IcSend = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="M22 2 15 22 11 13 2 9Z" /></svg>);
 const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').replace('.', ':') || '—';
 
-function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean; showShift?: boolean }) {
+function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean }) {
   const [hover, setHover] = useState(false);
   const timeText = p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : 'ยังไม่มา';
   return (
@@ -182,14 +194,14 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
         <span className="lpc-r1">
           <span className="lpc-code mono">{p.c}</span>
           <span className="lpc-name">{p.n}</span>
-          {!showShift && <span className={`lpc-time ${p.status}`}>{timeText}</span>}
-        </span>
-        {showShift && (
-          <span className="lpc-r2">
-            <span className="lpc-shlabel">{SH_META[p.sh].short} · {SH_META[p.sh].range}</span>
+          <span className="lpc-rt">
+            <span className="lpc-badges">
+              {p.tags.includes('อาสา') && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
+              <span className="lpc-shbadge" style={{ color: SH_BADGE[p.sh].ink, background: SH_BADGE[p.sh].bg, borderColor: SH_BADGE[p.sh].bd }}>{SH_META[p.sh].short}</span>
+            </span>
             <span className={`lpc-time ${p.status}`}>{timeText}</span>
           </span>
-        )}
+        </span>
       </span>
       {hover && (
         <span className="lpc-acts" onClick={(e) => e.stopPropagation()}>
@@ -235,7 +247,7 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
               <span className="lpc-srange mono">{inList.length} คน</span>
             </div>
             {inList.map((p) => (
-              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} showShift />
+              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
             ))}
           </div>
         )}
@@ -247,7 +259,7 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
               <span className="lpc-srange mono">{outList.length} คน</span>
             </div>
             {outList.map((p) => (
-              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} showShift />
+              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
             ))}
           </div>
         )}
@@ -422,7 +434,7 @@ export default function CallcenterAttendancePage() {
         out.push({
           c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
           sh: band, status, t: rec?.in || '', tOut: rec && !rec.open ? (rec.out || '') : '',
-          tags: isFix(band) ? [SH_META[band].short] : [],
+          tags: [...(isFix(band) ? [SH_META[band].short] : []), ...(VOL_TEST.has(codeDigits) ? ['อาสา'] : [])],
         });
       });
     }
@@ -722,10 +734,13 @@ const ATB_CSS = `
 .atb .lpc-pill.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-pill.out { background: var(--surface-2); color: var(--muted); }
 .atb .lpc-pill.wait { background: oklch(0.96 0.05 78); color: oklch(0.5 0.12 78); }
-.atb .lpc-time { font-size: 12.5px; font-weight: 500; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
-.atb .lpc-time.present { color: oklch(0.45 0.12 152); }
+.atb .lpc-time { font-size: 11.5px; font-weight: 500; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; text-align: center; }
+.atb .lpc-time.present { color: var(--muted); }
 .atb .lpc-time.done { color: var(--muted); font-weight: 600; }
 .atb .lpc-time.pending { color: var(--pending); font-weight: 500; font-family: inherit; font-size: 11.5px; }
+.atb .lpc-rt { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.atb .lpc-badges { display: flex; align-items: center; gap: 4px; }
+.atb .lpc-shbadge { font-size: 10.5px; font-weight: 700; border: 1px solid; border-radius: 6px; padding: 1px 7px; white-space: nowrap; line-height: 1.45; text-align: center; }
 
 .atb .lpc-acts { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; background: var(--surface); padding: 3px; border-radius: 11px; box-shadow: 0 2px 8px oklch(0.4 0.02 255 / 0.18); }
 .atb .lpc-act { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); transition: background .12s, color .12s, transform .12s, border-color .12s; }
