@@ -69,9 +69,14 @@ const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLo
 
 // ── การ์ดดีไซน์ใหม่ (เฉพาะลาดพร้าว) ──
 const fmtThaiShort = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return s; } };
-const BAND_COLOR: Record<string, string> = {
-  morning: 'var(--ok)', afternoon: 'var(--watch)', night: 'oklch(0.5 0.09 262)',
-  fix7: 'oklch(0.6 0.13 230)', fix11: 'oklch(0.58 0.18 18)', fix14: 'oklch(0.62 0.1 175)',
+// สีเวร — ตรงกับ "ตารางเวรประจำจุด" (DutyRoster): solid(แถบ/จุด) · ink(ป้าย) · tint(พื้นหัว)
+const BAND: Record<string, { solid: string; ink: string; tint: string }> = {
+  morning:   { solid: '#139DA0', ink: '#0d6b6d', tint: '#def1f2' },
+  afternoon: { solid: '#E0991A', ink: '#9C6206', tint: '#FBF0D9' },
+  night:     { solid: '#6366E8', ink: '#4A45C2', tint: '#EBEAFB' },
+  fix7:      { solid: '#A855F7', ink: '#7E22CE', tint: '#F3E8FF' },
+  fix11:     { solid: '#A855F7', ink: '#7E22CE', tint: '#F3E8FF' },
+  fix14:     { solid: '#A855F7', ink: '#7E22CE', tint: '#F3E8FF' },
 };
 const ST_PILL: Record<Status, { cls: string; label: string }> = {
   present: { cls: 'ok', label: 'เข้างาน' },
@@ -184,7 +189,7 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
         </span>
         {showShift && (
           <span className="lpc-r2">
-            <span className="lpc-shift">{SH_META[p.sh].short} · {SH_META[p.sh].range}</span>
+            <span className="lpc-shlabel">{SH_META[p.sh].short} · {SH_META[p.sh].range}</span>
             <span className={`lpc-time ${p.status}`}>{timeText}</span>
           </span>
         )}
@@ -200,7 +205,6 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
 }
 
 function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: string; people: Person[]; date: string; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
-  const [doneMode, setDoneMode] = useState<'inline' | 'separate'>('separate');
   const came = people.filter((p) => arrived(p.status)).length;
   const absent = people.filter((p) => p.status === 'pending').length;
   const byBand: Record<string, Person[]> = {};
@@ -219,18 +223,12 @@ function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: 
           <span className="lpc-count wait"><b>{absent}</b> ยังไม่มา</span>
         </div>
       </div>
-      <div className="lpc-toggle">
-        <button className={doneMode === 'inline' ? 'on' : ''} onClick={() => setDoneMode('inline')}>A · ออกแล้วท้ายเวร</button>
-        <button className={doneMode === 'separate' ? 'on' : ''} onClick={() => setDoneMode('separate')}>B · แยกนอกระบบ</button>
-      </div>
       <div className="lpc-body">
         {SHIFT_ORDER.filter((k) => byBand[k]?.length).map((band) => {
-          let rows = byBand[band];
-          if (doneMode === 'separate') rows = rows.filter((p) => p.status !== 'done');
-          else rows = [...rows].sort((a, b) => (a.status === 'done' ? 1 : 0) - (b.status === 'done' ? 1 : 0));
+          const rows = byBand[band].filter((p) => p.status !== 'done'); // คนออกแล้ว -> กล่อง "นอกระบบ"
           if (!rows.length) return null;
           return (
-            <div className="lpc-shift" key={band} style={{ '--band': BAND_COLOR[band] } as CSSProperties}>
+            <div className="lpc-shift" key={band} style={{ '--band': BAND[band].solid, '--band-ink': BAND[band].ink, '--band-tint': BAND[band].tint } as CSSProperties}>
               <div className="lpc-shead">
                 <span className="lpc-sdot" />
                 {isFix(band)
@@ -244,8 +242,8 @@ function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: 
             </div>
           );
         })}
-        {doneMode === 'separate' && doneList.length > 0 && (
-          <div className="lpc-shift lpc-out" style={{ '--band': 'var(--muted)' } as CSSProperties}>
+        {doneList.length > 0 && (
+          <div className="lpc-shift lpc-out" style={{ '--band': 'var(--muted)', '--band-ink': 'var(--muted)', '--band-tint': 'var(--surface-2)' } as CSSProperties}>
             <div className="lpc-shead">
               <span className="lpc-sdot" />
               <span className="lpc-slabel">ออกงานแล้ว · นอกระบบ</span>
@@ -680,16 +678,13 @@ const ATB_CSS = `
 .atb .lpc-count.wait { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .atb .lpc-body { padding: 8px 12px 14px; display: flex; flex-direction: column; gap: 3px; }
 .atb .lpc-shift { padding: 4px 0 6px 9px; border-left: 3px solid var(--band); margin-bottom: 2px; }
-.atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 4px 11px; background: color-mix(in srgb, var(--band) 13%, transparent); border-radius: 8px; margin-bottom: 3px; }
+.atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 4px 11px; background: var(--band-tint); border-radius: 8px; margin-bottom: 3px; }
 .atb .lpc-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--band); }
-.atb .lpc-slabel { font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--band) 80%, black); }
-.atb .lpc-fix { font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--band) 80%, black); }
+.atb .lpc-slabel { font-size: 13px; font-weight: 700; color: var(--band-ink); }
+.atb .lpc-fix { font-size: 13px; font-weight: 700; color: var(--band-ink); }
 .atb .lpc-srange { margin-left: auto; font-size: 11px; color: var(--muted); }
-.atb .lpc-toggle { display: flex; margin: 2px 14px 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-.atb .lpc-toggle button { flex: 1; font: inherit; font-size: 11.5px; font-weight: 600; padding: 6px 8px; border: none; background: transparent; color: var(--muted); border-radius: 7px; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; }
-.atb .lpc-toggle button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px oklch(0.4 0.02 255 / 0.14); }
 .atb .lpc-r2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; white-space: nowrap; }
-.atb .lpc-shift { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.atb .lpc-shlabel { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
 .atb .lpc-out { margin: 8px 4px 2px; padding: 2px 6px 4px; background: oklch(0.975 0.002 255); border: 1px dashed var(--line); border-radius: 12px; }
 .atb .lpc-out .lpc-slabel { color: var(--muted); }
 
