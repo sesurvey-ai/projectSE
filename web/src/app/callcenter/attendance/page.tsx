@@ -69,15 +69,6 @@ const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLo
 
 // ── การ์ดดีไซน์ใหม่ (ทุกจุดกรุงเทพฯ) ──
 const fmtThaiShort = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return s; } };
-// สีเวร — ตรงกับ "ตารางเวรประจำจุด" (DutyRoster): solid(แถบ/จุด) · ink(ป้าย) · tint(พื้นหัว)
-const BAND: Record<string, { solid: string; ink: string; tint: string }> = {
-  morning:   { solid: '#139DA0', ink: '#0d6b6d', tint: '#def1f2' },
-  afternoon: { solid: '#E0991A', ink: '#9C6206', tint: '#FBF0D9' },
-  night:     { solid: '#6366E8', ink: '#4A45C2', tint: '#EBEAFB' },
-  fix7:      { solid: '#A855F7', ink: '#7E22CE', tint: '#F3E8FF' },
-  fix11:     { solid: '#A855F7', ink: '#7E22CE', tint: '#F3E8FF' },
-  fix14:     { solid: '#A855F7', ink: '#7E22CE', tint: '#F3E8FF' },
-};
 const ST_PILL: Record<Status, { cls: string; label: string }> = {
   present: { cls: 'ok', label: 'เข้างาน' },
   done: { cls: 'out', label: 'ออกแล้ว' },
@@ -204,10 +195,16 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
 function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: string; people: Person[]; date: string; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
   const came = people.filter((p) => arrived(p.status)).length;
   const absent = people.filter((p) => p.status === 'pending').length;
-  const byBand: Record<string, Person[]> = {};
-  people.forEach((p) => { (byBand[p.sh] = byBand[p.sh] || []).push(p); });
-  const doneList = people.filter((p) => p.status === 'done');
+  // เรียงตามลำดับเวร แล้วเวลาเข้า — ให้ยังอ่านเป็นกลุ่มเวรได้แม้เอาแถบหัวเวรออก
+  const byShift = (a: Person, b: Person) => {
+    const d = SHIFT_ORDER.indexOf(a.sh) - SHIFT_ORDER.indexOf(b.sh);
+    return d !== 0 ? d : (a.t || '').localeCompare(b.t || '');
+  };
+  const inList = [...people].filter((p) => p.status === 'present').sort(byShift);   // ในระบบ = เช็คอินอยู่
+  const outList = [...people].filter((p) => p.status !== 'present').sort(byShift);  // นอกระบบ = ออกแล้ว + ยังไม่มา
   const isActive = (p: Person) => !!selected && selected.c === p.c && selected.n === p.n && selected.centerId === p.centerId;
+  const GREEN = { '--band': 'oklch(0.62 0.13 152)', '--band-ink': 'oklch(0.42 0.12 152)', '--band-tint': 'oklch(0.96 0.04 152)' } as CSSProperties;
+  const GREY = { '--band': 'var(--muted)', '--band-ink': 'var(--muted)', '--band-tint': 'var(--surface-2)' } as CSSProperties;
   return (
     <div className="lpc">
       <div className="lpc-head">
@@ -221,32 +218,26 @@ function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: 
         </div>
       </div>
       <div className="lpc-body">
-        {SHIFT_ORDER.filter((k) => byBand[k]?.length).map((band) => {
-          const rows = byBand[band].filter((p) => p.status !== 'done'); // คนออกแล้ว -> กล่อง "นอกระบบ"
-          if (!rows.length) return null;
-          return (
-            <div className="lpc-shift" key={band} style={{ '--band': BAND[band].solid, '--band-ink': BAND[band].ink, '--band-tint': BAND[band].tint } as CSSProperties}>
-              <div className="lpc-shead">
-                <span className="lpc-sdot" />
-                {isFix(band)
-                  ? <span className="lpc-fix">{SH_META[band].short}</span>
-                  : <span className="lpc-slabel">{SH_META[band].short}</span>}
-                <span className="lpc-srange mono">{SH_META[band].range}</span>
-              </div>
-              {rows.map((p) => (
-                <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
-              ))}
-            </div>
-          );
-        })}
-        {doneList.length > 0 && (
-          <div className="lpc-shift lpc-out" style={{ '--band': 'var(--muted)', '--band-ink': 'var(--muted)', '--band-tint': 'var(--surface-2)' } as CSSProperties}>
+        {inList.length > 0 && (
+          <div className="lpc-shift lpc-in" style={GREEN}>
             <div className="lpc-shead">
               <span className="lpc-sdot" />
-              <span className="lpc-slabel">ออกงานแล้ว · นอกระบบ</span>
-              <span className="lpc-srange mono">{doneList.length} คน</span>
+              <span className="lpc-slabel">ในระบบ</span>
+              <span className="lpc-srange mono">{inList.length} คน</span>
             </div>
-            {doneList.map((p) => (
+            {inList.map((p) => (
+              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} showShift />
+            ))}
+          </div>
+        )}
+        {outList.length > 0 && (
+          <div className="lpc-shift lpc-out" style={GREY}>
+            <div className="lpc-shead">
+              <span className="lpc-sdot" />
+              <span className="lpc-slabel">นอกระบบ</span>
+              <span className="lpc-srange mono">{outList.length} คน</span>
+            </div>
+            {outList.map((p) => (
               <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} showShift />
             ))}
           </div>
@@ -594,7 +585,7 @@ const ATB_CSS = `
 .atb .region-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
 .atb .region-head h2 { font-size: 17px; }
 .atb .region-meta { font-size: 13px; color: var(--muted); }
-.atb .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+.atb .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
 
 .atb .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
 .atb .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line-2); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
@@ -680,6 +671,7 @@ const ATB_CSS = `
 .atb .lpc-srange { margin-left: auto; font-size: 11px; color: var(--muted); }
 .atb .lpc-r2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; white-space: nowrap; }
 .atb .lpc-shlabel { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.atb .lpc-in { margin: 8px 4px 2px; padding: 2px 6px 4px; background: oklch(0.985 0.014 152); border: 1px solid oklch(0.88 0.06 152); border-radius: 12px; }
 .atb .lpc-out { margin: 8px 4px 2px; padding: 2px 6px 4px; background: oklch(0.975 0.002 255); border: 1px dashed var(--line); border-radius: 12px; }
 .atb .lpc-out .lpc-slabel { color: var(--muted); }
 
