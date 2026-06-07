@@ -67,7 +67,7 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d
 const onlyDigits = (s: string) => (s || '').replace(/\D/g, '');
 const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch { return s; } };
 
-// ── การ์ดดีไซน์ใหม่ (เฉพาะลาดพร้าว) ──
+// ── การ์ดดีไซน์ใหม่ (ทุกจุดกรุงเทพฯ) ──
 const fmtThaiShort = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return s; } };
 // สีเวร — ตรงกับ "ตารางเวรประจำจุด" (DutyRoster): solid(แถบ/จุด) · ink(ป้าย) · tint(พื้นหัว)
 const BAND: Record<string, { solid: string; ink: string; tint: string }> = {
@@ -83,16 +83,13 @@ const ST_PILL: Record<Status, { cls: string; label: string }> = {
   done: { cls: 'out', label: 'ออกแล้ว' },
   pending: { cls: 'wait', label: 'ยังไม่มา' },
 };
-function lpcInitials(name: string) {
-  const first = (name || '').trim().split(/\s+/)[0] || '';
-  return first.slice(0, 2) || '–';
-}
-// ทดสอบ: รูปอวตาร (key = เลขรหัสพนักงาน) — ถ้ามีรูปโชว์รูป ไม่มีโชว์ตัวย่อ (อนาคตดึงจาก DB)
+// ทดสอบ: รูปอวตาร (key = เลขรหัสพนักงาน) — ถ้ามีรูปโชว์รูป ไม่มีใช้รูป default (อนาคตดึงจาก DB)
 const LPC_PHOTOS: Record<string, string> = {
-  '225': '/avatars/se225.jpg', '351': '/avatars/se351.jpg', '37': '/avatars/se37.jpg',
+  '225': '/avatars/se225.jpg', '351': '/avatars/se351.jpg', '37': '/avatars/se37.jpg', '468': '/avatars/se468.jpg',
   '400': '/avatars/se400.jpg', '393': '/avatars/se393.jpg', '480': '/avatars/se480.jpg',
 };
-const photoOf = (code: string) => LPC_PHOTOS[onlyDigits(code)];
+const PHOTO_FALLBACK = '/avatar-placeholder.png'; // รูป default แทนตัวย่อชื่อ เมื่อรหัสยังไม่มีรูปจริง
+const photoOf = (code: string) => LPC_PHOTOS[onlyDigits(code)] || PHOTO_FALLBACK;
 // ── ป้าย/ชิ้นเล็ก ──
 function StatusDot({ status }: { status: Status }) {
   return <span className="dot" style={{ background: ST_META[status].dot }} title={ST_META[status].label} />;
@@ -164,10 +161,11 @@ function StationCard({ name, people, onSelect, selected }: { name: string; peopl
   );
 }
 
-// ไอคอน (โทร/แชท/แก้ไขกะ) — จากดีไซน์ "การ์ดเช็คอิน B"
+// ไอคอน (โทร/แชท/ส่ง/แก้ไขกะ) — จากดีไซน์ "การ์ดเช็คอิน B"
 const IcPhone = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z" /></svg>);
 const IcChat = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-4-1L3 20l1.1-4.9a8.4 8.4 0 0 1-.9-3.6 8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.8 8Z" /></svg>);
 const IcEdit = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>);
+const IcSend = (<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="M22 2 15 22 11 13 2 9Z" /></svg>);
 const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').replace('.', ':') || '—';
 
 function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean; showShift?: boolean }) {
@@ -176,9 +174,7 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
       <span className="lpc-av">
-        <span className="lpc-av-ring">{photoOf(p.c)
-          ? <img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} />
-          : <span className="lpc-av-in">{lpcInitials(p.n)}</span>}</span>
+        <span className="lpc-av-ring"><img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} /></span>
         {p.status !== 'pending' && <span className="lpc-av-badge">✓</span>}
       </span>
       <span className="lpc-main">
@@ -198,6 +194,7 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
         <span className="lpc-acts" onClick={(e) => e.stopPropagation()}>
           <button className="lpc-act accent" title="โทร" onClick={() => onToast(`กำลังโทรหา ${p.n}…`)}>{IcPhone}</button>
           <button className="lpc-act" title="แชท" onClick={() => onToast(`เปิดแชทกับ ${p.n}`)}>{IcChat}</button>
+          <button className="lpc-act" title="ส่งข้อความ" onClick={() => onToast(`ส่งข้อความถึง ${p.n}`)}>{IcSend}</button>
         </span>
       )}
     </div>
@@ -285,9 +282,7 @@ function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; on
     <div className="lpc-modal" onClick={onClose}>
       <div className="lpc-card" onClick={(e) => e.stopPropagation()}>
         <div className="lpc-mhead">
-          <span className={`lpc-mav ${p.status}`}>{photoOf(p.c)
-            ? <img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} />
-            : lpcInitials(p.n)}</span>
+          <span className={`lpc-mav ${p.status}`}><img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} /></span>
           <div className="lpc-mid">
             <div className="lpc-mname">{p.n}</div>
             <div className="lpc-mse">{p.s} · <span className="mono">{p.c}</span></div>
@@ -358,7 +353,7 @@ export default function CallcenterAttendancePage() {
   const [statusF, setStatusF] = useState<'all' | Status>('all');
   const [sortMode, setSortMode] = useState<'name' | 'count'>('name');
   const [selected, setSelected] = useState<Person | null>(null);
-  const [lpSel, setLpSel] = useState<Person | null>(null); // ลาดพร้าว: คลิกเปิดแผงรายละเอียด
+  const [lpSel, setLpSel] = useState<Person | null>(null); // การ์ดกรุงเทพ: คลิกเปิดแผงรายละเอียด
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((m: string) => { setToast(m); if (toastTimer.current) clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 1900); }, []);
@@ -527,7 +522,7 @@ export default function CallcenterAttendancePage() {
             <section key={g.rk} className="region">
               <div className="region-head"><h2>{g.label}</h2><span className="region-meta mono">{g.stations.length} จุด · {g.total} คน</span></div>
               <div className="cardgrid">
-                {g.stations.map((st) => st.name === 'ลาดพร้าว'
+                {g.stations.map((st) => g.rk === 'bkk'
                   ? <LadpraoCard key={st.name} name={st.name} people={st.people} date={date} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
                   : <StationCard key={st.name} name={st.name} people={st.people} onSelect={setSelected} selected={selected} />)}
               </div>
@@ -677,7 +672,7 @@ const ATB_CSS = `
 .atb .lpc-count.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-count.wait { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .atb .lpc-body { padding: 8px 12px 14px; display: flex; flex-direction: column; gap: 3px; }
-.atb .lpc-shift { padding: 4px 0 6px 9px; border-left: 3px solid var(--band); margin-bottom: 2px; }
+.atb .lpc-shift { padding: 4px 0 6px; margin-bottom: 2px; }
 .atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 4px 11px; background: var(--band-tint); border-radius: 8px; margin-bottom: 3px; }
 .atb .lpc-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--band); }
 .atb .lpc-slabel { font-size: 13px; font-weight: 700; color: var(--band-ink); }
