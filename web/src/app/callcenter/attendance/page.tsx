@@ -46,6 +46,16 @@ const RAW_TO_BAND: Record<string, Band | null> = {
   off: null, none: null,
 };
 
+// legend เวร + เวลา (แสดงชิดขวาของหัวภูมิภาค) — สีตรงกับ "ตารางเวรประจำจุด"
+const SHIFT_LEGEND: { dot: string; label: string }[] = [
+  { dot: '#139DA0', label: 'เวร 1 · เช้า · 07.00–16.00' },
+  { dot: '#E0991A', label: 'เวร 2 · บ่าย · 15.00–24.00' },
+  { dot: '#6366E8', label: 'เวร 3 · ดึก · 23.00–08.00' },
+  { dot: '#A855F7', label: 'FIX 7 · 07.00–16.00' },
+  { dot: '#A855F7', label: 'FIX 11 · 11.00–20.00' },
+  { dot: '#A855F7', label: 'FIX 14 · 14.00–23.00' },
+];
+
 type Status = 'present' | 'pending' | 'done';
 const ST_META: Record<Status, { label: string; dot: string }> = {
   present: { label: 'เข้างานแล้ว', dot: 'var(--ok)' },
@@ -192,7 +202,7 @@ function LpcPerson({ p, onOpen, onToast, active, showShift }: { p: Person; onOpe
   );
 }
 
-function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: string; people: Person[]; date: string; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
+function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string; people: Person[]; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
   const came = people.filter((p) => arrived(p.status)).length;
   const absent = people.filter((p) => p.status === 'pending').length;
   // เรียงตามลำดับเวร แล้วเวลาเข้า — ให้ยังอ่านเป็นกลุ่มเวรได้แม้เอาแถบหัวเวรออก
@@ -209,7 +219,6 @@ function LadpraoCard({ name, people, date, onOpen, onToast, selected }: { name: 
     <div className="lpc">
       <div className="lpc-head">
         <div className="lpc-htitle">
-          <span className="lpc-today">{date === todayStr() ? 'วันนี้ · ' : ''}{fmtThaiShort(date)}</span>
           <h3 className="lpc-name-h">{name}</h3>
         </div>
         <div className="lpc-counts">
@@ -511,10 +520,18 @@ export default function CallcenterAttendancePage() {
         ) : (
           regionGroups.map((g) => (
             <section key={g.rk} className="region">
-              <div className="region-head"><h2>{g.label}</h2><span className="region-meta mono">{g.stations.length} จุด · {g.total} คน</span></div>
+              <div className="region-head">
+                <h2>{g.label}</h2>
+                <span className="region-meta mono">{g.stations.length} จุด · {g.total} คน</span>
+                <div className="shift-legend">
+                  {SHIFT_LEGEND.map((s) => (
+                    <span className="leg-item" key={s.label}><span className="leg-dot" style={{ background: s.dot }} />{s.label}</span>
+                  ))}
+                </div>
+              </div>
               <div className="cardgrid">
                 {g.stations.map((st) => g.rk === 'bkk'
-                  ? <LadpraoCard key={st.name} name={st.name} people={st.people} date={date} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
+                  ? <LadpraoCard key={st.name} name={st.name} people={st.people} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
                   : <StationCard key={st.name} name={st.name} people={st.people} onSelect={setSelected} selected={selected} />)}
               </div>
             </section>
@@ -582,7 +599,10 @@ const ATB_CSS = `
 
 .atb .board { padding: 24px 28px 80px; }
 .atb .region { margin-bottom: 36px; }
-.atb .region-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+.atb .region-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+.atb .shift-legend { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 16px; }
+.atb .leg-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.atb .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .atb .region-head h2 { font-size: 17px; }
 .atb .region-meta { font-size: 13px; color: var(--muted); }
 .atb .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
@@ -655,14 +675,13 @@ const ATB_CSS = `
 /* ── การ์ดดีไซน์ใหม่ (ลาดพร้าว) ── */
 .atb .lpc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
 .atb .lpc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 15px 18px 13px; border-bottom: 1px solid var(--line-2); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
-.atb .lpc-today { font-size: 11.5px; color: var(--muted); font-weight: 500; }
-.atb .lpc-name-h { font-size: 19px; font-weight: 700; margin-top: 2px; letter-spacing: -0.01em; }
+.atb .lpc-name-h { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
 .atb .lpc-counts { display: flex; gap: 6px; flex-shrink: 0; }
 .atb .lpc-count { font-size: 11.5px; padding: 5px 10px; border-radius: 10px; font-weight: 500; white-space: nowrap; }
 .atb .lpc-count b { font-size: 14px; font-weight: 700; margin-right: 2px; }
 .atb .lpc-count.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-count.wait { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
-.atb .lpc-body { padding: 8px 12px 14px; display: flex; flex-direction: column; gap: 3px; }
+.atb .lpc-body { padding: 8px 6px 14px; display: flex; flex-direction: column; gap: 3px; }
 .atb .lpc-shift { padding: 4px 0 6px; margin-bottom: 2px; }
 .atb .lpc-shead { display: flex; align-items: center; gap: 8px; padding: 4px 11px; background: var(--band-tint); border-radius: 8px; margin-bottom: 3px; }
 .atb .lpc-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--band); }
@@ -671,7 +690,6 @@ const ATB_CSS = `
 .atb .lpc-srange { margin-left: auto; font-size: 11px; color: var(--muted); }
 .atb .lpc-r2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; white-space: nowrap; }
 .atb .lpc-shlabel { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
-.atb .lpc-in { margin: 8px 4px 2px; padding: 2px 6px 4px; background: oklch(0.985 0.014 152); border: 1px solid oklch(0.88 0.06 152); border-radius: 12px; }
 .atb .lpc-out { margin: 8px 4px 2px; padding: 2px 6px 4px; background: oklch(0.975 0.002 255); border: 1px dashed var(--line); border-radius: 12px; }
 .atb .lpc-out .lpc-slabel { color: var(--muted); }
 
@@ -680,7 +698,7 @@ const ATB_CSS = `
 .atb .lpc-person.active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
 
 .atb .lpc-av { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
-.atb .lpc-av-ring { width: 42px; height: 42px; border-radius: 50%; border: 2.5px solid var(--line); display: grid; place-items: center; }
+.atb .lpc-av-ring { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--line); display: grid; place-items: center; }
 .atb .lpc-av-in { font-size: 13.5px; font-weight: 700; }
 .atb .lpc-av-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .atb .lpc-av-badge { position: absolute; right: -1px; bottom: -1px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; color: #fff; border: 2px solid var(--surface); background: var(--ok); }
@@ -704,7 +722,7 @@ const ATB_CSS = `
 .atb .lpc-pill.ok { background: oklch(0.95 0.05 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-pill.out { background: var(--surface-2); color: var(--muted); }
 .atb .lpc-pill.wait { background: oklch(0.96 0.05 78); color: oklch(0.5 0.12 78); }
-.atb .lpc-time { font-size: 12.5px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+.atb .lpc-time { font-size: 12.5px; font-weight: 500; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
 .atb .lpc-time.present { color: oklch(0.45 0.12 152); }
 .atb .lpc-time.done { color: var(--muted); font-weight: 600; }
 .atb .lpc-time.pending { color: var(--pending); font-weight: 500; font-family: inherit; font-size: 11.5px; }
