@@ -66,7 +66,8 @@ const SH_BADGE: Record<string, { ink: string; bg: string; bd: string }> = {
 };
 // ทดสอบ: badge "อาสา" (กรอบเหมือนเวร คนละสี) + รหัสที่กำหนดเป็นอาสา (ชั่วคราว)
 const VOL_BADGE = { ink: '#be123c', bg: '#ffe4e6', bd: '#f6a9bf' };
-const VOL_TEST = new Set(['225', '468']);
+const GREY_BADGE = { ink: '#64748b', bg: '#f1f5f9', bd: '#cbd5e1' }; // เวร badge ในนอกระบบ = เทา
+const VOL_TEST = new Set(['225', '468', '37']);
 
 type Status = 'present' | 'pending' | 'done';
 const ST_META: Record<Status, { label: string; dot: string }> = {
@@ -184,6 +185,7 @@ const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').
 function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean }) {
   const [hover, setHover] = useState(false);
   const timeText = p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : 'ยังไม่มา';
+  const shc = p.status === 'present' ? SH_BADGE[p.sh] : GREY_BADGE; // นอกระบบ → badge เวรเทา
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
       <span className="lpc-av">
@@ -196,8 +198,8 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
           <span className="lpc-name">{p.n}</span>
           <span className="lpc-rt">
             <span className="lpc-badges">
-              {p.tags.includes('อาสา') && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
-              <span className="lpc-shbadge" style={{ color: SH_BADGE[p.sh].ink, background: SH_BADGE[p.sh].bg, borderColor: SH_BADGE[p.sh].bd }}>{SH_META[p.sh].short}</span>
+              {p.tags.includes('อาสา') && p.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
+              <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{SH_META[p.sh].short}</span>
             </span>
             <span className={`lpc-time ${p.status}`}>{timeText}</span>
           </span>
@@ -738,6 +740,12 @@ const ATB_CSS = `
 .atb .lpc-time.present { color: var(--muted); }
 .atb .lpc-time.done { color: var(--muted); font-weight: 600; }
 .atb .lpc-time.pending { color: var(--pending); font-weight: 500; font-family: inherit; font-size: 11.5px; }
+/* นอกระบบ: รูป/ชื่อ/เวลา เป็นเทา (de-emphasize) */
+.atb .lpc-out .lpc-name { color: var(--muted); }
+.atb .lpc-out .lpc-time { color: var(--muted); }
+.atb .lpc-out .lpc-av-img { filter: grayscale(100%); }
+.atb .lpc-out .lpc-person { opacity: 0.6; transition: opacity 0.12s; }
+.atb .lpc-out .lpc-person:hover { opacity: 1; }
 .atb .lpc-rt { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
 .atb .lpc-badges { display: flex; align-items: center; gap: 4px; }
 .atb .lpc-shbadge { font-size: 10.5px; font-weight: 700; border: 1px solid; border-radius: 6px; padding: 1px 7px; white-space: nowrap; line-height: 1.45; text-align: center; }
