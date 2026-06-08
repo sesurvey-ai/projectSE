@@ -161,7 +161,7 @@ function ShiftCell({ shiftKey, onOpen, dim }: { shiftKey: ShiftKey; onOpen: (e: 
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(e as unknown as React.MouseEvent<HTMLDivElement>); } }}>
         <div className="body">
           <span className="dot" data-n={s.code}></span>
-          <span className="lab">{s.label}</span>
+          <span className="lab">{s.label}{['s1', 's2', 's3'].includes(shiftKey) ? ' · ' + s.short : ''}</span>
           <span className="cell-time">{s.time}</span>
         </div>
       </div>
@@ -461,12 +461,12 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
         </div>
         <button className="add-staff" onClick={addStaff}>+ เพิ่มพนักงาน</button>
         <div className="legend">
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--morning-solid)' }}></span>เวร 1 · เช้า</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--after-solid)' }}></span>เวร 2 · บ่าย</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--night-solid)' }}></span>เวร 3 · ดึก</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 7/11/14</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--off-solid)' }}></span>หยุด</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--warn)' }}></span>ว่าง</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--morning-solid)' }}></span>เวร 1 · เช้า · 07.00–16.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--after-solid)' }}></span>เวร 2 · บ่าย · 15.00–24.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--night-solid)' }}></span>เวร 3 · ดึก · 23.00–08.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 7 · 07.00–16.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 11 · 11.00–20.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 14 · 14.00–23.00</span>
         </div>
         <div className="stat-pills">
           <div className="stat-pill"><span className="n">{staff.length}</span><span className="l">พนักงาน<br />ในโซน</span></div>
