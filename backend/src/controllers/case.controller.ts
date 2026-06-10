@@ -93,4 +93,9 @@ export const caseController = {
     const stats = await caseService.getStats();
     sendSuccess(res, stats);
   }),
+
+  getWorkload: asyncHandler(async (_req: Request, res: Response) => {
+    const data = await caseService.activeWorkload();
+    sendSuccess(res, data);
+  }),
 };

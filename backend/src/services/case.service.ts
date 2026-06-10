@@ -614,6 +614,18 @@ export const caseService = {
     return { message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense };
   },
 
+  // จำนวนงานที่ "ถืออยู่" ของแต่ละพนักงานสำรวจ (assigned/surveyed = ยังไม่ปิด) — ใช้เรียงคิวบอร์ดเข้างาน
+  async activeWorkload() {
+    const { rows } = await db.query(
+      `SELECT u.id AS user_id, u.code, COUNT(c.id)::int AS active
+         FROM users u
+         LEFT JOIN cases c ON c.assigned_to = u.id AND c.status IN ('assigned','surveyed')
+        WHERE u.role = 'surveyor'
+        GROUP BY u.id, u.code`
+    );
+    return rows;
+  },
+
   async getStats() {
     const result = await db.query(`
       SELECT

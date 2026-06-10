@@ -28,18 +28,44 @@ const CENTERS: { id: string; name: string; region: string }[] = [
   { id: 'nonthaburi', name: 'นนทบุรี', region: 'pmt' },
   { id: 'samutprakan', name: 'สมุทรปราการ', region: 'pmt' },
 ];
-type Band = 'morning' | 'afternoon' | 'night' | 'fix7' | 'fix11' | 'fix14';
-const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix7', 'fix11', 'fix14'];
+type Band = 'morning' | 'afternoon' | 'night' | 'fix7' | 'fix11' | 'fix14' | 'offday';
+const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix7', 'fix11', 'fix14', 'offday'];
 const SH_META: Record<Band, { label: string; short: string; range: string }> = {
-  morning: { label: 'เวร 1 · เช้า', short: 'เช้า', range: '07.00–16.00' },
-  afternoon: { label: 'เวร 2 · บ่าย', short: 'บ่าย', range: '15.00–24.00' },
-  night: { label: 'เวร 3 · ดึก', short: 'ดึก', range: '23.00–08.00' },
+  morning: { label: 'เวร 1 · เช้า', short: 'เวร1', range: '07.00–16.00' },
+  afternoon: { label: 'เวร 2 · บ่าย', short: 'เวร2', range: '15.00–24.00' },
+  night: { label: 'เวร 3 · ดึก', short: 'เวร3', range: '23.00–08.00' },
   fix7: { label: 'FIX 7', short: 'FIX7', range: '07.00–16.00' },
   fix11: { label: 'FIX 11', short: 'FIX11', range: '11.00–20.00' },
   fix14: { label: 'FIX 14', short: 'FIX14', range: '14.00–23.00' },
+  offday: { label: 'วันหยุด · อาสามาทำงาน', short: 'หยุด', range: '—' }, // ตารางให้หยุด แต่เช็คอินเข้ามาทำงาน
 };
 const isFix = (b: string) => b === 'fix7' || b === 'fix11' || b === 'fix14';
-// raw shift key (จากตาราง) → แถบเวรในการ์ด; off/none = ไม่ขึ้นเวร (ข้าม)
+// ลำดับการแสดงภายใน "ความสำคัญ 1" (อยู่ในเวร): เวร1 → Fix7 → Fix11 → Fix14 → เวร2 → เวร3
+const TIER1_ORDER: Band[] = ['morning', 'fix7', 'fix11', 'fix14', 'afternoon', 'night'];
+// เวลาเริ่ม/สิ้นสุดของแต่ละเวร (นาทีจากเที่ยงคืน) — อ่านจาก SH_META.range เช่น '07.00–16.00'
+const parseHM = (s: string) => { const [h, m] = s.split('.').map(Number); return (h || 0) * 60 + (m || 0); };
+const bandStartMin = (b: Band) => parseHM(SH_META[b].range.split('–')[0]);
+const bandEndMin = (b: Band) => parseHM(SH_META[b].range.split('–')[1]);
+// เวลาปัจจุบัน (นาที) — รองรับ ?now=HH:MM หรือ ?now=HHMM เพื่อทดสอบเวลาอื่น (debug)
+const nowMinutes = () => {
+  if (typeof window !== 'undefined') {
+    const q = new URLSearchParams(window.location.search).get('now');
+    if (q) {
+      const parts = q.includes(':') ? q.split(':') : [q.slice(0, -2), q.slice(-2)];
+      const h = Number(parts[0]), m = Number(parts[1]);
+      if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+    }
+  }
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+};
+// เวรนี้ "กำลังอยู่ในช่วงเวลาเวรหรือไม่" ณ เวลา now — รองรับเวรข้ามคืน (เช่น ดึก 23.00–08.00)
+const bandInShift = (b: Band, now: number) => {
+  if (b === 'offday') return false; // วันหยุดไม่มีช่วงเวรของตัวเอง → ทำงานเมื่อไหร่ก็เป็นอาสา
+  const s = bandStartMin(b), e = bandEndMin(b);
+  return e > s ? now >= s && now < e : now >= s || now < e;
+};
+// raw shift key (จากตาราง) → แถบเวรในการ์ด; off/none = ไม่ขึ้นเวร (ข้าม เว้นแต่เช็คอิน → 'offday')
 const RAW_TO_BAND: Record<string, Band | null> = {
   s1: 'morning', s2: 'afternoon', s3: 'night',
   fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', f1120: 'fix11', f1423: 'fix14',
@@ -63,11 +89,11 @@ const SH_BADGE: Record<string, { ink: string; bg: string; bd: string }> = {
   fix7:      { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
   fix11:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
   fix14:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  offday:    { ink: '#64748b', bg: '#f1f5f9', bd: '#cbd5e1' }, // วันหยุด (อาสามาทำงาน) = เทา
 };
-// ทดสอบ: badge "อาสา" (กรอบเหมือนเวร คนละสี) + รหัสที่กำหนดเป็นอาสา (ชั่วคราว)
-const VOL_BADGE = { ink: '#be123c', bg: '#ffe4e6', bd: '#f6a9bf' };
+// badge "อาสา" (กรอบเหมือนเวร คนละสี) — ใช้เมื่อพนักงานทำงานนอกช่วงเวรตัวเอง (ก่อน/หลังเวร หรือวันหยุด)
+const VOL_BADGE = { ink: '#1d4ed8', bg: '#dbeafe', bd: '#93c5fd' };
 const GREY_BADGE = { ink: '#64748b', bg: '#f1f5f9', bd: '#cbd5e1' }; // เวร badge ในนอกระบบ = เทา
-const VOL_TEST = new Set(['225', '468', '37']);
 
 type Status = 'present' | 'pending' | 'done';
 const ST_META: Record<Status, { label: string; dot: string }> = {
@@ -79,7 +105,7 @@ const arrived = (s: Status) => s === 'present' || s === 'done'; // มาทำ�
 
 type Person = {
   c: string; n: string; p: string; centerId: string; s: string; region: string;
-  sh: Band; status: Status; t: string; tOut: string; tags: string[];
+  sh: Band; status: Status; t: string; tOut: string; tags: string[]; jobs: number;
 };
 
 type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null; work_date?: string };
@@ -194,14 +220,15 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
       </span>
       <span className="lpc-main">
         <span className="lpc-r1">
-          <span className="lpc-code mono">{p.c}</span>
+          <span className="lpc-code mono">{p.c.replace(/\s+/g, '')}</span>
           <span className="lpc-name">{p.n}</span>
           <span className="lpc-rt">
+            <span className={`lpc-time ${p.status}`}>{timeText}</span>
             <span className="lpc-badges">
               {p.tags.includes('อาสา') && p.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
               <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{SH_META[p.sh].short}</span>
+              <span className="lpc-shbadge" style={{ color: '#475569', background: '#eef2f6', borderColor: '#cbd5e1' }} title="งานที่ถืออยู่ (ยังไม่ปิด)">{p.jobs} งาน</span>
             </span>
-            <span className={`lpc-time ${p.status}`}>{timeText}</span>
           </span>
         </span>
       </span>
@@ -224,7 +251,17 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
     const d = SHIFT_ORDER.indexOf(a.sh) - SHIFT_ORDER.indexOf(b.sh);
     return d !== 0 ? d : (a.t || '').localeCompare(b.t || '');
   };
-  const inList = [...people].filter((p) => p.status === 'present').sort(byShift);   // ในระบบ = เช็คอินอยู่
+  // ความสำคัญการแสดง "ในระบบ" (2 ระดับ):
+  //   1 = อยู่ในช่วงเวร — เรียงลำดับเวร เวร1 → Fix7 → Fix11 → Fix14 → เวร2 → เวร3 (TIER1_ORDER) → เวลาเช็คอิน
+  //   2 = อาสา (นอกช่วงเวรตัวเอง/วันหยุด) — ไม่สนลำดับเวร เรียงตามเวลาเช็คอินอย่างเดียว (ใครออนไลน์อยู่ก่อนได้คิวก่อน)
+  //   เสมอกัน: คนงานน้อยกว่าอยู่บน (กระจายงาน)
+  const tierOf = (p: Person) => (p.tags.includes('อาสา') ? 2 : 1);
+  const byPriority = (a: Person, b: Person) =>
+    (tierOf(a) - tierOf(b)) ||
+    (tierOf(a) === 1 ? TIER1_ORDER.indexOf(a.sh) - TIER1_ORDER.indexOf(b.sh) : 0) ||
+    (a.t || '').localeCompare(b.t || '') ||
+    (a.jobs - b.jobs);
+  const inList = [...people].filter((p) => p.status === 'present').sort(byPriority); // ในระบบ = เช็คอินอยู่ (เรียงตามลำดับความสำคัญ)
   const outList = [...people].filter((p) => p.status !== 'present').sort(byShift);  // นอกระบบ = ออกแล้ว + ยังไม่มา
   const isActive = (p: Person) => !!selected && selected.c === p.c && selected.n === p.n && selected.centerId === p.centerId;
   const BLUE = { '--band': '#0ea5e9', '--band-ink': '#0369a1', '--band-tint': '#e0f2fe' } as CSSProperties;
@@ -243,11 +280,6 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
       <div className="lpc-body">
         {inList.length > 0 && (
           <div className="lpc-shift lpc-in" style={BLUE}>
-            <div className="lpc-shead">
-              <span className="lpc-sdot" />
-              <span className="lpc-slabel">ในระบบ</span>
-              <span className="lpc-srange mono">{inList.length} คน</span>
-            </div>
             {inList.map((p) => (
               <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
             ))}
@@ -255,11 +287,6 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
         )}
         {outList.length > 0 && (
           <div className="lpc-shift lpc-out" style={GREY}>
-            <div className="lpc-shead">
-              <span className="lpc-sdot" />
-              <span className="lpc-slabel">นอกระบบ</span>
-              <span className="lpc-srange mono">{outList.length} คน</span>
-            </div>
             {outList.map((p) => (
               <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
             ))}
@@ -299,7 +326,7 @@ function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; on
           <span className={`lpc-mav ${p.status}`}><img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} /></span>
           <div className="lpc-mid">
             <div className="lpc-mname">{p.n}</div>
-            <div className="lpc-mse">{p.s} · <span className="mono">{p.c}</span></div>
+            <div className="lpc-mse">{p.s} · <span className="mono">{p.c.replace(/\s+/g, '')}</span></div>
           </div>
           <span className={`lpc-pill ${pill.cls}`}>{pill.label}</span>
         </div>
@@ -360,6 +387,7 @@ export default function CallcenterAttendancePage() {
   const [date, setDate] = useState(todayStr());
   const [dbByCenter, setDbByCenter] = useState<Record<string, ZoneData>>({});
   const [att, setAtt] = useState<AttRow[]>([]);
+  const [jobsByCode, setJobsByCode] = useState<Record<string, number>>({}); // รหัส(เลข) -> จำนวนงานที่ถืออยู่
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [shift, setShift] = useState<'all' | Band | 'fix'>('all');
@@ -381,9 +409,13 @@ export default function CallcenterAttendancePage() {
     Promise.all([
       api.get(`/api/duty/schedules?y=${Y}&m=${M}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
       api.get(`/api/attendance/report?from=${date}&to=${date}`).then((r) => r.data?.data?.rows ?? []).catch(() => []),
-    ]).then(([sched, rows]) => {
+      api.get(`/api/cases/workload`).then((r) => r.data?.data ?? []).catch(() => []),
+    ]).then(([sched, rows, workload]) => {
       setDbByCenter(sched as Record<string, ZoneData>);
       setAtt(rows as AttRow[]);
+      const jmap: Record<string, number> = {};
+      (workload as { code?: string | null; active?: number }[]).forEach((w) => { const k = onlyDigits(w.code || ''); if (k) jmap[k] = Number(w.active) || 0; });
+      setJobsByCode(jmap);
       setUpdatedAt(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
     }).finally(() => setLoading(false));
   }, [date]);
@@ -417,6 +449,7 @@ export default function CallcenterAttendancePage() {
   // รวมรายชื่อจากตาราง (DB ทับ seed) ของวันที่เลือก → ใส่สถานะจากการลงเวลา
   const allPeople = useMemo(() => {
     const D = Number(date.split('-')[2]);
+    const NOW = nowMinutes(); // เวลาปัจจุบัน (นาที) — ใช้ตัดสิน "อาสา = มาก่อนเวรตัวเองเริ่ม"
     const out: Person[] = [];
     for (const c of CENTERS) {
       const db = dbByCenter[c.id];
@@ -428,20 +461,26 @@ export default function CallcenterAttendancePage() {
         if (seed) seed.people.forEach((pp, i) => rows.push({ code: pp.code, name: pp.name, raw: seed.grid[D - 1]?.[i] ?? 'none' }));
       }
       rows.forEach((r) => {
-        const band = RAW_TO_BAND[r.raw];
-        if (!band) return; // off/none = ไม่ขึ้นเวรวันนี้
         const codeDigits = onlyDigits(r.code);
         const rec = attIndex.byCode[codeDigits] ?? attIndex.byName[r.name.trim()];
+        let band = RAW_TO_BAND[r.raw];
+        if (!band) {
+          if (!rec) return; // วันหยุด/ไม่มีเวร และไม่ได้เช็คอิน = ไม่ขึ้นบอร์ด (เหมือนเดิม)
+          band = 'offday';  // วันหยุดแต่เช็คอินเข้ามา = อาสามาทำงาน → แสดงบนบอร์ด
+        }
         const status: Status = !rec ? 'pending' : rec.open ? 'present' : 'done';
+        // อาสา = กำลังทำงานอยู่ (present) แต่อยู่นอกช่วงเวรของตัวเอง (ก่อนเริ่ม หรือ เลยเวลาเลิกเวร)
+        const isVolNow = status === 'present' && !bandInShift(band, NOW);
         out.push({
           c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
           sh: band, status, t: rec?.in || '', tOut: rec && !rec.open ? (rec.out || '') : '',
-          tags: [...(isFix(band) ? [SH_META[band].short] : []), ...(VOL_TEST.has(codeDigits) ? ['อาสา'] : [])],
+          tags: [...(isFix(band) ? [SH_META[band].short] : []), ...(isVolNow ? ['อาสา'] : [])],
+          jobs: jobsByCode[codeDigits] ?? 0,
         });
       });
     }
     return out;
-  }, [dbByCenter, attIndex, date]);
+  }, [dbByCenter, attIndex, date, jobsByCode]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -474,7 +513,7 @@ export default function CallcenterAttendancePage() {
   }, [filtered, sortMode]);
 
   const shiftChips: { k: 'all' | Band | 'fix'; label: string }[] = [
-    { k: 'all', label: 'ทุกเวร' }, { k: 'morning', label: 'เช้า' }, { k: 'afternoon', label: 'บ่าย' }, { k: 'night', label: 'ดึก' }, { k: 'fix', label: 'FIX' },
+    { k: 'all', label: 'ทุกเวร' }, { k: 'morning', label: 'เวร1' }, { k: 'afternoon', label: 'เวร2' }, { k: 'night', label: 'เวร3' }, { k: 'fix', label: 'FIX' },
   ];
   const statusChips: { k: 'all' | Status; label: string }[] = [
     { k: 'all', label: 'ทุกสถานะ' }, { k: 'present', label: 'เข้างานแล้ว' }, { k: 'pending', label: 'รอเข้างาน' },
@@ -544,9 +583,10 @@ export default function CallcenterAttendancePage() {
                 </div>
               </div>
               <div className="cardgrid">
-                {g.stations.map((st) => g.rk === 'bkk'
-                  ? <LadpraoCard key={st.name} name={st.name} people={st.people} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
-                  : <StationCard key={st.name} name={st.name} people={st.people} onSelect={setSelected} selected={selected} />)}
+                {/* ทุกจุด (กรุงเทพฯ + ปริมณฑล) ใช้การ์ด + ลำดับความสำคัญแบบใหม่เหมือนกัน */}
+                {g.stations.map((st) => (
+                  <LadpraoCard key={st.name} name={st.name} people={st.people} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
+                ))}
               </div>
             </section>
           ))
@@ -708,6 +748,7 @@ const ATB_CSS = `
 .atb .lpc-out .lpc-slabel { color: var(--muted); }
 
 .atb .lpc-person { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 8px; border-radius: 12px; cursor: pointer; border: 1px solid transparent; transition: background 0.1s, border-color 0.1s; }
+.atb .lpc-in .lpc-person { background: linear-gradient(90deg, oklch(0.94 0.06 152), transparent 78%); }
 .atb .lpc-person:hover { background: var(--surface-2); }
 .atb .lpc-person.active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
 
