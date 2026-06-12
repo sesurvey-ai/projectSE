@@ -101,7 +101,8 @@ export const adminService = {
   },
 
   async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number; code?: string }) {
-    const existing = await db.query('SELECT id FROM users WHERE username = $1', [data.username]);
+    // เทียบแบบไม่สนตัวพิมพ์ — login ใช้ LOWER(username) จึงห้ามมีชื่อซ้ำต่างเคส (เช่น SE408 กับ se408)
+    const existing = await db.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [data.username]);
     if (existing.rows.length > 0) throw new AppError(409, 'Username already exists');
 
     const hash = await bcrypt.hash(data.password, 10);
