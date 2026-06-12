@@ -14,6 +14,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'รายงานการโทร', href: '/admin/call-consult' },
     { label: 'ใบลาพนักงาน', href: '/admin/leave' },
     { label: 'เวลาเข้า–ออกงาน', href: '/admin/attendance' },
+    { label: 'รูปยืนยันลงเวลา', href: '/admin/checkin-photos' },
     { label: 'จัดตารางเวร', href: '/admin/duty-roster' },
   ],
   callcenter: [
@@ -21,6 +22,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'สร้างเคสใหม่', href: '/callcenter/cases/new' },
     { label: 'พนักงานทั้งหมด', href: '/callcenter/employees' },
     { label: 'เวลาเข้างานพนักงาน', href: '/callcenter/attendance' },
+    { label: 'รูปยืนยันลงเวลา', href: '/callcenter/checkin-photos' },
     { label: 'ตารางเวรประจำจุด', href: '/callcenter/duty-roster' },
   ],
   checker: [
