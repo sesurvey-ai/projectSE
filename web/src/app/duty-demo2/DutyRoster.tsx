@@ -56,7 +56,6 @@ const MONTHS_TH = ['', 'มกราคม', 'กุมภาพันธ์', '
 const DOW_TH = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']; // getDay()-indexed
 type Day = { day: number; dow: string; isSat: boolean; isSun: boolean; isWeekend: boolean };
 
-// เวรคงที่ผูกกับ "วันที่" 1..31 — เปลี่ยนเดือนเปลี่ยนแค่ปฏิทิน (วัน/จำนวนวัน) เวรไม่ขยับ
 // map shift keys จาก roster-jun → ชุดของ demo2 (FIX → ประมาณ)
 const MAP_SHIFT: Record<string, ShiftKey> = { s1: 's1', s2: 's2', s3: 's3', fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', off: 'off', none: 'none', f1120: 'fix11', f1423: 'fix14' };
 type ZoneData = { staff: Staff[]; schedule: Record<string, Record<number, ShiftKey>> };
@@ -79,6 +78,47 @@ function buildZoneData(): Record<string, ZoneData> {
   return out;
 }
 const INITIAL_ZONE_DATA = buildZoneData();
+const SEED_Y = 2026, SEED_M = 6; // seed roster-jun = มิ.ย. 2026 เท่านั้น (เดือนอื่นห้ามเอามาแปะ)
+
+// ── หมุนเวรต่อเนื่องข้ามเดือน ──
+// วงรอบมาตรฐาน 6 วัน: เช้า เช้า บ่าย บ่าย ดึก หยุด — หาเฟสของแต่ละคนจากท้ายเดือนก่อน แล้ววนต่อในเดือนใหม่
+// คนที่ไม่เข้าวงรอบ (FIX / รูปแบบเฉพาะ) ใช้ทำซ้ำรายสัปดาห์ตามวันในสัปดาห์เดิมแทน
+const ROTATE_CYCLE: ShiftKey[] = ['s1', 's1', 's2', 's2', 's3', 'off'];
+function continueFromPrev(prev: ZoneData, prevY: number, prevM: number, y: number, m: number): ZoneData {
+  const prevDays = new Date(prevY, prevM, 0).getDate();
+  const nDays = new Date(y, m, 0).getDate();
+  const schedule: Record<string, Record<number, ShiftKey>> = {};
+  for (const s of prev.staff) {
+    const pv = prev.schedule?.[s.id] ?? {};
+    const out: Record<number, ShiftKey> = {};
+    // นับเฉพาะ 12 วันท้ายเดือนก่อนที่จัดเวรแล้ว แล้วหาเฟส r ที่เข้ากันที่สุด: เวรวัน d = CYCLE[(r+d) % 6]
+    let total = 0;
+    for (let d = Math.max(1, prevDays - 11); d <= prevDays; d++) { const v = pv[d]; if (v && v !== 'none') total++; }
+    let bestR = -1, bestRatio = 0;
+    for (let r = 0; r < 6; r++) {
+      let hit = 0;
+      for (let d = Math.max(1, prevDays - 11); d <= prevDays; d++) {
+        const v = pv[d];
+        if (!v || v === 'none') continue;
+        if (ROTATE_CYCLE[(r + d) % 6] === v) hit++;
+      }
+      if (total > 0 && hit / total > bestRatio) { bestRatio = hit / total; bestR = r; }
+    }
+    // เข้าวงรอบเมื่อ: เดา 12 วันท้ายถูก ≥75% และวันสุดท้ายของเดือนก่อนตรงเป๊ะ (กันเฟสเพี้ยนตอนต่อเดือน)
+    const inCycle = bestR >= 0 && bestRatio >= 0.75 && total >= 6 && pv[prevDays] === ROTATE_CYCLE[(bestR + prevDays) % 6];
+    for (let d = 1; d <= nDays; d++) {
+      if (inCycle) { out[d] = ROTATE_CYCLE[(bestR + prevDays + d) % 6]; continue; }
+      const dow = new Date(y, m - 1, d).getDay();
+      let v: ShiftKey = 'none';
+      for (let pd = prevDays; pd >= 1; pd--) {
+        if (new Date(prevY, prevM - 1, pd).getDay() === dow) { v = pv[pd] ?? 'none'; break; }
+      }
+      out[d] = v;
+    }
+    schedule[s.id] = out;
+  }
+  return { staff: prev.staff.map((s) => ({ ...s })), schedule };
+}
 
 const TONE_OF: Record<ShiftKey, string> = { s1: 'morning', s2: 'afternoon', s3: 'night', fix7: 'fix', fix11: 'fix', fix14: 'fix', off: 'off', none: 'none' };
 const SOLID_VAR: Record<ShiftKey, string> = { s1: 'var(--morning-solid)', s2: 'var(--after-solid)', s3: 'var(--night-solid)', fix7: 'var(--fix-solid)', fix11: 'var(--fix-solid)', fix14: 'var(--fix-solid)', off: 'var(--off-solid)', none: 'var(--warn)' };
@@ -276,6 +316,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const [authMissing, setAuthMissing] = useState(false);
   const [dirty, setDirty] = useState<Record<string, boolean>>({});       // zoneId → มีแก้ไขยังไม่บันทึก
   const [savedZones, setSavedZones] = useState<Record<string, string>>({}); // zoneId → เวลาเซฟ ('db' = โหลดจาก DB)
+  const [generated, setGenerated] = useState<Record<string, boolean>>({}); // zoneId → ร่างที่ระบบหมุนต่อจากเดือนก่อนให้
 
   const zd = dataByZone[zoneId] ?? { staff: [], schedule: {} };
   const staff = zd.staff;
@@ -300,25 +341,42 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
     return { y, m };
   });
 
-  // โหลดตารางที่เคยบันทึกของเดือนนี้จาก DB → ทับ seed รายศูนย์ (ศูนย์ที่ยังไม่เคยเซฟ = ใช้ seed)
+  // โหลดตารางที่เคยบันทึกของเดือนนี้จาก DB → ศูนย์ที่ยังไม่มีข้อมูล:
+  //   มิ.ย. 2026 = ใช้ seed roster-jun · เดือนอื่น = หมุนเวรต่อจาก "เดือนก่อนหน้า" ให้อัตโนมัติเป็นร่าง (ต้องกดบันทึกเอง)
   // ไม่ล็อกอิน/ออฟไลน์ → คง seed ไว้ (หน้านี้ยังใช้แบบเดโมได้)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const token = authToken();
-        const res = await fetch(`${API_BASE}/api/duty/schedules?y=${view.y}&m=${view.m}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const hd: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const pm = view.m === 1 ? { y: view.y - 1, m: 12 } : { y: view.y, m: view.m - 1 };
+        const [res, prevRes] = await Promise.all([
+          fetch(`${API_BASE}/api/duty/schedules?y=${view.y}&m=${view.m}`, { headers: hd }),
+          fetch(`${API_BASE}/api/duty/schedules?y=${pm.y}&m=${pm.m}`, { headers: hd }),
+        ]);
         if (res.status === 401) { if (!cancelled) setAuthMissing(true); return; }
         if (!res.ok || cancelled) return;
         const saved = ((await res.json()).data ?? {}) as Record<string, ZoneData>;
+        const prevSaved = prevRes.ok ? (((await prevRes.json()).data ?? {}) as Record<string, ZoneData>) : {};
         if (cancelled) return;
         setAuthMissing(false);
+        const seedOf = (yy: number, mm: number, cid: string) =>
+          (yy === SEED_Y && mm === SEED_M ? INITIAL_ZONE_DATA[cid] : undefined);
         const merged: Record<string, ZoneData> = {};
-        for (const c of CENTERS) merged[c.id] = saved[c.id] ?? INITIAL_ZONE_DATA[c.id] ?? { staff: [], schedule: {} };
+        const draft: Record<string, boolean> = {};
+        for (const c of CENTERS) {
+          const cur = saved[c.id] ?? seedOf(view.y, view.m, c.id);
+          if (cur) { merged[c.id] = cur; continue; }
+          const prev = prevSaved[c.id] ?? seedOf(pm.y, pm.m, c.id);
+          if (prev && prev.staff?.length) {
+            merged[c.id] = continueFromPrev(prev, pm.y, pm.m, view.y, view.m);
+            draft[c.id] = true;
+          } else merged[c.id] = { staff: [], schedule: {} };
+        }
         setDataByZone(merged);
-        setDirty({});
+        setDirty({ ...draft });   // ร่างที่หมุนให้ = ยังไม่บันทึก
+        setGenerated(draft);
         const sv: Record<string, string> = {};
         for (const id of Object.keys(saved)) sv[id] = 'db';
         setSavedZones(sv);
@@ -343,6 +401,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
       const out = (await res.json()).data;
       setAuthMissing(false);
       setDirty((d) => ({ ...d, [zoneId]: false }));
+      setGenerated((g) => ({ ...g, [zoneId]: false }));
       setSavedZones((s) => ({ ...s, [zoneId]: out?.updated_at ?? 'db' }));
     } catch { /* network error → คง dirty ไว้ */ }
     finally { setSaving(false); }
@@ -408,7 +467,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
 
   const saveTone = saving ? 'busy' : dirty[zoneId] ? 'dirty' : savedZones[zoneId] ? 'ok' : 'none';
   const saveText = saving ? 'กำลังบันทึก…'
-    : dirty[zoneId] ? 'ยังไม่บันทึก'
+    : dirty[zoneId] ? (generated[zoneId] ? 'ร่างหมุนต่อจากเดือนก่อน — ยังไม่บันทึก' : 'ยังไม่บันทึก')
     : savedZones[zoneId] ? ('บันทึกแล้ว' + (savedZones[zoneId] !== 'db' ? ' · ' + savedZones[zoneId].slice(11) : ''))
     : 'ยังไม่เคยบันทึก';
 
