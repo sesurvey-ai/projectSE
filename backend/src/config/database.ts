@@ -3,7 +3,9 @@ import { env } from './env';
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  // SSL เฉพาะเมื่อสั่งเองผ่าน DATABASE_SSL=true (กรณี DB ภายนอก) —
+  // Supavisor pooler บน VPS เดียวกันไม่รองรับ SSL (production เดิมผูกกับ NODE_ENV แล้วล่ม)
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   keepAlive: true,
 });
 
