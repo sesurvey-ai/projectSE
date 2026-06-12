@@ -120,7 +120,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Future<void> _punch(bool isCheckIn, {String? volStart, String? volEnd}) async {
+  Future<void> _punch(bool isCheckIn) async {
     setState(() { _busy = true; _gpsNote = 'กำลังระบุตำแหน่ง…'; });
 
     // หาพิกัด GPS ก่อน (จำกัดเวลา 8 วิ)
@@ -176,13 +176,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ? await _api.checkInAttendance(lat: lat, lng: lng, photoPath: photoPath)
           : await _api.checkOutAttendance(lat: lat, lng: lng);
       if (!mounted) return;
-      // อาสา: บันทึกช่วงเวลาที่อาสาแทน (volunteer entry แยกจากการลงเวลา)
-      String extra = '';
-      if (isCheckIn && volStart != null && volEnd != null) {
-        try { await _api.submitVolunteer(start: volStart, end: volEnd); extra = ' · อาสา $volStart–$volEnd'; }
-        catch (_) { extra = ' · (บันทึกอาสาไม่สำเร็จ)'; }
-      }
-      _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}$extra' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
+      _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
       await _load();
     } on DioException catch (e) {
       final msg = e.response?.data is Map ? (e.response?.data['message']?.toString() ?? 'บันทึกเวลาไม่สำเร็จ') : 'บันทึกเวลาไม่สำเร็จ';
@@ -198,110 +192,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating));
   }
 
-  // ── ตัวเลือกตอนลงเวลาเข้างาน: เวรอ้างอิงจากตาราง, เลือกแค่ "อาสา" + ช่วงเวลา ──
+  // ── ยืนยันลงเวลาเข้างาน: เวรอ้างอิงจากตารางเวร, อาสาระบบตรวจจากตารางเวลาให้เอง ──
   void _showCheckInOptions() {
-    bool vol = false;
-    TimeOfDay? vStart;
-    TimeOfDay? vEnd;
-    String fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) {
-          final volOk = !vol || (vStart != null && vEnd != null);
-          return Padding(
-            padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 16),
-                const Text('ลงเวลาเข้างาน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink)),
-                const SizedBox(height: 2),
-                const Text('เวรอ้างอิงจากตารางเวรอัตโนมัติ — ถ่ายรูปแล้วลงเวลาได้เลย', style: TextStyle(fontSize: 13, color: _muted)),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 4, 10, 4),
-                  decoration: BoxDecoration(
-                    color: vol ? const Color(0xFFEAF7F0) : _fill,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: vol ? _green : _line),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.volunteer_activism_outlined, size: 20, color: vol ? _green : _muted),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('อาสา', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: vol ? _green : _ink)),
-                            const Text('ทำงานแทน/นอกเวร — เลือกช่วงเวลาที่อาสา', style: TextStyle(fontSize: 11.5, color: _muted)),
-                          ],
-                        ),
-                      ),
-                      Switch(value: vol, activeColor: _green, onChanged: (v) => setLocal(() { vol = v; if (!v) { vStart = null; vEnd = null; } })),
-                    ],
-                  ),
-                ),
-                if (vol) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _timeField('เวลาเริ่ม', vStart, () async {
-                        final t = await showTimePicker(context: ctx, initialTime: vStart ?? TimeOfDay.now());
-                        if (t != null) setLocal(() => vStart = t);
-                      })),
-                      const SizedBox(width: 10),
-                      Expanded(child: _timeField('เวลาสิ้นสุด', vEnd, () async {
-                        final t = await showTimePicker(context: ctx, initialTime: vEnd ?? TimeOfDay.now());
-                        if (t != null) setLocal(() => vEnd = t);
-                      })),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: volOk ? () { Navigator.pop(ctx); _punch(true, volStart: vol ? fmt(vStart!) : null, volEnd: vol ? fmt(vEnd!) : null); } : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: _primary.withValues(alpha: 0.4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: Text(vol ? 'ลงเวลา + บันทึกอาสา' : 'ถ่ายรูปแล้วลงเวลา', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ปุ่มเลือกเวลา (สำหรับช่วงเวลาอาสา)
-  Widget _timeField(String label, TimeOfDay? val, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(12), border: Border.all(color: _line)),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: _muted)),
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            const Text('ลงเวลาเข้างาน', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink)),
             const SizedBox(height: 2),
-            Text(val == null ? 'เลือกเวลา' : '${val.hour.toString().padLeft(2, '0')}:${val.minute.toString().padLeft(2, '0')}',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: val == null ? _muted : _ink)),
+            const Text('เวรอ้างอิงจากตารางเวรอัตโนมัติ — ถ่ายรูปแล้วลงเวลาได้เลย', style: TextStyle(fontSize: 13, color: _muted)),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () { Navigator.pop(ctx); _punch(true); },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('ถ่ายรูปแล้วลงเวลา', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              ),
+            ),
           ],
         ),
       ),
