@@ -1,7 +1,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+# npm install (ไม่ใช่ ci) — lockfile ใน web/ เป็นตัวเก่าไม่ sync กับ package.json (โปรเจกต์ใช้ root workspaces)
+RUN npm install
 COPY . .
 # NEXT_PUBLIC_* ถูกฝังลง bundle ตอน build — รับจาก build args (Dokploy ส่ง env เป็น build args ให้)
 ARG NEXT_PUBLIC_API_URL
