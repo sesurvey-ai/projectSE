@@ -72,14 +72,16 @@ type ZoneData = { staff: { id: string; code: string; name: string }[]; schedule:
 
 const p2 = (n: number) => String(n).padStart(2, '0');
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
+const prevDateStr = (s: string) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
 const onlyDigits = (s: string) => (s || '').replace(/\D/g, '');
 const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch { return s; } };
 const fmtThaiShort = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return s; } };
 
 export default function PhotoWall() {
   const [date, setDate] = useState(todayStr());
-  const [rows, setRows] = useState<AttRow[]>([]);
+  const [rows, setRows] = useState<AttRow[]>([]); // 2 วัน: เมื่อวาน + วันที่เลือก
   const [dbByCenter, setDbByCenter] = useState<Record<string, ZoneData>>({});
+  const [dbPrevByCenter, setDbPrevByCenter] = useState<Record<string, ZoneData>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [center, setCenter] = useState('all');
@@ -90,13 +92,19 @@ export default function PhotoWall() {
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
+    const prev = prevDateStr(date); // ดึงเผื่อเมื่อวาน — รอบข้ามคืน (เวรดึก) ที่ยังไม่เช็คเอาท์
     const [Y, M] = [Number(date.split('-')[0]), Number(date.split('-')[1])];
+    const [PY, PM] = [Number(prev.split('-')[0]), Number(prev.split('-')[1])];
     Promise.all([
-      api.get(`/api/attendance/report?from=${date}&to=${date}`).then((r) => r.data?.data?.rows ?? []).catch(() => []),
+      api.get(`/api/attendance/report?from=${prev}&to=${date}`).then((r) => r.data?.data?.rows ?? []).catch(() => []),
       api.get(`/api/duty/schedules?y=${Y}&m=${M}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
-    ]).then(([rep, sched]) => {
+      PY === Y && PM === M
+        ? Promise.resolve(null)
+        : api.get(`/api/duty/schedules?y=${PY}&m=${PM}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
+    ]).then(([rep, sched, prevSched]) => {
       setRows(rep as AttRow[]);
       setDbByCenter(sched as Record<string, ZoneData>);
+      setDbPrevByCenter((prevSched ?? sched) as Record<string, ZoneData>);
       setUpdatedAt(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
     }).finally(() => setLoading(false));
   }, [date]);
@@ -105,39 +113,44 @@ export default function PhotoWall() {
   useEffect(() => { if (!isToday) return; const t = setInterval(() => load(true), 30000); return () => clearInterval(t); }, [isToday, load]);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSel(null); }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, []);
 
-  // รหัส(เลข) → เวร+จุด ของวันที่เลือก (DB ทับ seed) — คน off/none = 'offday' (โผล่เฉพาะเมื่อมีเช็คอิน)
-  const rosterBy = useMemo(() => {
-    const D = Number(date.split('-')[2]);
+  // รหัส(เลข) → เวร+จุด ของวันหนึ่ง (DB ทับ seed) — คน off/none = 'offday' (โผล่เฉพาะเมื่อมีเช็คอิน)
+  const buildRoster = (db: Record<string, ZoneData>, dateStr: string) => {
+    const D = Number(dateStr.split('-')[2]);
     const map: Record<string, { band: Band; center: string; centerId: string }> = {};
     for (const c of CENTERS) {
-      const db = dbByCenter[c.id];
+      const z = db[c.id];
       const put = (code: string, raw: string) => {
         const d = onlyDigits(code);
         if (d) map[d] = { band: RAW_TO_BAND[raw] ?? 'offday', center: c.name, centerId: c.id };
       };
-      if (db && db.staff?.length) db.staff.forEach((s) => put(s.code, db.schedule?.[s.id]?.[D] ?? 'none'));
+      if (z && z.staff?.length) z.staff.forEach((s) => put(s.code, z.schedule?.[s.id]?.[D] ?? 'none'));
       else {
         const seed = ROSTER_JUN[c.id];
         if (seed) seed.people.forEach((pp, i) => put(pp.code, seed.grid[D - 1]?.[i] ?? 'none'));
       }
     }
     return map;
-  }, [dbByCenter, date]);
+  };
+  const rosterBy = useMemo(() => buildRoster(dbByCenter, date), [dbByCenter, date]);                              // วันที่เลือก
+  const rosterYBy = useMemo(() => buildRoster(dbPrevByCenter, prevDateStr(date)), [dbPrevByCenter, date]);        // เมื่อวาน (รอบข้ามคืน)
 
   const NOW = nowMinutes();
+  const prevD = prevDateStr(date);
   const meta = useCallback((r: AttRow) => {
     const d = onlyDigits(r.code || r.username);
-    const ro = rosterBy[d];
+    const carry = r.work_date === prevD; // รอบของเมื่อวาน (แสดงเฉพาะที่ยังเปิดค้าง = ข้ามคืน)
+    const ro = (carry ? rosterYBy : rosterBy)[d];
     const band: Band = ro?.band ?? 'offday';
     const open = !!r.check_in_time && !r.check_out_time;
     const vol = open && !bandInShift(band, NOW);
-    return { digits: d, band, center: ro?.center ?? '—', centerId: ro?.centerId ?? '', open, vol };
-  }, [rosterBy, NOW]);
+    return { digits: d, band, center: ro?.center ?? '—', centerId: ro?.centerId ?? '', open, vol, carry };
+  }, [rosterBy, rosterYBy, prevD, NOW]);
 
   const cards = useMemo(() => {
     const term = q.trim().toLowerCase();
     return rows
       .filter((r) => !!r.check_in_time)
+      .filter((r) => r.work_date === date || (r.work_date === prevD && !r.check_out_time)) // วันนี้ทุกรอบ + เมื่อวานเฉพาะรอบค้างข้ามคืน
       .filter((r) => {
         const m = meta(r);
         if (center !== 'all' && m.centerId !== center) return false;
@@ -145,8 +158,8 @@ export default function PhotoWall() {
         if (term && !`${r.code || ''} ${r.username} ${r.user_name} ${m.center}`.toLowerCase().includes(term)) return false;
         return true;
       })
-      .sort((a, b) => (b.check_in_time || '').localeCompare(a.check_in_time || ''));
-  }, [rows, q, center, shift, meta]);
+      .sort((a, b) => `${b.work_date} ${b.check_in_time || ''}`.localeCompare(`${a.work_date} ${a.check_in_time || ''}`));
+  }, [rows, q, center, shift, meta, date, prevD]);
 
   const stats = useMemo(() => ({
     total: cards.length,
@@ -207,7 +220,7 @@ export default function PhotoWall() {
                   {r.check_in_photo
                     ? <img src={getPhotoUrl(r.check_in_photo)} alt={r.user_name} loading="lazy" />
                     : <div className="noimg"><span className="ni-ic">📷</span><span>ไม่มีรูป</span></div>}
-                  <span className="t in mono">{r.check_in_time}</span>
+                  <span className="t in mono">{m.carry ? `เมื่อวาน ${r.check_in_time}` : r.check_in_time}</span>
                   {m.vol && <span className="vol" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
                 </div>
                 <div className="info">
@@ -235,7 +248,7 @@ export default function PhotoWall() {
 // ── modal รูปเต็ม + รายละเอียด + GPS + ประวัติ 7 วัน ──
 function PhotoModal({ row, m, onClose }: {
   row: AttRow;
-  m: { band: Band; center: string; open: boolean; vol: boolean };
+  m: { band: Band; center: string; open: boolean; vol: boolean; carry: boolean };
   onClose: () => void;
 }) {
   const [hist, setHist] = useState<{ d: string; t: string }[] | null>(null);
@@ -269,7 +282,7 @@ function PhotoModal({ row, m, onClose }: {
             {m.vol && <span className="shb" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
           </div>
           <div className="mgrid">
-            <div className="mf"><span className="k">เช็คอิน</span><span className="v mono">{row.check_in_time || '—'}</span></div>
+            <div className="mf"><span className="k">เช็คอิน</span><span className="v mono">{m.carry ? `เมื่อวาน ${row.check_in_time}` : (row.check_in_time || '—')}</span></div>
             <div className="mf"><span className="k">เช็คเอาท์</span><span className="v mono">{row.check_out_time || '— (ยังอยู่)'}</span></div>
             <div className="mf"><span className="k">ช่วงเวร</span><span className="v mono">{SH_META[m.band].range}</span></div>
             <div className="mf"><span className="k">พิกัด</span><span className="v">{gps ? <a href={gps} target="_blank" rel="noreferrer">เปิดแผนที่ ↗</a> : '—'}</span></div>

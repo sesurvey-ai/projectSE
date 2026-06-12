@@ -113,6 +113,7 @@ type ZoneData = { staff: { id: string; code: string; name: string }[]; schedule:
 
 const p2 = (n: number) => String(n).padStart(2, '0');
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
+const prevDateStr = (s: string) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
 const onlyDigits = (s: string) => (s || '').replace(/\D/g, '');
 const fmtThaiDate = (s: string) => { try { return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch { return s; } };
 
@@ -225,6 +226,7 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
           <span className="lpc-rt">
             <span className={`lpc-time ${p.status}`}>{timeText}</span>
             <span className="lpc-badges">
+              {p.tags.includes('ข้ามคืน') && <span className="lpc-shbadge" style={{ color: '#64748b', background: '#f1f5f9', borderColor: '#cbd5e1' }} title="รอบค้างจากเมื่อวาน ยังไม่เช็คเอาท์">เมื่อวาน</span>}
               {p.tags.includes('อาสา') && p.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
               <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{SH_META[p.sh].short}</span>
               <span className="lpc-shbadge" style={{ color: '#475569', background: '#eef2f6', borderColor: '#cbd5e1' }} title="งานที่ถืออยู่ (ยังไม่ปิด)">{p.jobs} งาน</span>
@@ -386,7 +388,8 @@ function DetailDrawer({ p, onClose }: { p: Person | null; onClose: () => void })
 export default function CallcenterAttendancePage() {
   const [date, setDate] = useState(todayStr());
   const [dbByCenter, setDbByCenter] = useState<Record<string, ZoneData>>({});
-  const [att, setAtt] = useState<AttRow[]>([]);
+  const [dbPrevByCenter, setDbPrevByCenter] = useState<Record<string, ZoneData>>({}); // เดือนของ "เมื่อวาน" (ใช้หาเวรรอบค้างข้ามคืน)
+  const [att, setAtt] = useState<AttRow[]>([]); // 2 วัน: เมื่อวาน + วันที่เลือก
   const [jobsByCode, setJobsByCode] = useState<Record<string, number>>({}); // รหัส(เลข) -> จำนวนงานที่ถืออยู่
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -405,13 +408,19 @@ export default function CallcenterAttendancePage() {
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
+    const prev = prevDateStr(date); // ดึงเผื่อเมื่อวาน — รอบเวรดึกที่ยังไม่เช็คเอาท์ (ข้ามคืน) ต้องโผล่บนบอร์ดวันนี้
     const [Y, M] = date.split('-').map(Number);
+    const [PY, PM] = prev.split('-').map(Number);
     Promise.all([
       api.get(`/api/duty/schedules?y=${Y}&m=${M}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
-      api.get(`/api/attendance/report?from=${date}&to=${date}`).then((r) => r.data?.data?.rows ?? []).catch(() => []),
+      api.get(`/api/attendance/report?from=${prev}&to=${date}`).then((r) => r.data?.data?.rows ?? []).catch(() => []),
       api.get(`/api/cases/workload`).then((r) => r.data?.data ?? []).catch(() => []),
-    ]).then(([sched, rows, workload]) => {
+      PY === Y && PM === M
+        ? Promise.resolve(null)
+        : api.get(`/api/duty/schedules?y=${PY}&m=${PM}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
+    ]).then(([sched, rows, workload, prevSched]) => {
       setDbByCenter(sched as Record<string, ZoneData>);
+      setDbPrevByCenter((prevSched ?? sched) as Record<string, ZoneData>);
       setAtt(rows as AttRow[]);
       const jmap: Record<string, number> = {};
       (workload as { code?: string | null; active?: number }[]).forEach((w) => { const k = onlyDigits(w.code || ''); if (k) jmap[k] = Number(w.active) || 0; });
@@ -424,7 +433,7 @@ export default function CallcenterAttendancePage() {
   useEffect(() => { if (!isToday) return; const t = setInterval(() => load(true), 30000); return () => clearInterval(t); }, [isToday, load]);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, []);
 
-  // index การลงเวลา: รหัส(ตัวเลข)/ชื่อ → { เข้าเร็วสุด, ออกช้าสุด, ยังเปิดอยู่ไหม }
+  // index การลงเวลา "ของวันที่เลือก": รหัส(ตัวเลข)/ชื่อ → { เข้าเร็วสุด, ออกช้าสุด, ยังเปิดอยู่ไหม }
   // open=true ถ้ามี "รอบ" ที่ยังไม่ลงเวลาออก (check_out ว่าง) → ยังทำงานอยู่; ถ้าปิดหมด → ออกงานแล้ว
   const attIndex = useMemo(() => {
     type Rec = { in: string; out: string | null; open: boolean };
@@ -437,14 +446,52 @@ export default function CallcenterAttendancePage() {
       if (outT && (!ex.out || outT > ex.out)) ex.out = outT;  // ออกช้าสุด
       if (!outT) ex.open = true;                              // มีรอบเปิดค้าง → ยังทำงานอยู่
     };
-    att.forEach((r) => {
+    att.filter((r) => r.work_date === date).forEach((r) => {
       const inT = r.check_in_time || '';
       const outT = r.check_out_time || null;
       merge(byCode, onlyDigits(r.code || r.username || ''), inT, outT);
       merge(byName, (r.user_name || '').trim(), inT, outT);
     });
     return { byCode, byName };
-  }, [att]);
+  }, [att, date]);
+
+  // รอบค้างข้ามคืนจาก "เมื่อวาน" (เช็คอินแล้วยังไม่เช็คเอาท์ เช่น เวรดึก 23.00–08.00) → ถือว่ายังทำงานอยู่บนบอร์ดวันนี้
+  const carryIndex = useMemo(() => {
+    const prev = prevDateStr(date);
+    const byCode: Record<string, string> = {}, byName: Record<string, string> = {}; // → เวลาเช็คอินเมื่อวาน
+    att.filter((r) => r.work_date === prev && r.check_in_time && !r.check_out_time).forEach((r) => {
+      const k = onlyDigits(r.code || r.username || '');
+      if (k && !byCode[k]) byCode[k] = r.check_in_time!;
+      const n = (r.user_name || '').trim();
+      if (n && !byName[n]) byName[n] = r.check_in_time!;
+    });
+    return { byCode, byName };
+  }, [att, date]);
+
+  // เวรของ "เมื่อวาน" ต่อรหัสพนักงาน (ไว้ติดป้ายให้รอบค้างข้ามคืน) — DB เดือนของเมื่อวาน ทับ seed
+  const yBandByCode = useMemo(() => {
+    const prev = prevDateStr(date);
+    const Dy = Number(prev.split('-')[2]);
+    const map: Record<string, Band> = {};
+    for (const c of CENTERS) {
+      const db = dbPrevByCenter[c.id];
+      if (db && db.staff?.length) {
+        db.staff.forEach((s) => {
+          const b = RAW_TO_BAND[db.schedule?.[s.id]?.[Dy] ?? 'none'];
+          const k = onlyDigits(s.code);
+          if (k && b) map[k] = b;
+        });
+      } else {
+        const seed = ROSTER_JUN[c.id];
+        if (seed) seed.people.forEach((pp, i) => {
+          const b = RAW_TO_BAND[seed.grid[Dy - 1]?.[i] ?? 'none'];
+          const k = onlyDigits(pp.code);
+          if (k && b) map[k] = b;
+        });
+      }
+    }
+    return map;
+  }, [dbPrevByCenter, date]);
 
   // รวมรายชื่อจากตาราง (DB ทับ seed) ของวันที่เลือก → ใส่สถานะจากการลงเวลา
   const allPeople = useMemo(() => {
@@ -463,24 +510,27 @@ export default function CallcenterAttendancePage() {
       rows.forEach((r) => {
         const codeDigits = onlyDigits(r.code);
         const rec = attIndex.byCode[codeDigits] ?? attIndex.byName[r.name.trim()];
+        // รอบค้างข้ามคืนจากเมื่อวาน (ยังไม่เช็คเอาท์) — ใช้เมื่อวันนี้ยังไม่มีรอบของตัวเอง
+        const carry = !rec ? (carryIndex.byCode[codeDigits] ?? carryIndex.byName[r.name.trim()]) : undefined;
         let band = RAW_TO_BAND[r.raw];
         if (!band) {
-          if (!rec) return; // วันหยุด/ไม่มีเวร และไม่ได้เช็คอิน = ไม่ขึ้นบอร์ด (เหมือนเดิม)
+          if (!rec && !carry) return; // วันหยุด/ไม่มีเวร และไม่ได้เช็คอิน = ไม่ขึ้นบอร์ด (เหมือนเดิม)
           band = 'offday';  // วันหยุดแต่เช็คอินเข้ามา = อาสามาทำงาน → แสดงบนบอร์ด
         }
-        const status: Status = !rec ? 'pending' : rec.open ? 'present' : 'done';
+        if (carry) band = yBandByCode[codeDigits] ?? 'offday'; // ข้ามคืน: ติดป้ายเวรของเมื่อวาน (เช่น เวร3)
+        const status: Status = carry ? 'present' : !rec ? 'pending' : rec.open ? 'present' : 'done';
         // อาสา = กำลังทำงานอยู่ (present) แต่อยู่นอกช่วงเวรของตัวเอง (ก่อนเริ่ม หรือ เลยเวลาเลิกเวร)
         const isVolNow = status === 'present' && !bandInShift(band, NOW);
         out.push({
           c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
-          sh: band, status, t: rec?.in || '', tOut: rec && !rec.open ? (rec.out || '') : '',
-          tags: [...(isFix(band) ? [SH_META[band].short] : []), ...(isVolNow ? ['อาสา'] : [])],
+          sh: band, status, t: carry ?? rec?.in ?? '', tOut: rec && !rec.open ? (rec.out || '') : '',
+          tags: [...(carry ? ['ข้ามคืน'] : []), ...(isFix(band) ? [SH_META[band].short] : []), ...(isVolNow ? ['อาสา'] : [])],
           jobs: jobsByCode[codeDigits] ?? 0,
         });
       });
     }
     return out;
-  }, [dbByCenter, attIndex, date, jobsByCode]);
+  }, [dbByCenter, attIndex, carryIndex, yBandByCode, date, jobsByCode]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
