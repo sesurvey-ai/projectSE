@@ -2,10 +2,10 @@ import 'dart:io' show Platform;
 import 'package:device_info_plus/device_info_plus.dart';
 
 class ApiConfig {
-  // IP ของเครื่องที่รัน backend (ใช้กับ "มือถือจริง" ในวง LAN เดียวกัน)
-  static const String _localIp = '192.168.1.135';
+  // backend production (มือถือพนักงานจริงชี้ที่นี่)
+  static const String _prodUrl = 'https://api.sesurvey.cloud';
 
-  // emulator ใช้ 10.0.2.2 (host loopback), มือถือจริงใช้ IP จริงในวง LAN
+  // emulator ใช้ 10.0.2.2 (host loopback) ต่อ backend บนเครื่องพัฒนา
   static bool _isEmulator = false;
 
   /// ตรวจว่าเป็น emulator หรือมือถือจริง — ใช้คุณสมบัติของอุปกรณ์ (ไม่พึ่ง network)
@@ -21,8 +21,9 @@ class ApiConfig {
   }
 
   static String get baseUrl {
-    if (!Platform.isAndroid) return 'http://localhost:3001';
-    return _isEmulator ? 'http://10.0.2.2:3001' : 'http://$_localIp:3001';
+    if (!Platform.isAndroid) return _prodUrl;
+    // emulator = backend dev บนเครื่อง; มือถือจริง = production
+    return _isEmulator ? 'http://10.0.2.2:3001' : _prodUrl;
   }
 
   static String get socketUrl => baseUrl;
