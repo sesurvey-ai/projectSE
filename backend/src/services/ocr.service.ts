@@ -1,9 +1,42 @@
 import { env } from '../config/env';
-import { execFile } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 
 const TYPHOON_API_URL = 'https://api.opentyphoon.ai/v1/chat/completions';
+const OCR_MODEL = 'typhoon-ocr';
 const API_TIMEOUT = 180000; // 3 นาที
+
+// prompt OCR (typhoon-ocr v1.5, figure_language=Thai) — คัดลอกตรงจากแพ็กเกจ typhoon_ocr
+const OCR_PROMPT = `Extract all text from the image.
+
+
+Instructions:
+- Only return the clean Markdown.
+- Do not include any explanation or extra text.
+- You must include all information on the page.
+
+
+Formatting Rules:
+- Tables: Render tables using <table>...</table> in clean HTML format.
+- Equations: Render equations using LaTeX syntax with inline ($...$) and block ($$...$$).
+- Images/Charts/Diagrams: Wrap any clearly defined visual areas (e.g. charts, diagrams, pictures) in:
+
+
+<figure>
+Describe the image's main elements (people, objects, text), note any contextual clues (place, event, culture), mention visible text and its meaning, provide deeper analysis when relevant (especially for financial charts, graphs, or documents), comment on style or architecture if relevant, then give a concise overall summary. Describe in Thai.
+</figure>
+
+
+- Page Numbers: Wrap page numbers in <page_number>...</page_number> (e.g., <page_number>14</page_number>).
+- Checkboxes: Use ☐ for unchecked and ☑ for checked boxes.`;
+
+// เดา mime จากนามสกุลไฟล์ (multer อนุญาต jpeg/png/webp อยู่แล้ว)
+const mimeFromPath = (p: string): string => {
+  const ext = path.extname(p).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  return 'image/jpeg';
+};
 
 // Parse prompt สำหรับแปลง OCR text → structured JSON
 const PARSE_PROMPT = `คุณเป็นผู้เชี่ยวชาญด้านการอ่านใบรับแจ้งเคลมประกันภัยไทย
@@ -80,33 +113,41 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-// Step 1: เรียก typhoon_ocr Python package (แม่นยำกว่า API ตรง)
-function ocrWithPython(imagePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const scriptPath = path.resolve(__dirname, '../scripts/ocr_extract.py');
+// Step 1: OCR รูป → markdown ด้วยโมเดล typhoon-ocr (เรียก API ตรงแบบ Node — ไม่พึ่ง Python)
+async function ocrImage(imagePath: string): Promise<string> {
+  const buf = await fs.promises.readFile(imagePath);
+  const dataUrl = `data:${mimeFromPath(imagePath)};base64,${buf.toString('base64')}`;
+  const response = await fetchWithTimeout(TYPHOON_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${env.TYPHOON_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: OCR_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: OCR_PROMPT },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+      max_tokens: 16384,
+      temperature: 0.1,
+      top_p: 0.6,
+      repetition_penalty: 1.1,
+    }),
+  }, API_TIMEOUT);
 
-    execFile('python3', [scriptPath, imagePath], {
-      timeout: API_TIMEOUT,
-      env: { ...process.env, TYPHOON_API_KEY: env.TYPHOON_API_KEY || '' },
-    }, (error, stdout, stderr) => {
-      if (error) {
-        console.error('[OCR] Python stderr:', stderr);
-        reject(new Error(`OCR script error: ${error.message}`));
-        return;
-      }
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Typhoon OCR error (${response.status}): ${errorText}`);
+  }
 
-      try {
-        const result = JSON.parse(stdout.trim());
-        if (result.success) {
-          resolve(result.text);
-        } else {
-          reject(new Error(result.error || 'OCR failed'));
-        }
-      } catch {
-        reject(new Error(`Invalid OCR output: ${stdout.substring(0, 200)}`));
-      }
-    });
-  });
+  const data = await response.json() as { choices?: { message?: { content?: string } }[] };
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // Step 2: Typhoon LLM แปลง text → structured JSON
@@ -156,9 +197,9 @@ export async function extractClaimData(imagePath: string): Promise<{ fields: Rec
     throw new Error('TYPHOON_API_KEY is not configured');
   }
 
-  // Step 1: OCR ด้วย typhoon_ocr package
-  console.log('[OCR] Step 1: Reading image with typhoon_ocr...');
-  const ocrText = await ocrWithPython(imagePath);
+  // Step 1: OCR รูป → markdown ด้วย typhoon-ocr API (Node ตรง ๆ ไม่ใช้ Python)
+  console.log('[OCR] Step 1: Reading image with typhoon-ocr API...');
+  const ocrText = await ocrImage(imagePath);
   console.log('[OCR] Step 1 done, text length:', ocrText.length);
 
   if (!ocrText || ocrText.trim().length < 10) {

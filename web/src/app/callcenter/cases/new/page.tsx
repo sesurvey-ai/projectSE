@@ -81,8 +81,9 @@ export default function NewCasePage() {
       } else {
         setError(res.data.message || 'ไม่สามารถอ่านข้อมูลจากรูปได้');
       }
-    } catch {
-      setError('เกิดข้อผิดพลาดในการอ่าน OCR กรุณาลองใหม่');
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { message?: string } } };
+      setError(ax.response?.data?.message || 'เกิดข้อผิดพลาดในการอ่าน OCR กรุณาลองใหม่');
     } finally {
       setOcrLoading(false);
     }
