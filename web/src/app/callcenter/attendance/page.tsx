@@ -4,7 +4,7 @@
 // ข้อมูล: จุด+เวร+คน จากตารางจัดเวร (DB duty_schedules + seed roster-jun เหมือน duty-demo2)
 //         overlay การลงเวลาจากแอป (attendance) จับคู่ด้วยรหัส SE → ใครเข้างานแล้ว + เวลา
 import { useState, useEffect, useMemo, useCallback, useRef, CSSProperties } from 'react';
-import api from '@/lib/api';
+import api, { getPhotoUrl } from '@/lib/api';
 import { ROSTER_JUN } from '../../duty-demo2/roster-jun';
 
 // ── ศูนย์/ภาค (ตรงกับ duty-demo2) ──
@@ -105,10 +105,10 @@ const arrived = (s: Status) => s === 'present' || s === 'done'; // มาทำ�
 
 type Person = {
   c: string; n: string; p: string; centerId: string; s: string; region: string;
-  sh: Band; status: Status; t: string; tOut: string; tags: string[]; jobs: number;
+  sh: Band; status: Status; t: string; tOut: string; tags: string[]; jobs: number; photo: string | null;
 };
 
-type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null; work_date?: string };
+type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null; check_in_photo?: string | null; work_date?: string };
 type ZoneData = { staff: { id: string; code: string; name: string }[]; schedule: Record<string, Record<number, string>> };
 
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -124,13 +124,13 @@ const ST_PILL: Record<Status, { cls: string; label: string }> = {
   done: { cls: 'out', label: 'ออกแล้ว' },
   pending: { cls: 'wait', label: 'ยังไม่มา' },
 };
-// ทดสอบ: รูปอวตาร (key = เลขรหัสพนักงาน) — ถ้ามีรูปโชว์รูป ไม่มีใช้รูป default (อนาคตดึงจาก DB)
-const LPC_PHOTOS: Record<string, string> = {
-  '225': '/avatars/se225.jpg', '351': '/avatars/se351.jpg', '37': '/avatars/se37.jpg', '468': '/avatars/se468.jpg',
-  '400': '/avatars/se400.jpg', '393': '/avatars/se393.jpg', '480': '/avatars/se480.jpg',
-};
-const PHOTO_FALLBACK = '/avatar-placeholder.png'; // รูป default แทนตัวย่อชื่อ เมื่อรหัสยังไม่มีรูปจริง
-const photoOf = (code: string) => LPC_PHOTOS[onlyDigits(code)] || PHOTO_FALLBACK;
+// avatar = รูปเช็คอินจริง (check_in_photo) ถ้ามี; ไม่มี/โหลดไม่ได้ → อักษรย่อจากชื่อ
+const nameInitials = (n: string) => (n || '').trim().slice(0, 2) || '—';
+function AttAvatar({ photo, name, mini = false }: { photo: string | null; name: string; mini?: boolean }) {
+  const [err, setErr] = useState(false);
+  if (photo && !err) return <img className="lpc-av-img" src={getPhotoUrl(photo)} alt={name} onError={() => setErr(true)} />;
+  return mini ? <>{nameInitials(name)}</> : <span className="lpc-av-in">{nameInitials(name)}</span>;
+}
 // ── ป้าย/ชิ้นเล็ก ──
 function StatusDot({ status }: { status: Status }) {
   return <span className="dot" style={{ background: ST_META[status].dot }} title={ST_META[status].label} />;
@@ -216,7 +216,7 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
       <span className="lpc-av">
-        <span className="lpc-av-ring"><img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} /></span>
+        <span className="lpc-av-ring"><AttAvatar photo={p.photo} name={p.n} /></span>
         {p.status !== 'pending' && <span className="lpc-av-badge">✓</span>}
       </span>
       <span className="lpc-main">
@@ -325,7 +325,7 @@ function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; on
     <div className="lpc-modal" onClick={onClose}>
       <div className="lpc-card" onClick={(e) => e.stopPropagation()}>
         <div className="lpc-mhead">
-          <span className={`lpc-mav ${p.status}`}><img className="lpc-av-img" src={photoOf(p.c)} alt={p.n} /></span>
+          <span className={`lpc-mav ${p.status}`}><AttAvatar photo={p.photo} name={p.n} mini /></span>
           <div className="lpc-mid">
             <div className="lpc-mname">{p.n}</div>
             <div className="lpc-mse">{p.s} · <span className="mono">{p.c.replace(/\s+/g, '')}</span></div>
@@ -436,21 +436,22 @@ export default function CallcenterAttendancePage() {
   // index การลงเวลา "ของวันที่เลือก": รหัส(ตัวเลข)/ชื่อ → { เข้าเร็วสุด, ออกช้าสุด, ยังเปิดอยู่ไหม }
   // open=true ถ้ามี "รอบ" ที่ยังไม่ลงเวลาออก (check_out ว่าง) → ยังทำงานอยู่; ถ้าปิดหมด → ออกงานแล้ว
   const attIndex = useMemo(() => {
-    type Rec = { in: string; out: string | null; open: boolean };
+    type Rec = { in: string; out: string | null; open: boolean; photo: string | null; pin: string };
     const byCode: Record<string, Rec> = {}, byName: Record<string, Rec> = {};
-    const merge = (map: Record<string, Rec>, key: string, inT: string, outT: string | null) => {
+    const merge = (map: Record<string, Rec>, key: string, inT: string, outT: string | null, photo: string | null) => {
       if (!key) return;
       const ex = map[key];
-      if (!ex) { map[key] = { in: inT, out: outT, open: !outT }; return; }
-      if (inT && (!ex.in || inT < ex.in)) ex.in = inT;        // เข้าเร็วสุด
+      if (!ex) { map[key] = { in: inT, out: outT, open: !outT, photo, pin: photo ? inT : '' }; return; }
+      if (inT && (!ex.in || inT < ex.in)) ex.in = inT;        // เข้าเร็วสุด (เวลาที่แสดง)
       if (outT && (!ex.out || outT > ex.out)) ex.out = outT;  // ออกช้าสุด
       if (!outT) ex.open = true;                              // มีรอบเปิดค้าง → ยังทำงานอยู่
+      if (photo && inT >= ex.pin) { ex.photo = photo; ex.pin = inT; }  // รูป = รอบเช็คอินล่าสุด (เปลี่ยนทุกครั้งที่ถ่ายใหม่)
     };
     att.filter((r) => r.work_date === date).forEach((r) => {
       const inT = r.check_in_time || '';
       const outT = r.check_out_time || null;
-      merge(byCode, onlyDigits(r.code || r.username || ''), inT, outT);
-      merge(byName, (r.user_name || '').trim(), inT, outT);
+      merge(byCode, onlyDigits(r.code || r.username || ''), inT, outT, r.check_in_photo || null);
+      merge(byName, (r.user_name || '').trim(), inT, outT, r.check_in_photo || null);
     });
     return { byCode, byName };
   }, [att, date]);
@@ -458,12 +459,13 @@ export default function CallcenterAttendancePage() {
   // รอบค้างข้ามคืนจาก "เมื่อวาน" (เช็คอินแล้วยังไม่เช็คเอาท์ เช่น เวรดึก 23.00–08.00) → ถือว่ายังทำงานอยู่บนบอร์ดวันนี้
   const carryIndex = useMemo(() => {
     const prev = prevDateStr(date);
-    const byCode: Record<string, string> = {}, byName: Record<string, string> = {}; // → เวลาเช็คอินเมื่อวาน
+    type CRec = { t: string; photo: string | null };
+    const byCode: Record<string, CRec> = {}, byName: Record<string, CRec> = {}; // → เวลา+รูปเช็คอินเมื่อวาน
     att.filter((r) => r.work_date === prev && r.check_in_time && !r.check_out_time).forEach((r) => {
       const k = onlyDigits(r.code || r.username || '');
-      if (k && !byCode[k]) byCode[k] = r.check_in_time!;
+      if (k && !byCode[k]) byCode[k] = { t: r.check_in_time!, photo: r.check_in_photo || null };
       const n = (r.user_name || '').trim();
-      if (n && !byName[n]) byName[n] = r.check_in_time!;
+      if (n && !byName[n]) byName[n] = { t: r.check_in_time!, photo: r.check_in_photo || null };
     });
     return { byCode, byName };
   }, [att, date]);
@@ -523,9 +525,10 @@ export default function CallcenterAttendancePage() {
         const isVolNow = status === 'present' && !bandInShift(band, NOW);
         out.push({
           c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
-          sh: band, status, t: carry ?? rec?.in ?? '', tOut: rec && !rec.open ? (rec.out || '') : '',
+          sh: band, status, t: carry?.t ?? rec?.in ?? '', tOut: rec && !rec.open ? (rec.out || '') : '',
           tags: [...(carry ? ['ข้ามคืน'] : []), ...(isFix(band) ? [SH_META[band].short] : []), ...(isVolNow ? ['อาสา'] : [])],
           jobs: jobsByCode[codeDigits] ?? 0,
+          photo: carry?.photo ?? rec?.photo ?? null,
         });
       });
     }

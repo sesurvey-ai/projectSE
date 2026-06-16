@@ -1,0 +1,6 @@
+# Template สำหรับ release signing — คัดลอกเป็น "key.properties" (ไฟล์จริงถูก gitignore)
+# storePassword/keyPassword = รหัสที่คุณตั้งตอนรัน keytool (อย่า commit ไฟล์จริง / สำรองไว้ที่ปลอดภัย)
+storePassword=ใส่รหัส keystore ที่ตั้งไว้
+keyPassword=ใส่รหัส key ที่ตั้งไว้
+keyAlias=se-survey
+storeFile=se-survey-release.jks
