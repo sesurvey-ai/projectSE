@@ -806,7 +806,7 @@ const ATB_CSS = `
 .atb .lpc-person.active { background: var(--brand-soft); border-color: oklch(0.8 0.06 248); }
 
 .atb .lpc-av { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
-.atb .lpc-av-ring { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--line); display: grid; place-items: center; }
+.atb .lpc-av-ring { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--line); display: grid; place-items: center; overflow: hidden; }
 .atb .lpc-av-in { font-size: 13.5px; font-weight: 700; }
 .atb .lpc-av-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .atb .lpc-av-badge { position: absolute; right: -1px; bottom: -1px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; color: #fff; border: 2px solid var(--surface); background: var(--ok); }
@@ -855,7 +855,7 @@ const ATB_CSS = `
 .atb .lpc-card { width: 100%; max-width: 392px; background: #fff; border-radius: 18px; box-shadow: 0 24px 60px -12px rgba(15,23,42,.4); overflow: hidden; animation: lpcpop .18s cubic-bezier(.2,.8,.2,1); }
 @keyframes lpcpop { from { transform: scale(.96); opacity: 0; } }
 .atb .lpc-mhead { display: flex; align-items: center; gap: 13px; padding: 18px 20px; border-bottom: 1px solid #f1f4f7; }
-.atb .lpc-mav { width: 50px; height: 50px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; font-size: 17px; flex-shrink: 0; border: 2px solid var(--line); background: var(--surface-2); }
+.atb .lpc-mav { width: 50px; height: 50px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; font-size: 17px; flex-shrink: 0; border: 2px solid var(--line); background: var(--surface-2); overflow: hidden; }
 .atb .lpc-mav.present { border-color: oklch(0.72 0.13 152); background: oklch(0.96 0.04 152); color: oklch(0.42 0.12 152); }
 .atb .lpc-mav.done { border-color: oklch(0.84 0.01 255); background: oklch(0.96 0.004 255); color: oklch(0.52 0.01 255); }
 .atb .lpc-mav.pending { border-color: oklch(0.88 0.008 255); color: oklch(0.6 0.01 255); }
