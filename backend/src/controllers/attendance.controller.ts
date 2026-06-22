@@ -72,4 +72,9 @@ export const attendanceController = {
   report: asyncHandler(async (req: Request, res: Response) => {
     sendSuccess(res, await attendanceService.report(req.query as Record<string, unknown>));
   }),
+
+  // เวลา server (เวลาไทย) — บอร์ดใช้ตั้ง "วันนี้" + "ตอนนี้" แทนนาฬิกาเครื่อง
+  now: asyncHandler(async (_req: Request, res: Response) => {
+    sendSuccess(res, await attendanceService.now());
+  }),
 };

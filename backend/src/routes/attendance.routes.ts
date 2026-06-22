@@ -19,6 +19,7 @@ const geoSchema = z.object({
 router.post('/check-in', auth, uploadUnique.single('photo'), attendanceController.checkIn);
 router.post('/check-out', auth, validate(geoSchema), attendanceController.checkOut);
 router.get('/today', auth, attendanceController.today);
+router.get('/now', auth, attendanceController.now);
 router.get('/mine', auth, attendanceController.mine);
 
 // รายงานสำหรับผู้จัดการ

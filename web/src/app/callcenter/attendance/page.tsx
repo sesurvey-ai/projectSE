@@ -46,9 +46,8 @@ const TIER1_ORDER: Band[] = ['morning', 'fix7', 'fix11', 'fix14', 'afternoon', '
 const parseHM = (s: string) => { const [h, m] = s.split('.').map(Number); return (h || 0) * 60 + (m || 0); };
 const bandStartMin = (b: Band) => parseHM(SH_META[b].range.split('–')[0]);
 const bandEndMin = (b: Band) => parseHM(SH_META[b].range.split('–')[1]);
-// เวลาปัจจุบัน (นาที) — รองรับ ?now=HH:MM หรือ ?now=HHMM เพื่อทดสอบเวลาอื่น
-// override นี้เปิดเฉพาะตอน dev เท่านั้น — บน production ห้ามปลอมเวลา (กันปลอมธง "อาสา"/ช่วงเวร)
-const nowMinutes = () => {
+// ?now=HH:MM / ?now=HHMM — override "เวลาตอนนี้" เพื่อทดสอบ เปิดเฉพาะตอน dev (prod ห้ามปลอมเวลา/ธงอาสา)
+const devNowOverride = (): number | null => {
   if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     const q = new URLSearchParams(window.location.search).get('now');
     if (q) {
@@ -57,8 +56,14 @@ const nowMinutes = () => {
       if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
     }
   }
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
+  return null;
+};
+// แปลง epoch ms → วันที่/นาที ตามเวลาไทย (Asia/Bangkok) ไม่ขึ้นกับ TZ ของเบราว์เซอร์ — ใช้คู่กับ offset เวลา server
+const _bkkFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const bkkParts = (epochMs: number) => {
+  const p: Record<string, string> = {};
+  for (const x of _bkkFmt.formatToParts(new Date(epochMs))) p[x.type] = x.value;
+  return { date: `${p.year}-${p.month}-${p.day}`, minutes: Number(p.hour) * 60 + Number(p.minute) };
 };
 // เวรนี้ "กำลังอยู่ในช่วงเวลาเวรหรือไม่" ณ เวลา now — รองรับเวรข้ามคืน (เช่น ดึก 23.00–08.00)
 const bandInShift = (b: Band, now: number) => {
@@ -305,15 +310,15 @@ function Field2({ label, value, mono }: { label: string; value: string; mono?: b
 }
 
 // แผงรายละเอียด (คลิกแถว) — เช็คอินวันนี้ + ประวัติย้อนหลัง + ปุ่มโทร/แชท/แก้ไขกะ (จากดีไซน์ B)
-function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; onToast: (m: string) => void }) {
+function LpcDetail({ p, onClose, onToast, serverEpoch }: { p: Person; onClose: () => void; onToast: (m: string) => void; serverEpoch: () => number }) {
   const pill = ST_PILL[p.status];
   const [hist, setHist] = useState<{ d: string; t: string }[] | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     const code = onlyDigits(p.c);
-    const now = new Date();
-    const mk = (back: number) => { const x = new Date(now); x.setDate(now.getDate() - back); return `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}`; };
+    // ช่วงประวัติ 7 วัน อิงเวลา server (เวลาไทย) — เลื่อนวันด้วย ms (Asia/Bangkok ไม่มี DST) แล้ว project เป็นวันที่ไทย
+    const mk = (back: number) => bkkParts(serverEpoch() - back * 86400000).date;
     api.get(`/api/attendance/report?from=${mk(7)}&to=${mk(1)}`).then((r) => {
       const rows: AttRow[] = r.data?.data?.rows ?? [];
       const byDay: Record<string, string> = {};
@@ -321,7 +326,7 @@ function LpcDetail({ p, onClose, onToast }: { p: Person; onClose: () => void; on
       setHist(Object.keys(byDay).sort().reverse().slice(0, 4).map((wd) => ({ d: fmtThaiShort(wd), t: byDay[wd] })));
     }).catch(() => setHist([]));
     return () => window.removeEventListener('keydown', onKey);
-  }, [p, onClose]);
+  }, [p, onClose, serverEpoch]);
   return (
     <div className="lpc-modal" onClick={onClose}>
       <div className="lpc-card" onClick={(e) => e.stopPropagation()}>
@@ -404,8 +409,15 @@ export default function CallcenterAttendancePage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((m: string) => { setToast(m); if (toastTimer.current) clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 1900); }, []);
   const [updatedAt, setUpdatedAt] = useState('');
+  // เวลา server (เวลาไทย) — ยึดเป็นหลักแทนนาฬิกาเครื่อง (กันเบราว์เซอร์ TZ อื่นคำนวณ "วันนี้"/อาสาเพี้ยน)
+  const serverOffsetMs = useRef(0);              // = serverEpochMs - Date.now(); เป็น 0 จนกว่า /now จะตอบ (fallback = นาฬิกาเครื่อง)
+  const [clockTick, setClockTick] = useState(0); // ticker บัมพ์ทุก 30 วิ → ดัน memo ที่อิง "ตอนนี้" ให้เดินต่อแม้บอร์ดเปิดค้างนาน
+  const [userPickedDate, setUserPickedDate] = useState(false); // ผู้ใช้เลือกวันเอง → อย่า re-default ทับ
+  const serverEpoch = useCallback(() => Date.now() + serverOffsetMs.current, []);
+  const bkkToday = useCallback(() => bkkParts(serverEpoch()).date, [serverEpoch]);
+  const bkkNowMinutes = useCallback(() => { const dev = devNowOverride(); return dev !== null ? dev : bkkParts(serverEpoch()).minutes; }, [serverEpoch]);
 
-  const isToday = date === todayStr();
+  const isToday = useMemo(() => date === bkkToday(), [date, clockTick, bkkToday]);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -431,6 +443,32 @@ export default function CallcenterAttendancePage() {
   }, [date]);
 
   useEffect(() => { load(); }, [load]);
+  // ดึงเวลา server (เวลาไทย) ครั้งเดียวตอน mount → คำนวณ offset เทียบนาฬิกาเครื่อง + ตั้งวันเริ่มต้นเป็น "วันนี้" ของ server (ถ้าผู้ใช้ยังไม่เลือกเอง)
+  useEffect(() => {
+    let alive = true, attempts = 0;
+    const fetchNow = () => {
+      const t0 = Date.now();
+      api.get('/api/attendance/now').then((r) => {
+        if (!alive) return;
+        const d = r.data?.data;
+        if (!d || typeof d.epochMs !== 'number') throw new Error('bad /now');
+        const rtt = (Date.now() - t0) / 2; // ชดเชย latency ครึ่งทาง (สมมติ symmetric)
+        serverOffsetMs.current = (d.epochMs + rtt) - Date.now();
+        setUserPickedDate((picked) => { if (!picked && d.today) setDate(d.today); return picked; });
+        setClockTick((n) => n + 1);
+      }).catch(() => { if (alive && attempts < 4) { attempts += 1; setTimeout(fetchNow, 1000 * attempts); } }); // retry 1s,2s,3s,4s; ล้มหมด → offset=0 = นาฬิกาเครื่อง
+    };
+    fetchNow();
+    return () => { alive = false; };
+  }, []);
+  // ticker: ดัน "ตอนนี้" ทุก 30 วิ (บอร์ดเปิดค้างนาน ธงอาสา/ช่วงเวรต้องเดินต่อ) + ข้ามเที่ยงคืนไทยแล้ว re-default วัน (ถ้าผู้ใช้ยังไม่เลือกเอง)
+  useEffect(() => {
+    const t = setInterval(() => {
+      setClockTick((n) => n + 1);
+      setUserPickedDate((picked) => { if (!picked) setDate((cur) => { const td = bkkToday(); return cur === td ? cur : td; }); return picked; });
+    }, 30000);
+    return () => clearInterval(t);
+  }, [bkkToday]);
   useEffect(() => { if (!isToday) return; const t = setInterval(() => load(true), 30000); return () => clearInterval(t); }, [isToday, load]);
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, []);
 
@@ -499,7 +537,7 @@ export default function CallcenterAttendancePage() {
   // รวมรายชื่อจากตาราง (DB ทับ seed) ของวันที่เลือก → ใส่สถานะจากการลงเวลา
   const allPeople = useMemo(() => {
     const D = Number(date.split('-')[2]);
-    const NOW = nowMinutes(); // เวลาปัจจุบัน (นาที) — ใช้ตัดสิน "อาสา = มาก่อนเวรตัวเองเริ่ม"
+    const NOW = bkkNowMinutes(); // เวลาปัจจุบัน (นาที, เวลาไทยจาก server) — ใช้ตัดสิน "อาสา = มาก่อนเวรตัวเองเริ่ม"
     const out: Person[] = [];
     for (const c of CENTERS) {
       const db = dbByCenter[c.id];
@@ -534,7 +572,7 @@ export default function CallcenterAttendancePage() {
       });
     }
     return out;
-  }, [dbByCenter, attIndex, carryIndex, yBandByCode, date, jobsByCode]);
+  }, [dbByCenter, attIndex, carryIndex, yBandByCode, date, jobsByCode, clockTick, bkkNowMinutes]);
 
   // เช็คอินของวันที่เลือกที่ "จับคู่ตารางเวรไม่ได้" (รหัส SE/ชื่อ ไม่ตรงตารางใด ๆ) → ไม่ขึ้นบนบอร์ดเลย
   // โชว์เป็นป้ายเตือน เพื่อแยก "ขาดงานจริง" ออกจาก "จับคู่พลาด" (รหัสผิด/ชื่อไม่ตรงบัญชีแอป)
@@ -639,7 +677,7 @@ export default function CallcenterAttendancePage() {
           {statusChips.map((c) => <button key={c.k} className={`chip soft ${statusF === c.k ? 'on' : ''}`} onClick={() => setStatusF(c.k)}>{c.label}</button>)}
         </div>
         <div className="rightctl">
-          <input type="date" className="dateinput" value={date} max={todayStr()} onChange={(e) => setDate(e.target.value || todayStr())} />
+          <input type="date" className="dateinput" value={date} max={bkkToday()} onChange={(e) => { setUserPickedDate(true); setDate(e.target.value || bkkToday()); }} />
           <div className="sort"><span>เรียง</span>
             <button className={sortMode === 'name' ? 'on' : ''} onClick={() => setSortMode('name')}>ชื่อจุด</button>
             <button className={sortMode === 'count' ? 'on' : ''} onClick={() => setSortMode('count')}>จำนวนคน</button>
@@ -691,7 +729,7 @@ export default function CallcenterAttendancePage() {
       </main>
 
       <DetailDrawer p={selected} onClose={() => setSelected(null)} />
-      {lpSel && <LpcDetail p={lpSel} onClose={() => setLpSel(null)} onToast={showToast} />}
+      {lpSel && <LpcDetail p={lpSel} onClose={() => setLpSel(null)} onToast={showToast} serverEpoch={serverEpoch} />}
       <div className={'lpc-toast' + (toast ? ' show' : '')}>{toast}</div>
     </div>
   );
