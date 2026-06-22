@@ -105,6 +105,7 @@ export default function EditCasePage() {
               <option value="assigned">มอบหมายแล้ว</option>
               <option value="surveyed">สำรวจแล้ว</option>
               <option value="reviewed">ตรวจสอบแล้ว</option>
+              <option value="declined">ปฏิเสธแล้ว</option>
             </select>
           </div>
 

@@ -22,8 +22,9 @@ function getStatusBadge(status: string) {
     assigned: 'bg-orange-100 text-orange-700',
     surveyed: 'bg-blue-100 text-blue-700',
     reviewed: 'bg-green-100 text-green-700',
+    declined: 'bg-red-100 text-red-700',
   };
-  const labels: Record<string, string> = { pending: 'รอมอบหมาย', assigned: 'มอบหมายแล้ว', surveyed: 'สำรวจแล้ว', reviewed: 'ตรวจสอบแล้ว' };
+  const labels: Record<string, string> = { pending: 'รอมอบหมาย', assigned: 'มอบหมายแล้ว', surveyed: 'สำรวจแล้ว', reviewed: 'ตรวจสอบแล้ว', declined: 'ปฏิเสธแล้ว' };
   return <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || styles.pending}`}>{labels[status] || status}</span>;
 }
 

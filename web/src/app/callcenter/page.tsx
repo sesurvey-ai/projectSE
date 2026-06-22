@@ -23,6 +23,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
   assigned:  { label: 'มอบหมายแล้ว', color: 'text-orange-700', bg: 'bg-orange-100' },
   surveyed:  { label: 'สำรวจแล้ว',   color: 'text-blue-700',   bg: 'bg-blue-100' },
   reviewed:  { label: 'ตรวจสอบแล้ว', color: 'text-green-700',  bg: 'bg-green-100' },
+  declined:  { label: 'ปฏิเสธแล้ว',  color: 'text-red-700',    bg: 'bg-red-100' },
 };
 
 export default function CallcenterDashboard() {
