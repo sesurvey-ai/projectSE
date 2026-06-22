@@ -30,7 +30,12 @@ export const attendanceController = {
       return;
     }
     // ลงเวลาเข้างานสำเร็จ (มีพิกัดแน่นอน) → ขึ้นหมุดบนแผนที่ Call Center ทันที (ไม่ต้องรอ FCM)
-    await broadcastSurveyorLocation(req.user!.id, lat, lng, 'check_in');
+    // หมุดเป็นผลข้างเคียง — ถ้าพลาด (socket/db) ก็ไม่ควรทำให้การลงเวลาที่ commit แล้ว 500
+    try {
+      await broadcastSurveyorLocation(req.user!.id, lat, lng, 'check_in');
+    } catch (err) {
+      console.error('broadcastSurveyorLocation failed (check-in committed):', err);
+    }
     sendSuccess(res, row);
   }),
 
@@ -44,7 +49,12 @@ export const attendanceController = {
       return;
     }
     // ลงเวลาออกงานแล้ว → เอาหมุดพิกัดออกจากแผนที่ Call Center
-    await clearSurveyorLocation(req.user!.id);
+    // ลบหมุดเป็นผลข้างเคียง — ถ้าพลาดก็ไม่ควรทำให้การลงเวลาออกที่ commit แล้ว 500
+    try {
+      await clearSurveyorLocation(req.user!.id);
+    } catch (err) {
+      console.error('clearSurveyorLocation failed (check-out committed):', err);
+    }
     sendSuccess(res, row);
   }),
 

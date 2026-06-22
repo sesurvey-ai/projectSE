@@ -46,9 +46,10 @@ const TIER1_ORDER: Band[] = ['morning', 'fix7', 'fix11', 'fix14', 'afternoon', '
 const parseHM = (s: string) => { const [h, m] = s.split('.').map(Number); return (h || 0) * 60 + (m || 0); };
 const bandStartMin = (b: Band) => parseHM(SH_META[b].range.split('–')[0]);
 const bandEndMin = (b: Band) => parseHM(SH_META[b].range.split('–')[1]);
-// เวลาปัจจุบัน (นาที) — รองรับ ?now=HH:MM หรือ ?now=HHMM เพื่อทดสอบเวลาอื่น (debug)
+// เวลาปัจจุบัน (นาที) — รองรับ ?now=HH:MM หรือ ?now=HHMM เพื่อทดสอบเวลาอื่น
+// override นี้เปิดเฉพาะตอน dev เท่านั้น — บน production ห้ามปลอมเวลา (กันปลอมธง "อาสา"/ช่วงเวร)
 const nowMinutes = () => {
-  if (typeof window !== 'undefined') {
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     const q = new URLSearchParams(window.location.search).get('now');
     if (q) {
       const parts = q.includes(':') ? q.split(':') : [q.slice(0, -2), q.slice(-2)];
@@ -535,6 +536,34 @@ export default function CallcenterAttendancePage() {
     return out;
   }, [dbByCenter, attIndex, carryIndex, yBandByCode, date, jobsByCode]);
 
+  // เช็คอินของวันที่เลือกที่ "จับคู่ตารางเวรไม่ได้" (รหัส SE/ชื่อ ไม่ตรงตารางใด ๆ) → ไม่ขึ้นบนบอร์ดเลย
+  // โชว์เป็นป้ายเตือน เพื่อแยก "ขาดงานจริง" ออกจาก "จับคู่พลาด" (รหัสผิด/ชื่อไม่ตรงบัญชีแอป)
+  const unmatched = useMemo(() => {
+    const codes = new Set<string>();
+    const names = new Set<string>();
+    for (const c of CENTERS) {
+      const db = dbByCenter[c.id];
+      if (db && db.staff?.length) {
+        db.staff.forEach((s) => { const k = onlyDigits(s.code); if (k) codes.add(k); const n = (s.name || '').trim(); if (n) names.add(n); });
+      } else {
+        const seed = ROSTER_JUN[c.id];
+        if (seed) seed.people.forEach((pp) => { const k = onlyDigits(pp.code); if (k) codes.add(k); const n = (pp.name || '').trim(); if (n) names.add(n); });
+      }
+    }
+    const seen = new Set<string>();
+    const orphans: { code: string; name: string; t: string }[] = [];
+    att.filter((r) => r.work_date === date && r.check_in_time).forEach((r) => {
+      const cd = onlyDigits(r.code || r.username || '');
+      const nm = (r.user_name || '').trim();
+      if ((cd && codes.has(cd)) || (nm && names.has(nm))) return; // จับคู่ได้ → อยู่บนบอร์ดแล้ว
+      const key = cd || nm || String(r.user_id);
+      if (seen.has(key)) return;
+      seen.add(key);
+      orphans.push({ code: r.code || r.username || '—', name: nm || '(ไม่มีชื่อ)', t: r.check_in_time || '' });
+    });
+    return orphans;
+  }, [att, date, dbByCenter]);
+
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return allPeople.filter((p) => {
@@ -617,6 +646,21 @@ export default function CallcenterAttendancePage() {
           </div>
         </div>
       </div>
+
+      {unmatched.length > 0 && (
+        <div style={{ margin: '12px 28px 0', padding: '9px 14px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, color: '#9a3412', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>⚠ {unmatched.length} เช็คอินไม่พบในตารางเวร</span>
+          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+            {unmatched.slice(0, 10).map((o, i) => (
+              <span key={i} style={{ background: '#ffedd5', border: '1px solid #fed7aa', borderRadius: 8, padding: '1px 8px', fontSize: 12.5 }}>
+                {o.name}{onlyDigits(o.code) ? <> · <span className="mono">{o.code}</span></> : ''} <span className="mono" style={{ color: '#b45309' }}>{o.t}</span>
+              </span>
+            ))}
+            {unmatched.length > 10 && <span style={{ color: '#b45309', fontSize: 12.5 }}>…อีก {unmatched.length - 10}</span>}
+          </span>
+          <span style={{ color: '#c2731e', fontSize: 12, whiteSpace: 'nowrap' }}>ตรวจรหัส SE/ชื่อให้ตรงกับบัญชีแอป</span>
+        </div>
+      )}
 
       <main className="board">
         {loading ? (
