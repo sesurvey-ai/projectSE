@@ -28,20 +28,20 @@ const CENTERS: { id: string; name: string; region: string }[] = [
   { id: 'nonthaburi', name: 'นนทบุรี', region: 'pmt' },
   { id: 'samutprakan', name: 'สมุทรปราการ', region: 'pmt' },
 ];
-type Band = 'morning' | 'afternoon' | 'night' | 'fix7' | 'fix11' | 'fix14' | 'offday';
-const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix7', 'fix11', 'fix14', 'offday'];
+type Band = 'morning' | 'afternoon' | 'night' | 'fix8' | 'fix10' | 'fix14' | 'offday';
+const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix8', 'fix10', 'fix14', 'offday'];
 const SH_META: Record<Band, { label: string; short: string; range: string }> = {
   morning: { label: 'เวร 1 · เช้า', short: 'เวร1', range: '07.00–16.00' },
   afternoon: { label: 'เวร 2 · บ่าย', short: 'เวร2', range: '15.00–24.00' },
   night: { label: 'เวร 3 · ดึก', short: 'เวร3', range: '23.00–08.00' },
-  fix7: { label: 'FIX 7', short: 'FIX7', range: '07.00–16.00' },
-  fix11: { label: 'FIX 11', short: 'FIX11', range: '11.00–20.00' },
+  fix8: { label: 'FIX 8', short: 'FIX8', range: '08.00–17.00' },
+  fix10: { label: 'FIX 10', short: 'FIX10', range: '10.00–19.00' },
   fix14: { label: 'FIX 14', short: 'FIX14', range: '14.00–23.00' },
   offday: { label: 'วันหยุด · อาสามาทำงาน', short: 'หยุด', range: '—' }, // ตารางให้หยุด แต่เช็คอินเข้ามาทำงาน
 };
-const isFix = (b: string) => b === 'fix7' || b === 'fix11' || b === 'fix14';
+const isFix = (b: string) => b === 'fix8' || b === 'fix10' || b === 'fix14';
 // ลำดับการแสดงภายใน "ความสำคัญ 1" (อยู่ในเวร): เวร1 → Fix7 → Fix11 → Fix14 → เวร2 → เวร3
-const TIER1_ORDER: Band[] = ['morning', 'fix7', 'fix11', 'fix14', 'afternoon', 'night'];
+const TIER1_ORDER: Band[] = ['morning', 'fix8', 'fix10', 'fix14', 'afternoon', 'night'];
 // เวลาเริ่ม/สิ้นสุดของแต่ละเวร (นาทีจากเที่ยงคืน) — อ่านจาก SH_META.range เช่น '07.00–16.00'
 const parseHM = (s: string) => { const [h, m] = s.split('.').map(Number); return (h || 0) * 60 + (m || 0); };
 const bandStartMin = (b: Band) => parseHM(SH_META[b].range.split('–')[0]);
@@ -74,7 +74,8 @@ const bandInShift = (b: Band, now: number) => {
 // raw shift key (จากตาราง) → แถบเวรในการ์ด; off/none = ไม่ขึ้นเวร (ข้าม เว้นแต่เช็คอิน → 'offday')
 const RAW_TO_BAND: Record<string, Band | null> = {
   s1: 'morning', s2: 'afternoon', s3: 'night',
-  fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', f1120: 'fix11', f1423: 'fix14',
+  fix8: 'fix8', fix10: 'fix10', fix14: 'fix14', f1120: 'fix10', f1423: 'fix14',
+  fix7: 'fix8', fix11: 'fix10', // legacy keys (เดือนเก่า) → นิยามใหม่
   off: null, none: null,
 };
 
@@ -83,8 +84,8 @@ const SHIFT_LEGEND: { dot: string; label: string }[] = [
   { dot: '#139DA0', label: 'เวร 1 · เช้า · 07.00–16.00' },
   { dot: '#E0991A', label: 'เวร 2 · บ่าย · 15.00–24.00' },
   { dot: '#6366E8', label: 'เวร 3 · ดึก · 23.00–08.00' },
-  { dot: '#A855F7', label: 'FIX 7 · 07.00–16.00' },
-  { dot: '#A855F7', label: 'FIX 11 · 11.00–20.00' },
+  { dot: '#A855F7', label: 'FIX 8 · 08.00–17.00' },
+  { dot: '#A855F7', label: 'FIX 10 · 10.00–19.00' },
   { dot: '#A855F7', label: 'FIX 14 · 14.00–23.00' },
 ];
 // สี badge เวร (ในแต่ละแถว) — bg(tint) · text(ink) · border แยกตามเวร ตรงกับ legend
@@ -92,8 +93,8 @@ const SH_BADGE: Record<string, { ink: string; bg: string; bd: string }> = {
   morning:   { ink: '#0d6b6d', bg: '#def1f2', bd: '#8fd2d4' },
   afternoon: { ink: '#9C6206', bg: '#FBF0D9', bd: '#e6c98a' },
   night:     { ink: '#4A45C2', bg: '#EBEAFB', bd: '#bcb9f0' },
-  fix7:      { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
-  fix11:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  fix8:      { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  fix10:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
   fix14:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
   offday:    { ink: '#64748b', bg: '#f1f5f9', bd: '#cbd5e1' }, // วันหยุด (อาสามาทำงาน) = เทา
 };
@@ -811,7 +812,7 @@ const ATB_CSS = `
 .atb .sg-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px; }
 .atb .sg-bar { width: 3px; height: 13px; border-radius: 2px; background: var(--off); }
 .atb .sg-morning .sg-bar { background: var(--ok); } .atb .sg-afternoon .sg-bar { background: var(--watch); }
-.atb .sg-night .sg-bar { background: oklch(0.5 0.09 262); } .atb .sg-fix7 .sg-bar, .atb .sg-fix11 .sg-bar, .atb .sg-fix14 .sg-bar { background: var(--fix); }
+.atb .sg-night .sg-bar { background: oklch(0.5 0.09 262); } .atb .sg-fix8 .sg-bar, .atb .sg-fix10 .sg-bar, .atb .sg-fix14 .sg-bar { background: var(--fix); }
 .atb .sg-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
 .atb .sg-range { font-size: 11px; color: var(--muted); }
 .atb .sg-count { margin-left: auto; font-size: 11px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 1px 7px; }

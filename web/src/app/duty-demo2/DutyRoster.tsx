@@ -14,18 +14,18 @@ const authToken = (): string | null => (typeof window !== 'undefined' ? localSto
 //  • All CSS scoped under .d2 (avoid Tailwind utility clashes); table class = gtbl (not grid)
 // ─────────────────────────────────────────────────────────────
 
-type ShiftKey = 's1' | 's2' | 's3' | 'fix7' | 'fix11' | 'fix14' | 'off' | 'none';
+type ShiftKey = 's1' | 's2' | 's3' | 'fix8' | 'fix10' | 'fix14' | 'off' | 'none';
 const SHIFTS: Record<ShiftKey, { code: string; label: string; time: string; short: string; tone: string }> = {
   s1: { code: '1', label: 'เวร 1', time: '07.00–16.00', short: 'เช้า', tone: 'morning' },
   s2: { code: '2', label: 'เวร 2', time: '15.00–24.00', short: 'บ่าย', tone: 'afternoon' },
   s3: { code: '3', label: 'เวร 3', time: '23.00–08.00', short: 'ดึก', tone: 'night' },
-  fix7: { code: 'F7', label: 'FIX 7', time: '07.00–16.00', short: 'FIX7', tone: 'fix' },
-  fix11: { code: 'F11', label: 'FIX 11', time: '11.00–20.00', short: 'FIX11', tone: 'fix' },
+  fix8: { code: 'F8', label: 'FIX 8', time: '08.00–17.00', short: 'FIX8', tone: 'fix' },
+  fix10: { code: 'F10', label: 'FIX 10', time: '10.00–19.00', short: 'FIX10', tone: 'fix' },
   fix14: { code: 'F14', label: 'FIX 14', time: '14.00–23.00', short: 'FIX14', tone: 'fix' },
   off: { code: '—', label: 'เวรหยุด', time: 'หยุดพัก', short: 'หยุด', tone: 'off' },
   none: { code: '·', label: 'ว่าง', time: 'ยังไม่จัด', short: 'ว่าง', tone: 'none' },
 };
-const SHIFT_ORDER: ShiftKey[] = ['s1', 's2', 's3', 'fix7', 'fix11', 'fix14', 'off', 'none'];
+const SHIFT_ORDER: ShiftKey[] = ['s1', 's2', 's3', 'fix8', 'fix10', 'fix14', 'off', 'none'];
 
 // zones = ศูนย์จริง 14 แห่ง (ข้อมูลพนักงาน/เวร จากไฟล์จริง มิ.ย. 2026 → roster-jun.ts) จัดกลุ่มตามภาค
 // สีประจำภาค — เลือกให้ต่างจากสีกะในตาราง (เขียว/ส้ม/คราม/เทา): กรุงเทพ=ชมพู, ปริมณฑล=ฟ้า cyan
@@ -57,7 +57,7 @@ const DOW_TH = ['อาทิตย์', 'จันทร์', 'อังคา�
 type Day = { day: number; dow: string; isSat: boolean; isSun: boolean; isWeekend: boolean };
 
 // map shift keys จาก roster-jun → ชุดของ demo2 (FIX → ประมาณ)
-const MAP_SHIFT: Record<string, ShiftKey> = { s1: 's1', s2: 's2', s3: 's3', fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', off: 'off', none: 'none', f1120: 'fix11', f1423: 'fix14' };
+const MAP_SHIFT: Record<string, ShiftKey> = { s1: 's1', s2: 's2', s3: 's3', fix8: 'fix8', fix10: 'fix10', fix14: 'fix14', off: 'off', none: 'none', f1120: 'fix10', f1423: 'fix14', fix7: 'fix8', fix11: 'fix10' };
 type ZoneData = { staff: Staff[]; schedule: Record<string, Record<number, ShiftKey>> };
 
 function buildZoneData(): Record<string, ZoneData> {
@@ -120,8 +120,8 @@ function continueFromPrev(prev: ZoneData, prevY: number, prevM: number, y: numbe
   return { staff: prev.staff.map((s) => ({ ...s })), schedule };
 }
 
-const TONE_OF: Record<ShiftKey, string> = { s1: 'morning', s2: 'afternoon', s3: 'night', fix7: 'fix', fix11: 'fix', fix14: 'fix', off: 'off', none: 'none' };
-const SOLID_VAR: Record<ShiftKey, string> = { s1: 'var(--morning-solid)', s2: 'var(--after-solid)', s3: 'var(--night-solid)', fix7: 'var(--fix-solid)', fix11: 'var(--fix-solid)', fix14: 'var(--fix-solid)', off: 'var(--off-solid)', none: 'var(--warn)' };
+const TONE_OF: Record<ShiftKey, string> = { s1: 'morning', s2: 'afternoon', s3: 'night', fix8: 'fix', fix10: 'fix', fix14: 'fix', off: 'off', none: 'none' };
+const SOLID_VAR: Record<ShiftKey, string> = { s1: 'var(--morning-solid)', s2: 'var(--after-solid)', s3: 'var(--night-solid)', fix8: 'var(--fix-solid)', fix10: 'var(--fix-solid)', fix14: 'var(--fix-solid)', off: 'var(--off-solid)', none: 'var(--warn)' };
 
 const VARIANTS = [
   { key: 'pills', label: 'พิลล์นุ่ม', desc: 'ป้ายกลมโทนอ่อน' },
@@ -426,7 +426,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const counts = useMemo(() => {
     const out: Record<string, Record<ShiftKey, number>> = {};
     staff.forEach((s) => {
-      const c: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, fix7: 0, fix11: 0, fix14: 0, off: 0, none: 0 };
+      const c: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, fix8: 0, fix10: 0, fix14: 0, off: 0, none: 0 };
       days.forEach((d) => { c[schedule[s.id]?.[d.day] ?? 'none']++; });
       out[s.id] = c;
     });
@@ -444,7 +444,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   }), [schedule, coverWarn, staff, days]);
 
   const totals = useMemo(() => {
-    const tot: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, fix7: 0, fix11: 0, fix14: 0, off: 0, none: 0 };
+    const tot: Record<ShiftKey, number> = { s1: 0, s2: 0, s3: 0, fix8: 0, fix10: 0, fix14: 0, off: 0, none: 0 };
     staff.forEach((s) => SHIFT_ORDER.forEach((k) => { tot[k] += counts[s.id]?.[k] ?? 0; }));
     return tot;
   }, [counts, staff]);
@@ -523,8 +523,8 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--morning-solid)' }}></span>เวร 1 · เช้า · 07.00–16.00</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--after-solid)' }}></span>เวร 2 · บ่าย · 15.00–24.00</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--night-solid)' }}></span>เวร 3 · ดึก · 23.00–08.00</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 7 · 07.00–16.00</span>
-          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 11 · 11.00–20.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 8 · 08.00–17.00</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 10 · 10.00–19.00</span>
           <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--fix-solid)' }}></span>FIX 14 · 14.00–23.00</span>
         </div>
         <div className="stat-pills">

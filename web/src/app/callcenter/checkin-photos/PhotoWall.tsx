@@ -15,28 +15,29 @@ const CENTERS: { id: string; name: string }[] = [
   { id: 'nonthaburi', name: 'นนทบุรี' }, { id: 'samutprakan', name: 'สมุทรปราการ' },
 ];
 
-type Band = 'morning' | 'afternoon' | 'night' | 'fix7' | 'fix11' | 'fix14' | 'offday';
+type Band = 'morning' | 'afternoon' | 'night' | 'fix8' | 'fix10' | 'fix14' | 'offday';
 const SH_META: Record<Band, { short: string; range: string }> = {
   morning: { short: 'เวร1', range: '07.00–16.00' },
   afternoon: { short: 'เวร2', range: '15.00–24.00' },
   night: { short: 'เวร3', range: '23.00–08.00' },
-  fix7: { short: 'FIX7', range: '07.00–16.00' },
-  fix11: { short: 'FIX11', range: '11.00–20.00' },
+  fix8: { short: 'FIX8', range: '08.00–17.00' },
+  fix10: { short: 'FIX10', range: '10.00–19.00' },
   fix14: { short: 'FIX14', range: '14.00–23.00' },
   offday: { short: 'หยุด', range: '—' },
 };
-const isFix = (b: string) => b === 'fix7' || b === 'fix11' || b === 'fix14';
+const isFix = (b: string) => b === 'fix8' || b === 'fix10' || b === 'fix14';
 const RAW_TO_BAND: Record<string, Band | null> = {
   s1: 'morning', s2: 'afternoon', s3: 'night',
-  fix7: 'fix7', fix11: 'fix11', fix14: 'fix14', f1120: 'fix11', f1423: 'fix14',
+  fix8: 'fix8', fix10: 'fix10', fix14: 'fix14', f1120: 'fix10', f1423: 'fix14',
+  fix7: 'fix8', fix11: 'fix10', // legacy keys → นิยามใหม่
   off: null, none: null,
 };
 const SH_BADGE: Record<Band, { ink: string; bg: string; bd: string }> = {
   morning:   { ink: '#0d6b6d', bg: '#def1f2', bd: '#8fd2d4' },
   afternoon: { ink: '#9C6206', bg: '#FBF0D9', bd: '#e6c98a' },
   night:     { ink: '#4A45C2', bg: '#EBEAFB', bd: '#bcb9f0' },
-  fix7:      { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
-  fix11:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  fix8:      { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
+  fix10:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
   fix14:     { ink: '#7E22CE', bg: '#F3E8FF', bd: '#d8b4f0' },
   offday:    { ink: '#64748b', bg: '#f1f5f9', bd: '#cbd5e1' },
 };
