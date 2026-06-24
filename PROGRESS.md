@@ -1,6 +1,10 @@
 # SE SURVEY — Project Progress
 
-**อัพเดทล่าสุด:** 3 เมษายน 2026 (v1.5.34)
+**อัพเดทล่าสุด:** 24 มิถุนายน 2026 (v1.7.0)
+
+> 📌 **LIVE บน production แล้ว:** เว็บ `survey.sesurvey.cloud` + API `api.sesurvey.cloud`
+> (Dokploy บน Hostinger VPS + self-hosted Supabase, autodeploy เมื่อ push `main`)
+> เวอร์ชันอยู่ใน commit subject (git tag หยุดที่ v1.5.7) — ใช้ `git log` ดูไทม์ไลน์จริง
 
 ---
 
@@ -8,15 +12,16 @@
 
 | Phase | รายการงาน | สถานะ | ความคืบหน้า |
 |:---:|---|:---:|:---:|
-| 1 | Project Setup & DB Design | ✅ เสร็จแล้ว | 100% |
+| 1 | Project Setup & DB Design (16 ตาราง, 20 migrations) | ✅ เสร็จแล้ว | 100% |
 | 2 | Authentication & User Roles | ✅ เสร็จแล้ว | 100% |
-| 3 | Backend API Development | ✅ เสร็จเกือบครบ | 98% |
-| 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 95% |
+| 3 | Backend API Development (11 route groups) | ✅ เสร็จเกือบครบ | 99% |
+| 4 | Flutter Mobile App | ✅ เสร็จส่วนใหญ่ | 96% |
 | 5+6 | Unified Web (Next.js) + Admin Panel | ✅ เสร็จเกือบครบ | 99% |
-| 7 | Integration & Testing | 🔄 ดำเนินการ | 60% |
-| 8 | Deployment & Go-live | 🔄 เริ่มบางส่วน | 15% |
+| 7 | Integration & Testing | 🔄 ดำเนินการ | 80% |
+| 8 | Deployment & Go-live | ✅ LIVE บน production | 95% |
+| 9 | ระบบ HR/ปฏิบัติการ (ลางาน/ลงเวลา/ตารางเวร/consult/แผนที่) | 🔄 active dev | 90% |
 
-**ความคืบหน้ารวม: ~88%**
+**ความคืบหน้ารวม: ~96%** — งานหลักที่กำลังพัฒนา = บอร์ดเข้างาน + ตารางเวร (digitize SE-AIOI)
 
 ---
 
@@ -606,14 +611,76 @@ Web (request_location) → Backend → FCM push → มือถือ → อ�
 
 ---
 
-## Phase 8: Deployment & Go-live 🔄 15%
+## Phase 8: Deployment & Go-live ✅ 95% (LIVE)
 
-- [x] Dockerfile สำหรับ backend (multi-stage build พร้อม)
+- [x] Dockerfile สำหรับ backend + web (multi-stage build)
 - [x] docker-compose.yml มีแล้ว
-- [ ] Deploy Backend + Web ผ่าน Dokploy บน Hostinger VPS
-- [ ] ตั้งค่า SSL Certificate และ Domain
-- [ ] ทดสอบบน Production environment
-- [ ] Build Flutter APK/IPA สำหรับแจกจ่าย
+- [x] **Deploy Backend + Web ผ่าน Dokploy บน Hostinger VPS** — autodeploy เมื่อ push `main`
+- [x] **SSL + Domain:** `survey.sesurvey.cloud` (web) + `api.sesurvey.cloud` (API) ผ่าน Traefik (auto Let's Encrypt)
+- [x] self-hosted Supabase ผ่าน Supavisor pooler (`DATABASE_SSL=false`)
+- [x] Build Flutter APK release (เซ็น release key) — แจกพนักงาน, ชี้ `api.sesurvey.cloud`
+- [ ] migration auto-runner (ตอนนี้รันมือใน Supabase SQL editor — 019, 020 ต้องรันเอง)
+- [ ] uploads volume backup (มีแต่ pg_dump, ยังไม่ backup โฟลเดอร์รูป)
+
+---
+
+## เวอร์ชัน v1.5.35 → v1.7.0 (เม.ย. – 24 มิ.ย. 2026) — Production + ระบบ HR/ปฏิบัติการ
+
+> ช่วงนี้โปรเจกต์ขึ้น production จริง และเพิ่ม "ชั้น HR/ปฏิบัติการ" (ลางาน, ลงเวลา, ตารางเวร, call-consult, แผนที่พนักงาน) ทับ flow เคสสำรวจเดิม
+
+### 🚀 Deployment ขึ้น Production จริง (v1.5.91 – v1.5.95)
+- [x] **LIVE:** `survey.sesurvey.cloud` (web) + `api.sesurvey.cloud` (API) บน Dokploy (Hostinger VPS) + self-hosted Supabase
+- [x] autodeploy เมื่อ push `main` (Dokploy = CI/CD, ไม่มี GitHub Actions)
+- [x] web/Dockerfile รับ `NEXT_PUBLIC_*` เป็น build args (baked ตอน build) — v1.5.91
+- [x] `npm ci` → `npm install` (lockfile ใน web/ เก่า, ใช้ root workspaces) — v1.5.92
+- [x] DB SSL เป็น opt-in ผ่าน `DATABASE_SSL` (เลิกผูก NODE_ENV — กัน prod crash) — v1.5.93
+- [x] กัน backend ล่มจาก Supavisor ตัด idle connection (`pool.on('error')`) — v1.5.39
+- [x] มือถือชี้ production + เซ็น APK release key — v1.5.94-95
+
+### 📋 ลางาน + ลงเวลาเข้า-ออก (v1.5.35 – v1.5.41) · migration 013–015
+- [x] ลางาน (ป่วย/กิจ/พักร้อน/อื่นๆ) + อนุมัติฝั่ง admin
+- [x] ลงเวลาเข้า-ออก: เซลฟี่ + GPS, **หลายรอบ/วัน** (migration 015 — partial unique เปิดได้รอบเดียว)
+- [x] logout = ลงเวลาออกอัตโนมัติ; เข้างานต้องเปิด GPS; เวลาเก็บเป็น Asia/Bangkok (naive local)
+
+### 🗺️ แผนที่พนักงาน + เรียกพิกัดสด (v1.5.38 – v1.5.40)
+- [x] หน้า "พนักงานทั้งหมด" — แผนที่ Leaflet/OSM แสดงตำแหน่งสด
+- [x] เรียกพิกัด: FCM ปลุก native `LocationHelper.kt` → อ่าน GPS สด → POST กลับ (แทน last-known)
+- [x] เช็คเอาท์/logout = ลบหมุดออกจากแผนที่อัตโนมัติ
+
+### 📞 Call Consult — รายงานโทรปรึกษาหัวหน้า · migration 012
+- [x] มือถืออ่าน call log → กรองเฉพาะเบอร์หัวหน้า → sync `/api/consult/sync` ทุก 15 นาที (WorkManager)
+- [x] รายงานฝั่งเว็บ: อัตราการรับสาย แยกตามหัวหน้า/พนักงาน/วัน
+
+### 🔔 แจ้งเตือนงานแบบ "สายเรียกเข้า" + ลบ Socket.IO (v1.5.28 – v1.5.34)
+- [x] FCM data message → native Kotlin เด้งเต็มจอ + เสียงปลุก (ทุกสถานะจอ: ปิด/ล็อค/home/แอปอื่น)
+- [x] มือถือเลิกใช้ Socket.IO → FCM อย่างเดียว; เรียกพิกัดผ่าน FCM + REST
+
+### 🗓️ ตารางเวร + บอร์ดเข้างาน (v1.5.42 – v1.7.0) — **งานหลักที่ active** · migration 016–019
+- [x] ตารางเวรประจำจุด (duty-demo2) เซฟลง DB จริง `duty_schedules` (JSONB ราย center/เดือน) — v1.5.47
+- [x] ผูกบัญชีแอป ↔ รหัส SE (`users.code`, migration 018) จับคู่ลงเวลากับเวร/จุด — v1.5.54
+- [x] เวร 3 กะ + FIX (**v1.7.0: FIX7→FIX8 08-17, FIX11→FIX10 10-19, FIX14 คงเดิม**)
+- [x] บอร์ด "เวลาเข้างานพนักงาน · ประจำจุด" 14 จุด 2 ภูมิภาค (logic ฝั่ง client ใน `callcenter/attendance/page.tsx`)
+- [x] คิว 2 tier: ในเวร (ลำดับกะ) > อาสา (เรียงเวลาล็อกอิน) + จำนวนงานที่ถือ — v1.5.83
+- [x] ป้าย "อาสา" = **สถานะสด** (present + นอกหน้าต่างเวร) หลุดเองเมื่อเข้าเวร — ไม่ sticky
+- [x] เวลา server (Asia/Bangkok) ผ่าน `/api/attendance/now` ไม่เชื่อ clock เบราว์เซอร์ — v1.6.1
+- [x] ปิดรอบค้างข้ามวันอัตโนมัติ >16 ชม. + เวรดึกข้ามเที่ยงคืนตามมาแสดงวันนี้ — v1.5.90, v1.6.1
+- [x] เดือนใหม่หมุนเวรต่อจากเดือนก่อนอัตโนมัติ — v1.5.88-89
+- [x] photo wall รูปยืนยันลงเวลา (callcenter + admin) — v1.5.87
+- [x] เครื่องมือ sync ตารางเวรจาก Excel: `_extract3.py` → `roster-jun.ts` → `_update_roster_db.js` (ดู **TOOLING.md**)
+
+### 🧾 อื่นๆ
+- [x] OCR สร้างเคส — Step 1 เป็น Node เรียก `typhoon-ocr` API ตรง (เลิกพึ่ง Python) — v1.5.96
+- [x] รองรับสถานะเคส `declined` (ปฏิเสธงาน) — migration 019, v1.5.98
+- [x] persistent login: token 15 วัน + 401 auto-logout
+- [x] **(งานนี้ 24 มิ.ย.)** migration 020 — เพิ่ม 22 column `survey_reports` ที่ code อ้างแต่ migration ขาด (กัน submit พัง)
+- [x] **(งานนี้ 24 มิ.ย.)** จัดระเบียบ working tree + เพิ่ม `TOOLING.md` (roster pipeline)
+
+### ⚠️ หนี้ทางเทคนิค / กับดักที่รู้แล้ว
+- เอกสารเคยค้าง (header นี้เคยเป็น v1.5.34); git tag หยุดที่ v1.5.7 — เวอร์ชันอยู่ใน commit subject
+- `backend/.env` (เครื่อง dev) ชี้ **DB ทดสอบ** (cases=0) ไม่ใช่ prod จริง — credential prod อยู่ใน Dokploy
+- มี duty model ซ้อน 2 แบบ: migration 016 (auto-rotate, เลิกใช้) vs 017 (JSONB, ใช้จริง)
+- migration **ไม่มี auto-runner** — ต้องรันมือบน prod (019, 020 ค้างรอ)
+- เวลาเป็น naive Asia/Bangkok ทุกที่ (ไม่ใช่ UTC) — อย่าเทียบกับ `NOW()` UTC
 
 ---
 
@@ -625,8 +692,9 @@ Web (request_location) → Backend → FCM push → มือถือ → อ�
 3. ~~เพิ่ม platform permissions ใน Android config~~ ✅ เสร็จแล้ว (iOS ยังเหลือ Info.plist)
 4. ~~ทดสอบ E2E: สำรวจ→ตรวจงาน~~ ✅ ผ่านครบทุก status (pending→assigned→surveyed→reviewed)
 5. ~~แก้ surveyor login บนเว็บวนลูป~~ ✅ แสดง error message + auto logout
-6. Deploy ขึ้น VPS (รอข้อมูล VPS จากผู้ใช้)
-7. Build Flutter APK สำหรับแจกจ่าย
+6. ~~Deploy ขึ้น VPS~~ ✅ LIVE บน Dokploy (`survey.sesurvey.cloud` + `api.sesurvey.cloud`)
+7. ~~Build Flutter APK สำหรับแจกจ่าย~~ ✅ เซ็น release key + ชี้ production แล้ว
+8. รัน migration 019 (declined) + 020 (restore columns) บน production จริง — ยังไม่มี auto-runner
 
 ### สำคัญกลาง
 8. ทดสอบ E2E ผ่าน UI จริง (mobile + web)
@@ -654,9 +722,11 @@ Web (request_location) → Backend → FCM push → มือถือ → อ�
 | Web Frontend | Next.js 14 (React) | ✅ |
 | Backend API | Node.js + Express + TypeScript | ✅ |
 | Database | PostgreSQL (Supabase) | ✅ |
-| Real-time | Socket.io | ✅ |
-| Push Notification | Firebase Cloud Messaging (FCM) + Socket.io + Local Notifications | ✅ |
-| File Storage | Multer (local disk) | ✅ |
+| Real-time | Socket.io (web ↔ backend; มือถือเลิกใช้แล้ว v1.5.30) | ✅ |
+| Push Notification | Firebase Cloud Messaging (FCM) + native Kotlin + Local Notifications | ✅ |
+| Location tracking | FCM ปลุก native LocationHelper → REST (live map) | ✅ |
+| OCR | OpenTyphoon AI (typhoon-ocr + LLM) — Node เรียกตรง | ✅ |
+| File Storage | Multer (local disk volume `uploads/{เลขเคลม}/{เลขเซอร์เวย์}/`) | ✅ |
 | Maps | Leaflet / OpenStreetMap (แทน Google Maps) | ✅ |
-| Authentication | JWT | ✅ |
-| Deployment | Docker + Dokploy (Hostinger VPS) | ⏳ รอ deploy |
+| Authentication | JWT (token 15 วัน, ไม่มี refresh) | ✅ |
+| Deployment | Docker + Dokploy (Hostinger VPS) + Traefik SSL + self-hosted Supabase | ✅ LIVE |
