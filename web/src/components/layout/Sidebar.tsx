@@ -15,7 +15,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'ใบลาพนักงาน', href: '/admin/leave' },
     { label: 'เวลาเข้า–ออกงาน', href: '/admin/attendance' },
     { label: 'รูปยืนยันลงเวลา', href: '/admin/checkin-photos' },
-    { label: 'จัดตารางเวร', href: '/admin/duty-roster' },
+    { label: 'ตารางเวรประจำจุด', href: '/admin/duty-roster' },
   ],
   callcenter: [
     { label: 'หน้าหลัก', href: '/callcenter' },
