@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -44,8 +45,12 @@ class AuthProvider extends ChangeNotifier {
     try {
       _token = await _authService.getToken();
       _user = await _authService.getUser();
+      // แจ้ง router ทันทีที่ได้ session (ไป /home หรือ /login เร็ว ไม่ต้องรอ Firebase/FCM
+      // → logged-in user ไม่เห็นหน้า login แวบก่อนเข้า home)
+      notifyListeners();
 
       if (_token != null) {
+        await _ensureServicesInited(); // Firebase/Notification/Consult ต้องพร้อมก่อน FCM (ทำหลัง UI ขึ้น)
         await _initializeFcm();
         _initConsultSync();
       }
@@ -56,6 +61,17 @@ class AuthProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  // init บริการที่ FCM ต้องใช้ แบบครั้งเดียว — ย้ายมาจาก main() เพื่อไม่ให้บล็อก runApp (แก้จอขาว)
+  // Firebase ต้องพร้อมก่อน FcmService.initialize() ถึงจะ getToken ได้
+  bool _servicesInited = false;
+  Future<void> _ensureServicesInited() async {
+    if (_servicesInited) return;
+    _servicesInited = true;
+    try { await Firebase.initializeApp(); } catch (e) { debugPrint('Firebase init failed: $e'); }
+    try { await NotificationService().initialize(); } catch (e) { debugPrint('Notification init failed: $e'); }
+    try { await ConsultBackground.init(); } catch (e) { debugPrint('ConsultBackground init failed: $e'); }
   }
 
   Future<void> _initializeFcm() async {
@@ -106,6 +122,7 @@ class AuthProvider extends ChangeNotifier {
       _token = await _authService.getToken();
 
       if (_token != null) {
+        await _ensureServicesInited();
         await _initializeFcm();
         _initConsultSync();
       }

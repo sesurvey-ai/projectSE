@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'config/app_router.dart';
 import 'services/api_service.dart';
 import 'services/fcm_service.dart';
@@ -9,46 +8,23 @@ import 'providers/auth_provider.dart';
 import 'providers/case_provider.dart';
 import 'config/api_config.dart';
 import 'services/notification_service.dart';
-import 'services/consult_background.dart';
 import 'screens/incoming_survey_page.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ตรวจสอบว่าเป็น emulator หรือมือถือจริง
+  // เฉพาะที่ "จำเป็นจริง ๆ ก่อน UI": ตรวจ emulator/มือถือจริง (เร็ว ~ms, ใช้ตั้ง baseUrl)
   await ApiConfig.init();
   debugPrint('API URL: ${ApiConfig.baseUrl}');
-
-  // Initialize Firebase
-  try {
-    await Firebase.initializeApp();
-    debugPrint('Firebase initialized successfully');
-  } catch (e) {
-    debugPrint('Firebase initialization failed: $e');
-  }
-
-  // Initialize notification service
-  await NotificationService().initialize();
-
-  // Initialize background sync (call consult log)
-  try {
-    await ConsultBackground.init();
-  } catch (e) {
-    debugPrint('ConsultBackground init failed: $e');
-  }
-
-  // ขอ permission แสดง overlay ทับแอปอื่น
-  try {
-    final hasOverlay = await FlutterOverlayWindow.isPermissionGranted();
-    if (!hasOverlay) {
-      await FlutterOverlayWindow.requestPermission();
-    }
-  } catch (_) {}
 
   final apiService = ApiService();
   final fcmService = FcmService(apiService);
 
+  // เรียก runApp ทันที → UI ขึ้นเลย ไม่ค้างจอขาว
+  // ของหนัก (Firebase / Notification / Consult / overlay) ย้ายไปทำ "หลังแอปขึ้นแล้ว":
+  // - Firebase/Notification/Consult → ใน AuthProvider.checkAuth/login (ก่อน FCM, เฉพาะตอนมี session)
+  // - overlay permission → ใน _bootstrap() แบบไม่บล็อก (เดิม await ตรงนี้ทำให้ค้างจอขาวจน restart)
   runApp(SeSurveyApp(
     apiService: apiService,
     fcmService: fcmService,
@@ -108,8 +84,20 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
       },
     );
 
-    // Check auth state on app start
-    _authProvider.checkAuth();
+    // หลังแอปขึ้นแล้ว: restore session (เร็ว) + init บริการหนัก + ขอ overlay permission (ไม่บล็อก)
+    _bootstrap();
+  }
+
+  // init "หลัง runApp" — ไม่บล็อก UI (แก้อาการเปิดครั้งแรกจอขาวค้างจน restart)
+  Future<void> _bootstrap() async {
+    // restore session ก่อน (getToken เร็ว → router นำทางทันที); Firebase/FCM ตามมาใน checkAuth
+    await _authProvider.checkAuth();
+    // ขอ permission "แสดงทับแอปอื่น" แบบ lazy — เดิม await ตรงนี้ใน main() คือต้นเหตุค้างจอขาว
+    try {
+      if (!await FlutterOverlayWindow.isPermissionGranted()) {
+        await FlutterOverlayWindow.requestPermission();
+      }
+    } catch (_) {}
   }
 
   void _showIncomingSurveyPage(Map<String, dynamic> data) {
