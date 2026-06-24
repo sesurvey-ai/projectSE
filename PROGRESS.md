@@ -677,7 +677,7 @@ Web (request_location) → Backend → FCM push → มือถือ → อ�
 
 ### ⚠️ หนี้ทางเทคนิค / กับดักที่รู้แล้ว
 - เอกสารเคยค้าง (header นี้เคยเป็น v1.5.34); git tag หยุดที่ v1.5.7 — เวอร์ชันอยู่ใน commit subject
-- `backend/.env` (เครื่อง dev) ชี้ **DB ทดสอบ** (cases=0) ไม่ใช่ prod จริง — credential prod อยู่ใน Dokploy
+- DB: dev+prod ใช้ Supabase ตัวเดียวกัน (host 187.127.96.172); `cases=0` เพราะ workflow เคสสำรวจยังไม่ได้ใช้จริง (ใช้แต่บอร์ดเข้างาน) → submit งานสำรวจจะพังจน migration 020 ถูกรัน
 - มี duty model ซ้อน 2 แบบ: migration 016 (auto-rotate, เลิกใช้) vs 017 (JSONB, ใช้จริง)
 - migration **ไม่มี auto-runner** — ต้องรันมือบน prod (019, 020 ค้างรอ)
 - เวลาเป็น naive Asia/Bangkok ทุกที่ (ไม่ใช่ UTC) — อย่าเทียบกับ `NOW()` UTC

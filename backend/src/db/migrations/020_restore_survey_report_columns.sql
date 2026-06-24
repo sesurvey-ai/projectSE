@@ -14,9 +14,11 @@
 --   (เช่น driver_name=VARCHAR(200), acc_claim_amount=NUMERIC, acc_surveyor=VARCHAR(100),
 --    notes/driver_address=TEXT)
 --
--- idempotent: ใช้ ADD COLUMN IF NOT EXISTS — ปลอดภัยถ้า prod จริงมีคอลัมน์อยู่แล้ว (เป็น no-op)
--- ⚠️ ก่อนรันบน prod: ตรวจ schema จริงของ production ก่อน (backend/.env ในเครื่อง dev ชี้ DB ทดสอบ
---    ไม่ใช่ prod — credential prod อยู่ใน Dokploy) เผื่อ prod จริงยังเป็น DB เก่าที่มีคอลัมน์อยู่แล้ว
+-- idempotent: ใช้ ADD COLUMN IF NOT EXISTS — ปลอดภัยถ้ามีคอลัมน์อยู่แล้ว (เป็น no-op)
+-- ✅ ตรวจกับ DB จริงแล้ว (2026-06-24): DB ที่ backend/.env ชี้ = Supabase prod (dev+prod ใช้ร่วมกัน,
+--    host 187.127.96.172) — survey_reports มี 81 คอลัมน์, ยังขาด 22 ตัวนี้จริง. ตอนนี้ cases=0
+--    (workflow เคสสำรวจยังไม่ได้ใช้งานจริง ใช้แต่บอร์ดเข้างาน) → bug ยัง latent แต่จะพังทันทีที่เริ่ม submit งานจริง.
+--    validate ด้วย BEGIN/ROLLBACK แล้ว: 81 → 103 คอลัมน์
 
 -- บริษัทผู้สำรวจ (survey company)
 ALTER TABLE survey_reports ADD COLUMN IF NOT EXISTS survey_company         VARCHAR(200);
