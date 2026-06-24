@@ -123,25 +123,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _punch(bool isCheckIn) async {
     setState(() { _busy = true; _gpsNote = 'กำลังระบุตำแหน่ง…'; });
 
-    // หาพิกัด GPS ก่อน (จำกัดเวลา 8 วิ)
+    // หาพิกัด GPS ก่อน (high-accuracy → fallback last-known ถ้าสัญญาณอ่อนที่หน้างาน)
     double? lat;
     double? lng;
+    LocFail? locFail;
     try {
-      final pos = await _location.getCurrentPosition().timeout(
-        const Duration(seconds: 8),
-        onTimeout: () => null,
-      );
-      if (pos != null) {
-        lat = pos.latitude;
-        lng = pos.longitude;
+      final loc = await _location.getPositionForCheckIn();
+      if (loc.position != null) {
+        lat = loc.position!.latitude;
+        lng = loc.position!.longitude;
+      } else {
+        locFail = loc.fail;
       }
-    } catch (_) {}
+    } catch (_) { locFail = LocFail.noFix; }
 
-    // ลงเวลา "เข้างาน" ต้องมี GPS — ถ้าไม่มี แจ้งเตือนให้เปิด GPS แล้วไม่ลงเวลา (ไม่ถ่ายรูป/ไม่ส่ง)
+    // ลงเวลา "เข้างาน" ต้องมี GPS — แยกข้อความตามสาเหตุจริง (อย่าบอกให้เปิด GPS ถ้าแค่สัญญาณอ่อน)
     if (isCheckIn && (lat == null || lng == null)) {
       if (mounted) {
         setState(() { _busy = false; _gpsNote = ''; });
-        _snack('กรุณาเปิด GPS และอนุญาตการเข้าถึงตำแหน่ง แล้วลงเวลาเข้างานอีกครั้ง', _red);
+        _snack(
+          locFail == LocFail.permission
+              ? 'กรุณาเปิด GPS และอนุญาตการเข้าถึงตำแหน่ง แล้วลงเวลาอีกครั้ง'
+              : 'หาตำแหน่งไม่ได้ในขณะนี้ — ลองอีกครั้งกลางแจ้งหรือที่สัญญาณดีขึ้น',
+          _red);
       }
       return;
     }
@@ -179,12 +183,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _snack(isCheckIn ? 'ลงเวลาเข้างานแล้ว ${rec['check_in_time'] ?? ''}' : 'ลงเวลาออกงานแล้ว ${rec['check_out_time'] ?? ''}', _green);
       await _load();
     } on DioException catch (e) {
-      final msg = e.response?.data is Map ? (e.response?.data['message']?.toString() ?? 'บันทึกเวลาไม่สำเร็จ') : 'บันทึกเวลาไม่สำเร็จ';
-      if (mounted) _snack(msg, _red);
+      if (e.response != null) {
+        // server ตอบ error จริง (เช่น 400 รอบค้าง) → โชว์ข้อความจาก server
+        final msg = e.response?.data is Map ? (e.response?.data['message']?.toString() ?? 'บันทึกเวลาไม่สำเร็จ') : 'บันทึกเวลาไม่สำเร็จ';
+        if (mounted) _snack(msg, _red);
+      } else {
+        // ไม่มี response = เน็ตหลุด/timeout → อาจ commit ที่ server แล้ว → เช็คสถานะจริงก่อนแจ้ง
+        await _reconcileAfterNetworkError(isCheckIn);
+      }
     } catch (_) {
-      if (mounted) _snack('บันทึกเวลาไม่สำเร็จ', _red);
+      await _reconcileAfterNetworkError(isCheckIn);
     } finally {
       if (mounted) setState(() { _busy = false; _gpsNote = ''; });
+    }
+  }
+
+  // เน็ตหลุดหลังกดลงเวลา — การลงเวลาอาจสำเร็จที่ server แล้ว → reload ดูสถานะจริงก่อนแจ้งผู้ใช้
+  // (กันแจ้ง "ไม่สำเร็จ" แล้วผู้ใช้กดซ้ำไปชนกติกา "รอบค้าง" 400)
+  Future<void> _reconcileAfterNetworkError(bool isCheckIn) async {
+    await _load();
+    if (!mounted) return;
+    final hasOpen = _today?['open'] != null;
+    if (isCheckIn && hasOpen) {
+      _snack('ลงเวลาเข้างานแล้ว (เครือข่ายช้า)', _green);
+    } else if (!isCheckIn && !hasOpen) {
+      _snack('ลงเวลาออกงานแล้ว (เครือข่ายช้า)', _green);
+    } else {
+      _snack('เครือข่ายมีปัญหา — ตรวจสอบสถานะให้แล้ว ลองใหม่หากยังไม่อัปเดต', _red);
     }
   }
 
