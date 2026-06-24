@@ -137,7 +137,7 @@ export default function AttendanceTable() {
       <div className="flex flex-wrap items-end gap-3 mb-5">
         <div>
           <label className="block text-xs text-gray-500 mb-1">ค้นหา (ชื่อ / รหัส SE)</label>
-          <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="เช่น สมชาย หรือ 436" className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-56" />
+          <input type="text" value={q} onChange={(e) => setQ(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-56" />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">ตั้งแต่วันที่</label>
