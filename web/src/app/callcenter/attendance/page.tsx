@@ -603,6 +603,24 @@ export default function CallcenterAttendancePage() {
     return orphans;
   }, [att, date, dbByCenter]);
 
+  // รหัส SE ที่ซ้ำในตารางเวรที่กำลังแสดง (รหัสเดียวอยู่หลายจุด/แถว) — เป็นความผิดพลาดในไฟล์เวร
+  // แบบ "SE436 ลืมแก้ในไฟล์": digit-match จะยุบ 2 แถวเป็นคนเดียว/สถานะปนกัน → เตือนให้ไปแก้ไฟล์เวร
+  const dupCodes = useMemo(() => {
+    const occ: Record<string, { name: string; center: string }[]> = {};
+    for (const c of CENTERS) {
+      const db = dbByCenter[c.id];
+      const add = (code: string, name: string) => {
+        const k = onlyDigits(code); if (!k) return;
+        (occ[k] ||= []).push({ name: (name || '').trim(), center: c.name });
+      };
+      if (db && db.staff?.length) db.staff.forEach((s) => add(s.code, s.name));
+      else { const seed = ROSTER_JUN[c.id]; if (seed) seed.people.forEach((pp) => add(pp.code, pp.name)); }
+    }
+    return Object.entries(occ)
+      .filter(([, a]) => a.length > 1)
+      .map(([digit, a]) => ({ digit, places: a.map((x) => `${x.name || '?'} · ${x.center}`) }));
+  }, [dbByCenter]);
+
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return allPeople.filter((p) => {
@@ -685,6 +703,21 @@ export default function CallcenterAttendancePage() {
           </div>
         </div>
       </div>
+
+      {dupCodes.length > 0 && (
+        <div style={{ margin: '12px 28px 0', padding: '9px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, color: '#991b1b', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>🔴 รหัสซ้ำในตารางเวร {dupCodes.length} รหัส</span>
+          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+            {dupCodes.slice(0, 8).map((d, i) => (
+              <span key={i} style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: '1px 8px', fontSize: 12.5 }}>
+                <span className="mono">SE{d.digit}</span> · {d.places.join(' / ')}
+              </span>
+            ))}
+            {dupCodes.length > 8 && <span style={{ color: '#b91c1c', fontSize: 12.5 }}>…อีก {dupCodes.length - 8}</span>}
+          </span>
+          <span style={{ color: '#b91c1c', fontSize: 12, whiteSpace: 'nowrap' }}>แก้ไฟล์เวร — รหัสเดียวอยู่หลายจุด</span>
+        </div>
+      )}
 
       {unmatched.length > 0 && (
         <div style={{ margin: '12px 28px 0', padding: '9px 14px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, color: '#9a3412', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
