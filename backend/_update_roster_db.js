@@ -1,8 +1,10 @@
-// TEMP: sync ตารางเวรจาก roster-jun.ts (extract ล่าสุด) → DB duty_schedules(2026/6)
+// TEMP: sync ตารางเวรจากไฟล์ roster (extract ล่าสุด) → DB duty_schedules(YEAR/MONTH)
 //   + merge ชื่อเต็มจาก DB เดิม (ที่ reconcile นามสกุลแล้ว) กลับเข้า seed และ DB
-//   node _update_roster_db.js            → dry-run (โชว์ความต่าง + ตรวจไฟล์ ไม่เขียนอะไร)
-//   node _update_roster_db.js apply      → เขียนจริง (DB + roster-jun.ts) — บล็อกถ้าเจอรหัสซ้ำ/ผิด
-//   node _update_roster_db.js apply force → เขียนแม้เจอรหัสซ้ำ (ไม่แนะนำ — ใช้เมื่อมั่นใจ)
+//   node _update_roster_db.js                  → dry-run มิ.ย. (โชว์ความต่าง + ตรวจไฟล์ ไม่เขียน)
+//   node _update_roster_db.js apply            → เขียนจริง มิ.ย. — บล็อกถ้าเจอรหัสซ้ำ/ผิด
+//   node _update_roster_db.js apply --month=7  → เขียนจริง ก.ค. (อ่าน roster-jul.ts → DB 2026/7)
+//   node _update_roster_db.js apply force      → เขียนแม้เจอรหัสซ้ำ (ไม่แนะนำ)
+//   เดือนที่รองรับอยู่ใน MONTH_FILE (เพิ่มไฟล์เดือนใหม่ที่นั่น)
 // GUARD: ก่อน apply จะตรวจ (1) รหัสซ้ำในเวร (digit เดียวอยู่หลายจุด — แบบ SE436 ที่ลืมแก้ไฟล์),
 //        (2) รหัสไม่ตรงพนักงานในระบบ. เจอ (1) → ไม่ apply (กันข้อมูลผิดเข้า DB เงียบ ๆ)
 const fs = require('fs');
@@ -10,8 +12,14 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const ROSTER_PATH = 'C:\\Users\\i9\\Desktop\\se-survey\\web\\src\\app\\duty-demo2\\roster-jun.ts';
-const YEAR = 2026, MONTH = 6, DAYS = 30; // มิ.ย. 2026
+// เดือนจาก arg: --month=7 (ดีฟอลต์ 6 = มิ.ย.) → เลือกไฟล์ roster + ตัวแปร + จำนวนวันอัตโนมัติ
+const YEAR = 2026;
+const MONTH = parseInt((process.argv.find((a) => a.startsWith('--month=')) || '--month=6').split('=')[1], 10);
+const DAYS = new Date(YEAR, MONTH, 0).getDate();
+const MONTH_FILE = { 6: ['roster-jun.ts', 'ROSTER_JUN'], 7: ['roster-jul.ts', 'ROSTER_JUL'], 8: ['roster-aug.ts', 'ROSTER_AUG'] };
+if (!MONTH_FILE[MONTH]) { console.error('❌ ไม่รองรับเดือน', MONTH, '— เพิ่มใน MONTH_FILE ก่อน'); process.exit(1); }
+const [ROSTER_FILE, ROSTER_VAR] = MONTH_FILE[MONTH];
+const ROSTER_PATH = 'C:\\Users\\i9\\Desktop\\se-survey\\web\\src\\app\\duty-demo2\\' + ROSTER_FILE;
 const onlyDigits = (s) => (s || '').replace(/\D/g, '');
 const APPLY = process.argv[2] === 'apply';
 const FORCE = process.argv.includes('force') || process.argv.includes('--force');
@@ -20,7 +28,7 @@ const FORCE = process.argv.includes('force') || process.argv.includes('--force')
   try {
     // 1) อ่าน roster ใหม่จากไฟล์ seed
     const txt = fs.readFileSync(ROSTER_PATH, 'utf8');
-    const eqPos = txt.indexOf('=', txt.indexOf('ROSTER_JUN'));
+    const eqPos = txt.indexOf('=', txt.indexOf(ROSTER_VAR));
     const json = txt.slice(eqPos + 1, txt.lastIndexOf(';')).trim();
     const roster = JSON.parse(json);
 
@@ -131,10 +139,10 @@ const FORCE = process.argv.includes('force') || process.argv.includes('--force')
     }
 
     if (APPLY) {
-      // เขียนชื่อที่ merge แล้วกลับลง roster-jun.ts (กริดคงตาม xls ใหม่)
+      // เขียนชื่อที่ merge แล้วกลับลงไฟล์ roster (กริดคงตาม xls ใหม่)
       const head = txt.slice(0, eqPos + 1);
       fs.writeFileSync(ROSTER_PATH, head + ' ' + JSON.stringify(roster) + ';\n', 'utf8');
-      console.log('\n✔ APPLIED: DB 14 ศูนย์ + roster-jun.ts (ชื่อเต็ม)');
+      console.log(`\n✔ APPLIED: DB ${Object.keys(roster).length} ศูนย์ (${YEAR}/${MONTH}) + ${ROSTER_FILE} (ชื่อเต็ม)`);
     } else {
       console.log('\n(dry-run — ยังไม่เขียน รัน `node _update_roster_db.js apply` เพื่อเขียนจริง)');
     }
