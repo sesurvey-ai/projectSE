@@ -30,6 +30,9 @@ const reviewSchema = z.object({
 router.post('/', auth, validate(createSchema), leaveController.create);
 router.get('/mine', auth, leaveController.mine);
 
+// บอร์ดเข้างาน: ใบลาอนุมัติแล้วของวันหนึ่ง — admin + callcenter อ่านได้ (เผยแค่ code/ประเภท/วัน ไม่มีเหตุผล)
+router.get('/active', auth, requireRole('admin', 'callcenter'), leaveController.active);
+
 // อนุมัติใบลา = admin เท่านั้น (ตัดสินใจ 2026-06-24) — callcenter ไม่มีสิทธิ์ดู/อนุมัติ
 router.get('/', auth, requireRole('admin'), leaveController.list);
 router.patch('/:id/review', auth, requireRole('admin'), validate(reviewSchema), leaveController.review);

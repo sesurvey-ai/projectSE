@@ -20,6 +20,16 @@ export const leaveController = {
     sendSuccess(res, { requests: await leaveService.listAll(req.query as Record<string, unknown>) });
   }),
 
+  // ใบลาอนุมัติแล้วที่ครอบคลุมวันที่ระบุ (บอร์ดเข้างาน) — admin + callcenter, เผยแค่ code/ประเภท/วัน
+  active: asyncHandler(async (req: Request, res: Response) => {
+    const date = String(req.query.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      sendError(res, 'ต้องระบุ date=YYYY-MM-DD', 400);
+      return;
+    }
+    sendSuccess(res, { requests: await leaveService.activeOn(date) });
+  }),
+
   // อนุมัติ/ไม่อนุมัติ
   review: asyncHandler(async (req: Request, res: Response) => {
     const id = Number(req.params.id);

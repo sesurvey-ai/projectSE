@@ -102,17 +102,20 @@ const SH_BADGE: Record<string, { ink: string; bg: string; bd: string }> = {
 const VOL_BADGE = { ink: '#1d4ed8', bg: '#dbeafe', bd: '#93c5fd' };
 const GREY_BADGE = { ink: '#64748b', bg: '#f1f5f9', bd: '#cbd5e1' }; // เวร badge ในนอกระบบ = เทา
 
-type Status = 'present' | 'pending' | 'done';
+type Status = 'present' | 'pending' | 'done' | 'leave';
 const ST_META: Record<Status, { label: string; dot: string }> = {
   present: { label: 'เข้างานแล้ว', dot: 'var(--ok)' },
   done: { label: 'ออกงานแล้ว', dot: 'oklch(0.62 0.01 255)' },
   pending: { label: 'รอเข้างาน', dot: 'var(--pending)' },
+  leave: { label: 'ลา', dot: '#d97706' },
 };
 const arrived = (s: Status) => s === 'present' || s === 'done'; // มาทำงานแล้ว (ยังอยู่ หรือ ออกแล้ว)
+// ประเภทลา (leave_type จาก backend) → ป้ายไทย
+const LEAVE_LABEL: Record<string, string> = { sick: 'ลาป่วย', personal: 'ลากิจ', vacation: 'ลาพักร้อน', other: 'ลา' };
 
 type Person = {
   c: string; n: string; p: string; centerId: string; s: string; region: string;
-  sh: Band; status: Status; t: string; tOut: string; tags: string[]; jobs: number; photo: string | null;
+  sh: Band; status: Status; t: string; tOut: string; tags: string[]; jobs: number; photo: string | null; leaveType?: string;
 };
 
 type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null; check_in_photo?: string | null; work_date?: string };
@@ -130,6 +133,7 @@ const ST_PILL: Record<Status, { cls: string; label: string }> = {
   present: { cls: 'ok', label: 'เข้างาน' },
   done: { cls: 'out', label: 'ออกแล้ว' },
   pending: { cls: 'wait', label: 'ยังไม่มา' },
+  leave: { cls: 'leave', label: 'ลา' },
 };
 // avatar = รูปเช็คอินจริง (check_in_photo) ถ้ามี; ไม่มี/โหลดไม่ได้ → อักษรย่อจากชื่อ
 const nameInitials = (n: string) => (n || '').trim().slice(0, 2) || '—';
@@ -143,6 +147,7 @@ function StatusDot({ status }: { status: Status }) {
   return <span className="dot" style={{ background: ST_META[status].dot }} title={ST_META[status].label} />;
 }
 function TimeChip({ status, t, tOut }: { status: Status; t: string; tOut?: string }) {
+  if (status === 'leave') return <span className="timechip s-pending">ลา</span>;
   if (status === 'pending') return <span className="timechip s-pending">—</span>;
   if (status === 'done') return <span className="timechip s-done">{(t || '—') + ' – ' + (tOut || '—')}</span>;
   return <span className="timechip s-present"><span className="tc-ic">●</span>{t || 'เข้างานแล้ว'}</span>;
@@ -218,13 +223,13 @@ const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').
 
 function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean }) {
   const [hover, setHover] = useState(false);
-  const timeText = p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : 'ยังไม่มา';
+  const timeText = p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : p.status === 'leave' ? (LEAVE_LABEL[p.leaveType || ''] || 'ลา') : 'ยังไม่มา';
   const shc = p.status === 'present' ? SH_BADGE[p.sh] : GREY_BADGE; // นอกระบบ → badge เวรเทา
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
       <span className="lpc-av">
         <span className="lpc-av-ring"><AttAvatar photo={p.photo} name={p.n} /></span>
-        {p.status !== 'pending' && <span className="lpc-av-badge">✓</span>}
+        {arrived(p.status) && <span className="lpc-av-badge">✓</span>}
       </span>
       <span className="lpc-main">
         <span className="lpc-r1">
@@ -233,6 +238,7 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
           <span className="lpc-rt">
             <span className={`lpc-time ${p.status}`}>{timeText}</span>
             <span className="lpc-badges">
+              {p.status === 'leave' && <span className="lpc-shbadge" style={{ color: '#b45309', background: '#fffbeb', borderColor: '#fcd34d' }} title="ลาที่อนุมัติแล้ว">{LEAVE_LABEL[p.leaveType || ''] || 'ลา'}</span>}
               {p.tags.includes('ข้ามคืน') && <span className="lpc-shbadge" style={{ color: '#64748b', background: '#f1f5f9', borderColor: '#cbd5e1' }} title="รอบค้างจากเมื่อวาน ยังไม่เช็คเอาท์">เมื่อวาน</span>}
               {p.tags.includes('อาสา') && p.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
               <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{SH_META[p.sh].short}</span>
@@ -255,6 +261,7 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
 function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string; people: Person[]; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
   const came = people.filter((p) => arrived(p.status)).length;
   const absent = people.filter((p) => p.status === 'pending').length;
+  const onLeave = people.filter((p) => p.status === 'leave').length;
   // เรียงตามลำดับเวร แล้วเวลาเข้า — ให้ยังอ่านเป็นกลุ่มเวรได้แม้เอาแถบหัวเวรออก
   const byShift = (a: Person, b: Person) => {
     const d = SHIFT_ORDER.indexOf(a.sh) - SHIFT_ORDER.indexOf(b.sh);
@@ -284,6 +291,7 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
         <div className="lpc-counts">
           <span className="lpc-count ok"><b>{came}</b> เช็คอิน</span>
           <span className="lpc-count wait"><b>{absent}</b> ยังไม่มา</span>
+          {onLeave > 0 && <span className="lpc-count leave"><b>{onLeave}</b> ลา</span>}
         </div>
       </div>
       <div className="lpc-body">
@@ -397,6 +405,7 @@ export default function CallcenterAttendancePage() {
   const [dbByCenter, setDbByCenter] = useState<Record<string, ZoneData>>({});
   const [dbPrevByCenter, setDbPrevByCenter] = useState<Record<string, ZoneData>>({}); // เดือนของ "เมื่อวาน" (ใช้หาเวรรอบค้างข้ามคืน)
   const [att, setAtt] = useState<AttRow[]>([]); // 2 วัน: เมื่อวาน + วันที่เลือก
+  const [leaves, setLeaves] = useState<{ code?: string | null; leave_type?: string; start_date?: string; end_date?: string }[]>([]); // ใบลาอนุมัติแล้วครอบคลุมวันที่เลือก
   const [jobsByCode, setJobsByCode] = useState<Record<string, number>>({}); // รหัส(เลข) -> จำนวนงานที่ถืออยู่
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -432,10 +441,12 @@ export default function CallcenterAttendancePage() {
       PY === Y && PM === M
         ? Promise.resolve(null)
         : api.get(`/api/duty/schedules?y=${PY}&m=${PM}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
-    ]).then(([sched, rows, workload, prevSched]) => {
+      api.get(`/api/leave/active?date=${date}`).then((r) => r.data?.data?.requests ?? []).catch(() => []),
+    ]).then(([sched, rows, workload, prevSched, leaveRows]) => {
       setDbByCenter(sched as Record<string, ZoneData>);
       setDbPrevByCenter((prevSched ?? sched) as Record<string, ZoneData>);
       setAtt(rows as AttRow[]);
+      setLeaves(leaveRows as { code?: string | null; leave_type?: string; start_date?: string; end_date?: string }[]);
       const jmap: Record<string, number> = {};
       (workload as { code?: string | null; active?: number }[]).forEach((w) => { const k = onlyDigits(w.code || ''); if (k) jmap[k] = Number(w.active) || 0; });
       setJobsByCode(jmap);
@@ -535,6 +546,13 @@ export default function CallcenterAttendancePage() {
     return map;
   }, [dbPrevByCenter, date]);
 
+  // รหัส(เลข) → ประเภทลา ของคนที่ "ลาอนุมัติแล้ว" ครอบคลุมวันที่เลือก (endpoint กรองวันให้แล้ว)
+  const leaveByCode = useMemo(() => {
+    const m: Record<string, string> = {};
+    leaves.forEach((l) => { const k = onlyDigits(l.code || ''); if (k) m[k] = l.leave_type || 'other'; });
+    return m;
+  }, [leaves]);
+
   // รวมรายชื่อจากตาราง (DB ทับ seed) ของวันที่เลือก → ใส่สถานะจากการลงเวลา
   const allPeople = useMemo(() => {
     const D = Number(date.split('-')[2]);
@@ -560,7 +578,10 @@ export default function CallcenterAttendancePage() {
           band = 'offday';  // วันหยุดแต่เช็คอินเข้ามา = อาสามาทำงาน → แสดงบนบอร์ด
         }
         if (carry) band = yBandByCode[codeDigits] ?? 'offday'; // ข้ามคืน: ติดป้ายเวรของเมื่อวาน (เช่น เวร3)
-        const status: Status = carry ? 'present' : !rec ? 'pending' : rec.open ? 'present' : 'done';
+        let status: Status = carry ? 'present' : !rec ? 'pending' : rec.open ? 'present' : 'done';
+        // คนมีเวรแต่ "ลาอนุมัติแล้ว" และยังไม่เช็คอิน → ป้าย "ลา" (แทนการนับเป็นยังไม่มา/ขาด)
+        const leaveType = status === 'pending' ? leaveByCode[codeDigits] : undefined;
+        if (leaveType) status = 'leave';
         // อาสา = กำลังทำงานอยู่ (present) แต่อยู่นอกช่วงเวรของตัวเอง (ก่อนเริ่ม หรือ เลยเวลาเลิกเวร)
         const isVolNow = status === 'present' && !bandInShift(band, NOW);
         out.push({
@@ -569,11 +590,12 @@ export default function CallcenterAttendancePage() {
           tags: [...(carry ? ['ข้ามคืน'] : []), ...(isFix(band) ? [SH_META[band].short] : []), ...(isVolNow ? ['อาสา'] : [])],
           jobs: jobsByCode[codeDigits] ?? 0,
           photo: carry?.photo ?? rec?.photo ?? null,
+          leaveType,
         });
       });
     }
     return out;
-  }, [dbByCenter, attIndex, carryIndex, yBandByCode, date, jobsByCode, clockTick, bkkNowMinutes]);
+  }, [dbByCenter, attIndex, carryIndex, yBandByCode, date, jobsByCode, clockTick, bkkNowMinutes, leaveByCode]);
 
   // เช็คอินของวันที่เลือกที่ "จับคู่ตารางเวรไม่ได้" (รหัส SE/ชื่อ ไม่ตรงตารางใด ๆ) → ไม่ขึ้นบนบอร์ดเลย
   // โชว์เป็นป้ายเตือน เพื่อแยก "ขาดงานจริง" ออกจาก "จับคู่พลาด" (รหัสผิด/ชื่อไม่ตรงบัญชีแอป)
@@ -635,8 +657,9 @@ export default function CallcenterAttendancePage() {
   const stats = useMemo(() => {
     const present = filtered.filter((p) => arrived(p.status)).length;
     const out = filtered.filter((p) => p.status === 'done').length;
+    const onLeave = filtered.filter((p) => p.status === 'leave').length;
     const fix = filtered.filter((p) => isFix(p.sh)).length;
-    return { total: filtered.length, present, out, pending: filtered.length - present, fix };
+    return { total: filtered.length, present, out, leave: onLeave, pending: filtered.length - present - onLeave, fix };
   }, [filtered]);
 
   const regionGroups = useMemo(() => {
@@ -655,7 +678,7 @@ export default function CallcenterAttendancePage() {
     { k: 'all', label: 'ทุกเวร' }, { k: 'morning', label: 'เวร1' }, { k: 'afternoon', label: 'เวร2' }, { k: 'night', label: 'เวร3' }, { k: 'fix', label: 'FIX' },
   ];
   const statusChips: { k: 'all' | Status; label: string }[] = [
-    { k: 'all', label: 'ทุกสถานะ' }, { k: 'present', label: 'เข้างานแล้ว' }, { k: 'pending', label: 'รอเข้างาน' },
+    { k: 'all', label: 'ทุกสถานะ' }, { k: 'present', label: 'เข้างานแล้ว' }, { k: 'pending', label: 'รอเข้างาน' }, { k: 'leave', label: 'ลา' },
   ];
 
   return (
@@ -675,6 +698,7 @@ export default function CallcenterAttendancePage() {
           <div className="stat st-ok"><span className="stat-v mono">{stats.present}</span><span className="stat-l">เข้างานแล้ว</span></div>
           <div className="stat st-out"><span className="stat-v mono">{stats.out}</span><span className="stat-l">ออกแล้ว</span></div>
           <div className="stat st-pending"><span className="stat-v mono">{stats.pending}</span><span className="stat-l">รอเข้างาน</span></div>
+          {stats.leave > 0 && <div className="stat st-leave"><span className="stat-v mono">{stats.leave}</span><span className="stat-l">ลา</span></div>}
           <div className="stat st-fix"><span className="stat-v mono">{stats.fix}</span><span className="stat-l">FIX</span></div>
         </div>
       </header>
@@ -950,6 +974,11 @@ const ATB_CSS = `
 .atb .lpc-time.present { color: var(--muted); }
 .atb .lpc-time.done { color: var(--muted); font-weight: 600; }
 .atb .lpc-time.pending { color: var(--pending); font-weight: 500; font-family: inherit; font-size: 11.5px; }
+.atb .lpc-time.leave { color: #b45309; font-weight: 600; font-family: inherit; font-size: 11.5px; }
+.atb .st-leave .stat-v { color: #d97706; }
+.atb .lpc-count.leave { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+.atb .lpc-person.leave .lpc-av-ring { border-color: #fcd34d; background: #fffbeb; }
+.atb .lpc-person.leave .lpc-code { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
 /* นอกระบบ: รูป/ชื่อ/เวลา เป็นเทา (de-emphasize) */
 .atb .lpc-out .lpc-name { color: var(--muted); }
 .atb .lpc-out .lpc-time { color: var(--muted); }

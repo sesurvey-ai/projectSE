@@ -78,6 +78,23 @@ export const leaveService = {
     return rows;
   },
 
+  // ใบลาที่ "อนุมัติแล้ว" และครอบคลุมวันที่ระบุ — สำหรับบอร์ดเข้างาน
+  // เปิดเผยแค่ code + ประเภท + ช่วงวัน (ไม่รวมเหตุผล/ผู้อนุมัติ) → ให้ callcenter ใช้ได้โดยไม่เห็นข้อมูลอ่อนไหว
+  async activeOn(date: string) {
+    const { rows } = await db.query(
+      `SELECT u.code, lr.leave_type,
+              to_char(lr.start_date, 'YYYY-MM-DD') AS start_date,
+              to_char(lr.end_date,   'YYYY-MM-DD') AS end_date
+         FROM leave_requests lr
+         JOIN users u ON u.id = lr.user_id
+        WHERE lr.status = 'approved'
+          AND lr.start_date <= $1::date
+          AND lr.end_date   >= $1::date`,
+      [date]
+    );
+    return rows;
+  },
+
   // อนุมัติ/ไม่อนุมัติ
   async review(id: number, reviewerId: number, status: string, note?: string | null) {
     const { rows } = await db.query(
