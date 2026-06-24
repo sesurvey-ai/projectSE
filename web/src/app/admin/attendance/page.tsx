@@ -61,6 +61,7 @@ export default function AttendanceAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [q, setQ] = useState('');
   const [shiftMap, setShiftMap] = useState<Record<string, string>>({}); // `${digit}|${YYYY-MM-DD}` → ป้ายเวร
 
   const load = useCallback(() => {
@@ -117,12 +118,27 @@ export default function AttendanceAdminPage() {
     return () => { cancelled = true; };
   }, [rows]);
 
+  // ค้นหาด้วยชื่อ หรือ รหัส SE (พิมพ์เฉพาะตัวเลขก็ได้ เช่น "436" เจอ "SE 436")
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? rows.filter((r) => {
+        const name = (r.user_name || r.username || '').toLowerCase();
+        const code = (r.code || '').toLowerCase();
+        const qDig = onlyDigits(q);
+        return name.includes(term) || code.includes(term) || (qDig !== '' && onlyDigits(r.code || '').includes(qDig));
+      })
+    : rows;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">เวลาเข้า–ออกงาน</h1>
       <p className="text-sm text-gray-500 mb-6">บันทึกการลงเวลาเข้า–ออกงานของพนักงาน</p>
 
       <div className="flex flex-wrap items-end gap-3 mb-5">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">ค้นหา (ชื่อ / รหัส SE)</label>
+          <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="เช่น สมชาย หรือ 436" className="px-3 py-2 rounded-lg border border-gray-200 text-sm w-56" />
+        </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">ตั้งแต่วันที่</label>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 text-sm" />
@@ -150,6 +166,8 @@ export default function AttendanceAdminPage() {
           <div className="text-center text-gray-500 py-16">{error}</div>
         ) : rows.length === 0 ? (
           <div className="text-center text-gray-500 py-16">ยังไม่มีข้อมูลการลงเวลา</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center text-gray-500 py-16">ไม่พบรายการที่ค้นหา “{q}”</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -161,7 +179,7 @@ export default function AttendanceAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {rows.map((r) => {
+                {filtered.map((r) => {
                   const shift = shiftMap[`${onlyDigits(r.code || r.username || '')}|${r.work_date}`] ?? '-';
                   return (
                   <tr key={r.id} className="hover:bg-gray-50">
@@ -195,7 +213,9 @@ export default function AttendanceAdminPage() {
           </div>
         )}
       </div>
-      {!loading && !error && <p className="text-xs text-gray-400 mt-3">{rows.length} รายการ</p>}
+      {!loading && !error && rows.length > 0 && (
+        <p className="text-xs text-gray-400 mt-3">{filtered.length} รายการ{term ? ` (จากทั้งหมด ${rows.length})` : ''}</p>
+      )}
     </div>
   );
 }
