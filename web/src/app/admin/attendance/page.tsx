@@ -8,6 +8,7 @@ interface AttRow {
   user_id: number;
   user_name?: string;
   username?: string;
+  code?: string | null;
   work_date: string;
   check_in_time?: string | null;
   check_out_time?: string | null;
@@ -17,6 +18,16 @@ interface AttRow {
   check_out_lng?: number | null;
   check_in_photo?: string | null;
 }
+
+const onlyDigits = (s: string) => (s || '').replace(/\D/g, '');
+
+// แปลง shift key ในตารางเวร → ป้ายภาษาไทย (รวม legacy fix7/fix11 → fix8/fix10)
+const SHIFT_LABEL: Record<string, string | null> = {
+  s1: 'เวร 1', s2: 'เวร 2', s3: 'เวร 3',
+  fix8: 'FIX 8', fix10: 'FIX 10', fix14: 'FIX 14',
+  fix7: 'FIX 8', fix11: 'FIX 10', f1120: 'FIX 10', f1423: 'FIX 14',
+  off: 'หยุด', none: null,
+};
 
 function fmtDate(s?: string | null): string {
   if (!s) return '-';
@@ -50,6 +61,7 @@ export default function AttendanceAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [shiftMap, setShiftMap] = useState<Record<string, string>>({}); // `${digit}|${YYYY-MM-DD}` → ป้ายเวร
 
   const load = useCallback(() => {
     setLoading(true);
@@ -71,6 +83,39 @@ export default function AttendanceAdminPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // โหลดตารางเวรของเดือนที่มีในข้อมูล → map รหัส(digit)+วันที่ → เวร (join เหมือนบอร์ดเข้างาน)
+  useEffect(() => {
+    const months = Array.from(new Set(rows.map((r) => (r.work_date || '').slice(0, 7)).filter(Boolean)));
+    if (months.length === 0) { setShiftMap({}); return; }
+    let cancelled = false;
+    (async () => {
+      const map: Record<string, string> = {};
+      for (const ym of months) {
+        const [y, m] = ym.split('-').map(Number);
+        try {
+          const res = await api.get(`/api/duty/schedules?y=${y}&m=${m}`);
+          const data = (res.data?.data ?? {}) as Record<string, { staff?: { id: string; code: string }[]; schedule?: Record<string, Record<string, string>> }>;
+          for (const centerId of Object.keys(data)) {
+            const z = data[centerId];
+            for (const s of z.staff ?? []) {
+              const dig = onlyDigits(s.code);
+              if (!dig) continue;
+              const sched = z.schedule?.[s.id] ?? {};
+              for (const dStr of Object.keys(sched)) {
+                const label = SHIFT_LABEL[sched[dStr]];
+                if (!label) continue;
+                const date = `${y}-${String(m).padStart(2, '0')}-${String(Number(dStr)).padStart(2, '0')}`;
+                map[`${dig}|${date}`] = label;
+              }
+            }
+          }
+        } catch { /* ข้ามเดือนที่โหลดไม่ได้ */ }
+      }
+      if (!cancelled) setShiftMap(map);
+    })();
+    return () => { cancelled = true; };
+  }, [rows]);
 
   return (
     <div>
@@ -110,16 +155,20 @@ export default function AttendanceAdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-left">
                 <tr>
-                  {['วันที่', 'พนักงาน', 'รูปเข้างาน', 'เข้างาน', 'ออกงาน', 'พิกัดเข้า', 'พิกัดออก'].map((h) => (
+                  {['วันที่', 'รหัส', 'พนักงาน', 'เวร', 'รูปเข้างาน', 'เข้างาน', 'ออกงาน', 'พิกัดเข้า', 'พิกัดออก'].map((h) => (
                     <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {rows.map((r) => (
+                {rows.map((r) => {
+                  const shift = shiftMap[`${onlyDigits(r.code || r.username || '')}|${r.work_date}`] ?? '-';
+                  return (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className={`${td} font-medium text-gray-800`}>{fmtDate(r.work_date)}</td>
+                    <td className={`${td} font-mono text-gray-500`}>{r.code || '-'}</td>
                     <td className={td}>{r.user_name || r.username || '-'}</td>
+                    <td className={td}>{shift}</td>
                     <td className={td}>
                       {r.check_in_photo ? (
                         <a href={getPhotoUrl(r.check_in_photo)} target="_blank" rel="noopener noreferrer">
@@ -139,7 +188,8 @@ export default function AttendanceAdminPage() {
                     <td className={td}>{mapLink(r.check_in_lat, r.check_in_lng) ?? <span className="text-gray-300 text-xs">—</span>}</td>
                     <td className={td}>{mapLink(r.check_out_lat, r.check_out_lng) ?? <span className="text-gray-300 text-xs">—</span>}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
