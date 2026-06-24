@@ -314,6 +314,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const nextSe = useRef(900);
   const [saving, setSaving] = useState(false);
   const [authMissing, setAuthMissing] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState<Record<string, boolean>>({});       // zoneId → มีแก้ไขยังไม่บันทึก
   const [savedZones, setSavedZones] = useState<Record<string, string>>({}); // zoneId → เวลาเซฟ ('db' = โหลดจาก DB)
   const [generated, setGenerated] = useState<Record<string, boolean>>({}); // zoneId → ร่างที่ระบบหมุนต่อจากเดือนก่อนให้
@@ -397,13 +398,17 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
         body: JSON.stringify({ center_id: zoneId, year: view.y, month: view.m, data: dataByZone[zoneId] }),
       });
       if (res.status === 401) { setAuthMissing(true); return; }
-      if (!res.ok) return;
+      if (!res.ok) {
+        setSaveError(res.status === 403 ? 'สิทธิ์ไม่พอ (ต้องเป็น admin/callcenter)' : `บันทึกไม่สำเร็จ (${res.status}) — ลองใหม่`);
+        return;
+      }
       const out = (await res.json()).data;
       setAuthMissing(false);
+      setSaveError(null);
       setDirty((d) => ({ ...d, [zoneId]: false }));
       setGenerated((g) => ({ ...g, [zoneId]: false }));
       setSavedZones((s) => ({ ...s, [zoneId]: out?.updated_at ?? 'db' }));
-    } catch { /* network error → คง dirty ไว้ */ }
+    } catch { setSaveError('เครือข่ายมีปัญหา — ยังไม่บันทึก ลองใหม่'); }
     finally { setSaving(false); }
   };
 
@@ -489,6 +494,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
           </span>
           <button className="save-btn" onClick={saveZone} disabled={saving}>บันทึกศูนย์นี้</button>
           {authMissing && <span className="save-note">ต้องล็อกอิน admin ก่อน</span>}
+          {saveError && <span className="save-note" style={{ color: '#dc2626' }}>{saveError}</span>}
         </div>
         <div className="month-chip">
           <span className="nav"><button aria-label="เดือนก่อน" onClick={() => changeMonth(-1)}>{Icon.chevL({ width: 16, height: 16 })}</button></span>

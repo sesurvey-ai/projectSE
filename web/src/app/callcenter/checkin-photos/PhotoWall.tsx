@@ -7,6 +7,13 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import api, { getPhotoUrl } from '@/lib/api';
 import { ROSTER_JUN } from '../../duty-demo2/roster-jun';
 
+// <img> ที่มี fallback เมื่อไฟล์รูปโหลดไม่ได้ (volume/พาธพลาดตอนแรกขึ้นระบบ) → placeholder แทนไอคอนรูปแตก
+function PhotoImg({ src, alt, big, lazy }: { src: string; alt: string; big?: boolean; lazy?: boolean }) {
+  const [err, setErr] = useState(false);
+  if (err) return <div className={big ? 'noimg big' : 'noimg'}><span className="ni-ic">📷</span><span>รูปหาย</span></div>;
+  return <img src={src} alt={alt} loading={lazy ? 'lazy' : undefined} onError={() => setErr(true)} />;
+}
+
 const CENTERS: { id: string; name: string }[] = [
   { id: 'ladprao', name: 'ลาดพร้าว' }, { id: 'raminthra', name: 'รามอินทรา' }, { id: 'onnut', name: 'อ่อนนุช' },
   { id: 'bangkhae', name: 'บางแค' }, { id: 'minburi', name: 'มีนบุรี' }, { id: 'rama9', name: 'พระราม 9' },
@@ -219,7 +226,7 @@ export default function PhotoWall() {
               <button key={r.id} className="card" onClick={() => setSel(r)}>
                 <div className="ph">
                   {r.check_in_photo
-                    ? <img src={getPhotoUrl(r.check_in_photo)} alt={r.user_name} loading="lazy" />
+                    ? <PhotoImg src={getPhotoUrl(r.check_in_photo)} alt={r.user_name} lazy />
                     : <div className="noimg"><span className="ni-ic">📷</span><span>ไม่มีรูป</span></div>}
                   <span className="t in mono">{m.carry ? `เมื่อวาน ${r.check_in_time}` : r.check_in_time}</span>
                   {m.vol && <span className="vol" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
@@ -271,7 +278,7 @@ function PhotoModal({ row, m, onClose }: {
       <div className="mcard" onClick={(e) => e.stopPropagation()}>
         <div className="mph">
           {row.check_in_photo
-            ? <img src={getPhotoUrl(row.check_in_photo)} alt={row.user_name} />
+            ? <PhotoImg src={getPhotoUrl(row.check_in_photo)} alt={row.user_name} big />
             : <div className="noimg big"><span className="ni-ic">📷</span><span>ไม่มีรูปถ่าย</span></div>}
           <button className="mclose" onClick={onClose}>✕</button>
         </div>

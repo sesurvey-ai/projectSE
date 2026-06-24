@@ -23,8 +23,14 @@ export const attendanceController = {
       sendError(res, 'ต้องเปิด GPS เพื่อลงเวลาเข้างาน กรุณาเปิดการเข้าถึงตำแหน่งแล้วลองใหม่', 400);
       return;
     }
-    const photo = (req.file as Express.Multer.File | undefined)?.filename ?? null;
-    const row = await attendanceService.checkIn(req.user!.id, lat, lng, photo);
+    // ต้องถ่ายรูปเซลฟี่ถึงจะลงเวลาเข้างานได้ — กันกรณี multipart รูปหลุดกลางทาง
+    // (เน็ตอ่อน/proxy) แล้วเข้างานสำเร็จโดยไม่มีรูปแบบเงียบ ๆ ซึ่งเสียหลักฐานการลงเวลา
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) {
+      sendError(res, 'ต้องถ่ายรูปเพื่อลงเวลาเข้างาน กรุณาถ่ายรูปแล้วลองใหม่', 400);
+      return;
+    }
+    const row = await attendanceService.checkIn(req.user!.id, lat, lng, file.filename);
     if (!row) {
       sendError(res, 'คุณยังมีรอบที่ยังไม่ได้ลงเวลาออก กรุณาลงเวลาออกก่อนจึงจะลงเวลาเข้าใหม่ได้', 400);
       return;

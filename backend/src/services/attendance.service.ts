@@ -129,6 +129,9 @@ export const attendanceService = {
       params.push(Number(q.user_id));
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    // เดิม 500 — วันยุ่ง (พนักงาน 80+ คน หลายรอบ/วัน + ช่วง 2 วันของบอร์ด) อาจเกิน 500
+    // แล้วคนท้าย ๆ ถูกตัดทิ้งเงียบ ๆ → ขึ้นว่า "ยังไม่มา" ทั้งที่เช็คอินแล้ว. query ถูก bound ด้วยช่วงวันอยู่แล้ว
+    const MAX_ROWS = 5000;
     const { rows } = await db.query(
       `SELECT ar.id, ar.user_id,
               to_char(ar.work_date,    'YYYY-MM-DD') AS work_date,
@@ -140,10 +143,10 @@ export const attendanceService = {
          JOIN users u ON u.id = ar.user_id
          ${whereSql}
         ORDER BY ar.work_date DESC, user_name ASC, ar.check_in_at ASC
-        LIMIT 500`,
+        LIMIT ${MAX_ROWS}`,
       params
     );
-    return { count: rows.length, rows };
+    return { count: rows.length, capped: rows.length >= MAX_ROWS, rows };
   },
 
   // เวลาปัจจุบันฝั่ง server (เวลาไทย) — ให้บอร์ดยึดเวลานี้แทนนาฬิกาเครื่อง client (กันเบราว์เซอร์ TZ อื่นคำนวณ "วันนี้"/อาสาเพี้ยน)
