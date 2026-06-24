@@ -175,7 +175,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> checkInAttendance({double? lat, double? lng, String? photoPath}) async {
-    // multipart: รูปถ่าย + พิกัด (เวรอ้างอิงจากตารางเวร, อาสาแยกไปที่ submitVolunteer)
+    // multipart: รูปถ่าย + พิกัด (เวร/อาสาอ้างอิงจากตารางเวร — คำนวณฝั่งบอร์ดตามเวลาจริง)
     final form = FormData();
     if (lat != null) form.fields.add(MapEntry('lat', lat.toString()));
     if (lng != null) form.fields.add(MapEntry('lng', lng.toString()));
@@ -202,20 +202,5 @@ class ApiService {
   // เคลียร์พิกัดตัวเองตอนออกจากระบบ → หมุดหายจากแผนที่ Call Center
   Future<void> clearMyLocation() async {
     await _dio.delete('/api/users/me/location');
-  }
-
-  // ── อาสา (ทำงานนอกเวรของตัวเอง) ──
-  Future<Map<String, dynamic>> submitVolunteer({required String start, required String end}) async {
-    final r = await _dio.post('/api/duty/volunteer', data: {'start_time': start, 'end_time': end});
-    return (r.data['data'] as Map<String, dynamic>?) ?? {};
-  }
-
-  Future<List<dynamic>> getMyVolunteers() async {
-    final r = await _dio.get('/api/duty/volunteer/mine');
-    return (r.data['data'] as List?) ?? [];
-  }
-
-  Future<void> cancelVolunteer(int id) async {
-    await _dio.delete('/api/duty/volunteer/$id');
   }
 }
