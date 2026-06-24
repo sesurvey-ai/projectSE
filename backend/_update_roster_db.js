@@ -1,7 +1,10 @@
 // TEMP: sync ตารางเวรจาก roster-jun.ts (extract ล่าสุด) → DB duty_schedules(2026/6)
 //   + merge ชื่อเต็มจาก DB เดิม (ที่ reconcile นามสกุลแล้ว) กลับเข้า seed และ DB
-//   node _update_roster_db.js          → dry-run (โชว์ความต่าง ไม่เขียนอะไร)
-//   node _update_roster_db.js apply    → เขียนจริง (DB + roster-jun.ts)
+//   node _update_roster_db.js            → dry-run (โชว์ความต่าง + ตรวจไฟล์ ไม่เขียนอะไร)
+//   node _update_roster_db.js apply      → เขียนจริง (DB + roster-jun.ts) — บล็อกถ้าเจอรหัสซ้ำ/ผิด
+//   node _update_roster_db.js apply force → เขียนแม้เจอรหัสซ้ำ (ไม่แนะนำ — ใช้เมื่อมั่นใจ)
+// GUARD: ก่อน apply จะตรวจ (1) รหัสซ้ำในเวร (digit เดียวอยู่หลายจุด — แบบ SE436 ที่ลืมแก้ไฟล์),
+//        (2) รหัสไม่ตรงพนักงานในระบบ. เจอ (1) → ไม่ apply (กันข้อมูลผิดเข้า DB เงียบ ๆ)
 const fs = require('fs');
 require('dotenv').config();
 const { Pool } = require('pg');
@@ -11,6 +14,7 @@ const ROSTER_PATH = 'C:\\Users\\i9\\Desktop\\se-survey\\web\\src\\app\\duty-demo
 const YEAR = 2026, MONTH = 6, DAYS = 30; // มิ.ย. 2026
 const onlyDigits = (s) => (s || '').replace(/\D/g, '');
 const APPLY = process.argv[2] === 'apply';
+const FORCE = process.argv.includes('force') || process.argv.includes('--force');
 
 (async () => {
   try {
@@ -25,6 +29,42 @@ const APPLY = process.argv[2] === 'apply';
       `SELECT center_id, data FROM duty_schedules WHERE year=$1 AND month=$2`, [YEAR, MONTH])).rows;
     const oldBy = {}; dbRows.forEach((r) => { oldBy[r.center_id] = r.data; });
     const admin = (await pool.query(`SELECT id FROM users WHERE username='admin01'`)).rows[0];
+
+    // รหัสพนักงานที่มีบัญชีในระบบ (digit) — ใช้ตรวจรหัสในเวรว่าตรงคนจริงไหม
+    const userDigits = new Set(
+      (await pool.query(`SELECT code, username FROM users WHERE role='surveyor'`)).rows
+        .map((u) => onlyDigits(u.code || u.username)).filter(Boolean)
+    );
+
+    // ── GUARD: ตรวจไฟล์เวรก่อน apply (กัน entry ซ้ำ/รหัสผิด แบบ SE436 ที่ลืมแก้ไฟล์) ──
+    const occ = {}; // digit -> [{cid, code, name}]
+    for (const cid of Object.keys(roster)) {
+      for (const p of roster[cid].people) {
+        const d = onlyDigits(p.code) || '∅';
+        (occ[d] ||= []).push({ cid, code: p.code, name: p.name });
+      }
+    }
+    const dupCodes = Object.entries(occ).filter(([d, a]) => d !== '∅' && a.length > 1);
+    const noDigit = occ['∅'] || [];
+    const unresolved = Object.entries(occ)
+      .filter(([d]) => d !== '∅' && !userDigits.has(d))
+      .map(([d, a]) => ({ digit: d, name: a[0].name, where: a.map((x) => x.cid).join(',') }));
+
+    console.log('\n══════ ตรวจไฟล์เวร (guard) ══════');
+    if (dupCodes.length) {
+      console.log(`🔴 รหัสซ้ำ ${dupCodes.length} รหัส (รหัสเดียวอยู่หลายจุด/แถว — แบบ SE436):`);
+      for (const [d, a] of dupCodes) console.log(`   SE${d}: ` + a.map((x) => `${x.name || '?'}@${x.cid}`).join('  ||  '));
+    } else console.log('✓ ไม่มีรหัสซ้ำ');
+    if (noDigit.length) console.log(`🔴 รหัสไม่มีตัวเลข ${noDigit.length}:`, noDigit.map((x) => `"${x.code}"@${x.cid}`).join(', '));
+    if (unresolved.length) {
+      console.log(`🟠 รหัสไม่ตรงพนักงานในระบบ ${unresolved.length} (พิมพ์ผิด? หรือยังไม่สร้างบัญชี?):`);
+      for (const u of unresolved) console.log(`   SE${u.digit} ${u.name || ''} @${u.where}`);
+    } else console.log('✓ ทุกรหัสตรงพนักงานในระบบ');
+
+    if (APPLY && (dupCodes.length || noDigit.length) && !FORCE) {
+      console.log('\n⛔ ไม่ apply: พบรหัสซ้ำ/ผิดในไฟล์เวร — แก้ไฟล์ก่อน หรือใส่ `force` เพื่อข้าม (ไม่แนะนำ)');
+      return; // finally จะปิด pool ให้
+    }
 
     // ชื่อเต็มเดิมจาก DB: codeDigits -> name (ใช้เมื่อชื่อใหม่สั้นกว่าและขึ้นต้นเหมือนกัน)
     const fullName = {};
