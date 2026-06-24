@@ -22,7 +22,6 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'พนักงานทั้งหมด', href: '/callcenter/employees' },
     { label: 'เวลาเข้างานพนักงาน · ประจำจุด', href: '/callcenter/checkin-board' },
     { label: 'เวลาเข้า–ออกงาน', href: '/callcenter/attendance' },
-    { label: 'รูปยืนยันลงเวลา', href: '/callcenter/checkin-photos' },
     { label: 'ตารางเวรประจำจุด', href: '/callcenter/duty-roster' },
   ],
   checker: [
