@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import api, { getPhotoUrl } from '@/lib/api';
-import PhotoWall from '../../callcenter/checkin-photos/PhotoWall';
 
 interface AttRow {
   id: number;
@@ -51,7 +50,6 @@ export default function AttendanceAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [view, setView] = useState<'table' | 'photos'>('table'); // ตาราง = บันทึกเวลา/GPS, photos = รูปยืนยัน
 
   const load = useCallback(() => {
     setLoading(true);
@@ -79,16 +77,6 @@ export default function AttendanceAdminPage() {
       <h1 className="text-2xl font-bold text-gray-800 mb-1">เวลาเข้า–ออกงาน</h1>
       <p className="text-sm text-gray-500 mb-6">บันทึกการลงเวลาเข้า–ออกงานของพนักงาน</p>
 
-      {/* สลับมุมมอง: ตาราง (เวลา/GPS) ↔ รูปยืนยัน (photo wall) — รวมจากเมนู "รูปยืนยันลงเวลา" เดิม */}
-      <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 mb-5">
-        <button onClick={() => setView('table')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${view === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>ตาราง</button>
-        <button onClick={() => setView('photos')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${view === 'photos' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>รูปยืนยัน</button>
-      </div>
-
-      {view === 'photos' ? (
-        <PhotoWall />
-      ) : (
-        <>
       <div className="flex flex-wrap items-end gap-3 mb-5">
         <div>
           <label className="block text-xs text-gray-500 mb-1">ตั้งแต่วันที่</label>
@@ -158,8 +146,6 @@ export default function AttendanceAdminPage() {
         )}
       </div>
       {!loading && !error && <p className="text-xs text-gray-400 mt-3">{rows.length} รายการ</p>}
-        </>
-      )}
     </div>
   );
 }
