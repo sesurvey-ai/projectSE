@@ -357,7 +357,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   });
 
   // โหลดตารางที่เคยบันทึกของเดือนนี้จาก DB → ศูนย์ที่ยังไม่มีข้อมูล:
-  //   มิ.ย. 2026 = ใช้ seed roster-jun · เดือนอื่น = หมุนเวรต่อจาก "เดือนก่อนหน้า" ให้อัตโนมัติเป็นร่าง (ต้องกดบันทึกเอง)
+  //   มิ.ย. 2026 = ใช้ seed roster-jun · เดือนอื่น = หมุนเวรต่อจาก "เดือนก่อนหน้า" ให้อัตโนมัติ + บันทึกให้เอง (ตอนล็อกอิน)
   // ไม่ล็อกอิน/ออฟไลน์ → คง seed ไว้ (หน้านี้ยังใช้แบบเดโมได้)
   useEffect(() => {
     let cancelled = false;
@@ -395,11 +395,32 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
           } else merged[c.id] = { staff: [], schedule: {} };
         }
         setDataByZone(merged);
-        setDirty({ ...draft });   // ร่างที่หมุนให้ = ยังไม่บันทึก
+        setDirty({ ...draft });   // แสดงเป็นร่างก่อน แล้ว auto-save จะเคลียร์ทีละศูนย์
         setGenerated(draft);
         const sv: Record<string, string> = {};
         for (const id of Object.keys(saved)) sv[id] = 'db';
         setSavedZones(sv);
+
+        // auto-save ร่างที่หมุนใหม่ (เฉพาะตอนล็อกอิน) → ผู้ใช้ไม่ต้องกดบันทึกเอง (แก้ไขทีหลังได้)
+        // ทำให้เดือนถัด ๆ ไปหมุนต่อเองได้ (เดือนถัดไปหมุนจากเดือนนี้ที่ถูกบันทึกแล้ว)
+        const draftIds = Object.keys(draft);
+        if (token && draftIds.length) {
+          await Promise.all(draftIds.map(async (cid) => {
+            try {
+              const r = await fetch(`${API_BASE}/api/duty/schedule`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ center_id: cid, year: view.y, month: view.m, data: merged[cid] }),
+              });
+              if (!r.ok || cancelled) return;
+              const ua = (await r.json()).data?.updated_at ?? 'db';
+              if (cancelled) return;
+              setDirty((d) => ({ ...d, [cid]: false }));
+              setGenerated((g) => ({ ...g, [cid]: false }));
+              setSavedZones((s) => ({ ...s, [cid]: ua }));
+            } catch { /* save ไม่ผ่าน → คงเป็นร่าง กดบันทึกเองได้ */ }
+          }));
+        }
       } catch { /* ออฟไลน์ → คง seed */ }
     })();
     return () => { cancelled = true; };
