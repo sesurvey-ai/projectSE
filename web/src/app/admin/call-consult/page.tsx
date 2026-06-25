@@ -32,28 +32,52 @@ function fmtBucket(iso: unknown): string {
   }
 }
 
+const toISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const addDays = (iso: string, n: number) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return toISO(d); };
+
 export default function CallConsultReport() {
   const [groupBy, setGroupBy] = useState<GroupBy>('supervisor');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [data, setData] = useState<ReportResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ตั้งช่วงเริ่มต้น = 30 วันล่าสุด (ทำใน effect ฝั่ง client เลี่ยง hydration mismatch จาก new Date())
+  useEffect(() => {
+    const now = new Date();
+    const f = new Date(); f.setDate(f.getDate() - 30);
+    setFrom(toISO(f));
+    setTo(toISO(now));
+  }, []);
+
   const load = useCallback(() => {
+    if (!from || !to) return;
     setLoading(true);
     setError(null);
+    // to + 1 วัน = รวมวันสิ้นสุดด้วย (backend ใช้ started_at < to)
     api
-      .get(`/api/consult/report?group_by=${groupBy}`)
+      .get(`/api/consult/report?group_by=${groupBy}&from=${from}&to=${addDays(to, 1)}`)
       .then((res) => {
         if (res.data.success) setData(res.data.data as ReportResp);
         else setError('โหลดข้อมูลไม่สำเร็จ');
       })
       .catch(() => setError('โหลดข้อมูลไม่สำเร็จ'))
       .finally(() => setLoading(false));
-  }, [groupBy]);
+  }, [groupBy, from, to]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const setPreset = (kind: 'd30' | 'month' | 'year' | 'lastyear') => {
+    const now = new Date();
+    if (kind === 'd30') { const f = new Date(); f.setDate(f.getDate() - 30); setFrom(toISO(f)); setTo(toISO(now)); }
+    else if (kind === 'month') { setFrom(toISO(new Date(now.getFullYear(), now.getMonth(), 1))); setTo(toISO(now)); }
+    else if (kind === 'year') { const y = now.getFullYear(); setFrom(`${y}-01-01`); setTo(`${y}-12-31`); }
+    else { const y = now.getFullYear() - 1; setFrom(`${y}-01-01`); setTo(`${y}-12-31`); }
+  };
 
   const rows = data?.rows ?? [];
 
@@ -75,6 +99,24 @@ export default function CallConsultReport() {
             {t.label}
           </button>
         ))}
+      </div>
+
+      {/* ช่วงวันที่ (เลือกวัน/ปีเองได้ + ปุ่มลัด) */}
+      <div className="flex flex-wrap items-end gap-3 mb-5">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">ตั้งแต่วันที่</label>
+          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">ถึงวันที่</label>
+          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 text-sm" />
+        </div>
+        <div className="flex gap-2">
+          {[{ k: 'd30', l: '30 วัน' }, { k: 'month', l: 'เดือนนี้' }, { k: 'year', l: 'ปีนี้' }, { k: 'lastyear', l: 'ปีก่อน' }].map((pp) => (
+            <button key={pp.k} onClick={() => setPreset(pp.k as 'd30' | 'month' | 'year' | 'lastyear')}
+              className="px-3 py-2 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">{pp.l}</button>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -105,7 +147,7 @@ export default function CallConsultReport() {
       </div>
       {data && !loading && !error && (
         <p className="text-xs text-gray-400 mt-3">
-          ช่วงข้อมูล {fmtBucket(data.range.from)} – {fmtBucket(data.range.to)} · {data.count} แถว
+          ช่วงข้อมูล {fmtBucket(from)} – {fmtBucket(to)} · {data.count} แถว
         </p>
       )}
     </div>
