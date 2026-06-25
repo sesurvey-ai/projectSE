@@ -60,6 +60,20 @@ type Day = { day: number; dow: string; isSat: boolean; isSun: boolean; isWeekend
 const MAP_SHIFT: Record<string, ShiftKey> = { s1: 's1', s2: 's2', s3: 's3', fix8: 'fix8', fix10: 'fix10', fix14: 'fix14', off: 'off', none: 'none', f1120: 'fix10', f1423: 'fix14', fix7: 'fix8', fix11: 'fix10' };
 type ZoneData = { staff: Staff[]; schedule: Record<string, Record<number, ShiftKey>> };
 
+// แปลง shift key ที่โหลดจาก DB → ชุดมาตรฐานของ demo2 (เดือนที่ auto-roll เก่าเก็บ legacy fix7/fix11/f1120/f1423 ไว้)
+// กัน SHIFTS[key] undefined → ShiftCell crash + ให้ count/แสดงผลถูก (fix7→fix8, fix11/f1120→fix10, f1423→fix14)
+function normalizeZone(z: ZoneData): ZoneData {
+  if (!z || !z.schedule) return z;
+  const schedule: Record<string, Record<number, ShiftKey>> = {};
+  for (const sid of Object.keys(z.schedule)) {
+    const row = (z.schedule[sid] || {}) as Record<string, string>;
+    const out: Record<number, ShiftKey> = {};
+    for (const d of Object.keys(row)) out[Number(d)] = MAP_SHIFT[row[d]] ?? 'none';
+    schedule[sid] = out;
+  }
+  return { staff: z.staff, schedule };
+}
+
 function buildZoneData(): Record<string, ZoneData> {
   const out: Record<string, ZoneData> = {};
   for (const c of CENTERS) {
@@ -193,8 +207,8 @@ const Icon = {
 
 // ---- Shift cell ----
 function ShiftCell({ shiftKey, onOpen, dim }: { shiftKey: ShiftKey; onOpen: (e: React.MouseEvent<HTMLDivElement>) => void; dim: boolean }) {
-  const s = SHIFTS[shiftKey];
-  const tone = TONE_OF[shiftKey];
+  const s = SHIFTS[shiftKey] ?? SHIFTS.none;   // กัน crash ถ้าเจอ key นอก map (เช่น legacy fix7/fix11 จาก DB)
+  const tone = TONE_OF[shiftKey] ?? 'none';
   return (
     <td className={'shift-cell' + (dim ? ' col-dim' : '')}>
       <div className="cell" data-tone={tone} tabIndex={0} onClick={onOpen}
@@ -358,8 +372,13 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
         ]);
         if (res.status === 401) { if (!cancelled) setAuthMissing(true); return; }
         if (!res.ok || cancelled) return;
-        const saved = ((await res.json()).data ?? {}) as Record<string, ZoneData>;
-        const prevSaved = prevRes.ok ? (((await prevRes.json()).data ?? {}) as Record<string, ZoneData>) : {};
+        const savedRaw = ((await res.json()).data ?? {}) as Record<string, ZoneData>;
+        const prevRaw = prevRes.ok ? (((await prevRes.json()).data ?? {}) as Record<string, ZoneData>) : {};
+        // normalize legacy shift keys (fix7/fix11/…) จาก DB ก่อนใช้ — กัน ShiftCell crash + count ถูก
+        const saved: Record<string, ZoneData> = {};
+        for (const k of Object.keys(savedRaw)) saved[k] = normalizeZone(savedRaw[k]);
+        const prevSaved: Record<string, ZoneData> = {};
+        for (const k of Object.keys(prevRaw)) prevSaved[k] = normalizeZone(prevRaw[k]);
         if (cancelled) return;
         setAuthMissing(false);
         const seedOf = (yy: number, mm: number, cid: string) =>
