@@ -10,11 +10,12 @@ export const caseService = {
     try {
       await client.query('BEGIN');
 
+      // หมายเหตุ: ตาราง cases ไม่มีคอลัมน์ insurance_company — ค่านี้ถูกเก็บใน survey_reports แทน (ดู reportFields)
       const caseResult = await client.query(
-        `INSERT INTO cases (customer_name, insurance_company, incident_location, incident_lat, incident_lng, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO cases (customer_name, incident_location, incident_lat, incident_lng, created_by)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [data.customer_name, data.insurance_company || null, data.incident_location, data.incident_lat || null, data.incident_lng || null, createdBy]
+        [data.customer_name, data.incident_location, data.incident_lat || null, data.incident_lng || null, createdBy]
       );
       const newCase = caseResult.rows[0];
 

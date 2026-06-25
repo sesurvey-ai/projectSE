@@ -303,7 +303,8 @@ export default function NewCasePage() {
           <label className="block text-xs font-medium text-gray-500 mb-1">บริษัทประกัน</label>
           <select value={insuranceCompany} onChange={e => setInsuranceCompany(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-white text-sm">
             <option value="">-- เลือกบริษัทประกัน --</option>
-            <option value="ไอโออิกรุงเทพประกันภัย">ไอโออิกรุงเทพประกันภัย</option>
+            {/* ปิดไอโออิไว้ก่อน — เริ่มพัฒนาจากไทยไพบูลย์ก่อน (เปิดคืนเมื่อพร้อม) */}
+            {/* <option value="ไอโออิกรุงเทพประกันภัย">ไอโออิกรุงเทพประกันภัย</option> */}
             <option value="บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)">บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)</option>
           </select>
         </div>
