@@ -1,16 +1,23 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useMemo, FormEvent } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import thaiProvinces from '@/data/thai_provinces.json';
+import AssignSurveyor from '@/components/cases/AssignSurveyor';
 
 export default function NewCasePage() {
   const router = useRouter();
   const { socket } = useSocket();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // หลังสร้างเคสสำเร็จ — แสดงส่วนมอบหมายช่างสำรวจ inline ในหน้าเดียวกัน (ไม่ต้องเปลี่ยนหน้า)
+  const [createdCaseId, setCreatedCaseId] = useState<number | null>(null);
+  const assignRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (createdCaseId !== null) assignRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [createdCaseId]);
 
   const [customerName, setCustomerName] = useState('');
   const [insuranceCompany, setInsuranceCompany] = useState('');
@@ -259,7 +266,8 @@ export default function NewCasePage() {
         if (socket) {
           socket.emit('request_location', { request_id: String(newCaseId) });
         }
-        router.push(`/callcenter/cases/${newCaseId}/assign`);
+        // แสดงส่วนมอบหมายช่างสำรวจ inline ใต้ฟอร์ม (แทนการเปลี่ยนไปอีกหน้า)
+        setCreatedCaseId(newCaseId);
       } else {
         setError(res.data.message || 'ไม่สามารถสร้างเคสได้');
       }
@@ -285,17 +293,19 @@ export default function NewCasePage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center mb-6">
         <div className="flex items-center">
-          <div className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">1</div>
-          <span className="ml-2 text-sm font-medium text-blue-600">ข้อมูลเคส</span>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${createdCaseId !== null ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'}`}>{createdCaseId !== null ? '✓' : '1'}</div>
+          <span className={`ml-2 text-sm font-medium ${createdCaseId !== null ? 'text-green-600' : 'text-blue-600'}`}>ข้อมูลเคส</span>
         </div>
-        <div className="flex-1 mx-4 h-px bg-gray-200"></div>
+        <div className={`flex-1 mx-4 h-px ${createdCaseId !== null ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
         <div className="flex items-center">
-          <div className="w-7 h-7 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center text-xs font-medium">2</div>
-          <span className="ml-2 text-sm text-gray-400">มอบหมาย</span>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${createdCaseId !== null ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>2</div>
+          <span className={`ml-2 text-sm font-medium ${createdCaseId !== null ? 'text-blue-600' : 'text-gray-400'}`}>มอบหมาย</span>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* หลังสร้างเคสแล้ว ล็อกฟอร์มไว้เป็นข้อมูลอ้างอิง (แก้ไม่ได้) */}
+        <fieldset disabled={createdCaseId !== null} className="min-w-0 border-0 p-0 m-0">
         {error && <div className="text-red-600 text-xs mb-3 bg-red-50 px-3 py-2 rounded">{error}</div>}
 
         {/* บริษัทประกัน — ด้านบนตาราง */}
@@ -458,11 +468,13 @@ export default function NewCasePage() {
               </tbody>
             </table>
 
-            <div className="flex justify-end mt-4">
-              <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
-              </button>
-            </div>
+            {!createdCaseId && (
+              <div className="flex justify-end mt-4">
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -739,14 +751,33 @@ export default function NewCasePage() {
                   </tbody>
                 </table>
 
-                <div className="flex justify-end">
-                  <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
-                  </button>
-                </div>
+                {!createdCaseId && (
+                  <div className="flex justify-end">
+                    <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                      {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
+                    </button>
+                  </div>
+                )}
           </>
         )}
+        </fieldset>
       </form>
+
+      {/* ส่วนมอบหมายช่างสำรวจ — แสดง inline ใต้ฟอร์มหลังสร้างเคสสำเร็จ */}
+      {createdCaseId !== null && (
+        <div ref={assignRef} className="mt-8 pt-8 border-t border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">มอบหมายช่างสำรวจ</h2>
+              <p className="text-gray-500 mt-0.5 text-sm">สร้างเคส #{createdCaseId} สำเร็จ — เลือกช่างสำรวจเพื่อมอบหมายงาน</p>
+            </div>
+            <button type="button" onClick={() => router.push('/callcenter')} className="text-sm text-gray-500 hover:text-gray-700 hover:underline">
+              ข้ามไปก่อน
+            </button>
+          </div>
+          <AssignSurveyor caseId={createdCaseId} onAssigned={() => router.push('/callcenter')} />
+        </div>
+      )}
     </div>
   );
 }
