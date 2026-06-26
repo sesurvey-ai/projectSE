@@ -24,6 +24,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   bool _loadingDetail = true;
   Map<String, List<String>> _provincesData = {};
   bool _arrivalConfirmed = false;
+  bool _checkingArrival = true; // กำลังเช็คว่าเคยถ่ายรูปยืนยันถึงที่เกิดเหตุไว้แล้วหรือยัง (กันปุ่มกระพริบ arrival→survey)
   String? _arrivalPhotoPath;
   String? _arrivalPhotoUrl;
   bool _uploadingArrival = false;
@@ -69,7 +70,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       // Download OCR images to local folder
       _downloadCaseImages();
     } catch (_) {
-      setState(() => _loadingDetail = false);
+      setState(() {
+        _loadingDetail = false;
+        _checkingArrival = false;
+      });
     }
   }
 
@@ -113,7 +117,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           });
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _checkingArrival = false);
+    }
   }
 
   String get _claimNo {
@@ -416,8 +423,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
                 // Arrival confirmation + Survey button
                 if (caseModel.status == 'assigned') ...[
+                  // ระหว่างเช็คสถานะรูปยืนยัน แสดง loader กันปุ่มกระพริบ (ถ่ายรูปยืนยัน → เริ่มสำรวจ)
+                  if (_checkingArrival)
+                    const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
                   // ถ่ายรูปยืนยันถึงที่เกิดเหตุ
-                  if (!_arrivalConfirmed) ...[
+                  else if (!_arrivalConfirmed) ...[
                     if (_arrivalPhotoPath != null && _uploadingArrival)
                       const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
                     else if (_arrivalPhotoPath != null)
