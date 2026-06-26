@@ -111,10 +111,21 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         final List photos = res.data['data'] ?? [];
         if (photos.isNotEmpty && mounted) {
           final filePath = photos.last['file_path']?.toString() ?? '';
-          setState(() {
-            _arrivalConfirmed = true;
-            _arrivalPhotoUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
-          });
+          final url = '${ApiConfig.baseUrl}/uploads/$filePath';
+          // โหลดรูปล่วงหน้าให้เสร็จก่อนแสดง เพื่อไม่ให้กล่องยืนยันขยาย-หดตอนรูปโหลด/พลาด
+          bool imgOk = false;
+          if (mounted) {
+            try {
+              await precacheImage(NetworkImage(url), context);
+              imgOk = true;
+            } catch (_) {}
+          }
+          if (mounted) {
+            setState(() {
+              _arrivalConfirmed = true;
+              if (imgOk) _arrivalPhotoUrl = url; // ตั้ง URL เฉพาะรูปที่โหลดได้จริง (พลาด=โชว์แค่ข้อความยืนยัน ไม่เด้ง)
+            });
+          }
         }
       }
     } catch (_) {
