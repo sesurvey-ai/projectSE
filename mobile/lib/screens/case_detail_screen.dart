@@ -26,7 +26,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   bool _arrivalConfirmed = false;
   bool _checkingArrival = true; // กำลังเช็คว่าเคยถ่ายรูปยืนยันถึงที่เกิดเหตุไว้แล้วหรือยัง (กันปุ่มกระพริบ arrival→survey)
   String? _arrivalPhotoPath;
-  String? _arrivalPhotoUrl;
   bool _uploadingArrival = false;
   final _picker = ImagePicker();
 
@@ -109,23 +108,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       final res = await apiService.getArrivalPhotos(widget.caseId);
       if (res.data['success'] == true) {
         final List photos = res.data['data'] ?? [];
+        // มี record arrival = ยืนยันถึงที่เกิดเหตุแล้ว — ไม่ดึงรูปจาก server
+        // (ไฟล์รูปจริงยังไม่ถูกอัปโหลดจนกว่าจะส่งงาน → URL จะ 404 ในสถานะนี้เสมอ)
         if (photos.isNotEmpty && mounted) {
-          final filePath = photos.last['file_path']?.toString() ?? '';
-          final url = '${ApiConfig.baseUrl}/uploads/$filePath';
-          // โหลดรูปล่วงหน้าให้เสร็จก่อนแสดง เพื่อไม่ให้กล่องยืนยันขยาย-หดตอนรูปโหลด/พลาด
-          bool imgOk = false;
-          if (mounted) {
-            try {
-              await precacheImage(NetworkImage(url), context);
-              imgOk = true;
-            } catch (_) {}
-          }
-          if (mounted) {
-            setState(() {
-              _arrivalConfirmed = true;
-              if (imgOk) _arrivalPhotoUrl = url; // ตั้ง URL เฉพาะรูปที่โหลดได้จริง (พลาด=โชว์แค่ข้อความยืนยัน ไม่เด้ง)
-            });
-          }
+          setState(() => _arrivalConfirmed = true);
         }
       }
     } catch (_) {
@@ -501,25 +487,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                               ],
                             ),
                           ),
+                          // โชว์รูป local เฉพาะตอนเพิ่งถ่ายใน session นี้ (server ไม่มีรูปจนกว่าจะส่งงาน)
                           if (_arrivalPhotoPath != null)
                             ClipRRect(
                               borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
                               child: Image.file(File(_arrivalPhotoPath!), height: 180, width: double.infinity, fit: BoxFit.cover),
-                            )
-                          else if (_arrivalPhotoUrl != null)
-                            ClipRRect(
-                              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-                              child: Image.network(
-                                _arrivalPhotoUrl!,
-                                height: 180,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, progress) {
-                                  if (progress == null) return child;
-                                  return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
-                                },
-                                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                              ),
                             ),
                         ],
                       ),
