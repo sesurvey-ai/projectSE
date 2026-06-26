@@ -208,6 +208,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
 
   void _showBuddhistDatePicker() {
+    // ปล่อย focus ของช่องข้อความที่ค้างอยู่ ก่อนเปิด bottom sheet → ปิดแล้วไม่เด้ง focus/คีย์บอร์ดกลับ
+    FocusManager.instance.primaryFocus?.unfocus();
     final now = DateTime.now();
     final thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
     int selDay = now.day;
@@ -816,6 +818,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         isDense: true,
       ),
       items: options.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 13)))).toList(),
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: editable ? (v) {
         if (v != null) {
           if (fieldKey != null) _set(fieldKey, v);
@@ -843,6 +846,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         isDense: true,
       ),
       items: items.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 13)))).toList(),
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: fieldKey != null ? (v) {
         if (v != null) {
           _set(fieldKey, v);
@@ -873,6 +877,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         isDense: true,
       ),
       items: items.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 13)))).toList(),
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: fieldKey != null ? (v) { if (v != null) _set(fieldKey, v); } : null,
     );
   }

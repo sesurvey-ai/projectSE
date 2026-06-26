@@ -99,6 +99,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
     int selMonth = initial.month;
     int selYearBE = (initial.year + 543).clamp(minYearBE, maxYearBE);
 
+    // ปล่อย focus ของช่องข้อความที่ค้างอยู่ ก่อนเปิด bottom sheet → ปิดแล้วไม่เด้ง focus/คีย์บอร์ดกลับ
+    FocusManager.instance.primaryFocus?.unfocus();
     return showModalBottomSheet<DateTime>(
       context: context,
       backgroundColor: Colors.white,

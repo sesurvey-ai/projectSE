@@ -62,6 +62,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   void _showBuddhistDatePicker() {
+    // ปล่อย focus ของช่องข้อความที่ค้างอยู่ ก่อนเปิด bottom sheet → ปิดแล้วไม่เด้ง focus/คีย์บอร์ดกลับ
+    FocusManager.instance.primaryFocus?.unfocus();
     final now = DateTime.now();
     final thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
     int selDay = now.day;
@@ -1114,6 +1116,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       decoration: _dec(label),
       hint: Text(hint, style: const TextStyle(fontSize: 14.5, color: _muted2)),
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
+      // ปล่อย focus ของช่องข้อความที่ค้างอยู่ก่อนเปิดเมนู → พอเลือกเสร็จเมนูปิด จะไม่เด้ง focus/คีย์บอร์ดกลับช่องเดิม
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: onChanged,
     );
   }
@@ -1135,6 +1139,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         DropdownMenuItem(value: 'W', child: Text('รถบรรทุก', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'O', child: Text('รถอื่นๆ', style: TextStyle(fontSize: 14.5))),
       ],
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _carType = v!),
     );
   }
@@ -1154,6 +1159,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         DropdownMenuItem(value: 'FCEV', child: Text('FCEV', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'MEV', child: Text('MEV ดัดแปลง', style: TextStyle(fontSize: 14.5))),
       ],
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _evType = v ?? ''),
     );
   }
@@ -1172,6 +1178,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         DropdownMenuItem(value: 'รอการนัดหมาย', child: Text('รอการนัดหมาย', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'มีการนัดหมาย', child: Text('มีการนัดหมาย', style: TextStyle(fontSize: 14.5))),
       ],
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _accFollowup = v ?? 'ไม่มีการนัดหมาย'),
     );
   }
@@ -1189,6 +1196,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         DropdownMenuItem(value: 'ชาย', child: Text('ชาย', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'หญิง', child: Text('หญิง', style: TextStyle(fontSize: 14.5))),
       ],
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) {
         setState(() {
           _driverGender = v == 'ชาย' ? 'M' : v == 'หญิง' ? 'F' : '';
@@ -1218,6 +1226,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         DropdownMenuItem(value: 'ด.ญ.', child: Text('ด.ญ.', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'คุณ', child: Text('คุณ', style: TextStyle(fontSize: 14.5))),
       ],
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _driverTitle = v ?? '0'),
     );
   }
@@ -1372,6 +1381,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _line)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _primary, width: 1.5)),
                 ),
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
                 onChanged: (v) => _updateDamageItem(i, 'part', v),
               ),
               const SizedBox(height: 8),
