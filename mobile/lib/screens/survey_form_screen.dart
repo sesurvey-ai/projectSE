@@ -649,7 +649,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           return Stack(
             children: [
               SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
+                padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -947,7 +947,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── bottom save bar ──
   Widget _savebar(CaseProvider cp) {
     return Container(
-      padding: EdgeInsets.fromLTRB(14, 12, 14, 12 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(8, 12, 8, 12 + MediaQuery.of(context).padding.bottom),
       decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: _line))),
       child: Row(children: [
         Expanded(
@@ -992,7 +992,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return Container(
       key: _secKeys[idx],
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
       decoration: BoxDecoration(
         color: _cardBg,
         borderRadius: BorderRadius.circular(20),
@@ -1026,7 +1026,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final out = <Widget>[];
     for (var i = 0; i < items.length; i++) {
       out.add(items[i]);
-      if (i < items.length - 1) out.add(const SizedBox(height: 11));
+      if (i < items.length - 1) out.add(const SizedBox(height: 8));
     }
     return out;
   }

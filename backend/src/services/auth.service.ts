@@ -8,7 +8,7 @@ import { UnauthorizedError } from '../middleware/errorHandler';
 export const authService = {
   async login(username: string, password: string) {
     const result = await db.query(
-      'SELECT id, username, password_hash, first_name, last_name, role, is_active FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1',
+      'SELECT id, username, password_hash, first_name, last_name, role, code, is_active FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1',
       [username]
     );
 

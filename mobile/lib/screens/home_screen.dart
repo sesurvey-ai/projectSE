@@ -58,7 +58,10 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final name = user == null ? '' : '${user.firstName} ${user.lastName}'.trim();
+    // รหัสพนักงานนำหน้าชื่อ สไตล์เดียวกับชื่อ เช่น "SE480 นพพร แสงแก้ว"
+    final name = user == null
+        ? ''
+        : '${user.code.isNotEmpty ? '${user.code} ' : ''}${user.firstName} ${user.lastName}'.trim();
 
     return Scaffold(
       backgroundColor: _bg,
