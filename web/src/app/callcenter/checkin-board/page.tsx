@@ -11,6 +11,7 @@ import { ROSTER_JUN } from '../../duty-demo2/roster-jun';
 const REGIONS = [
   { key: 'bkk', label: 'กรุงเทพฯ' },
   { key: 'pmt', label: 'ปริมณฑล' },
+  { key: 'upc', label: 'ต่างจังหวัด' },
 ];
 const CENTERS: { id: string; name: string; region: string }[] = [
   { id: 'ladprao', name: 'ลาดพร้าว', region: 'bkk' },
@@ -27,6 +28,99 @@ const CENTERS: { id: string; name: string; region: string }[] = [
   { id: 'pakkret', name: 'ปากเกร็ด', region: 'pmt' },
   { id: 'nonthaburi', name: 'นนทบุรี', region: 'pmt' },
   { id: 'samutprakan', name: 'สมุทรปราการ', region: 'pmt' },
+];
+
+// ── จุดประจำต่างจังหวัด (ยังไม่จัดเวร) — สกัดจาก captures-20260627.xlsx (พนักงาน SEC) ──
+// แต่ละจังหวัด = การ์ด, staff = พนักงานสำรวจในจังหวัดนั้น (ยังไม่กำหนดเวร) — เรียงตามจำนวนคน
+const PROVINCES: { id: string; name: string; staff: { code: string; name: string }[] }[] = [
+  { id: 'chonburi', name: 'ชลบุรี', staff: [
+    { code: 'SEC218', name: 'สุธี ขัติยศ' },
+    { code: 'SEC356', name: 'เกียรติศักดิ์ จำทุ่งวัง' },
+    { code: 'SEC463', name: 'ภัทรา จันทร์กลาง' },
+    { code: 'SEC432', name: 'นนทิกาญจน์ อังคะนาวิน' },
+    { code: 'SEC343', name: 'มี วงษ์สุวรรณ' },
+    { code: 'SEC125', name: 'สมภพ ปั้นเปรื่อง' },
+    { code: 'SEC148', name: 'ฐนกร สดใส' },
+    { code: 'SEC264', name: 'บุญศิริ ดีแก้ว' },
+    { code: 'SEC189', name: 'บูรณะ ไชยศรีรัมย์' },
+    { code: 'SEC212', name: 'สุธิชา วันเสี่ยน' },
+    { code: 'SEC303', name: 'สมพงษ์ สีพิลา' },
+    { code: 'SEC387', name: 'สุทัศน์ ปั้นเหน่ง' },
+    { code: 'SEC481', name: 'อนุสรณ์ เกษมีฤทธิ์' },
+  ] },
+  { id: 'rayong', name: 'ระยอง', staff: [
+    { code: 'SEC473', name: 'วิจักร์ ครวญหา' },
+    { code: 'SEC455', name: 'กิตติศักดิ์ สุวรรณวัฒน์' },
+    { code: 'SEC216', name: 'อัศวิน บุญชู' },
+    { code: 'SEC340', name: 'อุดม ทองไชย' },
+  ] },
+  { id: 'nakhonratchasima', name: 'นครราชสีมา', staff: [
+    { code: 'SEC452', name: 'ธนกร ประไพ' },
+    { code: 'SEC223', name: 'ภาสพงศ์ ถิ่นโพธิ์วงษ์' },
+    { code: 'SEC431', name: 'สุวิชาญ สัตย์ซื่อ' },
+    { code: 'SEC315', name: 'สุภพงศ์ เพ็งเพ็ชร' },
+  ] },
+  { id: 'saraburi', name: 'สระบุรี', staff: [
+    { code: 'SEC470', name: 'รังสิมันตุ์ ดีธรรมะ' },
+    { code: 'SEC475', name: 'อัฒฑวินทร์ สำราญจิตร' },
+    { code: 'SEC462', name: 'สมประสงค์ โคตรวงศ์' },
+    { code: 'SEC403', name: 'สุริยา ชอบรัมย์' },
+  ] },
+  { id: 'chachoengsao', name: 'ฉะเชิงเทรา', staff: [
+    { code: 'SEC147', name: 'ชัยวัฒน์ วัชรเดชาพิสิทธิ์' },
+    { code: 'SEC304', name: 'ฐปนพงษ์ ชุมจินดา' },
+    { code: 'SEC383', name: 'ศุภชัย ออมสมสวย' },
+  ] },
+  { id: 'ayutthaya', name: 'พระนครศรีอยุธยา', staff: [
+    { code: 'SEC300', name: 'ณัฐพัสธร จันทร์จอม' },
+    { code: 'SEC244', name: 'ชินพันธ์ ทองโคตร' },
+    { code: 'SEC360', name: 'ภคพงษ์ เฉลิมฤกษ์' },
+  ] },
+  { id: 'khonkaen', name: 'ขอนแก่น', staff: [
+    { code: 'SEC380', name: 'กฤติเดช เสริมศรีทอง' },
+    { code: 'SEC404', name: 'ทีคิสพงศ์ กองบาง' },
+    { code: 'SEC472', name: 'อุเทน คงพรม' },
+  ] },
+  { id: 'chiangmai', name: 'เชียงใหม่', staff: [
+    { code: 'SEC313', name: 'วีรวิชญ์ ฐิติยาปราโมทย์' },
+    { code: 'SEC202', name: 'สมเกียรติ ฟักน่วม' },
+    { code: 'SEC238', name: 'ไกรสร และเชอะ' },
+  ] },
+  { id: 'songkhla', name: 'สงขลา', staff: [
+    { code: 'SEC444', name: 'นพรัตน์ วิมลมิ่ง' },
+    { code: 'SEC474', name: 'ธีระ บัวหลวง' },
+    { code: 'SEC471', name: 'มะตอเฮร์ กียะ' },
+  ] },
+  { id: 'phuket', name: 'ภูเก็ต', staff: [
+    { code: 'SEC386', name: 'จีรยุทธ แสนบอโด' },
+    { code: 'SEC411', name: 'พิฐากร อ่อนชื่นจิตร' },
+    { code: 'SEC434', name: 'ก้องภพ พาร์คเฮาส์' },
+  ] },
+  { id: 'chanthaburi', name: 'จันทบุรี', staff: [
+    { code: 'SEC454', name: 'เอกธนัช จันทะรศ' },
+    { code: 'SEC311', name: 'วุฒิศักดิ์ ชูแสง' },
+  ] },
+  { id: 'kanchanaburi', name: 'กาญจนบุรี', staff: [
+    { code: 'SEC372', name: 'ประกอบ รัตนวรรณ' },
+    { code: 'SEC451', name: 'ปิยะณัฐ เอี่ยมโสภณ' },
+  ] },
+  { id: 'ubonratchathani', name: 'อุบลราชธานี', staff: [
+    { code: 'SEC398', name: 'รุ่งอรุณ ยามพูล' },
+    { code: 'SEC359', name: 'กนกวรรณ บุญธรรม' },
+  ] },
+  { id: 'nakhonsithammarat', name: 'นครศรีธรรมราช', staff: [
+    { code: 'SEC358', name: 'อุดมศักดิ์ ชนะคช' },
+    { code: 'SEC352', name: 'ประยูร เนียมจันทร์' },
+  ] },
+  { id: 'suphanburi', name: 'สุพรรณบุรี', staff: [
+    { code: 'SEC283', name: 'ณัฐพัชร์ เกิดจรัส' },
+  ] },
+  { id: 'sakaeo', name: 'สระแก้ว', staff: [
+    { code: 'SEC71', name: 'ถนอมศักดิ์ แวทไธสง' },
+  ] },
+  { id: 'phitsanulok', name: 'พิษณุโลก', staff: [
+    { code: 'SEC423', name: 'สมชาติ หอมมาลา' },
+  ] },
 ];
 type Band = 'morning' | 'afternoon' | 'night' | 'fix8' | 'fix10' | 'fix14' | 'offday';
 const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix8', 'fix10', 'fix14', 'offday'];
@@ -314,6 +408,61 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
   );
 }
 
+// ── การ์ดต่างจังหวัด (ยังไม่จัดเวร) — แสดงรายชื่อพนักงานในจังหวัด ยังไม่มีเวร/เช็คอิน ──
+// staff ต่างจังหวัด + สถานะจากการลงเวลา (overlay) — ยังไม่จัดเวร แต่เช็คอินแล้วขึ้นเขียว
+type PStaff = { code: string; name: string; status: Status; t: string; tOut: string; photo: string | null; leaveType?: string };
+
+function ProvincePersonRow({ s }: { s: PStaff }) {
+  const timeText = s.status === 'done' ? `${s.t || '—'} – ${s.tOut || '—'}`
+    : s.status === 'present' ? (s.t || '—')
+    : s.status === 'leave' ? (LEAVE_LABEL[s.leaveType || ''] || 'ลา')
+    : 'ยังไม่จัดเวร';
+  return (
+    <div className={`lpc-person ${s.status}`}>
+      <span className="lpc-av">
+        <span className="lpc-av-ring"><AttAvatar photo={s.photo} name={s.name} /></span>
+        {arrived(s.status) && <span className="lpc-av-badge">✓</span>}
+      </span>
+      <span className="lpc-main">
+        <span className="lpc-r1">
+          <span className="lpc-code mono">{s.code}</span>
+          <span className="lpc-name">{s.name}</span>
+          <span className="lpc-rt">
+            <span className={`lpc-time ${s.status}`}>{timeText}</span>
+            <span className="lpc-badges">
+              {s.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }} title="เช็คอินแล้ว (ยังไม่จัดเวร = อาสา)">อาสา</span>}
+              {s.status === 'leave' && <span className="lpc-shbadge" style={{ color: '#b45309', background: '#fffbeb', borderColor: '#fcd34d' }}>{LEAVE_LABEL[s.leaveType || ''] || 'ลา'}</span>}
+              {s.status === 'pending' && <span className="lpc-shbadge" style={{ color: '#64748b', background: '#f1f5f9', borderColor: '#cbd5e1' }} title="ยังไม่ได้กำหนดเวร">ยังไม่จัดเวร</span>}
+            </span>
+          </span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function ProvinceCard({ name, staff }: { name: string; staff: PStaff[] }) {
+  const came = staff.filter((s) => arrived(s.status)).length;
+  const onLeave = staff.filter((s) => s.status === 'leave').length;
+  return (
+    <div className="lpc">
+      <div className="lpc-head">
+        <div className="lpc-htitle"><h3 className="lpc-name-h">{name}</h3></div>
+        <div className="lpc-counts">
+          <span className="lpc-count ok"><b>{came}</b> เช็คอิน</span>
+          <span className="lpc-count wait"><b>{staff.length - came - onLeave}</b> ยังไม่มา</span>
+          {onLeave > 0 && <span className="lpc-count leave"><b>{onLeave}</b> ลา</span>}
+        </div>
+      </div>
+      <div className="lpc-body">
+        <div className="lpc-shift">
+          {staff.map((s) => <ProvincePersonRow key={s.code + s.name} s={s} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Field2({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (<div className="lpc-field"><div className="lpc-fl">{label}</div><div className={'lpc-fv' + (mono ? ' mono' : '')}>{value}</div></div>);
 }
@@ -553,6 +702,32 @@ export default function CallcenterAttendancePage() {
     return m;
   }, [leaves]);
 
+  // ── ต่างจังหวัด: index การลงเวลา + ลา จับคู่ด้วย "รหัสเต็ม/username" (กัน SEC/SE เลขชนกัน ไม่เหมือนบอร์ดเดิมที่ใช้เลขล้วน) ──
+  const provAtt = useMemo(() => {
+    type Rec = { in: string; out: string | null; open: boolean; photo: string | null; pin: string };
+    const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
+    const byKey: Record<string, Rec> = {};
+    const merge = (key: string, inT: string, outT: string | null, photo: string | null) => {
+      if (!key) return;
+      const ex = byKey[key];
+      if (!ex) { byKey[key] = { in: inT, out: outT, open: !outT, photo, pin: photo ? inT : '' }; return; }
+      if (inT && (!ex.in || inT < ex.in)) ex.in = inT;
+      if (outT && (!ex.out || outT > ex.out)) ex.out = outT;
+      if (!outT) ex.open = true;
+      if (photo && inT >= ex.pin) { ex.photo = photo; ex.pin = inT; }
+    };
+    att.filter((r) => r.work_date === date && r.check_in_time).forEach((r) => {
+      const inT = r.check_in_time || '';
+      const outT = r.check_out_time || null;
+      const photo = r.check_in_photo || null;
+      if (r.code) merge(norm(r.code), inT, outT, photo);          // จับด้วยรหัส (SEC218)
+      if (r.username) merge(norm(r.username), inT, outT, photo);  // และ username (sec218 → SEC218)
+    });
+    const leaveByFull: Record<string, string> = {};
+    leaves.forEach((l) => { if (l.code) leaveByFull[norm(l.code)] = l.leave_type || 'other'; });
+    return { byKey, leaveByFull, norm };
+  }, [att, date, leaves]);
+
   // รวมรายชื่อจากตาราง (DB ทับ seed) ของวันที่เลือก → ใส่สถานะจากการลงเวลา
   const allPeople = useMemo(() => {
     const D = Number(date.split('-')[2]);
@@ -602,6 +777,8 @@ export default function CallcenterAttendancePage() {
   const unmatched = useMemo(() => {
     const codes = new Set<string>();
     const names = new Set<string>();
+    const fullCodes = new Set<string>();   // รหัสเต็มต่างจังหวัด — จับแบบไม่ยุบเลข (กัน SEC/SE ชนกัน)
+    const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
     for (const c of CENTERS) {
       const db = dbByCenter[c.id];
       if (db && db.staff?.length) {
@@ -611,18 +788,26 @@ export default function CallcenterAttendancePage() {
         if (seed) seed.people.forEach((pp) => { const k = onlyDigits(pp.code); if (k) codes.add(k); const n = (pp.name || '').trim(); if (n) names.add(n); });
       }
     }
-    const seen = new Set<string>();
-    const orphans: { code: string; name: string; t: string }[] = [];
+    for (const pv of PROVINCES) pv.staff.forEach((s) => { fullCodes.add(norm(s.code)); const n = (s.name || '').trim(); if (n) names.add(n); });
+    type Orphan = { code: string; name: string; in: string; out: string | null; open: boolean; photo: string | null; pin: string };
+    const byKey: Record<string, Orphan> = {};
     att.filter((r) => r.work_date === date && r.check_in_time).forEach((r) => {
       const cd = onlyDigits(r.code || r.username || '');
       const nm = (r.user_name || '').trim();
-      if ((cd && codes.has(cd)) || (nm && names.has(nm))) return; // จับคู่ได้ → อยู่บนบอร์ดแล้ว
-      const key = cd || nm || String(r.user_id);
-      if (seen.has(key)) return;
-      seen.add(key);
-      orphans.push({ code: r.code || r.username || '—', name: nm || '(ไม่มีชื่อ)', t: r.check_in_time || '' });
+      const full = norm(r.code || r.username || '');
+      if ((cd && codes.has(cd)) || (full && fullCodes.has(full)) || (nm && names.has(nm))) return; // จับคู่ได้ → อยู่บนบอร์ดแล้ว (รวมต่างจังหวัด)
+      const key = full || nm || String(r.user_id);
+      const inT = r.check_in_time || '';
+      const outT = r.check_out_time || null;
+      const photo = r.check_in_photo || null;
+      const ex = byKey[key];
+      if (!ex) { byKey[key] = { code: r.code || r.username || '—', name: nm || '(ไม่มีชื่อ)', in: inT, out: outT, open: !outT, photo, pin: photo ? inT : '' }; return; }
+      if (inT && (!ex.in || inT < ex.in)) ex.in = inT;
+      if (outT && (!ex.out || outT > ex.out)) ex.out = outT;
+      if (!outT) ex.open = true;
+      if (photo && inT >= ex.pin) { ex.photo = photo; ex.pin = inT; }
     });
-    return orphans;
+    return Object.values(byKey);
   }, [att, date, dbByCenter]);
 
   // รหัส SE ที่ซ้ำในตารางเวรที่กำลังแสดง (รหัสเดียวอยู่หลายจุด/แถว) — เป็นความผิดพลาดในไฟล์เวร
@@ -673,6 +858,47 @@ export default function CallcenterAttendancePage() {
       return { rk: rg.key, label: rg.label, stations, total: rows.length };
     }).filter((g) => g.stations.length);
   }, [filtered, sortMode]);
+
+  // ── ต่างจังหวัด: รายชื่อพนักงานตามจังหวัด (ยังไม่จัดเวร) — static list, กรองด้วยค้นหา/ภูมิภาค/สถานะ ──
+  const provinceGroups = useMemo(() => {
+    if (region !== 'all' && region !== 'upc') return [];   // เลือก กทม./ปริมณฑล → ไม่โชว์ต่างจังหวัด
+    if (shift !== 'all') return [];                        // จังหวัดยังไม่มีเวร → ซ่อนเมื่อกรองเวร
+    const term = q.trim().toLowerCase();
+    return PROVINCES.map((pv) => {
+      let staff: PStaff[] = pv.staff.map((s) => {
+        const rec = provAtt.byKey[provAtt.norm(s.code)];                          // จับด้วยรหัสเต็ม
+        const leaveType = !rec ? provAtt.leaveByFull[provAtt.norm(s.code)] : undefined;
+        const status: Status = rec ? (rec.open ? 'present' : 'done') : leaveType ? 'leave' : 'pending';
+        return {
+          code: s.code, name: s.name, status,
+          t: rec?.in || '', tOut: rec && !rec.open ? (rec.out || '') : '',
+          photo: rec?.photo || null, leaveType: status === 'leave' ? leaveType : undefined,
+        };
+      });
+      if (term) staff = staff.filter((s) => `${s.code} ${s.name} ${pv.name}`.toLowerCase().includes(term));
+      if (statusF !== 'all') staff = staff.filter((s) => statusF === 'present' ? arrived(s.status) : s.status === statusF);
+      const rank = (x: PStaff) => x.status === 'present' ? 0 : x.status === 'done' ? 1 : x.status === 'leave' ? 2 : 3;
+      staff.sort((a, b) => rank(a) - rank(b) || (a.t || '').localeCompare(b.t || '')); // เช็คอินแล้วขึ้นก่อน
+      return { id: pv.id, name: pv.name, staff };
+    }).filter((g) => g.staff.length);
+  }, [region, shift, statusF, q, provAtt]);
+
+  // ── ไม่ระบุจุด: คนเช็คอินที่จับคู่จุด/จังหวัดไม่ได้ → การ์ดรวม (มาจาก unmatched) ผูกจุดแล้วย้ายออกเอง ──
+  const unassignedStaff = useMemo<PStaff[]>(() => {
+    if (region !== 'all') return [];   // โชว์เฉพาะมุมมองรวม (ไม่รบกวนตอนกรองภูมิภาค)
+    if (shift !== 'all') return [];     // ไม่มีเวร → ซ่อนเมื่อกรองเวร
+    const term = q.trim().toLowerCase();
+    let staff: PStaff[] = unmatched.map((o) => ({
+      code: o.code, name: o.name,
+      status: (o.open ? 'present' : 'done') as Status,
+      t: o.in || '', tOut: o.open ? '' : (o.out || ''),
+      photo: o.photo || null,
+    }));
+    if (term) staff = staff.filter((s) => `${s.code} ${s.name}`.toLowerCase().includes(term));
+    if (statusF !== 'all') staff = staff.filter((s) => statusF === 'present' ? arrived(s.status) : s.status === statusF);
+    staff.sort((a, b) => (a.t || '').localeCompare(b.t || ''));
+    return staff;
+  }, [unmatched, region, shift, statusF, q]);
 
   const shiftChips: { k: 'all' | Band | 'fix'; label: string }[] = [
     { k: 'all', label: 'ทุกเวร' }, { k: 'morning', label: 'เวร1' }, { k: 'afternoon', label: 'เวร2' }, { k: 'night', label: 'เวร3' }, { k: 'fix', label: 'FIX' },
@@ -743,46 +969,61 @@ export default function CallcenterAttendancePage() {
         </div>
       )}
 
-      {unmatched.length > 0 && (
-        <div style={{ margin: '12px 28px 0', padding: '9px 14px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, color: '#9a3412', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>⚠ {unmatched.length} เช็คอินไม่พบในตารางเวร</span>
-          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-            {unmatched.slice(0, 10).map((o, i) => (
-              <span key={i} style={{ background: '#ffedd5', border: '1px solid #fed7aa', borderRadius: 8, padding: '1px 8px', fontSize: 12.5 }}>
-                {o.name}{onlyDigits(o.code) ? <> · <span className="mono">{o.code}</span></> : ''} <span className="mono" style={{ color: '#b45309' }}>{o.t}</span>
-              </span>
-            ))}
-            {unmatched.length > 10 && <span style={{ color: '#b45309', fontSize: 12.5 }}>…อีก {unmatched.length - 10}</span>}
-          </span>
-          <span style={{ color: '#c2731e', fontSize: 12, whiteSpace: 'nowrap' }}>ตรวจรหัส SE/ชื่อให้ตรงกับบัญชีแอป</span>
-        </div>
-      )}
+      {/* แถบเตือน unmatched เดิม → ย้ายเป็นการ์ด "ไม่ระบุจุด" ท้ายบอร์ดแล้ว */}
 
       <main className="board">
         {loading ? (
           <div className="empty">กำลังโหลด…</div>
-        ) : regionGroups.length === 0 ? (
+        ) : (regionGroups.length === 0 && provinceGroups.length === 0 && unassignedStaff.length === 0) ? (
           <div className="empty">ไม่พบรายการที่ตรงกับเงื่อนไข<br /><span style={{ fontSize: 13 }}>ตารางเวรของวันนี้ว่าง — จัดเวรได้ที่หน้า &quot;ตารางเวรประจำจุด&quot;</span></div>
         ) : (
-          regionGroups.map((g) => (
-            <section key={g.rk} className="region">
-              <div className="region-head">
-                <h2>{g.label}</h2>
-                <span className="region-meta mono">{g.stations.length} จุด · {g.total} คน</span>
-                <div className="shift-legend">
-                  {SHIFT_LEGEND.map((s) => (
-                    <span className="leg-item" key={s.label}><span className="leg-dot" style={{ background: s.dot }} />{s.label}</span>
+          <>
+            {regionGroups.map((g) => (
+              <section key={g.rk} className="region">
+                <div className="region-head">
+                  <h2>{g.label}</h2>
+                  <span className="region-meta mono">{g.stations.length} จุด · {g.total} คน</span>
+                  <div className="shift-legend">
+                    {SHIFT_LEGEND.map((s) => (
+                      <span className="leg-item" key={s.label}><span className="leg-dot" style={{ background: s.dot }} />{s.label}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="cardgrid">
+                  {/* ทุกจุด (กรุงเทพฯ + ปริมณฑล) ใช้การ์ด + ลำดับความสำคัญแบบใหม่เหมือนกัน */}
+                  {g.stations.map((st) => (
+                    <LadpraoCard key={st.name} name={st.name} people={st.people} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
                   ))}
                 </div>
-              </div>
-              <div className="cardgrid">
-                {/* ทุกจุด (กรุงเทพฯ + ปริมณฑล) ใช้การ์ด + ลำดับความสำคัญแบบใหม่เหมือนกัน */}
-                {g.stations.map((st) => (
-                  <LadpraoCard key={st.name} name={st.name} people={st.people} onOpen={setLpSel} onToast={showToast} selected={lpSel} />
-                ))}
-              </div>
-            </section>
-          ))
+              </section>
+            ))}
+            {provinceGroups.length > 0 && (
+              <section className="region">
+                <div className="region-head">
+                  <h2>ต่างจังหวัด</h2>
+                  <span className="region-meta mono">{provinceGroups.length} จังหวัด · {provinceGroups.reduce((n, g) => n + g.staff.length, 0)} คน</span>
+                  <span className="prov-note">ยังไม่จัดเวร · รายชื่อพนักงานสำรวจตามจังหวัด</span>
+                </div>
+                <div className="cardgrid">
+                  {provinceGroups.map((pv) => (
+                    <ProvinceCard key={pv.id} name={pv.name} staff={pv.staff} />
+                  ))}
+                </div>
+              </section>
+            )}
+            {unassignedStaff.length > 0 && (
+              <section className="region">
+                <div className="region-head">
+                  <h2>ไม่ระบุจุด</h2>
+                  <span className="region-meta mono">{unassignedStaff.length} คน · เช็คอินแต่ยังไม่อยู่จุด/จังหวัดใด</span>
+                  <span className="prov-note">ผูกเข้าจุด/จังหวัดแล้วจะย้ายออกเอง · ถ้ารหัส/ชื่อไม่ตรง ให้แก้ที่ตารางเวร</span>
+                </div>
+                <div className="cardgrid">
+                  <ProvinceCard name="ไม่ระบุจุด" staff={unassignedStaff} />
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 
@@ -852,6 +1093,7 @@ const ATB_CSS = `
 .atb .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .atb .region-head h2 { font-size: 17px; }
 .atb .region-meta { font-size: 13px; color: var(--muted); }
+.atb .prov-note { margin-left: auto; font-size: 12.5px; color: var(--muted); }
 .atb .cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
 
 .atb .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
