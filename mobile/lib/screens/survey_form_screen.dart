@@ -471,7 +471,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             PageView.builder(
               controller: PageController(initialPage: initialIndex),
               itemCount: urls.length,
-              itemBuilder: (context, index) => InteractiveViewer(child: Image.network(urls[index], fit: BoxFit.contain)),
+              itemBuilder: (context, index) => InteractiveViewer(
+                child: Image.network(
+                  urls[index],
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
+                  errorBuilder: (context, error, stackTrace) => const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.image_not_supported_outlined, color: Colors.white54, size: 48),
+                        SizedBox(height: 12),
+                        Text('ไม่พบรูปภาพ', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
             Positioned(
               top: MediaQuery.of(ctx).padding.top + 8,

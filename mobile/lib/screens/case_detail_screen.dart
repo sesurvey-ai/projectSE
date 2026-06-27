@@ -740,7 +740,22 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         child: Stack(
           children: [
             InteractiveViewer(
-              child: Image.network(imageUrl, fit: BoxFit.contain),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, progress) =>
+                    progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
+                errorBuilder: (context, error, stackTrace) => const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.image_not_supported_outlined, color: Colors.white54, size: 48),
+                      SizedBox(height: 12),
+                      Text('ไม่พบรูปภาพ', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ),
             ),
             Positioned(
               top: 8,
