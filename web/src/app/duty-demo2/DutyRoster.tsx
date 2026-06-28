@@ -549,16 +549,18 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
 
       {/* Zone tabs */}
       <div className="zones">
-        {REGIONS_Z.flatMap((rg) => [
-          <span key={rg.key} className="zone-head" style={{ '--dot': rg.dot, '--tint': rg.tint, '--rink': rg.ink } as React.CSSProperties}>{rg.label}</span>,
-          ...CENTERS.filter((c) => c.region === rg.key).map((c) => (
-            <button key={c.id} className={'zone' + (zoneId === c.id ? ' active' : '')}
-              style={{ '--ztint': rg.tint, '--zink': rg.ink, '--zdot': rg.dot } as React.CSSProperties}
-              onClick={() => { setZoneId(c.id); setConfirmId(null); }}>
-              {c.name}<span className="cnt">{dataByZone[c.id]?.staff.length ?? 0}</span>
-            </button>
-          )),
-        ])}
+        {REGIONS_Z.map((rg) => (
+          <div key={rg.key} className="zone-row">
+            <span className="zone-head" style={{ '--dot': rg.dot, '--tint': rg.tint, '--rink': rg.ink } as React.CSSProperties}>{rg.label}</span>
+            {CENTERS.filter((c) => c.region === rg.key).map((c) => (
+              <button key={c.id} className={'zone' + (zoneId === c.id ? ' active' : '')}
+                style={{ '--ztint': rg.tint, '--zink': rg.ink, '--zdot': rg.dot } as React.CSSProperties}
+                onClick={() => { setZoneId(c.id); setConfirmId(null); }}>
+                {c.name}<span className="cnt">{dataByZone[c.id]?.staff.length ?? 0}</span>
+              </button>
+            ))}
+          </div>
+        ))}
       </div>
 
       {/* Toolbar */}
@@ -756,7 +758,8 @@ const D2_CSS = `
 .d2 .month-chip button { width:28px; height:28px; border-radius:8px; border:1px solid var(--line-2); background:#fff; color:var(--ink-2); cursor:pointer; display:grid; place-items:center; transition:.15s; }
 .d2 .month-chip button:hover { background:var(--brand-soft); color:var(--brand-ink); border-color:#D6D8FB; }
 
-.d2 .zones { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:11px 26px; background:var(--surface); border-bottom:1px solid var(--line); }
+.d2 .zones { display:flex; flex-direction:column; align-items:stretch; gap:9px; padding:11px 26px; background:var(--surface); border-bottom:1px solid var(--line); }
+.d2 .zone-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .d2 .zone-head { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.04em; padding:5px 12px; border-radius:999px; text-transform:uppercase; color:var(--rink); background:var(--tint); }
 .d2 .zone-head::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--dot); flex:none; }
 .d2 .zone-head:not(:first-child) { margin-left:18px; }
