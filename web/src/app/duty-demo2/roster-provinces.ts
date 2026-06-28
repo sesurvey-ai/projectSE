@@ -1,0 +1,115 @@
+// พนักงานสำรวจต่างจังหวัด (SEC) — สกัดจาก captures-20260627.xlsx
+// ใช้ province id เป็น "center_id" ใน duty_schedules → จัดการ/จัดเวรได้จากหน้า DutyRoster เหมือนศูนย์ กทม.
+// แก้ไฟล์นี้ได้ด้วยมือ (ต่างจาก roster-jun.ts ที่ auto-extract); grid:[] = ยังไม่จัดเวร (ทุกวัน = 'none')
+
+export const PROVINCE_CENTERS: { id: string; name: string; region: 'upc' }[] = [
+  { id: 'chonburi', name: 'ชลบุรี', region: 'upc' },
+  { id: 'rayong', name: 'ระยอง', region: 'upc' },
+  { id: 'nakhonratchasima', name: 'นครราชสีมา', region: 'upc' },
+  { id: 'saraburi', name: 'สระบุรี', region: 'upc' },
+  { id: 'chachoengsao', name: 'ฉะเชิงเทรา', region: 'upc' },
+  { id: 'ayutthaya', name: 'พระนครศรีอยุธยา', region: 'upc' },
+  { id: 'khonkaen', name: 'ขอนแก่น', region: 'upc' },
+  { id: 'chiangmai', name: 'เชียงใหม่', region: 'upc' },
+  { id: 'songkhla', name: 'สงขลา', region: 'upc' },
+  { id: 'phuket', name: 'ภูเก็ต', region: 'upc' },
+  { id: 'chanthaburi', name: 'จันทบุรี', region: 'upc' },
+  { id: 'kanchanaburi', name: 'กาญจนบุรี', region: 'upc' },
+  { id: 'ubonratchathani', name: 'อุบลราชธานี', region: 'upc' },
+  { id: 'nakhonsithammarat', name: 'นครศรีธรรมราช', region: 'upc' },
+  { id: 'suphanburi', name: 'สุพรรณบุรี', region: 'upc' },
+  { id: 'sakaeo', name: 'สระแก้ว', region: 'upc' },
+  { id: 'phitsanulok', name: 'พิษณุโลก', region: 'upc' },
+];
+
+// seed เริ่มต้น (คน 54 + กริดว่าง) — shape เดียวกับ ROSTER_JUN เพื่อ merge เข้าด้วยกันได้
+export const PROVINCE_SEED: Record<string, { people: { code: string; name: string }[]; grid: string[][] }> = {
+  chonburi: { grid: [], people: [
+    { code: 'SEC218', name: 'สุธี ขัติยศ' },
+    { code: 'SEC356', name: 'เกียรติศักดิ์ จำทุ่งวัง' },
+    { code: 'SEC463', name: 'ภัทรา จันทร์กลาง' },
+    { code: 'SEC432', name: 'นนทิกาญจน์ อังคะนาวิน' },
+    { code: 'SEC343', name: 'มี วงษ์สุวรรณ' },
+    { code: 'SEC125', name: 'สมภพ ปั้นเปรื่อง' },
+    { code: 'SEC148', name: 'ฐนกร สดใส' },
+    { code: 'SEC264', name: 'บุญศิริ ดีแก้ว' },
+    { code: 'SEC189', name: 'บูรณะ ไชยศรีรัมย์' },
+    { code: 'SEC212', name: 'สุธิชา วันเสี่ยน' },
+    { code: 'SEC303', name: 'สมพงษ์ สีพิลา' },
+    { code: 'SEC387', name: 'สุทัศน์ ปั้นเหน่ง' },
+    { code: 'SEC481', name: 'อนุสรณ์ เกษมีฤทธิ์' },
+  ] },
+  rayong: { grid: [], people: [
+    { code: 'SEC473', name: 'วิจักร์ ครวญหา' },
+    { code: 'SEC455', name: 'กิตติศักดิ์ สุวรรณวัฒน์' },
+    { code: 'SEC216', name: 'อัศวิน บุญชู' },
+    { code: 'SEC340', name: 'อุดม ทองไชย' },
+  ] },
+  nakhonratchasima: { grid: [], people: [
+    { code: 'SEC452', name: 'ธนกร ประไพ' },
+    { code: 'SEC223', name: 'ภาสพงศ์ ถิ่นโพธิ์วงษ์' },
+    { code: 'SEC431', name: 'สุวิชาญ สัตย์ซื่อ' },
+    { code: 'SEC315', name: 'สุภพงศ์ เพ็งเพ็ชร' },
+  ] },
+  saraburi: { grid: [], people: [
+    { code: 'SEC470', name: 'รังสิมันตุ์ ดีธรรมะ' },
+    { code: 'SEC475', name: 'อัฒฑวินทร์ สำราญจิตร' },
+    { code: 'SEC462', name: 'สมประสงค์ โคตรวงศ์' },
+    { code: 'SEC403', name: 'สุริยา ชอบรัมย์' },
+  ] },
+  chachoengsao: { grid: [], people: [
+    { code: 'SEC147', name: 'ชัยวัฒน์ วัชรเดชาพิสิทธิ์' },
+    { code: 'SEC304', name: 'ฐปนพงษ์ ชุมจินดา' },
+    { code: 'SEC383', name: 'ศุภชัย ออมสมสวย' },
+  ] },
+  ayutthaya: { grid: [], people: [
+    { code: 'SEC300', name: 'ณัฐพัสธร จันทร์จอม' },
+    { code: 'SEC244', name: 'ชินพันธ์ ทองโคตร' },
+    { code: 'SEC360', name: 'ภคพงษ์ เฉลิมฤกษ์' },
+  ] },
+  khonkaen: { grid: [], people: [
+    { code: 'SEC380', name: 'กฤติเดช เสริมศรีทอง' },
+    { code: 'SEC404', name: 'ทีคิสพงศ์ กองบาง' },
+    { code: 'SEC472', name: 'อุเทน คงพรม' },
+  ] },
+  chiangmai: { grid: [], people: [
+    { code: 'SEC313', name: 'วีรวิชญ์ ฐิติยาปราโมทย์' },
+    { code: 'SEC202', name: 'สมเกียรติ ฟักน่วม' },
+    { code: 'SEC238', name: 'ไกรสร และเชอะ' },
+  ] },
+  songkhla: { grid: [], people: [
+    { code: 'SEC444', name: 'นพรัตน์ วิมลมิ่ง' },
+    { code: 'SEC474', name: 'ธีระ บัวหลวง' },
+    { code: 'SEC471', name: 'มะตอเฮร์ กียะ' },
+  ] },
+  phuket: { grid: [], people: [
+    { code: 'SEC386', name: 'จีรยุทธ แสนบอโด' },
+    { code: 'SEC411', name: 'พิฐากร อ่อนชื่นจิตร' },
+    { code: 'SEC434', name: 'ก้องภพ พาร์คเฮาส์' },
+  ] },
+  chanthaburi: { grid: [], people: [
+    { code: 'SEC454', name: 'เอกธนัช จันทะรศ' },
+    { code: 'SEC311', name: 'วุฒิศักดิ์ ชูแสง' },
+  ] },
+  kanchanaburi: { grid: [], people: [
+    { code: 'SEC372', name: 'ประกอบ รัตนวรรณ' },
+    { code: 'SEC451', name: 'ปิยะณัฐ เอี่ยมโสภณ' },
+  ] },
+  ubonratchathani: { grid: [], people: [
+    { code: 'SEC398', name: 'รุ่งอรุณ ยามพูล' },
+    { code: 'SEC359', name: 'กนกวรรณ บุญธรรม' },
+  ] },
+  nakhonsithammarat: { grid: [], people: [
+    { code: 'SEC358', name: 'อุดมศักดิ์ ชนะคช' },
+    { code: 'SEC352', name: 'ประยูร เนียมจันทร์' },
+  ] },
+  suphanburi: { grid: [], people: [
+    { code: 'SEC283', name: 'ณัฐพัชร์ เกิดจรัส' },
+  ] },
+  sakaeo: { grid: [], people: [
+    { code: 'SEC71', name: 'ถนอมศักดิ์ แวทไธสง' },
+  ] },
+  phitsanulok: { grid: [], people: [
+    { code: 'SEC423', name: 'สมชาติ หอมมาลา' },
+  ] },
+};

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { ROSTER_JUN } from './roster-jun';
+import { PROVINCE_CENTERS, PROVINCE_SEED } from './roster-provinces';
 
 // ── persistence: เซฟกริดลง DB จริงผ่าน backend /api/duty/schedule(s) ──
 // ใช้ fetch + token ตรง ๆ (เลี่ยง axios interceptor ที่ 401 แล้วเด้ง /login — หน้านี้ยังเปิดแบบไม่ล็อกอินได้)
@@ -32,6 +33,7 @@ const SHIFT_ORDER: ShiftKey[] = ['s1', 's2', 's3', 'fix8', 'fix10', 'fix14', 'of
 const REGIONS_Z = [
   { key: 'bkk', label: 'กรุงเทพ', dot: '#E11D48', tint: '#FFE4E6', ink: '#BE123C' },
   { key: 'pmt', label: 'ปริมณฑล', dot: '#0891B2', tint: '#CFFAFE', ink: '#0E7490' },
+  { key: 'upc', label: 'ต่างจังหวัด', dot: '#7C3AED', tint: '#EDE9FE', ink: '#6D28D9' },
 ];
 const CENTERS = [
   { id: 'ladprao', name: 'ลาดพร้าว', region: 'bkk' },
@@ -48,6 +50,7 @@ const CENTERS = [
   { id: 'pakkret', name: 'ปากเกร็ด', region: 'pmt' },
   { id: 'nonthaburi', name: 'นนทบุรี', region: 'pmt' },
   { id: 'samutprakan', name: 'สมุทรปราการ', region: 'pmt' },
+  ...PROVINCE_CENTERS,
 ];
 
 type Staff = { id: string; code: string; name: string };
@@ -74,10 +77,11 @@ function normalizeZone(z: ZoneData): ZoneData {
   return { staff: z.staff, schedule };
 }
 
+const ROSTER_ALL: Record<string, { people: { code: string; name: string }[]; grid: string[][] }> = { ...ROSTER_JUN, ...PROVINCE_SEED };
 function buildZoneData(): Record<string, ZoneData> {
   const out: Record<string, ZoneData> = {};
   for (const c of CENTERS) {
-    const raw = ROSTER_JUN[c.id];
+    const raw = ROSTER_ALL[c.id];
     if (!raw) { out[c.id] = { staff: [], schedule: {} }; continue; }
     const staff: Staff[] = raw.people.map((p, i) => ({ id: c.id + '_' + i, code: p.code, name: p.name }));
     const schedule: Record<string, Record<number, ShiftKey>> = {};

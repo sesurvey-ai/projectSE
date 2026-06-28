@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, CSSProperties } from 'react';
 import api, { getPhotoUrl } from '@/lib/api';
 import { ROSTER_JUN } from '../../duty-demo2/roster-jun';
+import { PROVINCE_CENTERS, PROVINCE_SEED } from '../../duty-demo2/roster-provinces';
 
 // ── ศูนย์/ภาค (ตรงกับ duty-demo2) ──
 const REGIONS = [
@@ -28,100 +29,12 @@ const CENTERS: { id: string; name: string; region: string }[] = [
   { id: 'pakkret', name: 'ปากเกร็ด', region: 'pmt' },
   { id: 'nonthaburi', name: 'นนทบุรี', region: 'pmt' },
   { id: 'samutprakan', name: 'สมุทรปราการ', region: 'pmt' },
+  ...PROVINCE_CENTERS,
 ];
 
-// ── จุดประจำต่างจังหวัด (ยังไม่จัดเวร) — สกัดจาก captures-20260627.xlsx (พนักงาน SEC) ──
-// แต่ละจังหวัด = การ์ด, staff = พนักงานสำรวจในจังหวัดนั้น (ยังไม่กำหนดเวร) — เรียงตามจำนวนคน
-const PROVINCES: { id: string; name: string; staff: { code: string; name: string }[] }[] = [
-  { id: 'chonburi', name: 'ชลบุรี', staff: [
-    { code: 'SEC218', name: 'สุธี ขัติยศ' },
-    { code: 'SEC356', name: 'เกียรติศักดิ์ จำทุ่งวัง' },
-    { code: 'SEC463', name: 'ภัทรา จันทร์กลาง' },
-    { code: 'SEC432', name: 'นนทิกาญจน์ อังคะนาวิน' },
-    { code: 'SEC343', name: 'มี วงษ์สุวรรณ' },
-    { code: 'SEC125', name: 'สมภพ ปั้นเปรื่อง' },
-    { code: 'SEC148', name: 'ฐนกร สดใส' },
-    { code: 'SEC264', name: 'บุญศิริ ดีแก้ว' },
-    { code: 'SEC189', name: 'บูรณะ ไชยศรีรัมย์' },
-    { code: 'SEC212', name: 'สุธิชา วันเสี่ยน' },
-    { code: 'SEC303', name: 'สมพงษ์ สีพิลา' },
-    { code: 'SEC387', name: 'สุทัศน์ ปั้นเหน่ง' },
-    { code: 'SEC481', name: 'อนุสรณ์ เกษมีฤทธิ์' },
-  ] },
-  { id: 'rayong', name: 'ระยอง', staff: [
-    { code: 'SEC473', name: 'วิจักร์ ครวญหา' },
-    { code: 'SEC455', name: 'กิตติศักดิ์ สุวรรณวัฒน์' },
-    { code: 'SEC216', name: 'อัศวิน บุญชู' },
-    { code: 'SEC340', name: 'อุดม ทองไชย' },
-  ] },
-  { id: 'nakhonratchasima', name: 'นครราชสีมา', staff: [
-    { code: 'SEC452', name: 'ธนกร ประไพ' },
-    { code: 'SEC223', name: 'ภาสพงศ์ ถิ่นโพธิ์วงษ์' },
-    { code: 'SEC431', name: 'สุวิชาญ สัตย์ซื่อ' },
-    { code: 'SEC315', name: 'สุภพงศ์ เพ็งเพ็ชร' },
-  ] },
-  { id: 'saraburi', name: 'สระบุรี', staff: [
-    { code: 'SEC470', name: 'รังสิมันตุ์ ดีธรรมะ' },
-    { code: 'SEC475', name: 'อัฒฑวินทร์ สำราญจิตร' },
-    { code: 'SEC462', name: 'สมประสงค์ โคตรวงศ์' },
-    { code: 'SEC403', name: 'สุริยา ชอบรัมย์' },
-  ] },
-  { id: 'chachoengsao', name: 'ฉะเชิงเทรา', staff: [
-    { code: 'SEC147', name: 'ชัยวัฒน์ วัชรเดชาพิสิทธิ์' },
-    { code: 'SEC304', name: 'ฐปนพงษ์ ชุมจินดา' },
-    { code: 'SEC383', name: 'ศุภชัย ออมสมสวย' },
-  ] },
-  { id: 'ayutthaya', name: 'พระนครศรีอยุธยา', staff: [
-    { code: 'SEC300', name: 'ณัฐพัสธร จันทร์จอม' },
-    { code: 'SEC244', name: 'ชินพันธ์ ทองโคตร' },
-    { code: 'SEC360', name: 'ภคพงษ์ เฉลิมฤกษ์' },
-  ] },
-  { id: 'khonkaen', name: 'ขอนแก่น', staff: [
-    { code: 'SEC380', name: 'กฤติเดช เสริมศรีทอง' },
-    { code: 'SEC404', name: 'ทีคิสพงศ์ กองบาง' },
-    { code: 'SEC472', name: 'อุเทน คงพรม' },
-  ] },
-  { id: 'chiangmai', name: 'เชียงใหม่', staff: [
-    { code: 'SEC313', name: 'วีรวิชญ์ ฐิติยาปราโมทย์' },
-    { code: 'SEC202', name: 'สมเกียรติ ฟักน่วม' },
-    { code: 'SEC238', name: 'ไกรสร และเชอะ' },
-  ] },
-  { id: 'songkhla', name: 'สงขลา', staff: [
-    { code: 'SEC444', name: 'นพรัตน์ วิมลมิ่ง' },
-    { code: 'SEC474', name: 'ธีระ บัวหลวง' },
-    { code: 'SEC471', name: 'มะตอเฮร์ กียะ' },
-  ] },
-  { id: 'phuket', name: 'ภูเก็ต', staff: [
-    { code: 'SEC386', name: 'จีรยุทธ แสนบอโด' },
-    { code: 'SEC411', name: 'พิฐากร อ่อนชื่นจิตร' },
-    { code: 'SEC434', name: 'ก้องภพ พาร์คเฮาส์' },
-  ] },
-  { id: 'chanthaburi', name: 'จันทบุรี', staff: [
-    { code: 'SEC454', name: 'เอกธนัช จันทะรศ' },
-    { code: 'SEC311', name: 'วุฒิศักดิ์ ชูแสง' },
-  ] },
-  { id: 'kanchanaburi', name: 'กาญจนบุรี', staff: [
-    { code: 'SEC372', name: 'ประกอบ รัตนวรรณ' },
-    { code: 'SEC451', name: 'ปิยะณัฐ เอี่ยมโสภณ' },
-  ] },
-  { id: 'ubonratchathani', name: 'อุบลราชธานี', staff: [
-    { code: 'SEC398', name: 'รุ่งอรุณ ยามพูล' },
-    { code: 'SEC359', name: 'กนกวรรณ บุญธรรม' },
-  ] },
-  { id: 'nakhonsithammarat', name: 'นครศรีธรรมราช', staff: [
-    { code: 'SEC358', name: 'อุดมศักดิ์ ชนะคช' },
-    { code: 'SEC352', name: 'ประยูร เนียมจันทร์' },
-  ] },
-  { id: 'suphanburi', name: 'สุพรรณบุรี', staff: [
-    { code: 'SEC283', name: 'ณัฐพัชร์ เกิดจรัส' },
-  ] },
-  { id: 'sakaeo', name: 'สระแก้ว', staff: [
-    { code: 'SEC71', name: 'ถนอมศักดิ์ แวทไธสง' },
-  ] },
-  { id: 'phitsanulok', name: 'พิษณุโลก', staff: [
-    { code: 'SEC423', name: 'สมชาติ หอมมาลา' },
-  ] },
-];
+// จังหวัด (ต่างจังหวัด) ใช้ pipeline เดียวกับ กทม. — center_id = province id ใน duty_schedules
+// seed รวม roster-jun + province seed (จังหวัด grid ว่าง = ยังไม่จัดเวร จนกว่าจะจัดในหน้า DutyRoster)
+const ROSTER: Record<string, { people: { code: string; name: string }[]; grid: string[][] }> = { ...ROSTER_JUN, ...PROVINCE_SEED };
 type Band = 'morning' | 'afternoon' | 'night' | 'fix8' | 'fix10' | 'fix14' | 'offday';
 const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix8', 'fix10', 'fix14', 'offday'];
 const SH_META: Record<Band, { label: string; short: string; range: string }> = {
@@ -684,7 +597,7 @@ export default function CallcenterAttendancePage() {
           if (k && b) map[k] = b;
         });
       } else {
-        const seed = ROSTER_JUN[c.id];
+        const seed = ROSTER[c.id];
         if (seed) seed.people.forEach((pp, i) => {
           const b = RAW_TO_BAND[seed.grid[Dy - 1]?.[i] ?? 'none'];
           const k = onlyDigits(pp.code);
@@ -702,32 +615,6 @@ export default function CallcenterAttendancePage() {
     return m;
   }, [leaves]);
 
-  // ── ต่างจังหวัด: index การลงเวลา + ลา จับคู่ด้วย "รหัสเต็ม/username" (กัน SEC/SE เลขชนกัน ไม่เหมือนบอร์ดเดิมที่ใช้เลขล้วน) ──
-  const provAtt = useMemo(() => {
-    type Rec = { in: string; out: string | null; open: boolean; photo: string | null; pin: string };
-    const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
-    const byKey: Record<string, Rec> = {};
-    const merge = (key: string, inT: string, outT: string | null, photo: string | null) => {
-      if (!key) return;
-      const ex = byKey[key];
-      if (!ex) { byKey[key] = { in: inT, out: outT, open: !outT, photo, pin: photo ? inT : '' }; return; }
-      if (inT && (!ex.in || inT < ex.in)) ex.in = inT;
-      if (outT && (!ex.out || outT > ex.out)) ex.out = outT;
-      if (!outT) ex.open = true;
-      if (photo && inT >= ex.pin) { ex.photo = photo; ex.pin = inT; }
-    };
-    att.filter((r) => r.work_date === date && r.check_in_time).forEach((r) => {
-      const inT = r.check_in_time || '';
-      const outT = r.check_out_time || null;
-      const photo = r.check_in_photo || null;
-      if (r.code) merge(norm(r.code), inT, outT, photo);          // จับด้วยรหัส (SEC218)
-      if (r.username) merge(norm(r.username), inT, outT, photo);  // และ username (sec218 → SEC218)
-    });
-    const leaveByFull: Record<string, string> = {};
-    leaves.forEach((l) => { if (l.code) leaveByFull[norm(l.code)] = l.leave_type || 'other'; });
-    return { byKey, leaveByFull, norm };
-  }, [att, date, leaves]);
-
   // รวมรายชื่อจากตาราง (DB ทับ seed) ของวันที่เลือก → ใส่สถานะจากการลงเวลา
   const allPeople = useMemo(() => {
     const D = Number(date.split('-')[2]);
@@ -739,7 +626,7 @@ export default function CallcenterAttendancePage() {
       if (db && db.staff?.length) {
         db.staff.forEach((s) => rows.push({ code: s.code, name: s.name, raw: db.schedule?.[s.id]?.[D] ?? 'none' }));
       } else {
-        const seed = ROSTER_JUN[c.id];
+        const seed = ROSTER[c.id];
         if (seed) seed.people.forEach((pp, i) => rows.push({ code: pp.code, name: pp.name, raw: seed.grid[D - 1]?.[i] ?? 'none' }));
       }
       rows.forEach((r) => {
@@ -777,25 +664,23 @@ export default function CallcenterAttendancePage() {
   const unmatched = useMemo(() => {
     const codes = new Set<string>();
     const names = new Set<string>();
-    const fullCodes = new Set<string>();   // รหัสเต็มต่างจังหวัด — จับแบบไม่ยุบเลข (กัน SEC/SE ชนกัน)
     const norm = (s: string) => (s || '').replace(/\s+/g, '').toUpperCase();
     for (const c of CENTERS) {
       const db = dbByCenter[c.id];
       if (db && db.staff?.length) {
         db.staff.forEach((s) => { const k = onlyDigits(s.code); if (k) codes.add(k); const n = (s.name || '').trim(); if (n) names.add(n); });
       } else {
-        const seed = ROSTER_JUN[c.id];
+        const seed = ROSTER[c.id];
         if (seed) seed.people.forEach((pp) => { const k = onlyDigits(pp.code); if (k) codes.add(k); const n = (pp.name || '').trim(); if (n) names.add(n); });
       }
     }
-    for (const pv of PROVINCES) pv.staff.forEach((s) => { fullCodes.add(norm(s.code)); const n = (s.name || '').trim(); if (n) names.add(n); });
     type Orphan = { code: string; name: string; in: string; out: string | null; open: boolean; photo: string | null; pin: string };
     const byKey: Record<string, Orphan> = {};
     att.filter((r) => r.work_date === date && r.check_in_time).forEach((r) => {
       const cd = onlyDigits(r.code || r.username || '');
       const nm = (r.user_name || '').trim();
       const full = norm(r.code || r.username || '');
-      if ((cd && codes.has(cd)) || (full && fullCodes.has(full)) || (nm && names.has(nm))) return; // จับคู่ได้ → อยู่บนบอร์ดแล้ว (รวมต่างจังหวัด)
+      if ((cd && codes.has(cd)) || (nm && names.has(nm))) return; // จับคู่ได้ → อยู่บนบอร์ดแล้ว (รวมต่างจังหวัด)
       const key = full || nm || String(r.user_id);
       const inT = r.check_in_time || '';
       const outT = r.check_out_time || null;
@@ -821,7 +706,7 @@ export default function CallcenterAttendancePage() {
         (occ[k] ||= []).push({ name: (name || '').trim(), center: c.name });
       };
       if (db && db.staff?.length) db.staff.forEach((s) => add(s.code, s.name));
-      else { const seed = ROSTER_JUN[c.id]; if (seed) seed.people.forEach((pp) => add(pp.code, pp.name)); }
+      else { const seed = ROSTER[c.id]; if (seed) seed.people.forEach((pp) => add(pp.code, pp.name)); }
     }
     return Object.entries(occ)
       .filter(([, a]) => a.length > 1)
@@ -858,30 +743,6 @@ export default function CallcenterAttendancePage() {
       return { rk: rg.key, label: rg.label, stations, total: rows.length };
     }).filter((g) => g.stations.length);
   }, [filtered, sortMode]);
-
-  // ── ต่างจังหวัด: รายชื่อพนักงานตามจังหวัด (ยังไม่จัดเวร) — static list, กรองด้วยค้นหา/ภูมิภาค/สถานะ ──
-  const provinceGroups = useMemo(() => {
-    if (region !== 'all' && region !== 'upc') return [];   // เลือก กทม./ปริมณฑล → ไม่โชว์ต่างจังหวัด
-    if (shift !== 'all') return [];                        // จังหวัดยังไม่มีเวร → ซ่อนเมื่อกรองเวร
-    const term = q.trim().toLowerCase();
-    return PROVINCES.map((pv) => {
-      let staff: PStaff[] = pv.staff.map((s) => {
-        const rec = provAtt.byKey[provAtt.norm(s.code)];                          // จับด้วยรหัสเต็ม
-        const leaveType = !rec ? provAtt.leaveByFull[provAtt.norm(s.code)] : undefined;
-        const status: Status = rec ? (rec.open ? 'present' : 'done') : leaveType ? 'leave' : 'pending';
-        return {
-          code: s.code, name: s.name, status,
-          t: rec?.in || '', tOut: rec && !rec.open ? (rec.out || '') : '',
-          photo: rec?.photo || null, leaveType: status === 'leave' ? leaveType : undefined,
-        };
-      });
-      if (term) staff = staff.filter((s) => `${s.code} ${s.name} ${pv.name}`.toLowerCase().includes(term));
-      if (statusF !== 'all') staff = staff.filter((s) => statusF === 'present' ? arrived(s.status) : s.status === statusF);
-      const rank = (x: PStaff) => x.status === 'present' ? 0 : x.status === 'done' ? 1 : x.status === 'leave' ? 2 : 3;
-      staff.sort((a, b) => rank(a) - rank(b) || (a.t || '').localeCompare(b.t || '')); // เช็คอินแล้วขึ้นก่อน
-      return { id: pv.id, name: pv.name, staff };
-    }).filter((g) => g.staff.length);
-  }, [region, shift, statusF, q, provAtt]);
 
   // ── ไม่ระบุจุด: คนเช็คอินที่จับคู่จุด/จังหวัดไม่ได้ → การ์ดรวม (มาจาก unmatched) ผูกจุดแล้วย้ายออกเอง ──
   const unassignedStaff = useMemo<PStaff[]>(() => {
@@ -974,7 +835,7 @@ export default function CallcenterAttendancePage() {
       <main className="board">
         {loading ? (
           <div className="empty">กำลังโหลด…</div>
-        ) : (regionGroups.length === 0 && provinceGroups.length === 0 && unassignedStaff.length === 0) ? (
+        ) : (regionGroups.length === 0 && unassignedStaff.length === 0) ? (
           <div className="empty">ไม่พบรายการที่ตรงกับเงื่อนไข<br /><span style={{ fontSize: 13 }}>ตารางเวรของวันนี้ว่าง — จัดเวรได้ที่หน้า &quot;ตารางเวรประจำจุด&quot;</span></div>
         ) : (
           <>
@@ -997,20 +858,6 @@ export default function CallcenterAttendancePage() {
                 </div>
               </section>
             ))}
-            {provinceGroups.length > 0 && (
-              <section className="region">
-                <div className="region-head">
-                  <h2>ต่างจังหวัด</h2>
-                  <span className="region-meta mono">{provinceGroups.length} จังหวัด · {provinceGroups.reduce((n, g) => n + g.staff.length, 0)} คน</span>
-                  <span className="prov-note">ยังไม่จัดเวร · รายชื่อพนักงานสำรวจตามจังหวัด</span>
-                </div>
-                <div className="cardgrid">
-                  {provinceGroups.map((pv) => (
-                    <ProvinceCard key={pv.id} name={pv.name} staff={pv.staff} />
-                  ))}
-                </div>
-              </section>
-            )}
             {unassignedStaff.length > 0 && (
               <section className="region">
                 <div className="region-head">
