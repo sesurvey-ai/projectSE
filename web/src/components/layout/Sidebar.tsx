@@ -13,6 +13,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'จัดการรีวิว', href: '/admin/reviews' },
     { label: 'รายงานการโทร', href: '/admin/call-consult' },
     { label: 'ใบลาพนักงาน', href: '/admin/leave' },
+    { label: 'เวลาเข้างานพนักงาน · ประจำจุด', href: '/admin/checkin-board' },
     { label: 'เวลาเข้า–ออกงาน', href: '/admin/attendance' },
     { label: 'ตารางเวรประจำจุด', href: '/admin/duty-roster' },
   ],
