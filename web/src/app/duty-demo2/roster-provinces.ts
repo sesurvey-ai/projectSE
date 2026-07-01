@@ -18,6 +18,7 @@ export const PROVINCE_CENTERS: { id: string; name: string; region: 'upc' }[] = [
   { id: 'kanchanaburi', name: 'กาญจนบุรี', region: 'upc' },
   { id: 'ubonratchathani', name: 'อุบลราชธานี', region: 'upc' },
   { id: 'nakhonsithammarat', name: 'นครศรีธรรมราช', region: 'upc' },
+  { id: 'chumphon', name: 'ชุมพร', region: 'upc' },
   { id: 'suphanburi', name: 'สุพรรณบุรี', region: 'upc' },
   { id: 'sakaeo', name: 'สระแก้ว', region: 'upc' },
   { id: 'phitsanulok', name: 'พิษณุโลก', region: 'upc' },
@@ -103,6 +104,10 @@ const PROVINCE_PEOPLE: Record<string, { code: string; name: string }[]> = {
   nakhonsithammarat: [
     { code: 'SEC358', name: 'อุดมศักดิ์ ชนะคช' },
     { code: 'SEC352', name: 'ประยูร เนียมจันทร์' },
+  ],
+  chumphon: [
+    { code: 'SEC373', name: 'นันทวัฒน์ ทิพย์อักษร' },
+    { code: 'SEC277', name: 'ไชยา ศรียาภัย' },
   ],
   suphanburi: [
     { code: 'SEC283', name: 'ณัฐพัชร์ เกิดจรัส' },
