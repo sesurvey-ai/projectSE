@@ -702,6 +702,15 @@ export default function NewCasePage() {
               <pre className="bg-gray-50 border border-gray-200 rounded p-3 text-[11px] text-gray-600 mb-3 max-h-60 overflow-auto whitespace-pre-wrap">{ocrRaw}</pre>
             )}
 
+            {/* ปุ่มสร้างเคส — ย้ายไว้เหนือรูป */}
+            {!createdCaseId && (
+              <div className="flex justify-end mb-4">
+                <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
+                </button>
+              </div>
+            )}
+
             {/* รูปใบรับแจ้งเคลม — อ่านข้อมูลที่เหลือจากรูปทั้งใบได้เลย */}
             {ocrImages.length > 0 && (
               <div className="mb-4">
@@ -716,15 +725,6 @@ export default function NewCasePage() {
                 <p className="text-[11px] text-gray-400 mt-1">คลิกรูปเพื่อดูขนาดเต็ม</p>
               </div>
             )}
-
-
-                {!createdCaseId && (
-                  <div className="flex justify-end">
-                    <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                      {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
-                    </button>
-                  </div>
-                )}
           </>
         )}
         </fieldset>
