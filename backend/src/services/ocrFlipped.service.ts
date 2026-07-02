@@ -30,7 +30,8 @@ const PROMPT =
   'This is an IMAGE of a Thai motor-insurance claim form (ใบรับแจ้งเคลม). Extract:\n' +
   '- "claim_received": the เลขรับแจ้ง code (like BR10/6906/13144); "" if absent\n' +
   '- "claim_codes": array of every claim code (like 21BR10AVD-6906-000098; the 3 letters are AVD or ACD)\n' +
-  '- "survey_codes": array of every survey number (starts SETP-). If the survey field shows only a placeholder "-" or "รอแจ้ง", return ["-"] or ["รอแจ้ง"].\n\n' +
+  '- "survey_codes": array of every survey number (starts SETP-). If the survey field shows only a placeholder "-" or "รอแจ้ง", return ["-"] or ["รอแจ้ง"].\n' +
+  '- "policy_no": the เลขกรมธรรม์ (policy number, e.g. VM3-3100352649-26N10); "" if absent\n\n' +
   'CRITICAL: Read ONLY characters that are clearly and unambiguously printed. If ANY character in a code is blurry, faded, hidden, cut off, or you are not fully certain of it, OMIT that code entirely (do not include it). Do NOT guess, complete, or reconstruct missing characters. Returning fewer/blank is better than returning a wrong code.';
 
 const SCHEMA = {
@@ -39,8 +40,9 @@ const SCHEMA = {
     claim_received: { type: Type.STRING },
     claim_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
     survey_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
+    policy_no: { type: Type.STRING },
   },
-  required: ['claim_received', 'claim_codes', 'survey_codes'],
+  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no'],
 };
 
 export type OcrField = {
@@ -60,6 +62,7 @@ export type FlippedResult = {
     prb_no: OcrField;
     survey_no: OcrField;
     survey_no_2: OcrField;
+    policy_no: OcrField;
   };
 };
 
@@ -115,7 +118,7 @@ async function visionText(buf: Buffer): Promise<string> {
   return resp.fullTextAnnotation?.text ?? '';
 }
 
-type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[] };
+type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; policy_no?: string };
 
 // ── Gemini อ่านรูป (หลัก) + retry 429/5xx ──
 async function geminiImageMap(buf: Buffer, tries = 6): Promise<GeminiMap> {
@@ -316,6 +319,14 @@ function flipSimple(rawIn: string | undefined, flat: string, corrector: (v: stri
   return { value: corrected, raw, auto_corrected: autoCorrected, grounded: lvl !== 'none', format_ok: true, confidence: LVL_CONF[lvl] };
 }
 
+// เลขกรมธรรม์ (descriptive) — ไม่บังคับ, ไม่มี regex ตายตัว; grounded ด้วย Vision → high, ไม่งั้น low (flag)
+function flipPolicy(rawIn: string | undefined, flat: string): OcrField {
+  const raw = (rawIn || '').trim();
+  if (!raw) return blankField(false);
+  const grounded = flat.includes(norm(raw));
+  return { value: raw, raw, auto_corrected: false, grounded, format_ok: true, confidence: grounded ? 'high' : 'low' };
+}
+
 export async function flippedExtract(imagePath: string): Promise<FlippedResult> {
   const buf = fs.readFileSync(imagePath);
   const [mapped, flatRaw] = await Promise.all([geminiImageMap(buf), visionText(buf)]);
@@ -324,6 +335,7 @@ export async function flippedExtract(imagePath: string): Promise<FlippedResult> 
   const claim_received = flipSimple(mapped.claim_received, flat, correctClaimReceived, FULL_RECV);
   const [claim_no, prb_no] = flipClaim(mapped.claim_codes, flat);
   const [survey_no, survey_no_2] = flipSurvey(mapped.survey_codes, flat);
+  const policy_no = flipPolicy(mapped.policy_no, flat);
 
   const review_needed =
     claim_no.confidence === 'medium' || claim_no.confidence === 'low' ||
@@ -332,6 +344,6 @@ export async function flippedExtract(imagePath: string): Promise<FlippedResult> 
   return {
     image: imagePath.split(/[\\/]/).pop() || imagePath,
     review_needed,
-    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2 },
+    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no },
   };
 }

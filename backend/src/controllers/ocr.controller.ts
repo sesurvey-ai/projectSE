@@ -50,6 +50,7 @@ export const ocrController = {
         prb_number: result.fields.prb_no,       // เลขพรบ (โค้ดที่ 2 = ACD) — โชว์เมื่อมีค่า
         survey_job_no: result.fields.survey_no,
         survey_job_no_2: result.fields.survey_no_2,   // เลขเซอร์เวย์ งาน 2 — โชว์เมื่อมีค่า
+        policy_no: result.fields.policy_no,           // เลขกรมธรรม์
       };
       const fields: Record<string, string> = {};
       const confidence: Record<string, string> = {};
