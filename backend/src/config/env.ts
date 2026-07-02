@@ -12,6 +12,11 @@ const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   TYPHOON_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+  GEMINI_VERTEX: z.string().optional(),        // '1' = ใช้ Gemini ผ่าน Vertex AI (Firebase SA) แทน API key
+  GEMINI_LOCATION: z.string().optional(),      // region ของ Vertex (default us-central1)
+  GEMINI_MODEL: z.string().optional(),         // ชื่อโมเดล (default gemini-3.1-flash-lite)
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),

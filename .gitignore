@@ -50,3 +50,4 @@ Thumbs.db
 
 # Quarantined throwaway scripts (ของทิ้งที่ย้ายออกจาก working tree — ลบโฟลเดอร์นี้ได้เมื่อยืนยันว่าไม่ต้องการ)
 .trash-scripts/
+cloudVision.json
