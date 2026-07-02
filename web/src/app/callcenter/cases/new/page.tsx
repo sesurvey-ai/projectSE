@@ -56,6 +56,7 @@ export default function NewCasePage() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrDone, setOcrDone] = useState(false);
   const [ocrPreview, setOcrPreview] = useState<string | null>(null);
+  const [ocrImages, setOcrImages] = useState<string[]>([]);   // URL รูปที่อัปโหลด (แสดงทั้งใบแทนตาราง)
   const [ocrRaw, setOcrRaw] = useState('');
   const [showOcrRaw, setShowOcrRaw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +68,9 @@ export default function NewCasePage() {
   const handleOcrUpload = async (file: File, append = false) => {
     setError('');
     setOcrLoading(true);
-    setOcrPreview(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    setOcrPreview(previewUrl);
+    setOcrImages(prev => (append ? [...prev, previewUrl] : [previewUrl]));
     try {
       const formData = new FormData();
       formData.append('image', file);
@@ -148,6 +151,7 @@ export default function NewCasePage() {
     setOcrDone(false);
     setOcrReview(null);
     setOcrPreview(null);
+    setOcrImages([]);
     setForm({});
     setCustomerName('');
     setIncidentLocation('');
@@ -689,130 +693,32 @@ export default function NewCasePage() {
               <pre className="bg-gray-50 border border-gray-200 rounded p-3 text-[11px] text-gray-600 mb-3 max-h-60 overflow-auto whitespace-pre-wrap">{ocrRaw}</pre>
             )}
 
-            {/* ตารางข้อมูล — แสดงเสมอ */}
-            <table className="w-full border-collapse border border-gray-200 bg-white text-[12px] mb-4">
-                  <tbody>
-                    <tr>
-                      <td className={L}>วันที่รับแจ้ง</td>
-                      <td className={V}><input value={f('acc_insurance_notify_date')} onChange={e => s('acc_insurance_notify_date', e.target.value)} className={I} /></td>
-                      <td className={L}>เวลารับแจ้ง</td>
-                      <td className={V}><input value={f('acc_insurance_notify_time')} onChange={e => s('acc_insurance_notify_time', e.target.value)} className={I} /></td>
-                      <td className={L}>ผู้รับแจ้ง</td>
-                      <td className={V}><input value={f('receiver_name')} onChange={e => s('receiver_name', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>วันที่เกิดเหตุ</td>
-                      <td className={V}><input value={f('acc_date')} onChange={e => s('acc_date', e.target.value)} className={I} /></td>
-                      <td className={L}>เวลาเกิดเหตุ</td>
-                      <td className={V}><input value={f('acc_time')} onChange={e => s('acc_time', e.target.value)} className={I} /></td>
-                      <td className={L}>การเกิดเหตุ</td>
-                      <td className={V}><input value={f('acc_cause')} onChange={e => s('acc_cause', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>สถานที่เกิดเหตุ *</td>
-                      <td className={V} colSpan={5}><input value={incidentLocation} onChange={e => { setIncidentLocation(e.target.value); s('acc_place', e.target.value); }} className={`${I} font-medium`} required /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>ตำบล/แขวง</td>
-                      <td className={V}><input value={f('acc_subdistrict')} onChange={e => s('acc_subdistrict', e.target.value)} className={I} /></td>
-                      <td className={L}>จังหวัด</td>
-                      <td className={V}>
-                        <select value={f('acc_province')} onChange={e => { s('acc_province', e.target.value); s('acc_district', ''); }} className={SP}>
-                          <option value="">-- เลือกจังหวัด --</option>
-                          {provinceNames.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                      </td>
-                      <td className={L}>อำเภอ/เขต</td>
-                      <td className={V}>
-                        <select value={f('acc_district')} onChange={e => s('acc_district', e.target.value)} className={SP}>
-                          <option value="">-- เลือกอำเภอ --</option>
-                          {accDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className={L}>ทะเบียนรถ</td>
-                      <td className={V}><input value={f('license_plate')} onChange={e => s('license_plate', e.target.value)} className={I} /></td>
-                      <td className={L}>ยี่ห้อ</td>
-                      <td className={V}><input value={f('car_brand')} onChange={e => s('car_brand', e.target.value)} className={I} /></td>
-                      <td className={L}>รุ่น</td>
-                      <td className={V}><input value={f('car_model')} onChange={e => s('car_model', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>เลขตัวถัง</td>
-                      <td className={V} colSpan={2}><input value={f('chassis_no')} onChange={e => s('chassis_no', e.target.value)} className={I} /></td>
-                      <td className={L}>เลขเครื่องยนต์</td>
-                      <td className={V} colSpan={2}><input value={f('engine_no')} onChange={e => s('engine_no', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>สี</td>
-                      <td className={V}><input value={f('car_color')} onChange={e => s('car_color', e.target.value)} className={I} /></td>
-                      <td className={L}>ประเภทรถ</td>
-                      <td className={V}><input value={f('car_type')} onChange={e => s('car_type', e.target.value)} className={I} /></td>
-                      <td className={L}>กรมธรรม์</td>
-                      <td className={V}><input value={f('policy_no')} onChange={e => s('policy_no', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>ประเภทประกัน</td>
-                      <td className={V}><input value={f('policy_type')} onChange={e => s('policy_type', e.target.value)} className={I} /></td>
-                      <td className={L}>เริ่มคุ้มครอง</td>
-                      <td className={V}><input value={f('policy_start')} onChange={e => s('policy_start', e.target.value)} className={I} /></td>
-                      <td className={L}>สิ้นสุด</td>
-                      <td className={V}><input value={f('policy_end')} onChange={e => s('policy_end', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>พ.ร.บ.</td>
-                      <td className={V} colSpan={2}><input value={f('prb_number')} onChange={e => s('prb_number', e.target.value)} className={I} /></td>
-                      <td className={L}>Deduct</td>
-                      <td className={V} colSpan={2}><input value={f('deductible')} onChange={e => s('deductible', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>ผู้เอาประกัน *</td>
-                      <td className={V} colSpan={2}><input value={customerName} onChange={e => { setCustomerName(e.target.value); s('assured_name', e.target.value); }} className={`${I} font-medium`} required /></td>
-                      <td className={L}>ผู้ขับขี่</td>
-                      <td className={V} colSpan={2}>
-                        <div className="flex gap-1">
-                          <input value={f('driver_first_name')} onChange={e => s('driver_first_name', e.target.value)} className={I} placeholder="ชื่อ" />
-                          <input value={f('driver_last_name')} onChange={e => s('driver_last_name', e.target.value)} className={I} placeholder="นามสกุล" />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className={L}>เบอร์โทรผู้ขับขี่</td>
-                      <td className={V}><input value={f('driver_phone')} onChange={e => s('driver_phone', e.target.value)} className={I} /></td>
-                      <td className={L}>ผู้แจ้งเหตุ</td>
-                      <td className={V}><input value={f('acc_reporter')} onChange={e => s('acc_reporter', e.target.value)} className={I} /></td>
-                      <td className={L}>เบอร์โทรผู้แจ้ง</td>
-                      <td className={V}><input value={f('reporter_phone')} onChange={e => s('reporter_phone', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>บริษัทสำรวจ</td>
-                      <td className={V} colSpan={2}><input value={f('survey_company')} onChange={e => s('survey_company', e.target.value)} className={I} /></td>
-                      <td className={L}>เลขที่งาน</td>
-                      <td className={V} colSpan={2}><input value={f('survey_job_no')} onChange={e => s('survey_job_no', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>ผู้สำรวจ</td>
-                      <td className={V} colSpan={2}><input value={f('surveyor_name')} onChange={e => s('surveyor_name', e.target.value)} className={I} /></td>
-                      <td className={L}>เบอร์โทรผู้สำรวจ</td>
-                      <td className={V} colSpan={2}><input value={f('surveyor_phone')} onChange={e => s('surveyor_phone', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>รถคู่กรณี</td>
-                      <td className={V}><input value={f('counterparty_plate')} onChange={e => s('counterparty_plate', e.target.value)} className={I} /></td>
-                      <td className={L}>ยี่ห้อคู่กรณี</td>
-                      <td className={V}><input value={f('counterparty_brand')} onChange={e => s('counterparty_brand', e.target.value)} className={I} /></td>
-                      <td className={L}>ประกันคู่กรณี</td>
-                      <td className={V}><input value={f('counterparty_insurance')} onChange={e => s('counterparty_insurance', e.target.value)} className={I} /></td>
-                    </tr>
-                    <tr>
-                      <td className={L}>หมายเหตุ</td>
-                      <td className={V} colSpan={5}>
-                        <textarea value={f('acc_detail')} onChange={e => s('acc_detail', e.target.value)} className={`${I} resize-none`} rows={2} />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            {/* รูปใบรับแจ้งเคลม — อ่านข้อมูลที่เหลือจากรูปทั้งใบได้เลย */}
+            {ocrImages.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs font-medium text-gray-500 mb-1.5">รูปใบรับแจ้งเคลม{ocrImages.length > 1 ? ` (${ocrImages.length} รูป)` : ''}</div>
+                <div className="space-y-3">
+                  {ocrImages.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer" className="block">
+                      <img src={url} alt={`ใบรับแจ้งเคลม ${i + 1}`} className="w-full rounded-lg border border-gray-200 hover:border-blue-400 transition-colors" />
+                    </a>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">คลิกรูปเพื่อดูขนาดเต็ม</p>
+              </div>
+            )}
+
+            {/* ข้อมูลบังคับ (ที่เหลืออ่านจากรูปด้านบน) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">ผู้เอาประกัน <span className="text-red-500">*</span></label>
+                <input value={customerName} onChange={e => { setCustomerName(e.target.value); s('assured_name', e.target.value); }} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="ชื่อผู้เอาประกัน" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">สถานที่เกิดเหตุ <span className="text-red-500">*</span></label>
+                <input value={incidentLocation} onChange={e => { setIncidentLocation(e.target.value); s('acc_place', e.target.value); }} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="สถานที่เกิดเหตุ" />
+              </div>
+            </div>
 
                 {!createdCaseId && (
                   <div className="flex justify-end">
