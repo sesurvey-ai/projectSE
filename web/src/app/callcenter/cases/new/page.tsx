@@ -543,6 +543,10 @@ export default function NewCasePage() {
                 <label className="block text-xs font-medium text-gray-500 mb-1">เลขรับแจ้ง</label>
                 <input value={f('claim_ref_no')} onChange={e => s('claim_ref_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขรับแจ้ง" />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">เลขกรมธรรม์</label>
+                <input value={f('policy_no')} onChange={e => s('policy_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขกรมธรรม์" />
+              </div>
               {/* โชว์เฉพาะเมื่อ OCR เจอค่า (มี 2 เลขเคลม/2 เลขเซอร์เวย์) */}
               {f('prb_number') && (
                 <div>
@@ -713,17 +717,6 @@ export default function NewCasePage() {
               </div>
             )}
 
-            {/* ข้อมูลบังคับ (ที่เหลืออ่านจากรูปด้านบน) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">ผู้เอาประกัน <span className="text-red-500">*</span></label>
-                <input value={customerName} onChange={e => { setCustomerName(e.target.value); s('assured_name', e.target.value); }} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="ชื่อผู้เอาประกัน" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">สถานที่เกิดเหตุ <span className="text-red-500">*</span></label>
-                <input value={incidentLocation} onChange={e => { setIncidentLocation(e.target.value); s('acc_place', e.target.value); }} required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="สถานที่เกิดเหตุ" />
-              </div>
-            </div>
 
                 {!createdCaseId && (
                   <div className="flex justify-end">

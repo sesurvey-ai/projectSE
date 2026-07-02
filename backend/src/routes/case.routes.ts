@@ -10,9 +10,9 @@ import { upload } from '../config/multer';
 const router = Router();
 
 const createCaseSchema = z.object({
-  customer_name: z.string().min(1, 'Customer name is required'),
+  customer_name: z.string().optional().default(''),        // ไม่บังคับแล้ว (TPB อ่านจากรูป) — DB NOT NULL รับ '' ได้
   insurance_company: z.string().optional(),
-  incident_location: z.string().min(1, 'Incident location is required'),
+  incident_location: z.string().optional().default(''),    // ไม่บังคับแล้ว (อ่านจากรูป)
   incident_lat: z.number().optional(),
   incident_lng: z.number().optional(),
   // ข้อมูลเบื้องต้นจากใบเคลม (optional ทั้งหมด)
