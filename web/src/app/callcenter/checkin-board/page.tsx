@@ -231,7 +231,7 @@ const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').
 
 function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean }) {
   const [hover, setHover] = useState(false);
-  const timeText = p.off ? 'หยุด' : p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : p.status === 'leave' ? (LEAVE_LABEL[p.leaveType || ''] || 'ลา') : 'ยังไม่มา';
+  const timeText = (p.off || p.status === 'leave') ? '' : p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : 'ยังไม่มา'; // ลา/หยุด → ให้ป้ายสีบอกแทน (ไม่ซ้ำ)
   const shc = p.status === 'present' ? SH_BADGE[p.sh] : GREY_BADGE; // นอกระบบ → badge เวรเทา
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
@@ -250,7 +250,7 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
               {p.tags.includes('ข้ามคืน') && <span className="lpc-shbadge" style={{ color: '#64748b', background: '#f1f5f9', borderColor: '#cbd5e1' }} title="รอบค้างจากเมื่อวาน ยังไม่เช็คเอาท์">เมื่อวาน</span>}
               {p.tags.includes('อาสา') && p.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
               <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{p.off ? 'หยุด' : SH_META[p.sh].short}</span>
-              {!p.off && <span className="lpc-shbadge" style={{ color: '#475569', background: '#eef2f6', borderColor: '#cbd5e1' }} title="งานที่ถืออยู่ (ยังไม่ปิด)">{p.jobs} งาน</span>}
+              {!p.off && p.status !== 'leave' && <span className="lpc-shbadge" style={{ color: '#475569', background: '#eef2f6', borderColor: '#cbd5e1' }} title="งานที่ถืออยู่ (ยังไม่ปิด)">{p.jobs} งาน</span>}
             </span>
           </span>
         </span>
@@ -267,11 +267,15 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
 }
 
 function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string; people: Person[]; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
-  const working = people.filter((p) => !p.off);   // คนมีเวรวันนี้ (หรือเช็คอิน/อาสา)
-  const offPeople = people.filter((p) => p.off);   // คนหยุดวันนี้ตามตารางเวร → กลุ่มแยกท้ายการ์ด
+  const working = people.filter((p) => !p.off && p.status !== 'leave');    // คนที่ต้องเข้าเวรวันนี้ (รวมเช็คอิน/อาสา)
+  const offPeople = people.filter((p) => p.off);                            // หยุดตามตารางเวร
+  const leavePeople = people.filter((p) => !p.off && p.status === 'leave'); // ลาที่อนุมัติแล้ว (เคยต้องเข้าเวร)
+  const byCode = (a: Person, b: Person) => a.c.localeCompare(b.c);
+  const awayPeople = [...leavePeople].sort(byCode).concat([...offPeople].sort(byCode)); // ไม่เข้างานวันนี้ (ลา+หยุด) → กลุ่มท้ายการ์ด
+  const awayLabel = leavePeople.length && offPeople.length ? 'หยุด / ลา วันนี้' : leavePeople.length ? 'ลาวันนี้' : 'หยุดวันนี้';
   const came = working.filter((p) => arrived(p.status)).length;
   const absent = working.filter((p) => p.status === 'pending').length;
-  const onLeave = working.filter((p) => p.status === 'leave').length;
+  const onLeave = leavePeople.length;
   // เรียงตามลำดับเวร แล้วเวลาเข้า — ให้ยังอ่านเป็นกลุ่มเวรได้แม้เอาแถบหัวเวรออก
   const byShift = (a: Person, b: Person) => {
     const d = SHIFT_ORDER.indexOf(a.sh) - SHIFT_ORDER.indexOf(b.sh);
@@ -320,10 +324,10 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
             ))}
           </div>
         )}
-        {offPeople.length > 0 && (
+        {awayPeople.length > 0 && (
           <div className="lpc-shift lpc-offgrp" style={GREY}>
-            <div className="lpc-offhead">หยุดวันนี้ · {offPeople.length}</div>
-            {[...offPeople].sort((a, b) => a.c.localeCompare(b.c)).map((p) => (
+            <div className="lpc-offhead">{awayLabel} · {awayPeople.length}</div>
+            {awayPeople.map((p) => (
               <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
             ))}
           </div>
