@@ -271,8 +271,8 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
   const offPeople = people.filter((p) => p.off);                            // หยุดตามตารางเวร
   const leavePeople = people.filter((p) => !p.off && p.status === 'leave'); // ลาที่อนุมัติแล้ว (เคยต้องเข้าเวร)
   const byCode = (a: Person, b: Person) => a.c.localeCompare(b.c);
-  const awayPeople = [...leavePeople].sort(byCode).concat([...offPeople].sort(byCode)); // ไม่เข้างานวันนี้ (ลา+หยุด) → กลุ่มท้ายการ์ด
-  const awayLabel = leavePeople.length && offPeople.length ? 'หยุด / ลา วันนี้' : leavePeople.length ? 'ลาวันนี้' : 'หยุดวันนี้';
+  const awayPeople = [...leavePeople].sort(byCode).concat([...offPeople].sort(byCode)); // ไม่เข้างานวันนี้ (ลา+หยุด) → กลุ่มเดียวท้ายการ์ด
+  const awayLabel = 'หยุด / ลา วันนี้'; // กล่องเดียวรวม หยุด+ลา — แยกประเภทด้วยป้าย (หยุด=เทา, ลา=เหลือง) กันการ์ดดูเยอะ
   const came = working.filter((p) => arrived(p.status)).length;
   const absent = working.filter((p) => p.status === 'pending').length;
   const onLeave = leavePeople.length;
