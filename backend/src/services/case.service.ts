@@ -23,7 +23,7 @@ export const caseService = {
       const reportFields = [
         'survey_company','survey_company_address',
         'claim_type','claim_no','claim_ref_no','insurance_company','insurance_branch',
-        'survey_job_no','car_lost',
+        'survey_job_no','survey_job_no_2','car_lost',
         'policy_no','policy_type','policy_start','policy_end','assured_name','prb_number','deductible',
         'car_brand','car_model','car_type','car_color','license_plate','car_province',
         'chassis_no','engine_no','car_reg_year',

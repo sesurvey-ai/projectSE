@@ -9,7 +9,7 @@ import AssignSurveyor from '@/components/cases/AssignSurveyor';
 
 // ป้ายภาษาไทยของ 5 ฟิลด์จาก OCR (flipped) — ใช้ในแบนเนอร์ "ให้ตรวจสอบ"
 const OCR_FIELD_LABELS: Record<string, string> = {
-  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์',
+  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2',
 };
 
 // บริษัทประกันที่รองรับ (เพิ่มบริษัทใหม่ = เพิ่ม entry) — value ต้องตรงกับที่ใช้เช็คเงื่อนไขฟอร์มด้านล่าง
@@ -62,7 +62,7 @@ export default function NewCasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [ocrImagePaths, setOcrImagePaths] = useState<string[]>([]);
   // ผลความมั่นใจจาก flipped OCR (ไว้ไฮไลต์/เตือนให้ตรวจ)
-  const [ocrReview, setOcrReview] = useState<{ review_needed: boolean; confidence: Record<string, string>; survey_no_2: string } | null>(null);
+  const [ocrReview, setOcrReview] = useState<{ review_needed: boolean; confidence: Record<string, string> } | null>(null);
 
   // append mode: ข้อมูลใหม่เติมเฉพาะช่องที่ยังว่าง
   const handleOcrUpload = async (file: File, append = false) => {
@@ -80,15 +80,14 @@ export default function NewCasePage() {
         timeout: 60000,
       });
       if (res.data.success && res.data.data) {
-        const { fields, confidence, review_needed, survey_no_2, savedImage } = res.data.data as {
+        const { fields, confidence, review_needed, savedImage } = res.data.data as {
           fields: Record<string, string>; confidence?: Record<string, string>;
-          review_needed?: boolean; survey_no_2?: string; savedImage?: string;
+          review_needed?: boolean; savedImage?: string;
         };
         if (savedImage) setOcrImagePaths(prev => [...prev, savedImage]);
-        setOcrReview({ review_needed: !!review_needed, confidence: confidence || {}, survey_no_2: survey_no_2 || '' });
-        // flipped ไม่มี markdown ดิบ → สรุป 5 ฟิลด์+ความมั่นใจไว้ใน "ดู OCR Raw"
-        const summary = Object.entries(fields || {}).map(([k, v]) => `${OCR_FIELD_LABELS[k] || k}: ${v}  [${confidence?.[k] || '-'}]`).join('\n')
-          + (survey_no_2 ? `\nเลขเซอร์เวย์รอง: ${survey_no_2}` : '');
+        setOcrReview({ review_needed: !!review_needed, confidence: confidence || {} });
+        // flipped ไม่มี markdown ดิบ → สรุปฟิลด์+ความมั่นใจไว้ใน "ดู OCR Raw"
+        const summary = Object.entries(fields || {}).map(([k, v]) => `${OCR_FIELD_LABELS[k] || k}: ${v}  [${confidence?.[k] || '-'}]`).join('\n');
         setOcrRaw(prev => append ? prev + '\n---\n' + summary : summary);
         const newForm: Record<string, string> = {};
         for (const [key, val] of Object.entries(fields || {})) {
@@ -544,6 +543,19 @@ export default function NewCasePage() {
                 <label className="block text-xs font-medium text-gray-500 mb-1">เลขรับแจ้ง</label>
                 <input value={f('claim_ref_no')} onChange={e => s('claim_ref_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขรับแจ้ง" />
               </div>
+              {/* โชว์เฉพาะเมื่อ OCR เจอค่า (มี 2 เลขเคลม/2 เลขเซอร์เวย์) */}
+              {f('prb_number') && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">เลขพรบ</label>
+                  <input value={f('prb_number')} onChange={e => s('prb_number', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="เลขพรบ" />
+                </div>
+              )}
+              {f('survey_job_no_2') && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">เลขเซอร์เวย์ (งาน 2)</label>
+                  <input value={f('survey_job_no_2')} onChange={e => s('survey_job_no_2', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="เลขเซอร์เวย์ งาน 2" />
+                </div>
+              )}
             </div>
 
             {/* Upload zone + Capture button — ทางเลือกเสริม */}
@@ -671,21 +683,14 @@ export default function NewCasePage() {
               </div>
             )}
 
-            {ocrDone && ocrReview && (ocrReview.review_needed || ocrReview.survey_no_2) && (
-              <div className="mb-3 space-y-1.5">
-                {ocrReview.review_needed && (
-                  <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 text-xs rounded px-3 py-2">
-                    &#9888; ระบบไม่มั่นใจบางเลข — กรุณาตรวจสอบ{(() => {
-                      const items = Object.entries(ocrReview.confidence).filter(([, c]) => c === 'medium' || c === 'low').map(([k]) => OCR_FIELD_LABELS[k] || k);
-                      return items.length ? `: ${items.join(', ')}` : '';
-                    })()}
-                  </div>
-                )}
-                {ocrReview.survey_no_2 && (
-                  <div className="bg-blue-50 border border-blue-300 text-blue-800 text-xs rounded px-3 py-2">
-                    พบเลขเซอร์เวย์รอง (งาน 2): <b>{ocrReview.survey_no_2}</b>
-                  </div>
-                )}
+            {ocrDone && ocrReview && ocrReview.review_needed && (
+              <div className="mb-3">
+                <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 text-xs rounded px-3 py-2">
+                  &#9888; ระบบไม่มั่นใจบางเลข — กรุณาตรวจสอบ{(() => {
+                    const items = Object.entries(ocrReview.confidence).filter(([, c]) => c === 'medium' || c === 'low').map(([k]) => OCR_FIELD_LABELS[k] || k);
+                    return items.length ? `: ${items.join(', ')}` : '';
+                  })()}
+                </div>
               </div>
             )}
 

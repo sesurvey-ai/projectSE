@@ -47,8 +47,9 @@ export const ocrController = {
       const byForm: Record<string, OcrField> = {
         claim_ref_no: result.fields.claim_received,
         claim_no: result.fields.claim_no,
-        prb_number: result.fields.prb_no,
+        prb_number: result.fields.prb_no,       // เลขพรบ (โค้ดที่ 2 = ACD) — โชว์เมื่อมีค่า
         survey_job_no: result.fields.survey_no,
+        survey_job_no_2: result.fields.survey_no_2,   // เลขเซอร์เวย์ งาน 2 — โชว์เมื่อมีค่า
       };
       const fields: Record<string, string> = {};
       const confidence: Record<string, string> = {};
@@ -61,7 +62,6 @@ export const ocrController = {
         fields,
         confidence,
         review_needed: result.review_needed,
-        survey_no_2: result.fields.survey_no_2.value,
         savedImage: file.filename,
       });
     } catch (error) {
