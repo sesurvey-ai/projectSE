@@ -546,7 +546,7 @@ export default function NewCasePage() {
                 <div className="space-y-3">
                   <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
                   <p className="text-sm text-blue-600 font-medium">กำลังอ่านข้อมูลจากรูป...</p>
-                  <p className="text-xs text-gray-400">Typhoon OCR กำลังประมวลผล อาจใช้เวลาสักครู่</p>
+                  <p className="text-xs text-gray-400">กำลังประมวลผล อาจใช้เวลาสักครู่</p>
                 </div>
                 {ocrPreview && (
                   <img src={ocrPreview} alt="preview" className="mt-4 max-h-40 mx-auto rounded-lg opacity-50" />
