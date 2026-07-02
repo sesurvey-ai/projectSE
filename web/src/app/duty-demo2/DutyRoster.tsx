@@ -327,7 +327,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const [pop, setPop] = useState<{ staffId: string; day: number; anchor: HTMLElement } | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [zoneId, setZoneId] = useState('ladprao');
-  const [view, setView] = useState({ y: 2026, m: 6 });
+  const [view, setView] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1 }; }); // เปิดมาที่เดือนปัจจุบัน (ตรงกับบอร์ดเข้างาน)
   const [dataByZone, setDataByZone] = useState<Record<string, ZoneData>>(() => INITIAL_ZONE_DATA);
   const nextSe = useRef(900);
   const [saving, setSaving] = useState(false);
