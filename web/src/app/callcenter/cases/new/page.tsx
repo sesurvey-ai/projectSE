@@ -12,6 +12,13 @@ const OCR_FIELD_LABELS: Record<string, string> = {
   claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์',
 };
 
+// บริษัทประกันที่รองรับ (เพิ่มบริษัทใหม่ = เพิ่ม entry) — value ต้องตรงกับที่ใช้เช็คเงื่อนไขฟอร์มด้านล่าง
+// logo = path ใน public (วางไฟล์ที่ web/public/insurance/*.png); ถ้าไฟล์ไม่มีจะ fallback เป็นตัวย่อ (code)
+const INSURANCE_COMPANIES: { value: string; name: string; sub?: string; logo: string; code: string; disabled?: boolean }[] = [
+  { value: 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)', name: 'ไทยไพบูลย์ประกันภัย', sub: 'จำกัด (มหาชน)', logo: '/insurance/tpb.png', code: 'TPB' },
+  { value: 'ไอโออิกรุงเทพประกันภัย', name: 'ไอโออิ กรุงเทพประกันภัย', logo: '/insurance/aioi.png', code: 'AIOI', disabled: true },
+];
+
 export default function NewCasePage() {
   const router = useRouter();
   const { socket } = useSocket();
@@ -27,6 +34,11 @@ export default function NewCasePage() {
   const [customerName, setCustomerName] = useState('');
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [incidentLocation, setIncidentLocation] = useState('');
+  // มีบริษัทที่เปิดใช้เพียงบริษัทเดียว → เลือกให้อัตโนมัติ (ฟอร์มโผล่ทันที ไม่ต้องกดเลือกซ้ำ)
+  useEffect(() => {
+    const active = INSURANCE_COMPANIES.filter(c => !c.disabled);
+    if (active.length === 1) setInsuranceCompany(prev => prev || active[0].value);
+  }, []);
 
   const [form, setForm] = useState<Record<string, string>>({});
   const f = (key: string) => form[key] || '';
@@ -323,12 +335,33 @@ export default function NewCasePage() {
         {/* บริษัทประกัน — ด้านบนตาราง */}
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-500 mb-1">บริษัทประกัน</label>
-          <select value={insuranceCompany} onChange={e => setInsuranceCompany(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-white text-sm">
-            <option value="">-- เลือกบริษัทประกัน --</option>
-            {/* ปิดไอโออิไว้ก่อน — เริ่มพัฒนาจากไทยไพบูลย์ก่อน (เปิดคืนเมื่อพร้อม) */}
-            {/* <option value="ไอโออิกรุงเทพประกันภัย">ไอโออิกรุงเทพประกันภัย</option> */}
-            <option value="บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)">บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)</option>
-          </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {INSURANCE_COMPANIES.map(co => {
+              const selected = insuranceCompany === co.value;
+              return (
+                <button key={co.value} type="button" disabled={co.disabled}
+                  onClick={() => setInsuranceCompany(co.value)}
+                  className={`relative flex items-center gap-3 text-left rounded-xl p-3 transition-colors ${
+                    co.disabled ? 'border border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                      : selected ? 'border-2 border-blue-600 bg-blue-50/40'
+                      : 'border border-gray-300 bg-white hover:bg-gray-50'}`}>
+                  <span className="flex-none w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center overflow-hidden">
+                    <img src={co.logo} alt="" className="w-10 h-10 object-contain"
+                      onError={e => { e.currentTarget.style.display = 'none'; const fb = e.currentTarget.nextElementSibling as HTMLElement | null; if (fb) fb.style.display = 'flex'; }} />
+                    <span className="hidden w-full h-full items-center justify-center text-blue-700 text-xs font-medium">{co.code}</span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-gray-900 truncate">{co.name}</span>
+                    {co.sub && <span className="block text-xs text-gray-400 truncate">{co.sub}</span>}
+                    {co.disabled && <span className="block text-[11px] text-amber-600">เร็วๆ นี้</span>}
+                  </span>
+                  {selected && (
+                    <svg className="absolute top-2 right-2 w-5 h-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.3 3.3 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd" /></svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ไอโออิ → ตาราง */}
