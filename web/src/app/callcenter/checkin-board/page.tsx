@@ -123,6 +123,7 @@ const LEAVE_LABEL: Record<string, string> = { sick: 'ลาป่วย', person
 type Person = {
   c: string; n: string; p: string; centerId: string; s: string; region: string;
   sh: Band; status: Status; t: string; tOut: string; tags: string[]; jobs: number; photo: string | null; leaveType?: string;
+  off?: boolean; // วันหยุดตามตารางเวร (ไม่มีเวร + ไม่ได้เช็คอิน) → โชว์ในกลุ่ม "หยุดวันนี้" ไม่นับเป็นทำงาน/ยังไม่มา
 };
 
 type AttRow = { user_id: number; username?: string; user_name?: string; code?: string | null; check_in_time?: string | null; check_out_time?: string | null; check_in_photo?: string | null; work_date?: string };
@@ -230,7 +231,7 @@ const shiftStart = (band: Band) => (SH_META[band]?.range.split('–')[0] || '').
 
 function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Person) => void; onToast: (m: string) => void; active: boolean }) {
   const [hover, setHover] = useState(false);
-  const timeText = p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : p.status === 'leave' ? (LEAVE_LABEL[p.leaveType || ''] || 'ลา') : 'ยังไม่มา';
+  const timeText = p.off ? 'หยุด' : p.status === 'done' ? `${p.t || '—'} – ${p.tOut || '—'}` : p.status === 'present' ? (p.t || '—') : p.status === 'leave' ? (LEAVE_LABEL[p.leaveType || ''] || 'ลา') : 'ยังไม่มา';
   const shc = p.status === 'present' ? SH_BADGE[p.sh] : GREY_BADGE; // นอกระบบ → badge เวรเทา
   return (
     <div className={`lpc-person ${p.status} ${active ? 'active' : ''}`} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onClick={() => onOpen(p)} role="button" tabIndex={0}>
@@ -248,8 +249,8 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
               {p.status === 'leave' && <span className="lpc-shbadge" style={{ color: '#b45309', background: '#fffbeb', borderColor: '#fcd34d' }} title="ลาที่อนุมัติแล้ว">{LEAVE_LABEL[p.leaveType || ''] || 'ลา'}</span>}
               {p.tags.includes('ข้ามคืน') && <span className="lpc-shbadge" style={{ color: '#64748b', background: '#f1f5f9', borderColor: '#cbd5e1' }} title="รอบค้างจากเมื่อวาน ยังไม่เช็คเอาท์">เมื่อวาน</span>}
               {p.tags.includes('อาสา') && p.status === 'present' && <span className="lpc-shbadge" style={{ color: VOL_BADGE.ink, background: VOL_BADGE.bg, borderColor: VOL_BADGE.bd }}>อาสา</span>}
-              <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{SH_META[p.sh].short}</span>
-              <span className="lpc-shbadge" style={{ color: '#475569', background: '#eef2f6', borderColor: '#cbd5e1' }} title="งานที่ถืออยู่ (ยังไม่ปิด)">{p.jobs} งาน</span>
+              <span className="lpc-shbadge" style={{ color: shc.ink, background: shc.bg, borderColor: shc.bd }}>{p.off ? 'หยุด' : SH_META[p.sh].short}</span>
+              {!p.off && <span className="lpc-shbadge" style={{ color: '#475569', background: '#eef2f6', borderColor: '#cbd5e1' }} title="งานที่ถืออยู่ (ยังไม่ปิด)">{p.jobs} งาน</span>}
             </span>
           </span>
         </span>
@@ -266,9 +267,11 @@ function LpcPerson({ p, onOpen, onToast, active }: { p: Person; onOpen: (p: Pers
 }
 
 function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string; people: Person[]; onOpen: (p: Person) => void; onToast: (m: string) => void; selected: Person | null }) {
-  const came = people.filter((p) => arrived(p.status)).length;
-  const absent = people.filter((p) => p.status === 'pending').length;
-  const onLeave = people.filter((p) => p.status === 'leave').length;
+  const working = people.filter((p) => !p.off);   // คนมีเวรวันนี้ (หรือเช็คอิน/อาสา)
+  const offPeople = people.filter((p) => p.off);   // คนหยุดวันนี้ตามตารางเวร → กลุ่มแยกท้ายการ์ด
+  const came = working.filter((p) => arrived(p.status)).length;
+  const absent = working.filter((p) => p.status === 'pending').length;
+  const onLeave = working.filter((p) => p.status === 'leave').length;
   // เรียงตามลำดับเวร แล้วเวลาเข้า — ให้ยังอ่านเป็นกลุ่มเวรได้แม้เอาแถบหัวเวรออก
   const byShift = (a: Person, b: Person) => {
     const d = SHIFT_ORDER.indexOf(a.sh) - SHIFT_ORDER.indexOf(b.sh);
@@ -284,8 +287,8 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
     (tierOf(a) === 1 ? TIER1_ORDER.indexOf(a.sh) - TIER1_ORDER.indexOf(b.sh) : 0) ||
     (a.t || '').localeCompare(b.t || '') ||
     (a.jobs - b.jobs);
-  const inList = [...people].filter((p) => p.status === 'present').sort(byPriority); // ในระบบ = เช็คอินอยู่ (เรียงตามลำดับความสำคัญ)
-  const outList = [...people].filter((p) => p.status !== 'present').sort(byShift);  // นอกระบบ = ออกแล้ว + ยังไม่มา
+  const inList = [...working].filter((p) => p.status === 'present').sort(byPriority); // ในระบบ = เช็คอินอยู่ (เรียงตามลำดับความสำคัญ)
+  const outList = [...working].filter((p) => p.status !== 'present').sort(byShift);  // นอกระบบ = ออกแล้ว + ยังไม่มา
   const isActive = (p: Person) => !!selected && selected.c === p.c && selected.n === p.n && selected.centerId === p.centerId;
   const BLUE = { '--band': '#0ea5e9', '--band-ink': '#0369a1', '--band-tint': '#e0f2fe' } as CSSProperties;
   const GREY = { '--band': 'var(--muted)', '--band-ink': 'var(--muted)', '--band-tint': 'var(--surface-2)' } as CSSProperties;
@@ -299,6 +302,7 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
           <span className="lpc-count ok"><b>{came}</b> เช็คอิน</span>
           <span className="lpc-count wait"><b>{absent}</b> ยังไม่มา</span>
           {onLeave > 0 && <span className="lpc-count leave"><b>{onLeave}</b> ลา</span>}
+          {offPeople.length > 0 && <span className="lpc-count off"><b>{offPeople.length}</b> หยุด</span>}
         </div>
       </div>
       <div className="lpc-body">
@@ -312,6 +316,14 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
         {outList.length > 0 && (
           <div className="lpc-shift lpc-out" style={GREY}>
             {outList.map((p) => (
+              <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
+            ))}
+          </div>
+        )}
+        {offPeople.length > 0 && (
+          <div className="lpc-shift lpc-offgrp" style={GREY}>
+            <div className="lpc-offhead">หยุดวันนี้ · {offPeople.length}</div>
+            {[...offPeople].sort((a, b) => a.c.localeCompare(b.c)).map((p) => (
               <LpcPerson key={p.centerId + p.c + p.n} p={p} onOpen={onOpen} onToast={onToast} active={isActive(p)} />
             ))}
           </div>
@@ -636,7 +648,14 @@ export default function CallcenterAttendancePage() {
         const carry = !rec ? (carryIndex.byCode[codeDigits] ?? carryIndex.byName[r.name.trim()]) : undefined;
         let band = RAW_TO_BAND[r.raw];
         if (!band) {
-          if (!rec && !carry) return; // วันหยุด/ไม่มีเวร และไม่ได้เช็คอิน = ไม่ขึ้นบอร์ด (เหมือนเดิม)
+          if (!rec && !carry) {
+            // วันหยุด/ไม่มีเวร และไม่ได้เช็คอิน → โชว์ในกลุ่ม "หยุดวันนี้" (ครบตามตารางเวร) ไม่นับเป็นทำงาน/ยังไม่มา
+            out.push({
+              c: r.code, n: r.name, p: '', centerId: c.id, s: c.name, region: c.region,
+              sh: 'offday', status: 'pending', t: '', tOut: '', tags: [], jobs: 0, photo: null, off: true,
+            });
+            return;
+          }
           band = 'offday';  // วันหยุดแต่เช็คอินเข้ามา = อาสามาทำงาน → แสดงบนบอร์ด
         }
         if (carry) band = yBandByCode[codeDigits] ?? 'offday'; // ข้ามคืน: ติดป้ายเวรของเมื่อวาน (เช่น เวร3)
@@ -718,6 +737,7 @@ export default function CallcenterAttendancePage() {
     return allPeople.filter((p) => {
       if (shift !== 'all' && p.sh !== shift && !(shift === 'fix' && isFix(p.sh))) return false;
       if (region !== 'all' && p.region !== region) return false;
+      if (p.off && statusF !== 'all') return false; // คนหยุด ไม่เข้าเงื่อนไขสถานะทำงาน → ซ่อนเมื่อกรองสถานะ
       if (statusF !== 'all' && (statusF === 'present' ? !arrived(p.status) : p.status !== statusF)) return false;
       if (term && !`${p.c} ${p.n} ${p.p} ${p.s}`.toLowerCase().includes(term)) return false;
       return true;
@@ -725,11 +745,13 @@ export default function CallcenterAttendancePage() {
   }, [allPeople, q, shift, region, statusF]);
 
   const stats = useMemo(() => {
-    const present = filtered.filter((p) => arrived(p.status)).length;
-    const out = filtered.filter((p) => p.status === 'done').length;
-    const onLeave = filtered.filter((p) => p.status === 'leave').length;
-    const fix = filtered.filter((p) => isFix(p.sh)).length;
-    return { total: filtered.length, present, out, leave: onLeave, pending: filtered.length - present - onLeave, fix };
+    const work = filtered.filter((p) => !p.off);   // สถิติด้านบน = คนมีเวรวันนี้ (ไม่รวมคนหยุด)
+    const present = work.filter((p) => arrived(p.status)).length;
+    const out = work.filter((p) => p.status === 'done').length;
+    const onLeave = work.filter((p) => p.status === 'leave').length;
+    const fix = work.filter((p) => isFix(p.sh)).length;
+    const off = filtered.filter((p) => p.off).length;
+    return { total: work.length, present, out, leave: onLeave, pending: work.length - present - onLeave, fix, off };
   }, [filtered]);
 
   const regionGroups = useMemo(() => {
@@ -787,6 +809,7 @@ export default function CallcenterAttendancePage() {
           <div className="stat st-pending"><span className="stat-v mono">{stats.pending}</span><span className="stat-l">รอเข้างาน</span></div>
           {stats.leave > 0 && <div className="stat st-leave"><span className="stat-v mono">{stats.leave}</span><span className="stat-l">ลา</span></div>}
           <div className="stat st-fix"><span className="stat-v mono">{stats.fix}</span><span className="stat-l">FIX</span></div>
+          {stats.off > 0 && <div className="stat st-off"><span className="stat-v mono">{stats.off}</span><span className="stat-l">หยุดวันนี้</span></div>}
         </div>
       </header>
 
@@ -908,7 +931,7 @@ const ATB_CSS = `
 .atb .stat { display: flex; flex-direction: column; align-items: flex-start; min-width: 80px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .atb .stat-v { font-size: 22px; font-weight: 600; line-height: 1.1; }
 .atb .stat-l { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
-.atb .st-ok .stat-v { color: var(--ok); } .atb .st-pending .stat-v { color: oklch(0.55 0.015 255); } .atb .st-fix .stat-v { color: var(--fix); } .atb .st-out .stat-v { color: oklch(0.52 0.06 245); }
+.atb .st-ok .stat-v { color: var(--ok); } .atb .st-pending .stat-v { color: oklch(0.55 0.015 255); } .atb .st-fix .stat-v { color: var(--fix); } .atb .st-out .stat-v { color: oklch(0.52 0.06 245); } .atb .st-off .stat-v { color: var(--muted); }
 .atb .st-total { background: var(--ink); border-color: var(--ink); } .atb .st-total .stat-v { color: #fff; } .atb .st-total .stat-l { color: oklch(0.8 0.01 255); }
 
 .atb .toolbar { position: sticky; top: 73px; z-index: 11; display: flex; align-items: center; gap: 12px 14px; flex-wrap: wrap; padding: 12px 28px; background: oklch(0.99 0.003 250 / 0.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
@@ -1066,6 +1089,7 @@ const ATB_CSS = `
 .atb .lpc-time.leave { color: #b45309; font-weight: 600; font-family: inherit; font-size: 11.5px; }
 .atb .st-leave .stat-v { color: #d97706; }
 .atb .lpc-count.leave { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+.atb .lpc-count.off { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .atb .lpc-person.leave .lpc-av-ring { border-color: #fcd34d; background: #fffbeb; }
 .atb .lpc-person.leave .lpc-code { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
 /* นอกระบบ: รูป/ชื่อ/เวลา เป็นเทา (de-emphasize) */
@@ -1074,6 +1098,13 @@ const ATB_CSS = `
 .atb .lpc-out .lpc-av-img { filter: grayscale(100%); }
 .atb .lpc-out .lpc-person { opacity: 0.6; transition: opacity 0.12s; }
 .atb .lpc-out .lpc-person:hover { opacity: 1; }
+.atb .lpc-offgrp { margin: 8px 4px 2px; padding: 4px 6px 6px; background: oklch(0.975 0.002 255); border: 1px dashed var(--line); border-radius: 12px; }
+.atb .lpc-offhead { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 3px 4px 5px; letter-spacing: -0.01em; }
+.atb .lpc-offgrp .lpc-name { color: var(--muted); }
+.atb .lpc-offgrp .lpc-time { color: var(--muted); }
+.atb .lpc-offgrp .lpc-av-img { filter: grayscale(100%); }
+.atb .lpc-offgrp .lpc-person { opacity: 0.62; transition: opacity 0.12s; }
+.atb .lpc-offgrp .lpc-person:hover { opacity: 1; }
 .atb .lpc-rt { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
 .atb .lpc-badges { display: flex; align-items: center; gap: 4px; }
 .atb .lpc-shbadge { font-size: 10.5px; font-weight: 700; border: 1px solid; border-radius: 6px; padding: 1px 7px; white-space: nowrap; line-height: 1.45; text-align: center; }
