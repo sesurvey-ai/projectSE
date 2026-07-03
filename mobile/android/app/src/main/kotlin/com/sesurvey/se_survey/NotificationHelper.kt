@@ -58,7 +58,11 @@ object NotificationHelper {
 
         ensureChannel(context)
 
-        // ทุกสถานะ → หน้าเต็มจอ (การ์ดสวย/ปุ่มเต็ม/ข้อมูลครบ) — เลิกใช้ notification bar เล็กที่ปุ่มโดนตัด
+        // โพสต์ notification ค้าง (ongoing) ควบคู่หน้าเต็มจอ — เผื่อผู้ใช้กด Home/Recent จนหน้าเต็มจอหาย
+        // ยังมีปุ่มรับงาน/ปิดเสียง + แตะเปิดการ์ดกลับได้ (แบบสายเรียกเข้า) เสียงจะไม่ค้างโดยกดรับไม่ได้
+        showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
+
+        // เปิดหน้าเต็มจอทันที
         showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
 
         // เล่นเสียง alarm ทุกกรณี
@@ -120,11 +124,14 @@ object NotificationHelper {
         )
         customView.setOnClickPendingIntent(R.id.btn_mute, mutePi)
 
-        // Tap intent → open app
-        val tapIntent = Intent(context, MainActivity::class.java).apply {
+        // แตะ notification → เปิดหน้าเต็มจอ (การ์ด) กลับมา
+        val tapIntent = Intent(context, IncomingCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("notification_action", "tap")
             putExtra("case_id", caseId)
+            putExtra("notification_id", id)
+            putExtra("incident_location", incidentLocation)
+            putExtra("claim_no", claimNo)
+            putExtra("insurance_company", insuranceCompany)
         }
         val tapPi = PendingIntent.getActivity(
             context, id * 2 + 2, tapIntent,
@@ -143,6 +150,7 @@ object NotificationHelper {
             .setOngoing(true)
             .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
             .setContentIntent(tapPi)
+            .setFullScreenIntent(tapPi, true)
             .build()
 
         nm.notify(id, notification)
