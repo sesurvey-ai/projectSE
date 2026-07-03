@@ -79,19 +79,26 @@ class AuthProvider extends ChangeNotifier {
     _fcmService.onNewSurveyReceived = (data) async {
       debugPrint('[Auth] FCM new_survey received: $data');
       final caseId = data['case_id'];
-      final customerName = data['customer_name'] ?? 'ลูกค้า';
-      final address = data['incident_location'] ?? '';
+      final incidentLocation = (data['incident_location'] ?? '').toString();
+      final claimNo = (data['claim_no'] ?? '').toString();
+      final insuranceCompany = (data['insurance_company'] ?? '').toString();
       final notifId = caseId is int ? caseId : (int.tryParse(caseId?.toString() ?? '') ?? DateTime.now().millisecondsSinceEpoch ~/ 1000);
+      final body = [
+        if (incidentLocation.isNotEmpty) incidentLocation,
+        if (claimNo.isNotEmpty) 'เคลม $claimNo',
+        if (insuranceCompany.isNotEmpty) insuranceCompany,
+      ].join(' · ');
 
       // แสดง notification + เสียง alarm
       try {
         await NotificationService().showUrgentNotification(
           id: notifId,
-          title: 'งานสำรวจใหม่: $customerName',
-          body: address,
+          title: 'งานสำรวจใหม่',
+          body: body,
           payload: caseId?.toString(),
-          customerName: customerName,
-          address: address,
+          incidentLocation: incidentLocation,
+          claimNo: claimNo,
+          insuranceCompany: insuranceCompany,
         );
       } catch (e) {
         debugPrint('[Auth] Failed to show urgent notification: $e');

@@ -21,17 +21,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun handleNewSurvey(data: Map<String, String>) {
         val caseIdStr = data["case_id"] ?: ""
         val caseId = caseIdStr.toIntOrNull() ?: (System.currentTimeMillis() / 1000).toInt()
-        val customerName = data["customer_name"] ?: data["title"] ?: "งานสำรวจใหม่"
-        val address = data["incident_location"] ?: data["address"] ?: ""
-        val title = if (customerName.startsWith("งาน")) customerName else "งานสำรวจใหม่: $customerName"
+        // การ์ดงานโชว์ 3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน
+        val incidentLocation = data["incident_location"] ?: ""
+        val claimNo = data["claim_no"] ?: ""
+        val insuranceCompany = data["insurance_company"] ?: ""
 
         NotificationHelper.showIncomingNotification(
             context = this,
             id = caseId,
-            title = title,
+            title = "งานสำรวจใหม่",
             caseId = caseId,
-            customerName = customerName,
-            address = address,
+            incidentLocation = incidentLocation,
+            claimNo = claimNo,
+            insuranceCompany = insuranceCompany,
         )
         Log.d("FCM-Native", "Incoming notification shown for caseId=$caseId")
     }

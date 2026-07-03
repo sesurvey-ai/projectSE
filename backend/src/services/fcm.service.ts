@@ -20,7 +20,8 @@ export const fcmService = {
   },
 
   // ส่ง data-only message สำหรับ urgent notification (เสียงดังไม่หยุด)
-  async sendUrgentSurvey(fcmToken: string, caseId: number, customerName: string, address: string) {
+  // การ์ดงานมือถือโชว์ 3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน
+  async sendUrgentSurvey(fcmToken: string, caseId: number, incidentLocation: string, claimNo: string, insuranceCompany: string) {
     try {
       console.log(`[FCM] Sending urgent survey notification for case ${caseId}`);
       const result = await admin.messaging().send({
@@ -28,8 +29,9 @@ export const fcmService = {
         data: {
           type: 'new_survey',
           case_id: String(caseId),
-          title: customerName,
-          address: address,
+          incident_location: incidentLocation || '',
+          claim_no: claimNo || '',
+          insurance_company: insuranceCompany || '',
           created_at: new Date().toISOString(),
         },
         android: { priority: 'high' as const },

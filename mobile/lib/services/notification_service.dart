@@ -92,8 +92,9 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
-    String? customerName,
-    String? address,
+    String incidentLocation = '',
+    String claimNo = '',
+    String insuranceCompany = '',
   }) async {
     final caseId = int.tryParse(payload ?? '') ?? id;
 
@@ -104,8 +105,9 @@ class NotificationService {
         'title': title,
         'body': body,
         'caseId': caseId,
-        'customerName': customerName ?? title,
-        'address': address ?? body,
+        'incidentLocation': incidentLocation,
+        'claimNo': claimNo,
+        'insuranceCompany': insuranceCompany,
       });
       debugPrint('[Notification] Native incoming notification shown: id=$id');
     } catch (e) {

@@ -4,8 +4,9 @@ import '../services/api_service.dart';
 
 class IncomingSurveyPage extends StatefulWidget {
   final int caseId;
-  final String title;
-  final String address;
+  final String incidentLocation;
+  final String claimNo;
+  final String insuranceCompany;
   final int notificationId;
   final VoidCallback? onAccepted;
   final VoidCallback? onDeclined;
@@ -13,8 +14,9 @@ class IncomingSurveyPage extends StatefulWidget {
   const IncomingSurveyPage({
     super.key,
     required this.caseId,
-    required this.title,
-    required this.address,
+    required this.incidentLocation,
+    required this.claimNo,
+    required this.insuranceCompany,
     required this.notificationId,
     this.onAccepted,
     this.onDeclined,
@@ -113,9 +115,11 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
               ),
               child: Column(
                 children: [
-                  _infoRow(Icons.person, 'ลูกค้า', widget.title),
+                  _infoRow(Icons.location_on, 'สถานที่เกิดเหตุ', widget.incidentLocation),
                   const SizedBox(height: 12),
-                  _infoRow(Icons.location_on, 'สถานที่', widget.address),
+                  _infoRow(Icons.description, 'เลขเคลม', widget.claimNo),
+                  const SizedBox(height: 12),
+                  _infoRow(Icons.business, 'บริษัทประกัน', widget.insuranceCompany),
                 ],
               ),
             ),
@@ -195,7 +199,7 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
             children: [
               Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 2),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              Text(value.trim().isEmpty ? '-' : value, style: const TextStyle(color: Colors.white, fontSize: 16)),
             ],
           ),
         ),

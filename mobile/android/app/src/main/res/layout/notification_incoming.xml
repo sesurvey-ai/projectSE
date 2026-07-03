@@ -39,6 +39,17 @@
             android:background="@drawable/btn_mute_notif_bg" />
     </LinearLayout>
 
+    <!-- Subtitle: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน -->
+    <TextView
+        android:id="@+id/notification_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textColor="#555555"
+        android:layout_marginBottom="10dp"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
     <!-- Row 2: Buttons -->
     <LinearLayout
         android:layout_width="match_parent"

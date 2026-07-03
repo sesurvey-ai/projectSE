@@ -40,12 +40,14 @@ class IncomingCallActivity : Activity() {
         // รับข้อมูลจาก Intent
         caseId = intent.getIntExtra("case_id", 0)
         notificationId = intent.getIntExtra("notification_id", 0)
-        val customerName = intent.getStringExtra("customer_name") ?: ""
-        val address = intent.getStringExtra("address") ?: ""
+        val incidentLocation = intent.getStringExtra("incident_location") ?: ""
+        val claimNo = intent.getStringExtra("claim_no") ?: ""
+        val insuranceCompany = intent.getStringExtra("insurance_company") ?: ""
 
-        // ตั้งค่า UI
-        findViewById<TextView>(R.id.txt_customer).text = customerName
-        findViewById<TextView>(R.id.txt_address).text = address
+        // ตั้งค่า UI (3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน)
+        findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "-"
+        findViewById<TextView>(R.id.txt_claim).text = if (claimNo.isNotBlank()) claimNo else "-"
+        findViewById<TextView>(R.id.txt_insurance).text = if (insuranceCompany.isNotBlank()) insuranceCompany else "-"
 
         // ปุ่มปิดเสียง
         findViewById<TextView>(R.id.btn_mute).setOnClickListener {
@@ -59,7 +61,7 @@ class IncomingCallActivity : Activity() {
             handleAction("accept")
         }
 
-        Log.d("IncomingCall", "Activity created: caseId=$caseId customer=$customerName")
+        Log.d("IncomingCall", "Activity created: caseId=$caseId claim=$claimNo")
     }
 
     private fun handleAction(action: String) {

@@ -107,7 +107,12 @@ export const caseService = {
   },
 
   async assign(caseId: number, surveyorId: number) {
-    const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    // ดึง claim_no + insurance_company จาก survey_reports มาด้วย (โชว์บนการ์ดงานมือถือ)
+    const caseResult = await db.query(
+      `SELECT c.*, sr.claim_no AS sr_claim_no, sr.insurance_company AS sr_insurance_company
+         FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id WHERE c.id = $1`,
+      [caseId]
+    );
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
 
     const caseData = caseResult.rows[0];
@@ -134,8 +139,9 @@ export const caseService = {
         const fcmResult = await fcmService.sendUrgentSurvey(
           surveyor.fcm_token,
           caseId,
-          caseData.customer_name,
-          caseData.incident_location || ''
+          caseData.incident_location || '',
+          caseData.sr_claim_no || '',
+          caseData.sr_insurance_company || ''
         );
         console.log('[FCM] Send success:', fcmResult);
       } catch (err) {

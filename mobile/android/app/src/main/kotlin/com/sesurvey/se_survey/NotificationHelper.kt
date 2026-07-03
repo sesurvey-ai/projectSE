@@ -51,7 +51,7 @@ object NotificationHelper {
 
     // ── แสดง notification ตามเงื่อนไข ─────────────────────────────
     fun showIncomingNotification(context: Context, id: Int, title: String, caseId: Int,
-                                    customerName: String = "", address: String = "") {
+                                    incidentLocation: String = "", claimNo: String = "", insuranceCompany: String = "") {
 
         val state = getScreenState(context)
         Log.d("NotifHelper", "Screen state: $state")
@@ -63,12 +63,12 @@ object NotificationHelper {
             ScreenState.SCREEN_OFF,
             ScreenState.SCREEN_LOCKED,
             ScreenState.HOME_SCREEN -> {
-                showFullscreen(context, id, caseId, customerName, address)
+                showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
             }
             // Notification Bar: เปิดแอป SE Survey, เปิดแอปอื่น
             ScreenState.APP_FOREGROUND,
             ScreenState.OTHER_APP -> {
-                showNotificationBar(context, id, title, caseId, customerName, address)
+                showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
             }
         }
 
@@ -78,13 +78,14 @@ object NotificationHelper {
 
     // ── Fullscreen Activity ───────────────────────────────────────
     private fun showFullscreen(context: Context, id: Int, caseId: Int,
-                                customerName: String, address: String) {
+                                incidentLocation: String, claimNo: String, insuranceCompany: String) {
         val intent = Intent(context, IncomingCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("case_id", caseId)
             putExtra("notification_id", id)
-            putExtra("customer_name", customerName)
-            putExtra("address", address)
+            putExtra("incident_location", incidentLocation)
+            putExtra("claim_no", claimNo)
+            putExtra("insurance_company", insuranceCompany)
         }
         context.startActivity(intent)
         Log.d("NotifHelper", "Fullscreen launched: caseId=$caseId")
@@ -92,12 +93,19 @@ object NotificationHelper {
 
     // ── Notification Bar ──────────────────────────────────────────
     private fun showNotificationBar(context: Context, id: Int, title: String,
-                                     caseId: Int, customerName: String, address: String) {
+                                     caseId: Int, incidentLocation: String, claimNo: String, insuranceCompany: String) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Custom layout
         val customView = RemoteViews(context.packageName, R.layout.notification_incoming)
         customView.setTextViewText(R.id.notification_title, title)
+        // บรรทัดรอง: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน (เว้นตัวที่ว่าง)
+        val sub = listOf(
+            incidentLocation.trim(),
+            if (claimNo.isNotBlank()) "เคลม ${claimNo.trim()}" else "",
+            insuranceCompany.trim()
+        ).filter { it.isNotBlank() }.joinToString("  ·  ")
+        customView.setTextViewText(R.id.notification_subtitle, sub)
 
         // Accept button
         val acceptIntent = Intent(context, NotificationActionReceiver::class.java).apply {

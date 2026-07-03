@@ -71,50 +71,13 @@
             android:background="@drawable/card_bg_dark"
             android:padding="20dp">
 
-            <!-- Customer row -->
+            <!-- Row 1: สถานที่เกิดเหตุ -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="12dp">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_myplaces"
-                    android:tint="#FF9800"
-                    android:contentDescription="person" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="ลูกค้า"
-                        android:textSize="12sp"
-                        android:textColor="#80FFFFFF" />
-
-                    <TextView
-                        android:id="@+id/txt_customer"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="16sp"
-                        android:textColor="#FFFFFF" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Address row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:layout_marginBottom="14dp">
 
                 <ImageView
                     android:layout_width="20dp"
@@ -133,13 +96,90 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="สถานที่"
+                        android:text="สถานที่เกิดเหตุ"
                         android:textSize="12sp"
                         android:textColor="#80FFFFFF" />
 
                     <TextView
-                        android:id="@+id/txt_address"
+                        android:id="@+id/txt_incident"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:textColor="#FFFFFF"
+                        android:maxLines="2"
+                        android:ellipsize="end" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Row 2: เลขเคลม -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="14dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/ic_menu_info_details"
+                    android:tint="#FF9800"
+                    android:contentDescription="claim" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="10dp">
+
+                    <TextView
                         android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="เลขเคลม"
+                        android:textSize="12sp"
+                        android:textColor="#80FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/txt_claim"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:textColor="#FFFFFF" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Row 3: บริษัทประกัน -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/ic_menu_agenda"
+                    android:tint="#FF9800"
+                    android:contentDescription="insurance" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="บริษัทประกัน"
+                        android:textSize="12sp"
+                        android:textColor="#80FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/txt_insurance"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
                         android:textColor="#FFFFFF"

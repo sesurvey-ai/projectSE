@@ -104,15 +104,17 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
     final ctx = rootNavigatorKey.currentContext;
     if (ctx == null) return;
     final caseId = int.tryParse(data['case_id']?.toString() ?? '') ?? 0;
-    final customerName = data['customer_name']?.toString() ?? data['title']?.toString() ?? 'ลูกค้า';
-    final address = data['incident_location']?.toString() ?? data['address']?.toString() ?? '';
+    final incidentLocation = data['incident_location']?.toString() ?? '';
+    final claimNo = data['claim_no']?.toString() ?? '';
+    final insuranceCompany = data['insurance_company']?.toString() ?? '';
     final notifId = caseId > 0 ? caseId : DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     Navigator.of(ctx).push(MaterialPageRoute(
       builder: (_) => IncomingSurveyPage(
         caseId: caseId,
-        title: customerName,
-        address: address,
+        incidentLocation: incidentLocation,
+        claimNo: claimNo,
+        insuranceCompany: insuranceCompany,
         notificationId: notifId,
         onAccepted: () {
           _caseProvider.fetchMyCases();

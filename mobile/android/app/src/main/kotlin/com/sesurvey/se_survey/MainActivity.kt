@@ -37,9 +37,10 @@ class MainActivity : FlutterActivity() {
                     val id = call.argument<Int>("id") ?: 0
                     val title = call.argument<String>("title") ?: ""
                     val caseId = call.argument<Int>("caseId") ?: 0
-                    val customerName = call.argument<String>("customerName") ?: ""
-                    val address = call.argument<String>("address") ?: ""
-                    NotificationHelper.showIncomingNotification(this, id, title, caseId, customerName, address)
+                    val incidentLocation = call.argument<String>("incidentLocation") ?: ""
+                    val claimNo = call.argument<String>("claimNo") ?: ""
+                    val insuranceCompany = call.argument<String>("insuranceCompany") ?: ""
+                    NotificationHelper.showIncomingNotification(this, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
                     result.success(true)
                 }
                 "cancelNotification" -> {
