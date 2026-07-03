@@ -109,29 +109,52 @@ export const attendanceService = {
     return rows;
   },
 
-  // รายงานสำหรับ admin/callcenter — หลายรอบต่อวันได้ เรียงตามวัน/ชื่อ/เวลาเข้า
+  // รายงานสำหรับ admin/callcenter — แบ่งหน้า (limit/offset) + สรุปยอด + รายชื่อพนักงานในช่วง
+  // มุมมองรายเดือนฝั่งเว็บส่ง from/to เป็นขอบเดือน → โหลดทีละหน้า ไม่ดึงทั้งประวัติมากองในหน้าเดียว
   async report(q: Record<string, unknown>) {
-    const where: string[] = [];
-    const params: unknown[] = [];
+    // range = เฉพาะช่วงวัน (ใช้กับ dropdown รายชื่อพนักงาน — ไม่ผูกตัวกรองคน/ค้นหา จะได้สลับคนได้)
+    const range: string[] = [];
+    const rangeParams: unknown[] = [];
     let p = 1;
     const from = String(q.from || '');
     const to = String(q.to || '');
-    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) {
-      where.push(`ar.work_date >= $${p++}`);
-      params.push(from);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) { range.push(`ar.work_date >= $${p++}`); rangeParams.push(from); }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(to)) { range.push(`ar.work_date <= $${p++}`); rangeParams.push(to); }
+    // full = range + ตัวกรองพนักงาน/ค้นหา (ใช้กับ rows + total + summary)
+    const full = [...range];
+    const fullParams: unknown[] = [...rangeParams];
+    if (q.user_id && Number.isFinite(Number(q.user_id))) { full.push(`ar.user_id = $${p++}`); fullParams.push(Number(q.user_id)); }
+    const term = String(q.q || '').trim();
+    if (term) {
+      const digits = term.replace(/\D/g, '');
+      const nameExpr = `TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,''))`;
+      if (digits) {
+        full.push(`(u.code ILIKE $${p} OR ${nameExpr} ILIKE $${p} OR regexp_replace(u.code, '\\D', '', 'g') LIKE $${p + 1})`);
+        fullParams.push(`%${term}%`, `%${digits}%`); p += 2;
+      } else {
+        full.push(`(u.code ILIKE $${p} OR ${nameExpr} ILIKE $${p})`);
+        fullParams.push(`%${term}%`); p += 1;
+      }
     }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-      where.push(`ar.work_date <= $${p++}`);
-      params.push(to);
-    }
-    if (q.user_id && Number.isFinite(Number(q.user_id))) {
-      where.push(`ar.user_id = $${p++}`);
-      params.push(Number(q.user_id));
-    }
-    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    // เดิม 500 — วันยุ่ง (พนักงาน 80+ คน หลายรอบ/วัน + ช่วง 2 วันของบอร์ด) อาจเกิน 500
-    // แล้วคนท้าย ๆ ถูกตัดทิ้งเงียบ ๆ → ขึ้นว่า "ยังไม่มา" ทั้งที่เช็คอินแล้ว. query ถูก bound ด้วยช่วงวันอยู่แล้ว
-    const MAX_ROWS = 5000;
+    const rangeSql = range.length ? `WHERE ${range.join(' AND ')}` : '';
+    const fullSql = full.length ? `WHERE ${full.join(' AND ')}` : '';
+
+    // ไม่ส่ง limit มา = พฤติกรรมเดิม (สูงสุด 5000 แถว) — บอร์ดเข้างานพึ่งการดึงทั้งช่วง; หน้ารายเดือนส่ง limit=50 เพื่อแบ่งหน้า
+    const rawLimit = Number(q.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 5000) : 5000;
+    const offset = Math.max(Number(q.offset) || 0, 0);
+
+    // สรุป + total (ตามตัวกรอง full) — JOIN users เพราะ term อาจอ้าง u.*
+    const agg = await db.query(
+      `SELECT count(*)::int AS total,
+              count(DISTINCT ar.user_id)::int AS staff,
+              count(*) FILTER (WHERE ar.check_out_at IS NOT NULL)::int AS complete,
+              count(*) FILTER (WHERE ar.check_out_at IS NULL)::int AS open_out
+         FROM attendance_records ar JOIN users u ON u.id = ar.user_id ${fullSql}`,
+      fullParams
+    );
+    const s = agg.rows[0] || { total: 0, staff: 0, complete: 0, open_out: 0 };
+
     const { rows } = await db.query(
       `SELECT ar.id, ar.user_id,
               to_char(ar.work_date,    'YYYY-MM-DD') AS work_date,
@@ -141,12 +164,29 @@ export const attendanceService = {
               TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS user_name, u.username, u.code
          FROM attendance_records ar
          JOIN users u ON u.id = ar.user_id
-         ${whereSql}
+         ${fullSql}
         ORDER BY ar.work_date DESC, user_name ASC, ar.check_in_at ASC
-        LIMIT ${MAX_ROWS}`,
-      params
+        LIMIT ${limit} OFFSET ${offset}`,
+      fullParams
     );
-    return { count: rows.length, capped: rows.length >= MAX_ROWS, rows };
+
+    // รายชื่อพนักงานที่มีข้อมูลในช่วง (สำหรับ dropdown) — เรียงตามชื่อ
+    const emps = await db.query(
+      `SELECT DISTINCT ar.user_id, u.code,
+              TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS name
+         FROM attendance_records ar JOIN users u ON u.id = ar.user_id ${rangeSql}
+        ORDER BY name ASC`,
+      rangeParams
+    );
+
+    return {
+      rows,
+      total: s.total,
+      summary: { records: s.total, staff: s.staff, complete: s.complete, openOut: s.open_out },
+      employees: emps.rows,
+      limit,
+      offset,
+    };
   },
 
   // เวลาปัจจุบันฝั่ง server (เวลาไทย) — ให้บอร์ดยึดเวลานี้แทนนาฬิกาเครื่อง client (กันเบราว์เซอร์ TZ อื่นคำนวณ "วันนี้"/อาสาเพี้ยน)
