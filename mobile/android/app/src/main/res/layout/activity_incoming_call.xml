@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D1B2A">
+    android:background="#F4F6F9">
 
     <!-- Top: mute button -->
     <TextView
@@ -59,7 +59,7 @@
             android:layout_height="wrap_content"
             android:text="งานสำรวจใหม่"
             android:textSize="28sp"
-            android:textColor="#FFFFFF"
+            android:textColor="#1A2733"
             android:textStyle="bold"
             android:layout_marginBottom="24dp" />
 
@@ -68,7 +68,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@drawable/card_bg_dark"
+            android:background="@drawable/card_bg_light"
             android:padding="20dp">
 
             <!-- Row 1: สถานที่เกิดเหตุ -->
@@ -98,14 +98,14 @@
                         android:layout_height="wrap_content"
                         android:text="สถานที่เกิดเหตุ"
                         android:textSize="12sp"
-                        android:textColor="#80FFFFFF" />
+                        android:textColor="#64748B" />
 
                     <TextView
                         android:id="@+id/txt_incident"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1A2733"
                         android:maxLines="2"
                         android:ellipsize="end" />
                 </LinearLayout>
@@ -138,14 +138,14 @@
                         android:layout_height="wrap_content"
                         android:text="เลขเคลม"
                         android:textSize="12sp"
-                        android:textColor="#80FFFFFF" />
+                        android:textColor="#64748B" />
 
                     <TextView
                         android:id="@+id/txt_claim"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
-                        android:textColor="#FFFFFF" />
+                        android:textColor="#1A2733" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -175,14 +175,14 @@
                         android:layout_height="wrap_content"
                         android:text="บริษัทประกัน"
                         android:textSize="12sp"
-                        android:textColor="#80FFFFFF" />
+                        android:textColor="#64748B" />
 
                     <TextView
                         android:id="@+id/txt_insurance"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#1A2733"
                         android:maxLines="2"
                         android:ellipsize="end" />
                 </LinearLayout>

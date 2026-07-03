@@ -73,7 +73,7 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1B2A),
+      backgroundColor: const Color(0xFFF4F6F9),
       body: SafeArea(
         child: Column(
           children: [
@@ -101,7 +101,7 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
             // Title
             const Text(
               'งานสำรวจใหม่',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A2733)),
             ),
             const SizedBox(height: 24),
             // Info card
@@ -109,9 +109,9 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
               margin: const EdgeInsets.symmetric(horizontal: 32),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white24),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Column(
                 children: [
@@ -197,9 +197,9 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              Text(label, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
               const SizedBox(height: 2),
-              Text(value.trim().isEmpty ? '-' : value, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              Text(value.trim().isEmpty ? '-' : value, style: const TextStyle(color: Color(0xFF1A2733), fontSize: 16, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
