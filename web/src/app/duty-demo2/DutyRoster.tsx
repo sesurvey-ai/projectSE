@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { ROSTER_JUN } from './roster-jun';
 import { PROVINCE_CENTERS, PROVINCE_SEED } from './roster-provinces';
 
@@ -228,9 +229,9 @@ function ShiftCell({ shiftKey, onOpen, dim }: { shiftKey: ShiftKey; onOpen: (e: 
 }
 
 // ---- Staff header card ----
-function StaffHead({ staff, counts, dim, confirming, onAsk, onConfirm, onCancel, onEdit }: {
+function StaffHead({ staff, counts, dim, confirming, canDelete, onAsk, onConfirm, onCancel, onEdit }: {
   staff: Staff; counts: Record<ShiftKey, number>; dim: boolean;
-  confirming: boolean; onAsk: () => void; onConfirm: () => void; onCancel: () => void;
+  confirming: boolean; canDelete: boolean; onAsk: () => void; onConfirm: () => void; onCancel: () => void;
   onEdit: (field: 'code' | 'name', val: string) => void;
 }) {
   const work = counts.s1 + counts.s2 + counts.s3;
@@ -238,14 +239,14 @@ function StaffHead({ staff, counts, dim, confirming, onAsk, onConfirm, onCancel,
   return (
     <th className={'staff-head' + (dim ? ' col-dim' : '')}>
       <div className="staff-card">
-        {confirming ? (
+        {canDelete && (confirming ? (
           <span className="sc-confirm">
             <button className="sc-yes" onClick={onConfirm}>ลบ</button>
             <button className="sc-no" onClick={onCancel}>ยกเลิก</button>
           </span>
         ) : (
           <button className="sc-x" onClick={onAsk} title="ลบพนักงาน">✕</button>
-        )}
+        ))}
         <input className="code" value={staff.code} onChange={(e) => onEdit('code', e.target.value)} spellCheck={false} />
         <input className="nm" value={staff.name} onChange={(e) => onEdit('name', e.target.value)} spellCheck={false} />
         <div className="minibar" title="สัดส่วนกะ เช้า · บ่าย · ดึก">
@@ -322,6 +323,8 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
   const [weekendHi, setWeekendHi] = useState(true);
   const [coverWarn, setCoverWarn] = useState(4);
   const [panelOpen, setPanelOpen] = useState(!embedded);
+  const { user } = useAuth();
+  const canDelete = user?.role === 'admin'; // ลบพนักงานในเวรได้เฉพาะ admin (callcenter ลบไม่ได้)
 
   const [query, setQuery] = useState('');
   const [pop, setPop] = useState<{ staffId: string; day: number; anchor: HTMLElement } | null>(null);
@@ -594,7 +597,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
               <th className="col-day head-meta"><div className="lbl">วันที่</div></th>
               <th className="col-dow head-meta"><div className="lbl">วัน</div></th>
               {staff.map((s) => <StaffHead key={s.id} staff={s} counts={counts[s.id]} dim={isDim(s)}
-                confirming={confirmId === s.id} onAsk={() => setConfirmId(s.id)}
+                confirming={confirmId === s.id} canDelete={canDelete} onAsk={() => setConfirmId(s.id)}
                 onConfirm={() => removeStaff(s.id)} onCancel={() => setConfirmId(null)}
                 onEdit={(f, v) => editStaff(s.id, f, v)} />)}
             </tr>
