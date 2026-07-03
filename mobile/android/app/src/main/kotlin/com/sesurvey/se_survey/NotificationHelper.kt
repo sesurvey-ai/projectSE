@@ -58,15 +58,24 @@ object NotificationHelper {
 
         ensureChannel(context)
 
-        // โพสต์ notification ค้าง (ongoing) ควบคู่หน้าเต็มจอ — เผื่อผู้ใช้กด Home/Recent จนหน้าเต็มจอหาย
-        // ยังมีปุ่มรับงาน/ปิดเสียง + แตะเปิดการ์ดกลับได้ (แบบสายเรียกเข้า) เสียงจะไม่ค้างโดยกดรับไม่ได้
-        showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
-
-        // เปิดหน้าเต็มจอทันที
+        // เปิดหน้าเต็มจอ — ยังไม่โพสต์ notification bar (กันซ้อนกับหน้าเต็มจอ)
+        // IncomingCallActivity จะโพสต์ bar เองตอนถูกกด Home/Recent (onStop) และซ่อนตอนกลับมา (onResume)
         showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
 
         // เล่นเสียง alarm ทุกกรณี
         startAlarm(context)
+    }
+
+    // โพสต์ notification bar (fallback) — เรียกจาก IncomingCallActivity.onStop เมื่อหน้าเต็มจอหลุดไปพื้นหลัง
+    fun showFallbackNotification(context: Context, id: Int, title: String, caseId: Int,
+                                 incidentLocation: String, claimNo: String, insuranceCompany: String) {
+        ensureChannel(context)
+        showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
+    }
+
+    // ยกเลิกเฉพาะ notification bar (ไม่หยุดเสียง alarm) — ใช้ตอนหน้าเต็มจอกลับมาแสดง (onResume)
+    fun cancelBarOnly(context: Context, id: Int) {
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(id)
     }
 
     // ── Fullscreen Activity ───────────────────────────────────────

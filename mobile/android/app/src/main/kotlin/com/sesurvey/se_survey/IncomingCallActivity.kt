@@ -17,6 +17,10 @@ class IncomingCallActivity : Activity() {
 
     private var caseId: Int = 0
     private var notificationId: Int = 0
+    private var incidentLocation: String = ""
+    private var claimNo: String = ""
+    private var insuranceCompany: String = ""
+    private var actionTaken = false // กดรับ/ปฏิเสธแล้วหรือยัง — กันโพสต์ bar หลังจบงาน
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,26 +43,7 @@ class IncomingCallActivity : Activity() {
 
         setContentView(R.layout.activity_incoming_call)
 
-        // รับข้อมูลจาก Intent
-        caseId = intent.getIntExtra("case_id", 0)
-        notificationId = intent.getIntExtra("notification_id", 0)
-        val incidentLocation = intent.getStringExtra("incident_location") ?: ""
-        val claimNo = intent.getStringExtra("claim_no") ?: ""
-        val insuranceCompany = intent.getStringExtra("insurance_company") ?: ""
-
-        // ตั้งค่า UI (3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน)
-        findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "-"
-        findViewById<TextView>(R.id.txt_claim).text = if (claimNo.isNotBlank()) claimNo else "-"
-        findViewById<TextView>(R.id.txt_insurance).text = if (insuranceCompany.isNotBlank()) insuranceCompany else "-"
-
-        // โลโก้บริษัทประกันด้านบน — ตอนนี้มี TPB; บริษัทที่ไม่มีโลโก้ = ซ่อน
-        val logoView = findViewById<ImageView>(R.id.img_logo)
-        if (insuranceCompany.contains("ไทยไพบูลย์") || insuranceCompany.contains("TPB", ignoreCase = true)) {
-            logoView.setImageResource(R.drawable.logo_tpb)
-            logoView.visibility = View.VISIBLE
-        } else {
-            logoView.visibility = View.GONE
-        }
+        bindData(intent)
 
         // ปุ่มรับงาน
         findViewById<Button>(R.id.btn_accept).setOnClickListener {
@@ -68,7 +53,51 @@ class IncomingCallActivity : Activity() {
         Log.d("IncomingCall", "Activity created: caseId=$caseId claim=$claimNo")
     }
 
+    // อ่านข้อมูลจาก intent → ตั้งค่า UI (ใช้ทั้ง onCreate และ onNewIntent ตอนแตะ notification เปิดกลับ)
+    private fun bindData(source: Intent) {
+        caseId = source.getIntExtra("case_id", caseId)
+        notificationId = source.getIntExtra("notification_id", notificationId)
+        incidentLocation = source.getStringExtra("incident_location") ?: incidentLocation
+        claimNo = source.getStringExtra("claim_no") ?: claimNo
+        insuranceCompany = source.getStringExtra("insurance_company") ?: insuranceCompany
+
+        // 3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน
+        findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "-"
+        findViewById<TextView>(R.id.txt_claim).text = if (claimNo.isNotBlank()) claimNo else "-"
+        findViewById<TextView>(R.id.txt_insurance).text = if (insuranceCompany.isNotBlank()) insuranceCompany else "-"
+
+        // โลโก้บริษัทประกัน — ตอนนี้มี TPB; บริษัทที่ไม่มีโลโก้ = ซ่อน
+        val logoView = findViewById<ImageView>(R.id.img_logo)
+        if (insuranceCompany.contains("ไทยไพบูลย์") || insuranceCompany.contains("TPB", ignoreCase = true)) {
+            logoView.setImageResource(R.drawable.logo_tpb)
+            logoView.visibility = View.VISIBLE
+        } else {
+            logoView.visibility = View.GONE
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        bindData(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // หน้าเต็มจอกำลังแสดง → ซ่อน notification bar (กันซ้อน) — ไม่หยุดเสียง
+        NotificationHelper.cancelBarOnly(this, notificationId)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // หน้าเต็มจอหลุดไปพื้นหลัง (กด Home/Recent) โดยยังไม่กดรับ → โชว์ notification bar ให้กดรับได้
+        if (!isFinishing && !actionTaken) {
+            NotificationHelper.showFallbackNotification(this, notificationId, "งานสำรวจใหม่", caseId, incidentLocation, claimNo, insuranceCompany)
+        }
+    }
+
     private fun handleAction(action: String) {
+        actionTaken = true
         // หยุดเสียง + ปิด notification
         NotificationHelper.cancelNotification(this, notificationId)
 
