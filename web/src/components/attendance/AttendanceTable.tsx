@@ -44,6 +44,13 @@ function fmtDate(s?: string | null): string {
     return String(s);
   }
 }
+const fmtFullThai = (s: string) => {
+  try {
+    return new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  } catch {
+    return s;
+  }
+};
 
 const td = 'px-4 py-3 whitespace-nowrap text-gray-700';
 
@@ -76,6 +83,7 @@ function pageList(cur: number, last: number): (number | '…')[] {
 
 export default function AttendanceTable() {
   const now = new Date();
+  const [todayOnly, setTodayOnly] = useState(true); // default = แสดงเฉพาะวันนี้
   const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 }); // เดือนที่ดู (default = เดือนปัจจุบัน)
   const [page, setPage] = useState(0); // 0-based
   const [employee, setEmployee] = useState(''); // user_id ('' = ทั้งหมด)
@@ -91,8 +99,9 @@ export default function AttendanceTable() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const from = `${view.y}-${p2(view.m)}-01`;
-  const to = `${view.y}-${p2(view.m)}-${p2(daysInMonth(view.y, view.m))}`;
+  const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
+  const from = todayOnly ? todayStr : `${view.y}-${p2(view.m)}-01`;
+  const to = todayOnly ? todayStr : `${view.y}-${p2(view.m)}-${p2(daysInMonth(view.y, view.m))}`;
 
   // debounce ช่องค้นหา → q (แล้วรีเซ็ตไปหน้าแรก)
   useEffect(() => {
@@ -199,7 +208,7 @@ export default function AttendanceTable() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `attendance-${view.y}-${p2(view.m)}.csv`;
+      a.download = todayOnly ? `attendance-${todayStr}.csv` : `attendance-${view.y}-${p2(view.m)}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch {
@@ -207,30 +216,43 @@ export default function AttendanceTable() {
     } finally {
       setExporting(false);
     }
-  }, [from, to, employee, q, view.y, view.m]);
+  }, [from, to, employee, q, todayOnly, todayStr, view.y, view.m]);
 
   const cards = useMemo(() => ([
-    { label: 'รายการเดือนนี้', value: summary.records, cls: 'text-gray-800' },
+    { label: todayOnly ? 'รายการวันนี้' : 'รายการเดือนนี้', value: summary.records, cls: 'text-gray-800' },
     { label: 'พนักงานที่ลงเวลา', value: summary.staff, cls: 'text-gray-800' },
     { label: 'ครบเข้า–ออก', value: summary.complete, cls: 'text-green-600' },
     { label: 'ยังไม่ออก', value: summary.openOut, cls: 'text-orange-600' },
-  ]), [summary]);
+  ]), [summary, todayOnly]);
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">เวลาเข้า–ออกงาน</h1>
-      <p className="text-sm text-gray-500 mb-6">บันทึกการลงเวลาเข้า–ออกงานของพนักงาน · รายเดือน</p>
+      <p className="text-sm text-gray-500 mb-6">บันทึกการลงเวลาเข้า–ออกงานของพนักงาน</p>
 
       {/* แถบควบคุม: เลื่อนเดือน + ค้นหา + เลือกพนักงาน + ส่งออก */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="flex items-center gap-1">
-          <button onClick={() => gotoMonth(-1)} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50" aria-label="เดือนก่อนหน้า">‹</button>
-          <div className="min-w-[150px] text-center font-semibold text-gray-800">{TH_MONTHS[view.m - 1]} {view.y + 543}</div>
-          <button onClick={() => gotoMonth(1)} disabled={isCurrentMonth} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="เดือนถัดไป">›</button>
-          {!isCurrentMonth && (
-            <button onClick={() => { setView({ y: now.getFullYear(), m: now.getMonth() + 1 }); setPage(0); }} className="ml-1 px-3 h-9 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">เดือนนี้</button>
-          )}
-        </div>
+        <label className="flex items-center gap-2 text-sm text-gray-700 select-none cursor-pointer px-3 h-9 rounded-lg border border-gray-200 hover:bg-gray-50">
+          <input
+            type="checkbox"
+            checked={todayOnly}
+            onChange={(e) => { const on = e.target.checked; setTodayOnly(on); setPage(0); if (on) setView({ y: now.getFullYear(), m: now.getMonth() + 1 }); }}
+            className="w-4 h-4 accent-blue-600"
+          />
+          วันนี้
+        </label>
+        {todayOnly ? (
+          <div className="font-semibold text-gray-800">{fmtFullThai(todayStr)}</div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <button onClick={() => gotoMonth(-1)} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50" aria-label="เดือนก่อนหน้า">‹</button>
+            <div className="min-w-[150px] text-center font-semibold text-gray-800">{TH_MONTHS[view.m - 1]} {view.y + 543}</div>
+            <button onClick={() => gotoMonth(1)} disabled={isCurrentMonth} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="เดือนถัดไป">›</button>
+            {!isCurrentMonth && (
+              <button onClick={() => { setView({ y: now.getFullYear(), m: now.getMonth() + 1 }); setPage(0); }} className="ml-1 px-3 h-9 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">เดือนนี้</button>
+            )}
+          </div>
+        )}
         <div className="flex-1" />
         <input
           type="text"
@@ -277,7 +299,7 @@ export default function AttendanceTable() {
           <div className="text-center text-gray-500 py-16">{error}</div>
         ) : rows.length === 0 ? (
           <div className="text-center text-gray-500 py-16">
-            {q || employee ? 'ไม่พบรายการที่ค้นหาในเดือนนี้' : 'ยังไม่มีข้อมูลการลงเวลาในเดือนนี้'}
+            {q || employee ? `ไม่พบรายการที่ค้นหา${todayOnly ? 'วันนี้' : 'ในเดือนนี้'}` : `ยังไม่มีข้อมูลการลงเวลา${todayOnly ? 'วันนี้' : 'ในเดือนนี้'}`}
           </div>
         ) : (
           <div className="overflow-x-auto">
