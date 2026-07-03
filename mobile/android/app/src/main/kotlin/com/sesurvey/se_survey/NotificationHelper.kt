@@ -100,6 +100,10 @@ object NotificationHelper {
         ).filter { it.isNotBlank() }.joinToString("  ·  ")
         customView.setTextViewText(R.id.notification_subtitle, sub)
 
+        // แบบย่อ (collapsed/heads-up): หัวข้อ + ปุ่มรับงานเต็มปุ่ม — heads-up สูงจำกัด เลยตัดรายละเอียดออก
+        val compactView = RemoteViews(context.packageName, R.layout.notification_incoming_compact)
+        compactView.setTextViewText(R.id.notification_title, title)
+
         // Accept button
         val acceptIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = NotificationActionReceiver.ACTION_ACCEPT
@@ -111,6 +115,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         customView.setOnClickPendingIntent(R.id.btn_accept, acceptPi)
+        compactView.setOnClickPendingIntent(R.id.btn_accept, acceptPi)
 
         // Mute button
         val muteIntent = Intent(context, NotificationActionReceiver::class.java).apply {
@@ -123,6 +128,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         customView.setOnClickPendingIntent(R.id.btn_mute, mutePi)
+        compactView.setOnClickPendingIntent(R.id.btn_mute, mutePi)
 
         // แตะ notification → เปิดหน้าเต็มจอ (การ์ด) กลับมา
         val tapIntent = Intent(context, IncomingCallActivity::class.java).apply {
@@ -140,9 +146,9 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setCustomContentView(customView)
+            .setCustomContentView(compactView)
             .setCustomBigContentView(customView)
-            .setCustomHeadsUpContentView(customView)
+            .setCustomHeadsUpContentView(compactView)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
