@@ -49,13 +49,6 @@ class IncomingCallActivity : Activity() {
         findViewById<TextView>(R.id.txt_claim).text = if (claimNo.isNotBlank()) claimNo else "-"
         findViewById<TextView>(R.id.txt_insurance).text = if (insuranceCompany.isNotBlank()) insuranceCompany else "-"
 
-        // ปุ่มปิดเสียง
-        findViewById<TextView>(R.id.btn_mute).setOnClickListener {
-            NotificationHelper.stopAlarm()
-            it.alpha = 0.4f
-            (it as TextView).text = "🔈"
-        }
-
         // ปุ่มรับงาน
         findViewById<Button>(R.id.btn_accept).setOnClickListener {
             handleAction("accept")
