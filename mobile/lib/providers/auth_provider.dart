@@ -78,33 +78,8 @@ class AuthProvider extends ChangeNotifier {
     // ตั้ง callback เมื่อ FCM foreground ได้รับ new_survey
     _fcmService.onNewSurveyReceived = (data) async {
       debugPrint('[Auth] FCM new_survey received: $data');
-      final caseId = data['case_id'];
-      final incidentLocation = (data['incident_location'] ?? '').toString();
-      final claimNo = (data['claim_no'] ?? '').toString();
-      final insuranceCompany = (data['insurance_company'] ?? '').toString();
-      final notifId = caseId is int ? caseId : (int.tryParse(caseId?.toString() ?? '') ?? DateTime.now().millisecondsSinceEpoch ~/ 1000);
-      final body = [
-        if (incidentLocation.isNotEmpty) incidentLocation,
-        if (claimNo.isNotEmpty) 'เคลม $claimNo',
-        if (insuranceCompany.isNotEmpty) insuranceCompany,
-      ].join(' · ');
-
-      // แสดง notification + เสียง alarm
-      try {
-        await NotificationService().showUrgentNotification(
-          id: notifId,
-          title: 'งานสำรวจใหม่',
-          body: body,
-          payload: caseId?.toString(),
-          incidentLocation: incidentLocation,
-          claimNo: claimNo,
-          insuranceCompany: insuranceCompany,
-        );
-      } catch (e) {
-        debugPrint('[Auth] Failed to show urgent notification: $e');
-      }
-
-      // Refresh case list
+      // native (MyFirebaseMessagingService) แสดงหน้าเต็มจอ + เสียง alarm ให้แล้วทุกสถานะ
+      // ฝั่ง Flutter แค่รีเฟรชรายการงาน — ไม่แสดง notification ซ้ำ (กันเด้ง/ให้กดรับซ้ำ)
       _onCaseAssignedRefresh?.call();
       notifyListeners();
     };

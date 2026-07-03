@@ -27,16 +27,16 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center_horizontal"
-        android:layout_centerInParent="true"
-        android:layout_marginBottom="80dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="40dp"
         android:paddingHorizontal="32dp">
 
         <!-- Icon circle -->
         <FrameLayout
-            android:layout_width="120dp"
-            android:layout_height="120dp"
+            android:layout_width="92dp"
+            android:layout_height="92dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="32dp">
+            android:layout_marginBottom="16dp">
 
             <View
                 android:id="@+id/pulse_ring"
@@ -45,8 +45,8 @@
                 android:background="@drawable/circle_outline_orange" />
 
             <ImageView
-                android:layout_width="60dp"
-                android:layout_height="60dp"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
                 android:layout_gravity="center"
                 android:src="@android:drawable/ic_dialog_info"
                 android:tint="#FF9800"
@@ -58,10 +58,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="งานสำรวจใหม่"
-            android:textSize="28sp"
+            android:textSize="26sp"
             android:textColor="#1A2733"
             android:textStyle="bold"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="18dp" />
 
         <!-- Info card -->
         <LinearLayout
@@ -71,7 +71,7 @@
             android:background="@drawable/card_bg_light"
             android:padding="20dp">
 
-            <!-- Row 1: สถานที่เกิดเหตุ -->
+            <!-- Row 1: บริษัทประกัน -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -82,9 +82,9 @@
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_compass"
+                    android:src="@android:drawable/ic_menu_agenda"
                     android:tint="#FF9800"
-                    android:contentDescription="location" />
+                    android:contentDescription="insurance" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -96,12 +96,12 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="สถานที่เกิดเหตุ"
+                        android:text="บริษัทประกัน"
                         android:textSize="12sp"
                         android:textColor="#64748B" />
 
                     <TextView
-                        android:id="@+id/txt_incident"
+                        android:id="@+id/txt_insurance"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
@@ -149,19 +149,20 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Row 3: บริษัทประกัน -->
+            <!-- Row 3: สถานที่เกิดเหตุ (แสดงเต็ม ไม่ตัด) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="top">
 
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_agenda"
+                    android:layout_marginTop="2dp"
+                    android:src="@android:drawable/ic_menu_compass"
                     android:tint="#FF9800"
-                    android:contentDescription="insurance" />
+                    android:contentDescription="location" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -173,18 +174,16 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="บริษัทประกัน"
+                        android:text="สถานที่เกิดเหตุ"
                         android:textSize="12sp"
                         android:textColor="#64748B" />
 
                     <TextView
-                        android:id="@+id/txt_insurance"
+                        android:id="@+id/txt_incident"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
-                        android:textColor="#1A2733"
-                        android:maxLines="2"
-                        android:ellipsize="end" />
+                        android:textColor="#1A2733" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

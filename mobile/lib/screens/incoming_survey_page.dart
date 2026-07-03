@@ -115,11 +115,11 @@ class _IncomingSurveyPageState extends State<IncomingSurveyPage> with SingleTick
               ),
               child: Column(
                 children: [
-                  _infoRow(Icons.location_on, 'สถานที่เกิดเหตุ', widget.incidentLocation),
+                  _infoRow(Icons.business, 'บริษัทประกัน', widget.insuranceCompany),
                   const SizedBox(height: 12),
                   _infoRow(Icons.description, 'เลขเคลม', widget.claimNo),
                   const SizedBox(height: 12),
-                  _infoRow(Icons.business, 'บริษัทประกัน', widget.insuranceCompany),
+                  _infoRow(Icons.location_on, 'สถานที่เกิดเหตุ', widget.incidentLocation),
                 ],
               ),
             ),

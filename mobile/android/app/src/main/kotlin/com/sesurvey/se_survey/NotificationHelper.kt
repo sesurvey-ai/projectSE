@@ -58,19 +58,8 @@ object NotificationHelper {
 
         ensureChannel(context)
 
-        when (state) {
-            // Fullscreen: จอปิด, จอล็อค, หน้า Home
-            ScreenState.SCREEN_OFF,
-            ScreenState.SCREEN_LOCKED,
-            ScreenState.HOME_SCREEN -> {
-                showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
-            }
-            // Notification Bar: เปิดแอป SE Survey, เปิดแอปอื่น
-            ScreenState.APP_FOREGROUND,
-            ScreenState.OTHER_APP -> {
-                showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
-            }
-        }
+        // ทุกสถานะ → หน้าเต็มจอ (การ์ดสวย/ปุ่มเต็ม/ข้อมูลครบ) — เลิกใช้ notification bar เล็กที่ปุ่มโดนตัด
+        showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
 
         // เล่นเสียง alarm ทุกกรณี
         startAlarm(context)
