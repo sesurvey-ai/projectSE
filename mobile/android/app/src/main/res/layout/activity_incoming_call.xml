@@ -15,6 +15,18 @@
         android:layout_marginBottom="64dp"
         android:paddingHorizontal="32dp">
 
+        <!-- โลโก้บริษัทประกัน (แสดงตามบริษัทในเคส) -->
+        <ImageView
+            android:id="@+id/img_logo"
+            android:layout_width="86dp"
+            android:layout_height="86dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="20dp"
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true"
+            android:contentDescription="company logo"
+            android:visibility="gone" />
+
         <!-- Title -->
         <TextView
             android:layout_width="wrap_content"

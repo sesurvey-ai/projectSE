@@ -7,8 +7,10 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 
 class IncomingCallActivity : Activity() {
@@ -48,6 +50,15 @@ class IncomingCallActivity : Activity() {
         findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "-"
         findViewById<TextView>(R.id.txt_claim).text = if (claimNo.isNotBlank()) claimNo else "-"
         findViewById<TextView>(R.id.txt_insurance).text = if (insuranceCompany.isNotBlank()) insuranceCompany else "-"
+
+        // โลโก้บริษัทประกันด้านบน — ตอนนี้มี TPB; บริษัทที่ไม่มีโลโก้ = ซ่อน
+        val logoView = findViewById<ImageView>(R.id.img_logo)
+        if (insuranceCompany.contains("ไทยไพบูลย์") || insuranceCompany.contains("TPB", ignoreCase = true)) {
+            logoView.setImageResource(R.drawable.logo_tpb)
+            logoView.visibility = View.VISIBLE
+        } else {
+            logoView.visibility = View.GONE
+        }
 
         // ปุ่มรับงาน
         findViewById<Button>(R.id.btn_accept).setOnClickListener {
