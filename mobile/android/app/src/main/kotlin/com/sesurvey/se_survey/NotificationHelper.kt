@@ -58,9 +58,14 @@ object NotificationHelper {
 
         ensureChannel(context)
 
-        // เปิดหน้าเต็มจอ — ยังไม่โพสต์ notification bar (กันซ้อนกับหน้าเต็มจอ)
-        // IncomingCallActivity จะโพสต์ bar เองตอนถูกกด Home/Recent (onStop) และซ่อนตอนกลับมา (onResume)
-        showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
+        if (state == ScreenState.APP_FOREGROUND) {
+            // แอป SE Survey เปิดอยู่ (พนักงานกำลังกรอก/ตรวจข้อมูล) → แจ้งเตือนแบบ notification bar อย่างเดียว
+            // ไม่เด้งหน้าเต็มจอทับงานที่ทำค้างอยู่
+            showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
+        } else {
+            // จอปิด/ล็อก/หน้า Home/แอปอื่น → หน้าเต็มจอ (bar จะโผล่เองตอนหน้าเต็มจอหลุดไปพื้นหลัง onStop)
+            showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
+        }
 
         // เล่นเสียง alarm ทุกกรณี
         startAlarm(context)
