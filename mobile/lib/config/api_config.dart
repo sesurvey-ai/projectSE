@@ -5,6 +5,10 @@ class ApiConfig {
   // backend production (มือถือพนักงานจริงชี้ที่นี่)
   static const String _prodUrl = 'https://api.sesurvey.cloud';
 
+  // บังคับใช้ prod แม้บน emulator — build: flutter build apk --release --dart-define=FORCE_PROD=true
+  // (default = false → พฤติกรรมเดิม: emulator ต่อ backend local)
+  static const bool _forceProd = bool.fromEnvironment('FORCE_PROD', defaultValue: false);
+
   // emulator ใช้ 10.0.2.2 (host loopback) ต่อ backend บนเครื่องพัฒนา
   static bool _isEmulator = false;
 
@@ -21,6 +25,7 @@ class ApiConfig {
   }
 
   static String get baseUrl {
+    if (_forceProd) return _prodUrl;
     if (!Platform.isAndroid) return _prodUrl;
     // emulator = backend dev บนเครื่อง; มือถือจริง = production
     return _isEmulator ? 'http://10.0.2.2:3001' : _prodUrl;
