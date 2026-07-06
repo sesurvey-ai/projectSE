@@ -4,6 +4,20 @@ import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
 import { getIO } from '../socket';
 
+// คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
+// ต้อง JSON.stringify ก่อน bind ไม่งั้นถูกตีความเป็น Postgres array literal แล้ว error
+const JSONB_FIELDS = new Set([
+  'opposing_parties', 'injured_persons', 'damaged_property', 'insured_damage',
+]);
+// แปลงค่า field ให้พร้อม bind: JSONB → stringify (ยกเว้นเป็น string อยู่แล้ว), อื่นๆ → ตามเดิม
+const bindVal = (f: string, v: unknown): unknown => {
+  if (JSONB_FIELDS.has(f)) {
+    if (v === undefined || v === null) return null;
+    return typeof v === 'string' ? v : JSON.stringify(v);
+  }
+  return v ?? null;
+};
+
 export const caseService = {
   async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
     const client = await db.getClient();
@@ -196,19 +210,20 @@ export const caseService = {
       'prb_number','policy_no','driver_by_policy','policy_start','policy_end',
       'assured_name','policy_type','assured_email','risk_code','deductible',
       'car_brand','car_type','car_province','chassis_no','engine_no','mileage',
-      'car_reg_year','ev_type','model_no',
+      'car_reg_year','ev_type','ev_battery_no','ev_battery_start','ev_charger_no','model_no',
       'driver_gender','driver_title','driver_name','driver_first_name','driver_last_name',
       'driver_age','driver_birthdate',
       'driver_phone','driver_address','driver_province','driver_district',
       'driver_id_card','driver_license_no',
       'driver_license_type','driver_license_place','driver_license_start','driver_license_end',
-      'driver_relation','driver_ticket','damage_description','estimated_cost',
+      'driver_relation','driver_ticket','damage_description','estimated_cost','insured_damage',
       'acc_date','acc_time','acc_place','acc_subdistrict','acc_province','acc_district',
-      'acc_cause','acc_damage_type','acc_detail','acc_fault',
+      'acc_cause','acc_damage_type','acc_detail','acc_fault','acc_fault_opponent_no',
       'acc_reporter','reporter_phone','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
-      'acc_customer_report_date','acc_insurance_notify_date',
+      'acc_customer_report_date','customer_reported_at','acc_insurance_notify_date',
       'acc_survey_arrive_date','acc_survey_complete_date',
-      'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount',
+      'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount','opposing_parties',
+      'injured_persons','damaged_property',
       'acc_police_name','acc_police_station','acc_police_comment','acc_police_date','acc_police_book_no',
       'acc_alcohol_test','acc_alcohol_result',
       'acc_followup','acc_followup_count','acc_followup_detail','acc_followup_date',
@@ -220,7 +235,7 @@ export const caseService = {
     for (const f of fields) {
       if (data[f] !== undefined) {
         setClauses.push(`${f} = $${idx}`);
-        values.push(data[f] ?? null);
+        values.push(bindVal(f, data[f]));
         idx++;
       }
     }
@@ -372,25 +387,26 @@ export const caseService = {
         'prb_number','policy_no','driver_by_policy','policy_start','policy_end',
         'assured_name','policy_type','assured_email','risk_code','deductible',
         'car_brand','car_type','car_province','chassis_no','engine_no','mileage',
-        'car_reg_year','ev_type','model_no',
+        'car_reg_year','ev_type','ev_battery_no','ev_battery_start','ev_charger_no','model_no',
         'driver_gender','driver_title','driver_name','driver_first_name','driver_last_name',
         'driver_age','driver_birthdate',
         'driver_phone','driver_address','driver_province','driver_district',
         'driver_id_card','driver_license_no',
         'driver_license_type','driver_license_place','driver_license_start','driver_license_end',
-        'driver_relation','driver_ticket','damage_description','estimated_cost',
+        'driver_relation','driver_ticket','damage_description','estimated_cost','insured_damage',
         'acc_date','acc_time','acc_place','acc_subdistrict','acc_province','acc_district',
         'acc_cause','acc_damage_type','acc_detail','acc_fault','acc_fault_opponent_no',
         'acc_reporter','reporter_phone','acc_surveyor','acc_surveyor_branch','acc_surveyor_phone',
-        'acc_customer_report_date','acc_insurance_notify_date',
+        'acc_customer_report_date','customer_reported_at','acc_insurance_notify_date',
         'acc_survey_arrive_date','acc_survey_complete_date',
-        'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount',
+        'acc_claim_opponent','acc_claim_amount','acc_claim_total_amount','opposing_parties',
+        'injured_persons','damaged_property',
         'acc_police_name','acc_police_station','acc_police_comment','acc_police_date','acc_police_book_no',
         'acc_alcohol_test','acc_alcohol_result',
         'acc_followup','acc_followup_count','acc_followup_detail','acc_followup_date',
         'survey_result','review_comment','surveyor_comment',
       ];
-      const values = fields.map(f => data[f] ?? null);
+      const values = fields.map(f => bindVal(f, data[f]));
       const placeholders = fields.map((_, i) => `$${i + 2}`).join(',');
 
       // ตรวจสอบว่ามี report อยู่แล้วหรือไม่ (สร้างจาก callcenter)
@@ -589,7 +605,8 @@ export const caseService = {
     for (const [key, val] of Object.entries(rd)) {
       if (validCols.has(key) && val !== undefined) {
         fields.push(`${key} = $${idx++}`);
-        params.push(val === '' ? null : val);
+        // JSONB คอลัมน์ต้อง stringify (และถือ '' เป็น null) กัน error type mismatch
+        params.push(JSONB_FIELDS.has(key) ? (val === '' ? null : bindVal(key, val)) : (val === '' ? null : val));
       }
     }
     let reportUpdated = 0;

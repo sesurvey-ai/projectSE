@@ -76,6 +76,9 @@ const optStr = z.string().nullish();
 const optNum = z.number().nullish();
 const optInt = z.number().int().nullish();
 const optBool = z.boolean().nullish();
+// ข้อมูล 1:N เก็บเป็น JSONB array (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน/ชิ้นส่วนความเสียหาย)
+// element เป็น object อิสระ — ยืดหยุ่นระหว่างพัฒนา, app คุมรูปทรง, ค่อย tighten ภายหลัง
+const optJsonArr = z.array(z.record(z.string(), z.any())).nullish();
 
 const submitSurveySchema = z.object({
   // ข้อมูลรถเดิม
@@ -117,6 +120,9 @@ const submitSurveySchema = z.object({
   mileage: optInt,
   car_reg_year: optStr,
   ev_type: optStr,
+  ev_battery_no: optStr,
+  ev_battery_start: optStr,
+  ev_charger_no: optStr,
   model_no: optStr,
   // ข้อมูลผู้ขับขี่
   driver_gender: optStr,
@@ -160,13 +166,19 @@ const submitSurveySchema = z.object({
   acc_surveyor_branch: optStr,
   acc_surveyor_phone: optStr,
   acc_customer_report_date: optStr,
+  customer_reported_at: optStr,   // ISO timestamp — ฐานเวลา SLA 24 ชม.
   acc_insurance_notify_date: optStr,
   acc_survey_arrive_date: optStr,
   acc_survey_complete_date: optStr,
-  // คู่กรณี
+  // คู่กรณี (single legacy + list)
   acc_claim_opponent: optStr,
   acc_claim_amount: optNum,
   acc_claim_total_amount: optNum,
+  opposing_parties: optJsonArr,   // คู่กรณีหลายคัน (≤20)
+  // ผู้บาดเจ็บ / ทรัพย์สิน / แผนภาพความเสียหายรถประกัน
+  injured_persons: optJsonArr,
+  damaged_property: optJsonArr,
+  insured_damage: optJsonArr,
   // ตำรวจ
   acc_police_name: optStr,
   acc_police_station: optStr,
