@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/case_model.dart';
 import '../services/api_service.dart';
+import '../services/survey_queue.dart';
 
 class CaseProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -99,6 +100,41 @@ class CaseProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('ocrClaim error: $e');
       return null;
+    }
+  }
+
+  // ส่งงานสำรวจแบบรองรับออฟไลน์ — คืน 'ok' | 'queued' (ไม่มีเน็ต เก็บคิวไว้) | 'error'
+  Future<String> submitSurveyOffline(int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
+    _isSubmitting = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _apiService.submitSurvey(caseId, data, photoPaths);
+      _isSubmitting = false;
+      notifyListeners();
+      await fetchMyCases();
+      return 'ok';
+    } catch (e) {
+      _isSubmitting = false;
+      final isNetwork = e is DioException &&
+          (e.response == null ||
+              e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout);
+      if (isNetwork) {
+        await enqueueSurvey(caseId, data);
+        notifyListeners();
+        return 'queued';
+      }
+      String msg = 'ไม่สามารถส่งข้อมูลสำรวจได้';
+      if (e is DioException && e.response?.data is Map && (e.response!.data as Map)['message'] != null) {
+        msg = '$msg: ${(e.response!.data as Map)['message']}';
+      }
+      debugPrint('submitSurveyOffline error: $e');
+      _error = msg;
+      notifyListeners();
+      return 'error';
     }
   }
 

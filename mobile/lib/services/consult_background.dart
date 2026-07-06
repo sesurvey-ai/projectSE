@@ -1,5 +1,6 @@
 import 'package:workmanager/workmanager.dart';
 import 'consult_sync.dart';
+import 'survey_queue.dart';
 
 const String kConsultTask = 'se_consult_sync';
 
@@ -10,6 +11,8 @@ void consultCallbackDispatcher() {
     if (task != kConsultTask) return true;
     try {
       await runConsultSync();
+      // piggyback: ส่งงานสำรวจที่ค้างในคิวออฟไลน์เมื่อมีเน็ต (task มี network constraint อยู่แล้ว)
+      await flushSurveyQueue();
       return true;
     } catch (_) {
       return false; // ให้ WorkManager retry

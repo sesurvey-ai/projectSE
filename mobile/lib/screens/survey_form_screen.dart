@@ -45,12 +45,15 @@ class SurveyFormScreen extends StatefulWidget {
 class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<String> _photoPaths = [];
+  final Map<String, String> _photoCat = {}; // path → หมวดรูป (Phase 5)
+  static const List<String> _imgCats = ['รถประกัน', 'คู่กรณี', 'ทรัพย์สิน', 'ผู้บาดเจ็บ', 'เอกสาร', 'แผนที่'];
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
   List<Map<String, dynamic>> _caseImages = [];
   bool _showImageSheet = false;
   // มุมมองปัจจุบันของ Hub-and-Spoke (เริ่มที่แดชบอร์ด)
   _SView _view = _SView.hub;
+  DateTime? _slaStart; // เวลาลูกค้าแจ้งประกัน (ตั้งต้น SLA 24 ชม.) — จาก report.customer_reported_at
   // keys for the section card wrappers (reused as GlobalKeys)
   final List<GlobalKey> _secKeys = List.generate(8, (_) => GlobalKey());
 
@@ -144,7 +147,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final caseFolder = await _getCaseFolder();
       final localPath = '$caseFolder/scan_${DateTime.now().millisecondsSinceEpoch}.jpg';
       await File(shot.path).copy(localPath);
-      setState(() => _photoPaths.add(localPath));
+      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = 'เอกสาร'; });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('บันทึกรูป$labelแล้ว (สกัดข้อมูลอัตโนมัติจะมาในเฟสถัดไป)'), duration: const Duration(seconds: 2)));
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
@@ -489,6 +492,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ..addAll(idmg.whereType<Map>().map((e) => {'part': '${e['part'] ?? ''}', 'pos': '${e['pos'] ?? ''}', 'level': '${e['level'] ?? ''}'}));
         _syncDamageDesc();
       }
+      final cr = data['customer_reported_at'];
+      if (cr is String && cr.isNotEmpty) _slaStart = DateTime.tryParse(cr);
     });
   }
 
@@ -723,13 +728,77 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final caseFolder = await _getCaseFolder();
       final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}.jpg';
       await File(photo.path).copy(localPath);
-      setState(() => _photoPaths.add(localPath));
+      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = 'รถประกัน'; });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
     }
   }
 
-  void _removePhoto(int index) => setState(() => _photoPaths.removeAt(index));
+  void _removePhoto(int index) => setState(() {
+        _photoCat.remove(_photoPaths[index]);
+        _photoPaths.removeAt(index);
+      });
+
+  // เปลี่ยนหมวดของรูป (Phase 5)
+  void _changePhotoCat(int index) async {
+    final path = _photoPaths[index];
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.all(14), child: Text('เลือกหมวดรูป', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink))),
+          for (final c in _imgCats)
+            ListTile(
+              dense: true,
+              title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
+              trailing: _photoCat[path] == c ? const Icon(Icons.check, color: _primary, size: 20) : null,
+              onTap: () => Navigator.pop(ctx, c),
+            ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (chosen != null) setState(() => _photoCat[path] = chosen);
+  }
+
+  Map<String, int> _photoMin() => {
+        'รถประกัน': 8,
+        'คู่กรณี': _opponents.isNotEmpty ? 6 : 0,
+        'ทรัพย์สิน': _property.isNotEmpty ? 3 : 0,
+        'ผู้บาดเจ็บ': _injured.length * 2,
+        'เอกสาร': 2,
+        'แผนที่': 1,
+      };
+  int _photoCountOf(String cat) => _photoCat.values.where((c) => c == cat).length;
+
+  // การ์ดเช็คลิสต์ความครบของรูปตามหมวด (เฉพาะหมวดที่ min>0)
+  Widget _imgChecklist() {
+    final min = _photoMin();
+    final rows = min.entries.where((e) => e.value > 0).toList();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('เงื่อนไขจำนวนรูปภาพ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+        const SizedBox(height: 8),
+        for (final e in rows) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(children: [
+              Icon(_photoCountOf(e.key) >= e.value ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 15, color: _photoCountOf(e.key) >= e.value ? _ok : _muted2),
+              const SizedBox(width: 8),
+              Expanded(child: Text(e.key, style: const TextStyle(fontSize: 12.5, color: _ink))),
+              Text('${_photoCountOf(e.key)}/${e.value}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _photoCountOf(e.key) >= e.value ? _ok : _warn)),
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
 
   String get _draftKey => 'survey_draft_${widget.caseId}';
 
@@ -852,14 +921,23 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Future<void> _submitSurvey() async {
     final data = _collectFormData();
     final caseProvider = context.read<CaseProvider>();
-    final success = await caseProvider.submitSurvey(widget.caseId, data, _photoPaths);
-    if (success) {
+    final r = await caseProvider.submitSurveyOffline(widget.caseId, data, _photoPaths);
+    if (!mounted) return;
+    if (r == 'ok') {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_draftKey);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ส่งข้อมูลสำรวจสำเร็จ'), backgroundColor: Colors.green));
       context.go('/cases');
-    } else if (mounted) {
+    } else if (r == 'queued') {
+      // ไม่มีสัญญาณ — เก็บคิวไว้ ระบบจะส่งอัตโนมัติเมื่อมีเน็ต (draft ยังคงไว้จนส่งได้จริง)
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('ไม่มีสัญญาณเน็ต — บันทึกไว้แล้ว ระบบจะส่งให้อัตโนมัติเมื่อกลับมาออนไลน์'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 4),
+      ));
+      context.go('/cases');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(caseProvider.error ?? 'เกิดข้อผิดพลาด'), backgroundColor: Colors.red));
     }
   }
@@ -909,7 +987,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
-        return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [_buildPhotoGrid()]));
+        return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [_imgChecklist(), _buildPhotoGrid()]));
       case _SView.notes:
         return _sectionScroll(_card(6, Icons.sticky_note_2_outlined, 'หมายเหตุ', [_txt(_notesCtl, 'หมายเหตุเพิ่มเติม', maxLines: 3)]));
       case _SView.injured:
@@ -1901,6 +1979,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ],
       ),
       actions: [
+        _slaChip(),
         if (_caseImages.isNotEmpty)
           IconButton(
             tooltip: 'หน้าการ์ด',
@@ -1910,6 +1989,30 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         Padding(padding: const EdgeInsets.only(right: 12, left: 2), child: _statusChip()),
       ],
       bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height: 1, color: _line)),
+    );
+  }
+
+  // ป้าย SLA 24 ชม. (เฉพาะเคลมสด + มีเวลาลูกค้าแจ้ง) — ซ่อนถ้าไม่มีข้อมูลเวลา
+  Widget _slaChip() {
+    if (_claimType != 'F' || _slaStart == null) return const SizedBox.shrink();
+    final remain = _slaStart!.add(const Duration(hours: 24)).difference(DateTime.now());
+    final over = remain.isNegative;
+    final hrs = remain.inMinutes.abs() / 60.0;
+    final label = over ? 'เกิน SLA' : 'เหลือ ${hrs.toStringAsFixed(hrs < 10 ? 1 : 0)} ชม.';
+    final Color c, bg;
+    if (over) { c = const Color(0xFFDC2626); bg = const Color(0xFFFDECEC); }
+    else if (remain.inHours < 6) { c = _warn; bg = _warnTint; }
+    else { c = _ok; bg = _okTint; }
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.timer_outlined, size: 13, color: c),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: c)),
+        ]),
+      ),
     );
   }
 
@@ -2470,6 +2573,20 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             child: GestureDetector(
               onTap: () => _removePhoto(index),
               child: Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: _ink, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)), child: const Icon(Icons.close, size: 14, color: Colors.white)),
+            ),
+          ),
+          Positioned(
+            bottom: 4, left: 4, right: 4,
+            child: GestureDetector(
+              onTap: () => _changePhotoCat(index),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: _ink.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(6)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(child: Text(_photoCat[_photoPaths[index]] ?? 'รถประกัน', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600))),
+                  const Icon(Icons.arrow_drop_down, size: 13, color: Colors.white),
+                ]),
+              ),
             ),
           ),
         ]);
