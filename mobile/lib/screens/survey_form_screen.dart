@@ -25,6 +25,9 @@ const _warnTint = Color(0xFFFDF3DF);
 const _ok = Color(0xFF1F9D6B);
 const _okTint = Color(0xFFE4F6EE);
 
+// มุมมองใน Hub-and-Spoke: hub = แดชบอร์ด, s1..s6 = หน้าหมวดเต็มจอ, ที่เหลือ = แท็บอื่น
+enum _SView { hub, s1, s2, s3, s4, s5, s6, photos, notes, injured, property, expenses }
+
 class SurveyFormScreen extends StatefulWidget {
   final int caseId;
   const SurveyFormScreen({super.key, required this.caseId});
@@ -40,8 +43,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Map<String, List<String>> _provincesData = {};
   List<Map<String, dynamic>> _caseImages = [];
   bool _showImageSheet = false;
-  // keys for the section-nav (progress) strip
+  // มุมมองปัจจุบันของ Hub-and-Spoke (เริ่มที่แดชบอร์ด)
+  _SView _view = _SView.hub;
+  // keys for the section card wrappers (reused as GlobalKeys)
   final List<GlobalKey> _secKeys = List.generate(8, (_) => GlobalKey());
+
+  void _go(_SView v) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _view = v);
+  }
 
   @override
   void initState() {
@@ -667,224 +677,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         builder: (context, caseProvider, _) {
           return Stack(
             children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _progressStrip(),
-                      const SizedBox(height: 12),
-
-                      // ── 1. ข้อมูลเคลม ──
-                      _card(0, Icons.verified_user_outlined, 'ข้อมูลเคลม', [
-                        _fieldLabel('ประเภทเคลม'),
-                        Row(children: [
-                          _chip('เคลมสด', _claimType == 'F', () => setState(() => _claimType = 'F'), grow: true),
-                          const SizedBox(width: 6),
-                          _chip('เคลมแห้ง', _claimType == 'D', () => setState(() => _claimType = 'D'), grow: true),
-                          const SizedBox(width: 6),
-                          _chip('นัดหมาย', _claimType == 'A', () => setState(() => _claimType = 'A'), grow: true),
-                          const SizedBox(width: 6),
-                          _chip('ติดตาม', _claimType == 'C', () => setState(() => _claimType = 'C'), grow: true),
-                        ]),
-                        _fieldLabel('ระดับความเสียหาย'),
-                        Row(children: [
-                          _chip('หนัก', _damageLevel == 'หนัก', () => setState(() => _damageLevel = 'หนัก'), grow: true),
-                          const SizedBox(width: 10),
-                          _chip('เบา', _damageLevel == 'เบา', () => setState(() => _damageLevel = 'เบา'), grow: true),
-                        ]),
-                        _txt(_claimRefNoCtl, 'เลขที่รับแจ้ง'),
-                        _txt(_claimNoCtl, 'เลขที่เคลม', onChanged: (_) => setState(() {})),
-                        _txt(_surveyJobNoCtl, 'เลขเรื่องเซอร์เวย์'),
-                      ]),
-
-                      // ── 2. กรมธรรม์ ──
-                      _card(1, Icons.description_outlined, 'ข้อมูลกรมธรรม์', [
-                        _txt(_policyNoCtl, 'เลขกรมธรรม์'),
-                        _txt(_prbNumberCtl, 'เลข พรบ.'),
-                        _txt(_driverByPolicyCtl, 'ชื่อผู้ขับขี่ตามกรมธรรม์'),
-                        _row2(_txt(_policyStartCtl, 'วันที่เริ่มต้น'), _txt(_policyEndCtl, 'วันที่สิ้นสุด')),
-                        _txt(_assuredNameCtl, 'ผู้เอาประกันภัย'),
-                        _row2(_txt(_policyTypeCtl, 'ประเภทประกัน'), _txt(_riskCodeCtl, 'รหัสภัยยานยนต์')),
-                        _txt(_assuredEmailCtl, 'อีเมลผู้เอาประกัน', keyboardType: TextInputType.emailAddress),
-                        _numField(_deductibleCtl, 'ค่าเสียหายส่วนแรก', decimal: true),
-                      ]),
-
-                      // ── 3. รายละเอียดรถยนต์ ──
-                      _card(2, Icons.directions_car_outlined, 'รายละเอียดรถยนต์', [
-                        _txt(_carModelCtl, 'รุ่น'),
-                        _row2(
-                          _dd('จังหวัด', _carProvinceCtl.text, _provinceNames,
-                              (v) => setState(() => _carProvinceCtl.text = v ?? ''),
-                              hint: 'เลือกจังหวัด', key: ValueKey('cp_${_carProvinceCtl.text}')),
-                          _carTypeDropdown(),
-                        ),
-                        _row2(_txt(_carBrandCtl, 'ยี่ห้อ'), _txt(_licensePlateCtl, 'หมายเลขทะเบียน')),
-                        _row2(_txt(_carColorCtl, 'สีรถ'), _txt(_carRegYearCtl, 'ปีจดทะเบียน')),
-                        _txt(_chassisNoCtl, 'หมายเลขตัวถัง'),
-                        _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
-                        _row2(_numField(_mileageCtl, 'หมายเลข กม.'), _evTypeDropdown()),
-                      ]),
-
-                      // ── 4. ผู้ขับขี่ ──
-                      _card(3, Icons.person_outline, 'ข้อมูลผู้ขับขี่รถประกันภัย', [
-                        _scanRow(),
-                        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Expanded(flex: 3, child: _genderDropdown()),
-                          const SizedBox(width: 8),
-                          Expanded(flex: 4, child: _titleDropdown()),
-                          const SizedBox(width: 8),
-                          Expanded(flex: 5, child: _birthdateField()),
-                        ]),
-                        _row2(_txt(_driverNameCtl, 'ชื่อ'), _txt(_driverLastnameCtl, 'นามสกุล')),
-                        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          SizedBox(width: 64, child: _numField(_driverAgeCtl, 'อายุ')),
-                          const SizedBox(width: 8),
-                          Expanded(child: _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone)),
-                          const SizedBox(width: 8),
-                          Expanded(child: _relationDropdown()),
-                        ]),
-                        _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน'),
-                        _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
-                            (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
-                            hint: 'เลือกจังหวัด', key: ValueKey('dp_${_driverProvinceCtl.text}')),
-                        _districtDropdown(),
-                        _row2(_txt(_driverIdCardCtl, 'บัตรประชาชนเลขที่', keyboardType: TextInputType.number),
-                            _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่')),
-                        _row2(_licenseTypeDropdown(), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
-                        _row2(_txt(_driverLicenseStartCtl, 'ออกให้วันที่'), _txt(_driverLicenseEndCtl, 'หมดอายุวันที่')),
-                      ]),
-
-                      // ── 5. ความเสียหาย ──
-                      _card(4, Icons.report_problem_outlined, 'ความเสียหายรถประกันภัย', [
-                        _damageList(),
-                        _damageDescField(),
-                        _numField(_estimatedCostCtl, 'ค่าเสียหายประมาณ (บาท)', decimal: true),
-                      ], warn: true),
-
-                      // ── 6. รายละเอียดอุบัติเหตุ ──
-                      _card(5, Icons.car_crash_outlined, 'รายละเอียดอุบัติเหตุ', [
-                        _row2(_txt(_accDateCtl, 'วันที่เกิดเหตุ (วว/ดด/ปปปป)'), _txt(_accTimeCtl, 'เวลา (นน:นน)')),
-                        _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ'),
-                        _row2(_txt(_accProvinceCtl, 'จังหวัด'), _txt(_accDistrictCtl, 'เขต/อำเภอ')),
-                        _dd('ลักษณะการเกิดเหตุ', _accCauseCtl.text, _accCauseOptions,
-                            (v) => setState(() => _accCauseCtl.text = v ?? ''), key: ValueKey('ac_${_accCauseCtl.text}')),
-                        _dd('ลักษณะความเสียหาย', _accDamageTypeCtl.text, _accDamageOptions,
-                            (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), key: ValueKey('ad_${_accDamageTypeCtl.text}')),
-                        _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5),
-                        _fieldLabel('ฝ่ายประมาท'),
-                        Wrap(spacing: 8, runSpacing: 8, children: [
-                          _chip('รถประกันฝ่ายผิด', _accFault == 'ฝ่ายผิด', () => setState(() => _accFault = 'ฝ่ายผิด')),
-                          _chip('ฝ่ายถูกและผิด', _accFault == 'ฝ่ายถูกและผิด', () => setState(() => _accFault = 'ฝ่ายถูกและผิด')),
-                          _chip('คู่กรณีผิด', _accFault == 'คู่กรณีผิด', () => setState(() => _accFault = 'คู่กรณีผิด')),
-                          _chip('ประมาทร่วม', _accFault == 'ประมาทร่วม', () => setState(() => _accFault = 'ประมาทร่วม')),
-                          _chip('รอสรุปผลคดี', _accFault == 'รอสรุปผลคดี', () => setState(() => _accFault = 'รอสรุปผลคดี')),
-                          _chip('ยกเลิกการเคลม', _accFault == 'ยกเลิกการเคลม', () => setState(() => _accFault = 'ยกเลิกการเคลม')),
-                          _chip('ไปถึงแล้วไม่พบ', _accFault == 'ไปถึงแล้วไม่พบ', () => setState(() => _accFault = 'ไปถึงแล้วไม่พบ')),
-                        ]),
-                        _txt(_accReporterCtl, 'ผู้แจ้ง'),
-                        _txt(_accSurveyorCtl, 'ผู้สำรวจภัย'),
-                        _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
-                        _row2(_txt(_accCustomerReportDateCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'), _txt(_accInsNotifyDateCtl, 'วันที่ บ.ประกันแจ้งสำรวจ')),
-                        _row2(_txt(_accSurveyArriveDateCtl, 'วันที่ถึงที่เกิดเหตุ'), _txt(_accSurveyCompleteDateCtl, 'วันที่สำรวจเสร็จ')),
-                        _txt(_accClaimOpponentCtl, 'การเรียกร้องค่าเสียหายจากคู่กรณี'),
-                        _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
-                            _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
-                        _row2(_txt(_accPoliceNameCtl, 'ชื่อพนักงานสอบสวน'), _txt(_accPoliceStationCtl, 'สถานีตำรวจ')),
-                        _txt(_accPoliceCommentCtl, 'ความเห็นพนักงานสอบสวน'),
-                        _row2(_txt(_accPoliceDateCtl, 'วันที่ (ตำรวจ)'), _txt(_accPoliceBookNoCtl, 'ประจำวันข้อที่')),
-                        _txt(_accAlcoholTestCtl, 'ผลการตรวจแอลกอฮอล์'),
-                        _followupDropdown(),
-                        _txt(_accFollowupCountCtl, 'ครั้งที่นัดหมาย'),
-                        _txt(_accFollowupDetailCtl, 'รายละเอียดการนัดหมาย'),
-                        _txt(_accFollowupDateCtl, 'วันที่นัดหมาย'),
-                      ]),
-
-                      // ── 7. หมายเหตุ ──
-                      _card(6, Icons.sticky_note_2_outlined, 'หมายเหตุ', [
-                        _txt(_notesCtl, 'หมายเหตุเพิ่มเติม', maxLines: 3),
-                      ]),
-
-                      // ── 8. รูปถ่าย ──
-                      _card(7, Icons.photo_camera_outlined, 'รูปถ่าย', [
-                        _buildPhotoGrid(),
-                      ]),
-                    ],
-                  ),
-                ),
+              Column(
+                children: [
+                  _chipTabs(),
+                  Expanded(child: _viewBody()),
+                ],
               ),
-              if (caseProvider.isSubmitting)
-                Container(
-                  color: Colors.black26,
-                  child: const Center(child: Card(child: Padding(padding: EdgeInsets.all(32), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('กำลังส่งข้อมูล...')])))),
-                ),
-              if (_showImageSheet && _caseImages.isNotEmpty)
-                DraggableScrollableSheet(
-                  initialChildSize: 0.4,
-                  minChildSize: 0.15,
-                  maxChildSize: 0.85,
-                  builder: (context, scrollController) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, -2))],
-                      ),
-                      child: Column(
-                        children: [
-                          Container(margin: const EdgeInsets.only(top: 8), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.credit_card, color: _primary, size: 20),
-                                const SizedBox(width: 8),
-                                Text('หน้าการ์ด (${_caseImages.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _primary)),
-                                const Spacer(),
-                                IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => setState(() => _showImageSheet = false), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          Expanded(
-                            child: ListView.builder(
-                              controller: scrollController,
-                              padding: const EdgeInsets.all(12),
-                              itemCount: _caseImages.length,
-                              itemBuilder: (context, index) {
-                                final filePath = _caseImages[index]['file_path']?.toString() ?? '';
-                                final imageUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: GestureDetector(
-                                    onTap: () => _showCardImage(index),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        imageUrl,
-                                        width: double.infinity,
-                                        fit: BoxFit.fitWidth,
-                                        loadingBuilder: (context, child, progress) {
-                                          if (progress == null) return child;
-                                          return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
-                                        },
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Container(height: 80, color: Colors.grey.shade200, child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+              ..._overlays(caseProvider),
             ],
           );
         },
@@ -892,23 +691,495 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // ── topbar (sticky header w/ claim + status chip) ──
+  // ── สลับ body ตามมุมมอง (hub / หมวด / แท็บ) ──
+  Widget _viewBody() {
+    switch (_view) {
+      case _SView.hub:
+        return _hubBody();
+      case _SView.s1:
+        return _sectionScroll(_card(0, Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _secClaimPolicy()));
+      case _SView.s2:
+        return _sectionScroll(_card(2, Icons.directions_car_outlined, '2. รถประกัน', _secCar()));
+      case _SView.s3:
+        return _sectionScroll(_card(3, Icons.person_outline, '3. ผู้ขับขี่รถประกัน', _secDriver()));
+      case _SView.s4:
+        return _sectionScroll(_card(4, Icons.report_problem_outlined, '4. ความเสียหาย', _secDamage(), warn: true));
+      case _SView.s5:
+        return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _secEvent()));
+      case _SView.s6:
+        return _sectionScroll(_card(6, Icons.groups_2_outlined, '6. คู่กรณี', _secOpponent()));
+      case _SView.photos:
+        return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [_buildPhotoGrid()]));
+      case _SView.notes:
+        return _sectionScroll(_card(6, Icons.sticky_note_2_outlined, 'หมายเหตุ', [_txt(_notesCtl, 'หมายเหตุเพิ่มเติม', maxLines: 3)]));
+      case _SView.injured:
+        return _soonBody(Icons.healing_outlined, 'ผู้บาดเจ็บ', 'เพิ่มผู้บาดเจ็บได้หลายคน พร้อมฟอร์มเต็ม — มาใน Phase 3');
+      case _SView.property:
+        return _soonBody(Icons.chair_outlined, 'ทรัพย์สินเสียหาย', 'บันทึกทรัพย์สินบุคคลภายนอกได้หลายรายการ — มาใน Phase 3');
+      case _SView.expenses:
+        return _soonBody(Icons.receipt_long_outlined, 'ค่าใช้จ่าย', 'อยู่นอกขอบเขตตอนนี้');
+    }
+  }
+
+  Widget _sectionScroll(Widget child) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 24),
+      child: Form(key: _formKey, child: child),
+    );
+  }
+
+  Widget _soonBody(IconData icon, String title, String desc) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 64, height: 64, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(18)), child: Icon(icon, size: 30, color: _primary)),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink)),
+          const SizedBox(height: 8),
+          Text(desc, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13.5, color: _muted, height: 1.5)),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(onPressed: () => _go(_SView.hub), icon: const Icon(Icons.arrow_back, size: 18), label: const Text('กลับ Hub'), style: OutlinedButton.styleFrom(foregroundColor: _primary, side: const BorderSide(color: _lineStrong))),
+        ]),
+      ),
+    );
+  }
+
+  // ── overlays (submitting + card-image sheet) ──
+  List<Widget> _overlays(CaseProvider caseProvider) {
+    return [
+      if (caseProvider.isSubmitting)
+        Container(
+          color: Colors.black26,
+          child: const Center(child: Card(child: Padding(padding: EdgeInsets.all(32), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('กำลังส่งข้อมูล...')])))),
+        ),
+      if (_showImageSheet && _caseImages.isNotEmpty)
+        DraggableScrollableSheet(
+          initialChildSize: 0.4,
+          minChildSize: 0.15,
+          maxChildSize: 0.85,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, -2))],
+              ),
+              child: Column(
+                children: [
+                  Container(margin: const EdgeInsets.only(top: 8), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.credit_card, color: _primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text('หน้าการ์ด (${_caseImages.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _primary)),
+                        const Spacer(),
+                        IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => setState(() => _showImageSheet = false), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _caseImages.length,
+                      itemBuilder: (context, index) {
+                        final filePath = _caseImages[index]['file_path']?.toString() ?? '';
+                        final imageUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GestureDetector(
+                            onTap: () => _showCardImage(index),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.fitWidth,
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(height: 80, color: Colors.grey.shade200, child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+    ];
+  }
+
+  // ── Hub dashboard ──
+  Widget _hubBody() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _timelineStrip(),
+          const SizedBox(height: 16),
+          _hubCard(Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _s1Summary(), _SView.s1, _s1Filled()),
+          _hubCard(Icons.directions_car_outlined, '2. รถประกัน', _s2Summary(), _SView.s2, _s2Filled()),
+          _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled()),
+          _hubCard(Icons.report_problem_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled(), warn: true),
+          _hubCard(Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _s5Summary(), _SView.s5, _s5Filled()),
+          _hubCard(Icons.groups_2_outlined, '6. คู่กรณี', _s6Summary(), _SView.s6, _s6Filled()),
+        ],
+      ),
+    );
+  }
+
+  Widget _hubCard(IconData icon, String title, String summary, _SView target, bool filled, {bool warn = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _go(target),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _line),
+              boxShadow: [BoxShadow(color: const Color(0xFF141E3C).withValues(alpha: 0.035), blurRadius: 20, offset: const Offset(0, 6))],
+            ),
+            child: Row(children: [
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 21, color: warn ? _warn : _primary)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+                const SizedBox(height: 3),
+                Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: _muted)),
+              ])),
+              const SizedBox(width: 8),
+              _statusDot(filled),
+              const Icon(Icons.chevron_right, color: _muted2),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusDot(bool filled) {
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: filled ? _okTint : _fill, borderRadius: BorderRadius.circular(999)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.circle, size: 7, color: filled ? _ok : _muted2),
+        const SizedBox(width: 5),
+        Text(filled ? 'มีข้อมูล' : 'ว่าง', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: filled ? _ok : _muted)),
+      ]),
+    );
+  }
+
+  Widget _timelineStrip() {
+    final nodes = <List<String>>[
+      ['ลูกค้าแจ้ง', _accCustomerReportDateCtl.text.trim()],
+      ['แจ้งเซอร์เวย์', _accInsNotifyDateCtl.text.trim()],
+      ['ถึงที่เกิดเหตุ', _accSurveyArriveDateCtl.text.trim()],
+      ['สำรวจเสร็จ', _accSurveyCompleteDateCtl.text.trim()],
+    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [Icon(Icons.timeline, size: 16, color: _primary), SizedBox(width: 6), Text('ไทม์ไลน์งาน', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ink))]),
+        const SizedBox(height: 12),
+        Row(children: [
+          for (final n in nodes)
+            Expanded(child: Column(children: [
+              Container(
+                width: 26, height: 26,
+                decoration: BoxDecoration(color: n[1].isNotEmpty ? _ok : _fill, shape: BoxShape.circle, border: Border.all(color: n[1].isNotEmpty ? _ok : _lineStrong, width: 1.5)),
+                child: Icon(n[1].isNotEmpty ? Icons.check : Icons.circle_outlined, size: 14, color: n[1].isNotEmpty ? Colors.white : _muted2),
+              ),
+              const SizedBox(height: 5),
+              Text(n[0], textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: _ink)),
+              Text(n[1].isNotEmpty ? n[1] : '—', textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: _muted)),
+            ])),
+        ]),
+      ]),
+    );
+  }
+
+  // ── chip tabs (5) ──
+  Widget _chipTabs() {
+    final inDetail = _view != _SView.injured && _view != _SView.property && _view != _SView.photos && _view != _SView.expenses;
+    final tabs = <List<dynamic>>[
+      ['รายละเอียดเหตุ', inDetail, () => _go(_SView.hub)],
+      ['ผู้บาดเจ็บ', _view == _SView.injured, () => _go(_SView.injured)],
+      ['ทรัพย์สิน', _view == _SView.property, () => _go(_SView.property)],
+      ['รูปภาพ', _view == _SView.photos, () => _go(_SView.photos)],
+      ['ค่าใช้จ่าย', _view == _SView.expenses, () => _go(_SView.expenses)],
+    ];
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+      child: SizedBox(
+        height: 32,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: tabs.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 6),
+          itemBuilder: (_, i) {
+            final active = tabs[i][1] as bool;
+            return GestureDetector(
+              onTap: tabs[i][2] as VoidCallback,
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(color: active ? _primary : Colors.white, borderRadius: BorderRadius.circular(999), border: Border.all(color: active ? _primary : _line)),
+                child: Text(tabs[i][0] as String, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: active ? Colors.white : _muted)),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ── สถานะ/สรุปรายหมวด (Hub) ──
+  bool _s1Filled() => _claimType.isNotEmpty || _claimNoCtl.text.trim().isNotEmpty;
+  bool _s2Filled() => _licensePlateCtl.text.trim().isNotEmpty || _carBrandCtl.text.trim().isNotEmpty;
+  bool _s3Filled() => _driverNameCtl.text.trim().isNotEmpty;
+  bool _s4Filled() => _damageItems.isNotEmpty;
+  bool _s5Filled() => _accDateCtl.text.trim().isNotEmpty;
+  bool _s6Filled() => _accClaimOpponentCtl.text.trim().isNotEmpty;
+  int _filledCount() => [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled(), _s6Filled()].where((e) => e).length;
+
+  String _s1Summary() {
+    final ins = _insuranceCompanyCtl.text.trim();
+    final cn = _claimNoCtl.text.trim();
+    if (ins.isEmpty && cn.isEmpty && _claimType.isEmpty) return 'ยังไม่กรอกข้อมูลเคลม';
+    return [if (ins.isNotEmpty) ins, if (cn.isNotEmpty) 'เคลม $cn'].join(' · ');
+  }
+  String _s2Summary() {
+    final p = _licensePlateCtl.text.trim();
+    final b = _carBrandCtl.text.trim();
+    if (p.isEmpty && b.isEmpty) return 'ทะเบียน · ยี่ห้อ · รุ่น';
+    return [if (p.isNotEmpty) p, if (b.isNotEmpty) b].join(' · ');
+  }
+  String _s3Summary() {
+    final n = '${_driverNameCtl.text.trim()} ${_driverLastnameCtl.text.trim()}'.trim();
+    return n.isNotEmpty ? n : 'สแกนบัตร / กรอกผู้ขับขี่';
+  }
+  String _s4Summary() => _damageItems.isEmpty ? 'ยังไม่มีรายการความเสียหาย' : '${_damageItems.length} รายการ';
+  String _s5Summary() {
+    final d = _accDateCtl.text.trim();
+    final c = _accCauseCtl.text.trim();
+    if (d.isEmpty && c.isEmpty) return 'วัน-เวลา · สถานที่ · สาเหตุ';
+    return [if (d.isNotEmpty) d, if (c.isNotEmpty) c].join(' · ');
+  }
+  String _s6Summary() {
+    final o = _accClaimOpponentCtl.text.trim();
+    return o.isNotEmpty ? o : 'ยังไม่มีคู่กรณี';
+  }
+
+  // ── เนื้อหารายหมวด (reuse ฟิลด์เดิมทั้งหมด) ──
+  List<Widget> _secClaimPolicy() => [
+        _insurerLockField(),
+        _fieldLabel('ประเภทเคลม'),
+        Row(children: [
+          _chip('เคลมสด', _claimType == 'F', () => setState(() => _claimType = 'F'), grow: true),
+          const SizedBox(width: 6),
+          _chip('เคลมแห้ง', _claimType == 'D', () => setState(() => _claimType = 'D'), grow: true),
+          const SizedBox(width: 6),
+          _chip('นัดหมาย', _claimType == 'A', () => setState(() => _claimType = 'A'), grow: true),
+          const SizedBox(width: 6),
+          _chip('ติดตาม', _claimType == 'C', () => setState(() => _claimType = 'C'), grow: true),
+        ]),
+        _fieldLabel('ระดับความเสียหาย'),
+        Row(children: [
+          _chip('หนัก', _damageLevel == 'หนัก', () => setState(() => _damageLevel = 'หนัก'), grow: true),
+          const SizedBox(width: 10),
+          _chip('เบา', _damageLevel == 'เบา', () => setState(() => _damageLevel = 'เบา'), grow: true),
+        ]),
+        _txt(_claimRefNoCtl, 'เลขที่รับแจ้ง'),
+        _txt(_claimNoCtl, 'เลขที่เคลม', onChanged: (_) => setState(() {})),
+        _txt(_surveyJobNoCtl, 'เลขเรื่องเซอร์เวย์'),
+        _subhead('กรมธรรม์'),
+        _txt(_policyNoCtl, 'เลขกรมธรรม์'),
+        _txt(_prbNumberCtl, 'เลข พรบ.'),
+        _txt(_driverByPolicyCtl, 'ชื่อผู้ขับขี่ตามกรมธรรม์'),
+        _row2(_txt(_policyStartCtl, 'วันที่เริ่มต้น'), _txt(_policyEndCtl, 'วันที่สิ้นสุด')),
+        _txt(_assuredNameCtl, 'ผู้เอาประกันภัย'),
+        _row2(_txt(_policyTypeCtl, 'ประเภทประกัน'), _txt(_riskCodeCtl, 'รหัสภัยยานยนต์')),
+        _txt(_assuredEmailCtl, 'อีเมลผู้เอาประกัน', keyboardType: TextInputType.emailAddress),
+        _numField(_deductibleCtl, 'ค่าเสียหายส่วนแรก', decimal: true),
+      ];
+
+  List<Widget> _secCar() => [
+        _txt(_carModelCtl, 'รุ่น'),
+        _row2(
+          _dd('จังหวัด', _carProvinceCtl.text, _provinceNames,
+              (v) => setState(() => _carProvinceCtl.text = v ?? ''),
+              hint: 'เลือกจังหวัด', key: ValueKey('cp_${_carProvinceCtl.text}')),
+          _carTypeDropdown(),
+        ),
+        _row2(_txt(_carBrandCtl, 'ยี่ห้อ'), _txt(_licensePlateCtl, 'หมายเลขทะเบียน')),
+        _row2(_txt(_carColorCtl, 'สีรถ'), _txt(_carRegYearCtl, 'ปีจดทะเบียน')),
+        _txt(_chassisNoCtl, 'หมายเลขตัวถัง'),
+        _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
+        _row2(_numField(_mileageCtl, 'หมายเลข กม.'), _evTypeDropdown()),
+      ];
+
+  List<Widget> _secDriver() => [
+        _scanRow(),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(flex: 3, child: _genderDropdown()),
+          const SizedBox(width: 8),
+          Expanded(flex: 4, child: _titleDropdown()),
+          const SizedBox(width: 8),
+          Expanded(flex: 5, child: _birthdateField()),
+        ]),
+        _row2(_txt(_driverNameCtl, 'ชื่อ'), _txt(_driverLastnameCtl, 'นามสกุล')),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: 64, child: _numField(_driverAgeCtl, 'อายุ')),
+          const SizedBox(width: 8),
+          Expanded(child: _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone)),
+          const SizedBox(width: 8),
+          Expanded(child: _relationDropdown()),
+        ]),
+        _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน'),
+        _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
+            (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
+            hint: 'เลือกจังหวัด', key: ValueKey('dp_${_driverProvinceCtl.text}')),
+        _districtDropdown(),
+        _row2(_txt(_driverIdCardCtl, 'บัตรประชาชนเลขที่', keyboardType: TextInputType.number),
+            _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่')),
+        _row2(_licenseTypeDropdown(), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
+        _row2(_txt(_driverLicenseStartCtl, 'ออกให้วันที่'), _txt(_driverLicenseEndCtl, 'หมดอายุวันที่')),
+      ];
+
+  List<Widget> _secDamage() => [
+        _damageList(),
+        _damageDescField(),
+        _numField(_estimatedCostCtl, 'ค่าเสียหายประมาณ (บาท)', decimal: true),
+      ];
+
+  List<Widget> _secEvent() => [
+        _row2(_txt(_accDateCtl, 'วันที่เกิดเหตุ (วว/ดด/ปปปป)'), _txt(_accTimeCtl, 'เวลา (นน:นน)')),
+        _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ'),
+        _row2(_txt(_accProvinceCtl, 'จังหวัด'), _txt(_accDistrictCtl, 'เขต/อำเภอ')),
+        _dd('ลักษณะการเกิดเหตุ', _accCauseCtl.text, _accCauseOptions,
+            (v) => setState(() => _accCauseCtl.text = v ?? ''), key: ValueKey('ac_${_accCauseCtl.text}')),
+        _dd('ลักษณะความเสียหาย', _accDamageTypeCtl.text, _accDamageOptions,
+            (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), key: ValueKey('ad_${_accDamageTypeCtl.text}')),
+        _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5),
+        _fieldLabel('ฝ่ายประมาท'),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _chip('รถประกันฝ่ายผิด', _accFault == 'ฝ่ายผิด', () => setState(() => _accFault = 'ฝ่ายผิด')),
+          _chip('ฝ่ายถูกและผิด', _accFault == 'ฝ่ายถูกและผิด', () => setState(() => _accFault = 'ฝ่ายถูกและผิด')),
+          _chip('คู่กรณีผิด', _accFault == 'คู่กรณีผิด', () => setState(() => _accFault = 'คู่กรณีผิด')),
+          _chip('ประมาทร่วม', _accFault == 'ประมาทร่วม', () => setState(() => _accFault = 'ประมาทร่วม')),
+          _chip('รอสรุปผลคดี', _accFault == 'รอสรุปผลคดี', () => setState(() => _accFault = 'รอสรุปผลคดี')),
+          _chip('ยกเลิกการเคลม', _accFault == 'ยกเลิกการเคลม', () => setState(() => _accFault = 'ยกเลิกการเคลม')),
+          _chip('ไปถึงแล้วไม่พบ', _accFault == 'ไปถึงแล้วไม่พบ', () => setState(() => _accFault = 'ไปถึงแล้วไม่พบ')),
+        ]),
+        _txt(_accReporterCtl, 'ผู้แจ้ง'),
+        _txt(_accSurveyorCtl, 'ผู้สำรวจภัย'),
+        _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
+        _row2(_txt(_accCustomerReportDateCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'), _txt(_accInsNotifyDateCtl, 'วันที่ บ.ประกันแจ้งสำรวจ')),
+        _row2(_txt(_accSurveyArriveDateCtl, 'วันที่ถึงที่เกิดเหตุ'), _txt(_accSurveyCompleteDateCtl, 'วันที่สำรวจเสร็จ')),
+        _subhead('ตำรวจ'),
+        _row2(_txt(_accPoliceNameCtl, 'ชื่อพนักงานสอบสวน'), _txt(_accPoliceStationCtl, 'สถานีตำรวจ')),
+        _txt(_accPoliceCommentCtl, 'ความเห็นพนักงานสอบสวน'),
+        _row2(_txt(_accPoliceDateCtl, 'วันที่ (ตำรวจ)'), _txt(_accPoliceBookNoCtl, 'ประจำวันข้อที่')),
+        _txt(_accAlcoholTestCtl, 'ผลการตรวจแอลกอฮอล์'),
+        _subhead('การติดตามงาน'),
+        _followupDropdown(),
+        _txt(_accFollowupCountCtl, 'ครั้งที่นัดหมาย'),
+        _txt(_accFollowupDetailCtl, 'รายละเอียดการนัดหมาย'),
+        _txt(_accFollowupDateCtl, 'วันที่นัดหมาย'),
+      ];
+
+  List<Widget> _secOpponent() => [
+        _phase3Note('Phase 1 รองรับคู่กรณีแบบสรุป — เพิ่มได้หลายคันพร้อมฟอร์มเต็ม (เจ้าของ/รถ/ผู้ขับ/ประกัน/แผนภาพ) จะมาใน Phase 3'),
+        _txt(_accClaimOpponentCtl, 'การเรียกร้องค่าเสียหายจากคู่กรณี'),
+        _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
+            _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
+      ];
+
+  // ── ป้ายบริษัทประกัน (ล็อกจากงานที่ได้รับ) ──
+  Widget _insurerLockField() {
+    final name = _insuranceCompanyCtl.text.trim();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
+      child: Row(children: [
+        const Icon(Icons.lock_outline, size: 16, color: _muted),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('บริษัทประกัน', style: TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w500)),
+          Text(name.isNotEmpty ? name : 'กำหนดจากงานที่ได้รับ', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _ink)),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _subhead(String t) => Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 2),
+        child: Row(children: [
+          Text(t, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _muted)),
+          const SizedBox(width: 8),
+          Expanded(child: Container(height: 1, color: _line)),
+        ]),
+      );
+
+  Widget _phase3Note(String t) => Container(
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(color: _warnTint, borderRadius: BorderRadius.circular(12)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.info_outline, size: 16, color: _warn),
+          const SizedBox(width: 8),
+          Expanded(child: Text(t, style: const TextStyle(fontSize: 12, color: _warn, height: 1.45, fontWeight: FontWeight.w500))),
+        ]),
+      );
+
+  // ── topbar (sticky header: เลขเคลม + บริษัทประกัน + สถานะ; มีปุ่มย้อนกลับเมื่ออยู่ในหมวด) ──
   PreferredSizeWidget _topbar() {
     final claimNo = _claimNoCtl.text.trim();
+    final ins = _insuranceCompanyCtl.text.trim();
+    final inSection = _view != _SView.hub;
     return AppBar(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       foregroundColor: _ink,
       elevation: 0,
       scrolledUnderElevation: 0.5,
-      titleSpacing: 0,
+      titleSpacing: inSection ? 0 : 16,
+      leading: inSection
+          ? IconButton(icon: const Icon(Icons.arrow_back, color: _ink), tooltip: 'กลับ Hub', onPressed: () => _go(_SView.hub))
+          : null,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('แบบฟอร์มสำรวจ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: _ink)),
-          if (claimNo.isNotEmpty)
-            Text('เคลม #$claimNo', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: _muted)),
+          const Text('งานสำรวจ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink)),
+          Row(children: [
+            if (claimNo.isNotEmpty)
+              Text('เคลม #$claimNo', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _muted)),
+            if (claimNo.isNotEmpty && ins.isNotEmpty)
+              const Text('  ·  ', style: TextStyle(fontSize: 11, color: _muted2)),
+            if (ins.isNotEmpty)
+              Flexible(child: Text(ins, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _primary))),
+          ]),
         ],
       ),
       actions: [
@@ -936,72 +1207,55 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // ── section-nav strip ──
-  Widget _progressStrip() {
-    const secs = ['เคลม', 'กรมธรรม์', 'รถยนต์', 'ผู้ขับขี่', 'ความเสียหาย', 'อุบัติเหตุ', 'หมายเหตุ', 'รูปถ่าย'];
-    return SizedBox(
-      height: 32,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: secs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (_, i) => GestureDetector(
-          onTap: () {
-            final ctx = _secKeys[i].currentContext;
-            if (ctx != null) {
-              Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut, alignment: 0.02);
-            }
-          },
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 13),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999), border: Border.all(color: _line)),
-            child: Text(secs[i], style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _muted)),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── bottom save bar ──
+  // ── bottom bar: ความคืบหน้า N/6 + ปุ่มหลัก (hub=ส่ง / หมวด=กลับ Hub) + บันทึกร่าง ──
   Widget _savebar(CaseProvider cp) {
+    final inHub = _view == _SView.hub;
+    final n = _filledCount();
     return Container(
-      padding: EdgeInsets.fromLTRB(8, 12, 8, 12 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(10, 8, 10, 10 + MediaQuery.of(context).padding.bottom),
       decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: _line))),
-      child: Row(children: [
-        Expanded(
-          child: SizedBox(
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: cp.isSubmitting ? null : _submitSurvey,
-              icon: cp.isSubmitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                  : const Icon(Icons.send_rounded, size: 20),
-              label: const Text('ส่งข้อมูลสำรวจ', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          Text('ครบ $n/6 หมวด', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
+          const SizedBox(width: 12),
+          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: n / 6, minHeight: 6, backgroundColor: _line, color: _ok))),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(
+            child: SizedBox(
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: cp.isSubmitting ? null : (inHub ? _submitSurvey : () => _go(_SView.hub)),
+                icon: cp.isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                    : Icon(inHub ? Icons.send_rounded : Icons.arrow_back, size: 20),
+                label: Text(inHub ? 'ตรวจสอบ & ส่ง' : 'กลับ Hub', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 52,
-          height: 52,
-          child: OutlinedButton(
-            onPressed: cp.isSubmitting ? null : _saveDraft,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _primary,
-              side: const BorderSide(color: _lineStrong),
-              padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 50,
+            height: 50,
+            child: OutlinedButton(
+              onPressed: cp.isSubmitting ? null : _saveDraft,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primary,
+                side: const BorderSide(color: _lineStrong),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Icon(Icons.save_outlined, size: 22),
             ),
-            child: const Icon(Icons.save_outlined, size: 22),
           ),
-        ),
+        ]),
       ]),
     );
   }
