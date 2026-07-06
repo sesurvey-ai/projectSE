@@ -92,6 +92,16 @@ class CaseProvider extends ChangeNotifier {
     }
   }
 
+  // OCR สแกนใบเคลม → คืน { fields: {...}, confidence: {...} } หรือ null ถ้าพลาด
+  Future<Map<String, dynamic>?> ocrClaim(String imagePath) async {
+    try {
+      return await _apiService.ocrClaim(imagePath);
+    } catch (e) {
+      debugPrint('ocrClaim error: $e');
+      return null;
+    }
+  }
+
   Future<bool> updateSurvey(int caseId, Map<String, dynamic> data) async {
     _isSubmitting = true;
     _error = null;

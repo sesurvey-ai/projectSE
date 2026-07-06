@@ -103,6 +103,14 @@ class ApiService {
     return _dio.put('/api/cases/$caseId/survey', data: data);
   }
 
+  // OCR สแกนใบเคลม (flipped pipeline) → คืน map ฟิลด์ที่อ่านได้ (claim_no, policy_no, incident_location, ...)
+  Future<Map<String, dynamic>> ocrClaim(String imagePath) async {
+    final form = FormData();
+    form.files.add(MapEntry('image', await MultipartFile.fromFile(imagePath, filename: imagePath.split('/').last)));
+    final r = await _dio.post('/api/ocr/claim', data: form);
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
+
   Future<List<String>> uploadPhotos(List<String> filePaths) async {
     final formData = FormData();
     for (final path in filePaths) {

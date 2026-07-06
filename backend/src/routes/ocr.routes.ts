@@ -8,6 +8,7 @@ const router = Router();
 
 router.post('/typhoon', auth, requireRole('callcenter', 'admin'), upload.single('image'), ocrController.extractClaim);
 // flipped pipeline (Gemini + Vision) — เร็ว/แม่น ดึง 5 เลขสำคัญ; แทน /typhoon (คง /typhoon เป็น fallback)
-router.post('/claim', auth, requireRole('callcenter', 'admin'), upload.single('image'), ocrController.extractClaimFlipped);
+// surveyor เรียกได้ด้วย (สแกนใบเคลมบนมือถือ หน้ากรอกรายละเอียดอุบัติเหตุ)
+router.post('/claim', auth, requireRole('callcenter', 'admin', 'surveyor'), upload.single('image'), ocrController.extractClaimFlipped);
 
 export default router;

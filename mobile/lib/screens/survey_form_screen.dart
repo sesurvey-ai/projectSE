@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
 import '../config/api_config.dart';
+import '../services/location_service.dart';
+import '../widgets/car_damage_diagram.dart';
 
 // ── Design tokens (from Claude design "survey-form.html") ──
 const _bg = Color(0xFFEEF0F4);
@@ -48,9 +50,170 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // keys for the section card wrappers (reused as GlobalKeys)
   final List<GlobalKey> _secKeys = List.generate(8, (_) => GlobalKey());
 
+  // Phase 2: capture tools
+  final LocationService _loc = LocationService();
+  String? _savedAt;      // เวลาบันทึกร่างอัตโนมัติล่าสุด (HH:MM)
+  bool _gpsBusy = false; // กำลังดึงพิกัด GPS
+  bool _ocrBusy = false; // กำลังสแกน OCR
+
   void _go(_SView v) {
     FocusManager.instance.primaryFocus?.unfocus();
+    _autosave();
     setState(() => _view = v);
+  }
+
+  // บันทึกร่างอัตโนมัติแบบเงียบ (ไม่มี snackbar) + อัปเดตป้ายเวลา
+  Future<void> _autosave() async {
+    try {
+      final data = _collectFormData();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_draftKey, jsonEncode(data));
+      final now = DateTime.now();
+      final t = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+      if (mounted) setState(() => _savedAt = t);
+    } catch (_) {}
+  }
+
+  // ── GPS: ดึงพิกัดปัจจุบัน เติมสถานที่เกิดเหตุ ──
+  Future<void> _captureGps() async {
+    setState(() => _gpsBusy = true);
+    try {
+      final pos = await _loc.getCurrentPosition();
+      if (!mounted) return;
+      if (pos == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('เปิด GPS และอนุญาตตำแหน่งก่อน'), backgroundColor: Colors.orange));
+        return;
+      }
+      final coord = '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
+      // เติมลงช่องสถานที่ถ้ายังว่าง (ไม่ทับข้อความที่พิมพ์ไว้)
+      if (_accPlaceCtl.text.trim().isEmpty) _accPlaceCtl.text = 'พิกัด $coord';
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('บันทึกพิกัดแล้ว: $coord'), backgroundColor: Colors.green, duration: const Duration(seconds: 2)));
+    } finally {
+      if (mounted) setState(() => _gpsBusy = false);
+    }
+  }
+
+  // ── OCR: สแกนใบเคลม → เติมเลขเคลม/กรมธรรม์/สถานที่ ──
+  Future<void> _scanClaim() async {
+    try {
+      final XFile? shot = await _picker.pickImage(source: ImageSource.camera, imageQuality: 88, maxWidth: 2200);
+      if (shot == null) return;
+      setState(() => _ocrBusy = true);
+      final res = await context.read<CaseProvider>().ocrClaim(shot.path);
+      if (!mounted) return;
+      final fields = (res?['fields'] as Map?)?.cast<String, dynamic>() ?? {};
+      if (fields.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('อ่านข้อมูลจากรูปไม่ได้ ลองถ่ายใหม่ให้ชัด'), backgroundColor: Colors.orange));
+        return;
+      }
+      void put(TextEditingController c, String key) {
+        final v = (fields[key] ?? '').toString().trim();
+        if (v.isNotEmpty) c.text = v;
+      }
+      put(_claimRefNoCtl, 'claim_ref_no');
+      put(_claimNoCtl, 'claim_no');
+      put(_prbNumberCtl, 'prb_number');
+      put(_surveyJobNoCtl, 'survey_job_no');
+      put(_policyNoCtl, 'policy_no');
+      final loc = (fields['incident_location'] ?? '').toString().trim();
+      if (loc.isNotEmpty && _accPlaceCtl.text.trim().isEmpty) _accPlaceCtl.text = loc;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('เติมข้อมูลจากใบเคลมแล้ว (${fields.length} ช่อง)'), backgroundColor: Colors.green));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('สแกนไม่สำเร็จ')));
+    } finally {
+      if (mounted) setState(() => _ocrBusy = false);
+    }
+  }
+
+  // ── สแกน (บัตร/ใบขับขี่/ทะเบียน/VIN): Phase 2 เก็บรูปเข้าโฟลเดอร์เคส (ยังไม่สกัดอัตโนมัติ) ──
+  Future<void> _scanCapture(String label) async {
+    try {
+      final XFile? shot = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85, maxWidth: 2000);
+      if (shot == null) return;
+      final caseFolder = await _getCaseFolder();
+      final localPath = '$caseFolder/scan_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(shot.path).copy(localPath);
+      setState(() => _photoPaths.add(localPath));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('บันทึกรูป$labelแล้ว (สกัดข้อมูลอัตโนมัติจะมาในเฟสถัดไป)'), duration: const Duration(seconds: 2)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
+    }
+  }
+
+  // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
+  void _onTapDiagramPart(String part) {
+    int idx = _damageItems.indexWhere((it) => it['part'] == part);
+    if (idx < 0) {
+      final defPos = part.contains('ซ้าย') ? 'L' : (part.contains('ขวา') ? 'R' : 'A');
+      _damageItems.add({'part': part, 'pos': defPos, 'level': ''});
+      idx = _damageItems.length - 1;
+      _syncDamageDesc();
+    }
+    _showDamagePartSheet(idx);
+  }
+
+  void _showDamagePartSheet(int idx) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final item = _damageItems[idx];
+          Widget seg(String group, Map<String, String> opts, Map<String, Color> colors) => Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final e in opts.entries)
+                  GestureDetector(
+                    onTap: () {
+                      final sel = item[group] == e.key;
+                      setSheet(() => item[group] = sel ? '' : e.key);
+                      _updateDamageItem(idx, group, item[group] ?? '');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: item[group] == e.key ? (colors[e.key] ?? _primary) : Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: item[group] == e.key ? (colors[e.key] ?? _primary) : _lineStrong, width: 1.5),
+                      ),
+                      child: Text(e.value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: item[group] == e.key ? Colors.white : _muted)),
+                    ),
+                  ),
+              ]);
+          return Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(item['part'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink))),
+                GestureDetector(
+                  onTap: () { setState(() { _damageItems.removeAt(idx); _syncDamageDesc(); }); Navigator.pop(ctx); },
+                  child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle), child: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade700)),
+                ),
+              ]),
+              const SizedBox(height: 14),
+              const Text('ตำแหน่ง', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
+              const SizedBox(height: 8),
+              seg('pos', const {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'}, const {}),
+              const SizedBox(height: 14),
+              const Text('ระดับความเสียหาย', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
+              const SizedBox(height: 8),
+              seg('level', const {'L': 'ต่ำ', 'M': 'กลาง', 'H': 'สูง', 'X': 'สูงมาก'},
+                  const {'L': Color(0xFF16A34A), 'M': Color(0xFFEAB308), 'H': Color(0xFFEA8600), 'X': Color(0xFFDC2626)}),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity, height: 46,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(backgroundColor: _primary, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                  child: const Text('เสร็จ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ]),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -610,6 +773,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'driver_province': _driverProvinceCtl.text.trim(),
       'driver_district': _driverDistrictCtl.text.trim(),
       'damage_description': _damageDescCtl.text.trim(),
+      // แผนภาพความเสียหายรถประกัน (structured) → JSONB คอลัมน์ insured_damage
+      'insured_damage': _damageItems,
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
       'acc_place': _accPlaceCtl.text.trim(),
@@ -994,6 +1159,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── เนื้อหารายหมวด (reuse ฟิลด์เดิมทั้งหมด) ──
   List<Widget> _secClaimPolicy() => [
         _insurerLockField(),
+        _captureButton(Icons.document_scanner_outlined, _ocrBusy ? 'กำลังอ่านใบเคลม...' : 'สแกนใบเคลม (เติมเลขอัตโนมัติ)', _ocrBusy ? null : _scanClaim, busy: _ocrBusy),
         _fieldLabel('ประเภทเคลม'),
         Row(children: [
           _chip('เคลมสด', _claimType == 'F', () => setState(() => _claimType = 'F'), grow: true),
@@ -1068,6 +1234,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ];
 
   List<Widget> _secDamage() => [
+        CarDamageDiagram(items: _damageItems, onTapPart: _onTapDiagramPart),
         _damageList(),
         _damageDescField(),
         _numField(_estimatedCostCtl, 'ค่าเสียหายประมาณ (บาท)', decimal: true),
@@ -1075,6 +1242,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   List<Widget> _secEvent() => [
         _row2(_txt(_accDateCtl, 'วันที่เกิดเหตุ (วว/ดด/ปปปป)'), _txt(_accTimeCtl, 'เวลา (นน:นน)')),
+        _captureButton(Icons.my_location, _gpsBusy ? 'กำลังหาพิกัด...' : 'ใช้ตำแหน่งปัจจุบัน (GPS)', _gpsBusy ? null : _captureGps, busy: _gpsBusy),
         _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ'),
         _row2(_txt(_accProvinceCtl, 'จังหวัด'), _txt(_accDistrictCtl, 'เขต/อำเภอ')),
         _dd('ลักษณะการเกิดเหตุ', _accCauseCtl.text, _accCauseOptions,
@@ -1152,6 +1320,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]),
       );
 
+  // ปุ่ม capture (สแกน/GPS) เต็มความกว้าง มีสถานะ busy
+  Widget _captureButton(IconData icon, String label, VoidCallback? onTap, {bool busy = false}) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: busy
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _primary))
+            : Icon(icon, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _primary,
+          backgroundColor: _tint,
+          side: BorderSide.none,
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        ),
+      ),
+    );
+  }
+
   // ── topbar (sticky header: เลขเคลม + บริษัทประกัน + สถานะ; มีปุ่มย้อนกลับเมื่ออยู่ในหมวด) ──
   PreferredSizeWidget _topbar() {
     final claimNo = _claimNoCtl.text.trim();
@@ -1217,8 +1406,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           Text('ครบ $n/6 หมวด', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: n / 6, minHeight: 6, backgroundColor: _line, color: _ok))),
+          if (_savedAt != null) ...[
+            const SizedBox(width: 10),
+            const Icon(Icons.check_circle, size: 13, color: _ok),
+            const SizedBox(width: 3),
+            Text('บันทึก $_savedAt', style: const TextStyle(fontSize: 10.5, color: _muted)),
+          ],
         ]),
         const SizedBox(height: 8),
         Row(children: [
@@ -1582,9 +1777,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ),
         );
     return Row(children: [
-      Expanded(child: btn(Icons.credit_card, 'สแกนบัตรประชาชน', () {})),
+      Expanded(child: btn(Icons.credit_card, 'สแกนบัตรประชาชน', () => _scanCapture('บัตรประชาชน'))),
       const SizedBox(width: 10),
-      Expanded(child: btn(Icons.badge_outlined, 'สแกนใบขับขี่', () {})),
+      Expanded(child: btn(Icons.badge_outlined, 'สแกนใบขับขี่', () => _scanCapture('ใบขับขี่'))),
     ]);
   }
 
