@@ -10,6 +10,7 @@ import '../providers/case_provider.dart';
 import '../config/api_config.dart';
 import '../services/location_service.dart';
 import '../widgets/car_damage_diagram.dart';
+import '../data/survey_master.dart' show cidChecksum;
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
 import 'survey/property_editor.dart';
@@ -31,7 +32,7 @@ const _ok = Color(0xFF1F9D6B);
 const _okTint = Color(0xFFE4F6EE);
 
 // มุมมองใน Hub-and-Spoke: hub = แดชบอร์ด, s1..s6 = หน้าหมวดเต็มจอ, ที่เหลือ = แท็บอื่น
-enum _SView { hub, s1, s2, s3, s4, s5, s6, photos, notes, injured, property, expenses }
+enum _SView { hub, s1, s2, s3, s4, s5, s6, photos, notes, injured, property, expenses, review }
 
 class SurveyFormScreen extends StatefulWidget {
   final int caseId;
@@ -917,6 +918,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         return _propertyBody();
       case _SView.expenses:
         return _soonBody(Icons.receipt_long_outlined, 'ค่าใช้จ่าย', 'อยู่นอกขอบเขตตอนนี้');
+      case _SView.review:
+        return _reviewBody();
     }
   }
 
@@ -1040,7 +1043,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _hubCard(IconData icon, String title, String summary, _SView target, bool filled, {bool warn = false}) {
+  Widget _hubCard(IconData icon, String title, String summary, _SView target, bool started, {bool warn = false}) {
+    final missing = _sectionMissing(target);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -1065,7 +1069,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                 Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: _muted)),
               ])),
               const SizedBox(width: 8),
-              _statusDot(filled),
+              _statusChipHub(missing, started),
               const Icon(Icons.chevron_right, color: _muted2),
             ]),
           ),
@@ -1074,15 +1078,25 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _statusDot(bool filled) {
+  // ป้ายสถานะรายหมวด: ขาด N (เหลือง) / ครบ (เขียว) / ว่าง (เทา)
+  Widget _statusChipHub(List<String> missing, bool started) {
+    final Color c, bg;
+    final String label;
+    if (missing.isNotEmpty) {
+      c = _warn; bg = _warnTint; label = 'ขาด ${missing.length}';
+    } else if (started) {
+      c = _ok; bg = _okTint; label = 'ครบ';
+    } else {
+      c = _muted; bg = _fill; label = 'ว่าง';
+    }
     return Container(
       margin: const EdgeInsets.only(right: 4),
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(color: filled ? _okTint : _fill, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.circle, size: 7, color: filled ? _ok : _muted2),
+        Icon(missing.isNotEmpty ? Icons.error_outline : (started ? Icons.check_circle : Icons.circle), size: 11, color: c),
         const SizedBox(width: 5),
-        Text(filled ? 'มีข้อมูล' : 'ว่าง', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: filled ? _ok : _muted)),
+        Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: c)),
       ]),
     );
   }
@@ -1161,7 +1175,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _s4Filled() => _damageItems.isNotEmpty;
   bool _s5Filled() => _accDateCtl.text.trim().isNotEmpty;
   bool _s6Filled() => _opponents.isNotEmpty || _accClaimOpponentCtl.text.trim().isNotEmpty;
-  int _filledCount() => [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled(), _s6Filled()].where((e) => e).length;
+  int _filledCount() {
+    const views = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5, _SView.s6];
+    final started = [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled(), _s6Filled()];
+    var n = 0;
+    for (var i = 0; i < views.length; i++) {
+      if (_sectionMissing(views[i]).isEmpty && started[i]) n++;
+    }
+    return n;
+  }
 
   String _s1Summary() {
     final ins = _insuranceCompanyCtl.text.trim();
@@ -1190,6 +1212,259 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     if (_opponents.isNotEmpty) return '${_opponents.length} คัน';
     final o = _accClaimOpponentCtl.text.trim();
     return o.isNotEmpty ? o : 'ยังไม่มีคู่กรณี';
+  }
+
+  // ══ Validation (Phase 4) ══════════════════════════════════════════
+  // ตำรวจจำเป็นเมื่อ: ฝ่ายประมาท="รอสรุปผลคดี" หรือ มีผู้บาดเจ็บ ≥1
+  bool _policeRequired() => _accFault == 'รอสรุปผลคดี' || _injured.isNotEmpty;
+  bool _driverCidValid() {
+    final t = _driverIdCardCtl.text.trim();
+    return t.isEmpty ? false : cidChecksum(t);
+  }
+
+  // รายการ "ที่ยังขาด" ของแต่ละหมวด (label ที่ผู้ใช้อ่านเข้าใจ)
+  List<String> _sectionMissing(_SView v) {
+    List<String> miss(List<List<dynamic>> checks) => [for (final c in checks) if (!(c[1] as bool)) c[0] as String];
+    bool has(TextEditingController c) => c.text.trim().isNotEmpty;
+    switch (v) {
+      case _SView.s1:
+        return miss([
+          ['ประเภทเคลม', _claimType.isNotEmpty],
+          ['เลขรับแจ้ง/เลขเคลม', has(_claimRefNoCtl) || has(_claimNoCtl)],
+          ['เลขกรมธรรม์', has(_policyNoCtl)],
+          ['ผู้เอาประกันภัย', has(_assuredNameCtl)],
+        ]);
+      case _SView.s2:
+        return miss([
+          ['ทะเบียนรถ', has(_licensePlateCtl)],
+          ['จังหวัด', has(_carProvinceCtl)],
+          ['ประเภทรถ', _carType != '0'],
+          ['เลข กม.', has(_mileageCtl)],
+        ]);
+      case _SView.s3:
+        return miss([
+          ['ชื่อ-นามสกุลผู้ขับ', has(_driverNameCtl) && has(_driverLastnameCtl)],
+          ['โทรศัพท์', has(_driverPhoneCtl)],
+          ['เลขบัตรประชาชน (ถูกต้อง)', _driverCidValid()],
+          ['เลขใบขับขี่', has(_driverLicenseNoCtl)],
+        ]);
+      case _SView.s4:
+        return miss([
+          ['รายการความเสียหาย ≥1', _damageItems.isNotEmpty],
+        ]);
+      case _SView.s5:
+        final base = miss([
+          ['วัน-เวลาเกิดเหตุ', has(_accDateCtl)],
+          ['สถานที่เกิดเหตุ', has(_accPlaceCtl)],
+          ['ลักษณะการเกิดเหตุ', has(_accCauseCtl)],
+          ['รายละเอียดการเกิดเหตุ', has(_accDetailCtl)],
+          ['ผู้สำรวจภัย', has(_accSurveyorCtl)],
+        ]);
+        if (_policeRequired()) {
+          base.addAll(miss([
+            ['ชื่อพนักงานสอบสวน (มีผู้บาดเจ็บ/รอคดี)', has(_accPoliceNameCtl)],
+            ['สถานีตำรวจ', has(_accPoliceStationCtl)],
+          ]));
+        }
+        return base;
+      case _SView.s6:
+        return const []; // คู่กรณีไม่บังคับ
+      default:
+        return const [];
+    }
+  }
+
+  // รวม error ทุกหมวด (สำหรับ gate ตอนส่ง) — key = ชื่อหมวด
+  Map<String, List<String>> _collectErrors() {
+    final e = <String, List<String>>{};
+    const titles = {
+      _SView.s1: '1. เคลม & กรมธรรม์', _SView.s2: '2. รถประกัน', _SView.s3: '3. ผู้ขับขี่',
+      _SView.s4: '4. ความเสียหาย', _SView.s5: '5. เหตุการณ์ & สถานที่',
+    };
+    for (final entry in titles.entries) {
+      final m = _sectionMissing(entry.key);
+      if (m.isNotEmpty) e[entry.value] = m;
+    }
+    return e;
+  }
+
+  // ── หน้าตรวจสอบ & ส่ง ──
+  Widget _reviewBody() {
+    const sections = <List<dynamic>>[
+      ['1. เคลม & กรมธรรม์', _SView.s1, Icons.verified_user_outlined],
+      ['2. รถประกัน', _SView.s2, Icons.directions_car_outlined],
+      ['3. ผู้ขับขี่', _SView.s3, Icons.person_outline],
+      ['4. ความเสียหาย', _SView.s4, Icons.report_problem_outlined],
+      ['5. เหตุการณ์ & สถานที่', _SView.s5, Icons.car_crash_outlined],
+      ['6. คู่กรณี', _SView.s6, Icons.groups_2_outlined],
+    ];
+    final errors = _collectErrors();
+    final total = errors.values.fold<int>(0, (a, b) => a + b.length);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: total == 0 ? _okTint : _warnTint, borderRadius: BorderRadius.circular(16)),
+          child: Row(children: [
+            Icon(total == 0 ? Icons.check_circle : Icons.warning_amber_rounded, color: total == 0 ? _ok : _warn),
+            const SizedBox(width: 10),
+            Expanded(child: Text(
+              total == 0 ? 'ข้อมูลครบ พร้อมส่งรายงาน' : 'ยังขาด $total รายการ — แตะหมวดเพื่อไปแก้ (ส่งได้แต่ควรกรอกให้ครบ)',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: total == 0 ? _ok : _warn, height: 1.4),
+            )),
+          ]),
+        ),
+        const SizedBox(height: 14),
+        for (final s in sections) _reviewRow(s[0] as String, s[1] as _SView, s[2] as IconData),
+        const SizedBox(height: 6),
+        _reviewMini('ผู้บาดเจ็บ', '${_injured.length} คน', Icons.healing_outlined, () => _go(_SView.injured)),
+        _reviewMini('ทรัพย์สินเสียหาย', '${_property.length} ชิ้น', Icons.chair_outlined, () => _go(_SView.property)),
+        _reviewMini('รูปภาพ', '${_photoPaths.length} รูป', Icons.photo_camera_outlined, () => _go(_SView.photos)),
+        const SizedBox(height: 10),
+        const Text('กด "ส่งรายงาน" ด้านล่างเพื่อส่งเข้าระบบ', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _muted)),
+      ]),
+    );
+  }
+
+  Widget _reviewRow(String title, _SView v, IconData icon) {
+    final started = {
+      _SView.s1: _s1Filled(), _SView.s2: _s2Filled(), _SView.s3: _s3Filled(),
+      _SView.s4: _s4Filled(), _SView.s5: _s5Filled(), _SView.s6: _s6Filled(),
+    }[v]!;
+    final missing = _sectionMissing(v);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: () => _go(v),
+          child: Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(icon, size: 18, color: _primary),
+                const SizedBox(width: 9),
+                Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _ink))),
+                _statusChipHub(missing, started),
+              ]),
+              if (missing.isNotEmpty) ...[
+                const SizedBox(height: 7),
+                Text('ขาด: ${missing.join(", ")}', style: const TextStyle(fontSize: 11.5, color: _warn, height: 1.35)),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _reviewMini(String title, String value, IconData icon, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
+          child: Row(children: [
+            Icon(icon, size: 17, color: _muted),
+            const SizedBox(width: 9),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _ink))),
+            Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
+            const Icon(Icons.chevron_right, size: 18, color: _muted2),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  // ตรวจก่อนส่ง: ถ้าขาด → เปิด error sheet; ครบ → ส่งเลย
+  void _submitWithGate() {
+    final errors = _collectErrors();
+    if (errors.isEmpty) { _submitSurvey(); return; }
+    _showErrorSheet(errors);
+  }
+
+  void _showErrorSheet(Map<String, List<String>> errors) {
+    final total = errors.values.fold<int>(0, (a, b) => a + b.length);
+    const titleToView = {
+      '1. เคลม & กรมธรรม์': _SView.s1, '2. รถประกัน': _SView.s2, '3. ผู้ขับขี่': _SView.s3,
+      '4. ความเสียหาย': _SView.s4, '5. เหตุการณ์ & สถานที่': _SView.s5,
+    };
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (ctx, scroll) => Column(children: [
+          const SizedBox(height: 8),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: _lineStrong, borderRadius: BorderRadius.circular(2))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(children: [
+              const Icon(Icons.warning_amber_rounded, color: _warn),
+              const SizedBox(width: 8),
+              Expanded(child: Text('พบ $total รายการที่ยังไม่ครบ', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: _ink))),
+            ]),
+          ),
+          Expanded(
+            child: ListView(
+              controller: scroll,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              children: [
+                for (final entry in errors.entries) ...[
+                  GestureDetector(
+                    onTap: () { Navigator.pop(ctx); final v = titleToView[entry.key]; if (v != null) _go(v); },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: _warnTint, borderRadius: BorderRadius.circular(12)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _warn))),
+                          const Icon(Icons.arrow_forward, size: 16, color: _warn),
+                        ]),
+                        const SizedBox(height: 4),
+                        Text('• ${entry.value.join("\n• ")}', style: const TextStyle(fontSize: 12, color: _warn, height: 1.5)),
+                      ]),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 12 + MediaQuery.of(ctx).padding.bottom),
+            child: Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(foregroundColor: _primary, side: const BorderSide(color: _lineStrong), padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                  child: const Text('กลับไปแก้', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () { Navigator.pop(ctx); _submitSurvey(); },
+                  style: ElevatedButton.styleFrom(backgroundColor: _warn, foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                  child: const Text('ส่งทั้งที่ยังไม่ครบ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    );
   }
 
   // ── เนื้อหารายหมวด (reuse ฟิลด์เดิมทั้งหมด) ──
@@ -1263,8 +1538,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
             hint: 'เลือกจังหวัด', key: ValueKey('dp_${_driverProvinceCtl.text}')),
         _districtDropdown(),
-        _row2(_txt(_driverIdCardCtl, 'บัตรประชาชนเลขที่', keyboardType: TextInputType.number),
-            _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่')),
+        _row2(_driverCidField(), _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่')),
         _row2(_licenseTypeDropdown(), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
         _row2(_txt(_driverLicenseStartCtl, 'ออกให้วันที่'), _txt(_driverLicenseEndCtl, 'หมดอายุวันที่')),
       ];
@@ -1562,6 +1836,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]),
       );
 
+  // ช่องเลขบัตร ปชช ผู้ขับ + ตรวจ checksum แสดงไอคอน ✓/⚠
+  Widget _driverCidField() {
+    final digits = _driverIdCardCtl.text.replaceAll(RegExp(r'\D'), '');
+    final ok = digits.length == 13 && cidChecksum(_driverIdCardCtl.text);
+    return TextFormField(
+      controller: _driverIdCardCtl,
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
+      decoration: _dec('บัตรประชาชนเลขที่', suffixIcon: digits.length == 13 ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? _ok : _warn) : null),
+      keyboardType: TextInputType.number,
+      onChanged: (_) => setState(() {}),
+    );
+  }
+
   // ปุ่ม capture (สแกน/GPS) เต็มความกว้าง มีสถานะ busy
   Widget _captureButton(IconData icon, String label, VoidCallback? onTap, {bool busy = false}) {
     return SizedBox(
@@ -1641,6 +1928,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── bottom bar: ความคืบหน้า N/6 + ปุ่มหลัก (hub=ส่ง / หมวด=กลับ Hub) + บันทึกร่าง ──
   Widget _savebar(CaseProvider cp) {
     final inHub = _view == _SView.hub;
+    final inReview = _view == _SView.review;
     final n = _filledCount();
     return Container(
       padding: EdgeInsets.fromLTRB(10, 8, 10, 10 + MediaQuery.of(context).padding.bottom),
@@ -1663,11 +1951,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             child: SizedBox(
               height: 50,
               child: ElevatedButton.icon(
-                onPressed: cp.isSubmitting ? null : (inHub ? _submitSurvey : () => _go(_SView.hub)),
+                onPressed: cp.isSubmitting ? null : (inReview ? _submitWithGate : (inHub ? () => _go(_SView.review) : () => _go(_SView.hub))),
                 icon: cp.isSubmitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                    : Icon(inHub ? Icons.send_rounded : Icons.arrow_back, size: 20),
-                label: Text(inHub ? 'ตรวจสอบ & ส่ง' : 'กลับ Hub', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    : Icon(inReview ? Icons.send_rounded : (inHub ? Icons.fact_check_outlined : Icons.arrow_back), size: 20),
+                label: Text(inReview ? 'ส่งรายงาน' : (inHub ? 'ตรวจสอบ & ส่ง' : 'กลับ Hub'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _primary,
                   foregroundColor: Colors.white,
