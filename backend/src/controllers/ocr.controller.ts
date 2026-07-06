@@ -93,7 +93,9 @@ export const ocrController = {
       const t0 = Date.now();
       const result = await extractDocument(file.path, kind);
       console.log(`[OCR doc:${kind}] done in ${Date.now() - t0}ms · review=${result.review_needed}`);
-      sendSuccess(res, { ...result, savedImage: file.filename });
+      // มือถือเก็บสำเนารูปเข้าโฟลเดอร์เคสเองแล้ว → ลบ temp ฝั่ง server กัน orphan
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      sendSuccess(res, { ...result });
     } catch (error) {
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       console.error('[OCR doc Error]', error);
