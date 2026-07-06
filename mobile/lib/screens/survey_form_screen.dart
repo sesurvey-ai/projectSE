@@ -10,6 +10,9 @@ import '../providers/case_provider.dart';
 import '../config/api_config.dart';
 import '../services/location_service.dart';
 import '../widgets/car_damage_diagram.dart';
+import 'survey/opponent_editor.dart';
+import 'survey/injured_editor.dart';
+import 'survey/property_editor.dart';
 
 // ── Design tokens (from Claude design "survey-form.html") ──
 const _bg = Color(0xFFEEF0F4);
@@ -55,6 +58,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   String? _savedAt;      // เวลาบันทึกร่างอัตโนมัติล่าสุด (HH:MM)
   bool _gpsBusy = false; // กำลังดึงพิกัด GPS
   bool _ocrBusy = false; // กำลังสแกน OCR
+
+  // Phase 3: ข้อมูลหลายรายการ (persist เป็น JSONB)
+  final List<Map<String, dynamic>> _opponents = [];
+  final List<Map<String, dynamic>> _injured = [];
+  final List<Map<String, dynamic>> _property = [];
 
   void _go(_SView v) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -459,6 +467,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final val = data[entry.value];
       if (val != null) entry.key.text = val.toString();
     }
+
+    // restore ข้อมูลหลายรายการ + แผนภาพความเสียหาย (จาก server report หรือ draft)
+    setState(() {
+      void restoreList(String key, List<Map<String, dynamic>> target) {
+        final v = data[key];
+        if (v is List) {
+          target
+            ..clear()
+            ..addAll(v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
+        }
+      }
+      restoreList('opposing_parties', _opponents);
+      restoreList('injured_persons', _injured);
+      restoreList('damaged_property', _property);
+      final idmg = data['insured_damage'];
+      if (idmg is List) {
+        _damageItems
+          ..clear()
+          ..addAll(idmg.whereType<Map>().map((e) => {'part': '${e['part'] ?? ''}', 'pos': '${e['pos'] ?? ''}', 'level': '${e['level'] ?? ''}'}));
+        _syncDamageDesc();
+      }
+    });
   }
 
   final ImagePicker _picker = ImagePicker();
@@ -775,6 +805,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'damage_description': _damageDescCtl.text.trim(),
       // แผนภาพความเสียหายรถประกัน (structured) → JSONB คอลัมน์ insured_damage
       'insured_damage': _damageItems,
+      // ข้อมูลหลายรายการ → JSONB
+      'opposing_parties': _opponents,
+      'injured_persons': _injured,
+      'damaged_property': _property,
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
       'acc_place': _accPlaceCtl.text.trim(),
@@ -872,15 +906,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s5:
         return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _secEvent()));
       case _SView.s6:
-        return _sectionScroll(_card(6, Icons.groups_2_outlined, '6. คู่กรณี', _secOpponent()));
+        return _opponentsBody();
       case _SView.photos:
         return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [_buildPhotoGrid()]));
       case _SView.notes:
         return _sectionScroll(_card(6, Icons.sticky_note_2_outlined, 'หมายเหตุ', [_txt(_notesCtl, 'หมายเหตุเพิ่มเติม', maxLines: 3)]));
       case _SView.injured:
-        return _soonBody(Icons.healing_outlined, 'ผู้บาดเจ็บ', 'เพิ่มผู้บาดเจ็บได้หลายคน พร้อมฟอร์มเต็ม — มาใน Phase 3');
+        return _injuredBody();
       case _SView.property:
-        return _soonBody(Icons.chair_outlined, 'ทรัพย์สินเสียหาย', 'บันทึกทรัพย์สินบุคคลภายนอกได้หลายรายการ — มาใน Phase 3');
+        return _propertyBody();
       case _SView.expenses:
         return _soonBody(Icons.receipt_long_outlined, 'ค่าใช้จ่าย', 'อยู่นอกขอบเขตตอนนี้');
     }
@@ -1086,10 +1120,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── chip tabs (5) ──
   Widget _chipTabs() {
     final inDetail = _view != _SView.injured && _view != _SView.property && _view != _SView.photos && _view != _SView.expenses;
+    String cnt(List l) => l.isNotEmpty ? ' (${l.length})' : '';
     final tabs = <List<dynamic>>[
       ['รายละเอียดเหตุ', inDetail, () => _go(_SView.hub)],
-      ['ผู้บาดเจ็บ', _view == _SView.injured, () => _go(_SView.injured)],
-      ['ทรัพย์สิน', _view == _SView.property, () => _go(_SView.property)],
+      ['ผู้บาดเจ็บ${cnt(_injured)}', _view == _SView.injured, () => _go(_SView.injured)],
+      ['ทรัพย์สิน${cnt(_property)}', _view == _SView.property, () => _go(_SView.property)],
       ['รูปภาพ', _view == _SView.photos, () => _go(_SView.photos)],
       ['ค่าใช้จ่าย', _view == _SView.expenses, () => _go(_SView.expenses)],
     ];
@@ -1125,7 +1160,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _s3Filled() => _driverNameCtl.text.trim().isNotEmpty;
   bool _s4Filled() => _damageItems.isNotEmpty;
   bool _s5Filled() => _accDateCtl.text.trim().isNotEmpty;
-  bool _s6Filled() => _accClaimOpponentCtl.text.trim().isNotEmpty;
+  bool _s6Filled() => _opponents.isNotEmpty || _accClaimOpponentCtl.text.trim().isNotEmpty;
   int _filledCount() => [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled(), _s6Filled()].where((e) => e).length;
 
   String _s1Summary() {
@@ -1152,6 +1187,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return [if (d.isNotEmpty) d, if (c.isNotEmpty) c].join(' · ');
   }
   String _s6Summary() {
+    if (_opponents.isNotEmpty) return '${_opponents.length} คัน';
     final o = _accClaimOpponentCtl.text.trim();
     return o.isNotEmpty ? o : 'ยังไม่มีคู่กรณี';
   }
@@ -1277,12 +1313,228 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _txt(_accFollowupDateCtl, 'วันที่นัดหมาย'),
       ];
 
-  List<Widget> _secOpponent() => [
-        _phase3Note('Phase 1 รองรับคู่กรณีแบบสรุป — เพิ่มได้หลายคันพร้อมฟอร์มเต็ม (เจ้าของ/รถ/ผู้ขับ/ประกัน/แผนภาพ) จะมาใน Phase 3'),
-        _txt(_accClaimOpponentCtl, 'การเรียกร้องค่าเสียหายจากคู่กรณี'),
-        _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
-            _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
-      ];
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
+
+  // ── list view ทั่วไปของข้อมูลหลายรายการ (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน) ──
+  Widget _recordListScroll({
+    required IconData icon,
+    required String title,
+    required List<Map<String, dynamic>> items,
+    required String emptyHint,
+    required String addLabel,
+    required VoidCallback onAdd,
+    required String Function(Map<String, dynamic> m, int i) lineTitle,
+    required String Function(Map<String, dynamic> m) lineSub,
+    required void Function(int) onTap,
+    required void Function(int) onDelete,
+    List<Widget> footer = const [],
+  }) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(width: 36, height: 36, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(11)), child: Icon(icon, size: 19, color: _primary)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink))),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: items.isEmpty ? _fill : _okTint, borderRadius: BorderRadius.circular(999)),
+            child: Text('${items.length} รายการ', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: items.isEmpty ? _muted : _ok)),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        if (items.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
+            decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
+            child: Center(child: Text(emptyHint, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: _muted))),
+          ),
+        for (int i = 0; i < items.length; i++) _recordCard(lineTitle(items[i], i), lineSub(items[i]), () => onTap(i), () => onDelete(i)),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(addLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(foregroundColor: _primary, backgroundColor: _tint, side: BorderSide.none, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+          ),
+        ),
+        ...footer,
+      ]),
+    );
+  }
+
+  Widget _recordCard(String title, String sub, VoidCallback onTap, VoidCallback onDelete) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)),
+            child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _ink)),
+                const SizedBox(height: 2),
+                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: _muted)),
+              ])),
+              IconButton(icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400), onPressed: onDelete),
+              const Icon(Icons.chevron_right, color: _muted2),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(String what, VoidCallback onYes) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('ลบ$what?'),
+        content: Text('ต้องการลบ$whatนี้หรือไม่'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ยกเลิก')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('ลบ', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok == true) { onYes(); _autosave(); }
+  }
+
+  // ── คู่กรณี ──
+  Widget _opponentsBody() => _recordListScroll(
+        icon: Icons.groups_2_outlined,
+        title: '6. คู่กรณี (${_opponents.length}/20)',
+        items: _opponents,
+        emptyHint: 'ยังไม่มีคู่กรณีในเคสนี้\nกด "เพิ่มคู่กรณี" เพื่อเริ่ม',
+        addLabel: 'เพิ่มคู่กรณี',
+        onAdd: _addOpponent,
+        onTap: _editOpponent,
+        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() => _opponents.removeAt(i))),
+        lineTitle: (m, i) => 'คันที่ ${i + 1}${(m['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${m['plate']}' : ''}',
+        lineSub: (m) {
+          final owner = (m['owner_name'] ?? '').toString().trim();
+          final ins = (m['insurer'] ?? '').toString().trim();
+          return [if (owner.isNotEmpty) owner, ins.isNotEmpty ? ins : 'ไม่ระบุประกัน'].join(' · ');
+        },
+        footer: [
+          const SizedBox(height: 8),
+          _card(6, Icons.request_quote_outlined, 'การเรียกร้องค่าเสียหาย', [
+            _txt(_accClaimOpponentCtl, 'การเรียกร้องค่าเสียหายจากคู่กรณี'),
+            _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
+                _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
+          ]),
+        ],
+      );
+
+  Future<void> _addOpponent() async {
+    if (_opponents.length >= 20) { _snack('เพิ่มคู่กรณีได้สูงสุด 20 คัน'); return; }
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => OpponentEditor(data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true)));
+    if (!mounted || res == null || res['action'] != 'save') return;
+    setState(() => _opponents.add(Map<String, dynamic>.from(res['data'] as Map)));
+    _autosave();
+  }
+
+  Future<void> _editOpponent(int i) async {
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => OpponentEditor(data: _opponents[i], provinces: _provinceNames, number: i + 1)));
+    if (!mounted || res == null) return;
+    setState(() {
+      if (res['action'] == 'save') {
+        _opponents[i] = Map<String, dynamic>.from(res['data'] as Map);
+      } else if (res['action'] == 'delete') {
+        _opponents.removeAt(i);
+      }
+    });
+    _autosave();
+  }
+
+  // ── ผู้บาดเจ็บ ──
+  Widget _injuredBody() => _recordListScroll(
+        icon: Icons.healing_outlined,
+        title: 'ผู้บาดเจ็บ',
+        items: _injured,
+        emptyHint: 'ยังไม่มีผู้บาดเจ็บ\nกด "เพิ่มผู้บาดเจ็บ" หากมี',
+        addLabel: 'เพิ่มผู้บาดเจ็บ',
+        onAdd: _addInjured,
+        onTap: _editInjured,
+        onDelete: (i) => _confirmDelete('ผู้บาดเจ็บคนที่ ${i + 1}', () => setState(() => _injured.removeAt(i))),
+        lineTitle: (m, i) => '${i + 1}. ${(m['name'] ?? '').toString().trim().isNotEmpty ? m['name'] : 'ไม่ระบุชื่อ'}',
+        lineSub: (m) {
+          final t = (m['person_type'] ?? '').toString().trim();
+          final w = (m['wound_level'] ?? '').toString().trim();
+          return [if (t.isNotEmpty) t, if (w.isNotEmpty) w].join(' · ');
+        },
+      );
+
+  Future<void> _addInjured() async {
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => InjuredEditor(data: const {}, provinces: _provinceNames, number: _injured.length + 1, isNew: true)));
+    if (!mounted || res == null || res['action'] != 'save') return;
+    setState(() => _injured.add(Map<String, dynamic>.from(res['data'] as Map)));
+    _autosave();
+  }
+
+  Future<void> _editInjured(int i) async {
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => InjuredEditor(data: _injured[i], provinces: _provinceNames, number: i + 1)));
+    if (!mounted || res == null) return;
+    setState(() {
+      if (res['action'] == 'save') {
+        _injured[i] = Map<String, dynamic>.from(res['data'] as Map);
+      } else if (res['action'] == 'delete') {
+        _injured.removeAt(i);
+      }
+    });
+    _autosave();
+  }
+
+  // ── ทรัพย์สิน ──
+  Widget _propertyBody() => _recordListScroll(
+        icon: Icons.chair_outlined,
+        title: 'ทรัพย์สินเสียหาย',
+        items: _property,
+        emptyHint: 'ยังไม่มีทรัพย์สินเสียหาย\nกด "เพิ่มทรัพย์สิน" หากมี',
+        addLabel: 'เพิ่มทรัพย์สิน',
+        onAdd: _addProperty,
+        onTap: _editProperty,
+        onDelete: (i) => _confirmDelete('ทรัพย์สินชิ้นที่ ${i + 1}', () => setState(() => _property.removeAt(i))),
+        lineTitle: (m, i) => '${i + 1}. ${(m['item'] ?? '').toString().trim().isNotEmpty ? m['item'] : 'ไม่ระบุ'}',
+        lineSub: (m) {
+          final o = (m['owner_name'] ?? '').toString().trim();
+          final c = (m['estimated_cost'] ?? '').toString().trim();
+          return [if (o.isNotEmpty) o, if (c.isNotEmpty) '฿$c'].join(' · ');
+        },
+      );
+
+  Future<void> _addProperty() async {
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => PropertyEditor(data: const {}, number: _property.length + 1, isNew: true)));
+    if (!mounted || res == null || res['action'] != 'save') return;
+    setState(() => _property.add(Map<String, dynamic>.from(res['data'] as Map)));
+    _autosave();
+  }
+
+  Future<void> _editProperty(int i) async {
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => PropertyEditor(data: _property[i], number: i + 1)));
+    if (!mounted || res == null) return;
+    setState(() {
+      if (res['action'] == 'save') {
+        _property[i] = Map<String, dynamic>.from(res['data'] as Map);
+      } else if (res['action'] == 'delete') {
+        _property.removeAt(i);
+      }
+    });
+    _autosave();
+  }
 
   // ── ป้ายบริษัทประกัน (ล็อกจากงานที่ได้รับ) ──
   Widget _insurerLockField() {
@@ -1307,16 +1559,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           Text(t, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _muted)),
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: _line)),
-        ]),
-      );
-
-  Widget _phase3Note(String t) => Container(
-        padding: const EdgeInsets.all(11),
-        decoration: BoxDecoration(color: _warnTint, borderRadius: BorderRadius.circular(12)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Icon(Icons.info_outline, size: 16, color: _warn),
-          const SizedBox(width: 8),
-          Expanded(child: Text(t, style: const TextStyle(fontSize: 12, color: _warn, height: 1.45, fontWeight: FontWeight.w500))),
         ]),
       );
 

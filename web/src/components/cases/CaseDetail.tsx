@@ -31,6 +31,48 @@ function formatCurrency(v: number | null | undefined) { if (v == null) return '-
 const CLAIM_TYPE_LABELS: Record<string, string> = { F: 'เคลมสด', D: 'เคลมแห้ง', A: 'งานนัดหมาย', C: 'งานติดตาม' };
 const DAMAGE_LEVEL_COLORS: Record<string, string> = { 'หนัก': 'bg-red-100 text-red-800', 'เบา': 'bg-green-100 text-green-800' };
 
+// ===== Phase 3: multi-record display helpers (opposing_parties / injured_persons / damaged_property / insured_damage) =====
+const DAMAGE_POS_LABELS: Record<string, string> = { L: 'ซ้าย', R: 'ขวา', A: 'ทั้งหมด' };
+const DAMAGE_SEV_LABELS: Record<string, string> = { L: 'ต่ำ', M: 'กลาง', H: 'สูง', X: 'สูงมาก' };
+const WOUND_LEVEL_COLORS: Record<string, string> = {
+  'เล็กน้อย': 'bg-green-100 text-green-800',
+  'ปานกลาง': 'bg-yellow-100 text-yellow-800',
+  'สาหัส': 'bg-orange-100 text-orange-800',
+  'ทุพพลภาพ': 'bg-red-100 text-red-800',
+  'เสียชีวิต': 'bg-red-100 text-red-800',
+};
+function toArray(x: unknown): any[] { return Array.isArray(x) ? x : []; }
+function currencyFromString(v: unknown): string {
+  if (v == null || v === '') return '-';
+  const n = Number(v);
+  return Number.isNaN(n) ? '-' : formatCurrency(n);
+}
+function formatDamageChip(dmg: any): string {
+  const part = (dmg?.part ?? '').toString().trim();
+  const pos = DAMAGE_POS_LABELS[dmg?.pos] || '';
+  const sev = DAMAGE_SEV_LABELS[dmg?.level] || (dmg?.level ?? '');
+  const left = [part, pos].filter(Boolean).join(' ');
+  return sev ? `${left || '-'} · ${sev}` : (left || '-');
+}
+function ReadItem({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div>
+      <span className="text-xs text-gray-500">{label}</span>
+      <p className="text-sm font-medium text-gray-800 break-words">{value === 0 ? '0' : (value || '-')}</p>
+    </div>
+  );
+}
+function DamageChips({ items }: { items: any[] }) {
+  if (!items.length) return <span className="text-sm text-gray-400">-</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((dmg, i) => (
+        <span key={i} className="inline-block bg-gray-100 border border-gray-200 text-gray-700 rounded px-2 py-0.5 text-xs">{formatDamageChip(dmg)}</span>
+      ))}
+    </div>
+  );
+}
+
 function InfoItem({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div>
@@ -713,6 +755,174 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </tbody>
             </table>
           </div>
+
+          {/* ===== Phase 3: คู่กรณี / ผู้บาดเจ็บ / ทรัพย์สินเสียหาย / แผนภาพความเสียหายรถประกัน (read-only) ===== */}
+          {(() => {
+            const opposingParties = toArray(report.opposing_parties);
+            const injuredPersons = toArray(report.injured_persons);
+            const damagedProperty = toArray(report.damaged_property);
+            const insuredDamage = toArray(report.insured_damage);
+            return (
+              <>
+                {/* คู่กรณี */}
+                {opposingParties.length > 0 && (
+                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
+                      <span className="font-bold">::: คู่กรณี ({opposingParties.length} คัน)</span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {opposingParties.map((op: any, idx: number) => {
+                        const dmg = toArray(op?.damage);
+                        const driverName = [op?.title, op?.first_name, op?.last_name].filter(Boolean).join(' ');
+                        return (
+                          <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-700">คู่กรณีคันที่ {idx + 1}</span>
+                              {op?.kfk === true && (
+                                <span className="inline-block bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs font-medium">KFK</span>
+                              )}
+                            </div>
+                            <div className="p-3 space-y-3">
+                              {/* เจ้าของ/รถ */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 mb-1.5">เจ้าของ / รถ</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                                  <ReadItem label="เจ้าของรถ" value={op?.owner_name} />
+                                  <ReadItem label="ทะเบียน" value={[op?.plate, op?.province].filter(Boolean).join(' ')} />
+                                  <ReadItem label="ประเภทรถ" value={op?.car_type} />
+                                  <ReadItem label="ยี่ห้อ / รุ่น" value={[op?.car_brand, op?.car_model].filter(Boolean).join(' ')} />
+                                  <ReadItem label="สีรถ" value={op?.car_color} />
+                                  <ReadItem label="ที่อยู่เจ้าของ" value={op?.owner_address} />
+                                </div>
+                              </div>
+                              {/* ผู้ขับ */}
+                              <div className="border-t border-gray-100 pt-2">
+                                <p className="text-xs font-semibold text-gray-500 mb-1.5">ผู้ขับ</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                                  <ReadItem label="ชื่อผู้ขับ" value={driverName} />
+                                  <ReadItem label="ความสัมพันธ์" value={op?.relation} />
+                                  <ReadItem label="อายุ" value={op?.age} />
+                                  <ReadItem label="โทรศัพท์" value={op?.phone} />
+                                  <ReadItem label="เลขบัตรประชาชน" value={op?.cid} />
+                                  <ReadItem label="ใบขับขี่เลขที่" value={op?.license_no} />
+                                </div>
+                              </div>
+                              {/* ประกัน */}
+                              <div className="border-t border-gray-100 pt-2">
+                                <p className="text-xs font-semibold text-gray-500 mb-1.5">ประกัน</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                                  <ReadItem label="บริษัทประกัน" value={op?.insurer} />
+                                  <ReadItem label="กรมธรรม์เลขที่" value={op?.policy_no} />
+                                  <ReadItem label="เลขที่เคลม" value={op?.claim_no} />
+                                  <ReadItem label="ประเภทประกัน" value={op?.policy_type} />
+                                </div>
+                              </div>
+                              {/* ความเสียหาย */}
+                              <div className="border-t border-gray-100 pt-2">
+                                <p className="text-xs font-semibold text-gray-500 mb-1.5">ความเสียหาย</p>
+                                <DamageChips items={dmg} />
+                                <div className="mt-2">
+                                  <ReadItem label="ค่าเสียหายประมาณ" value={currencyFromString(op?.estimated_cost)} />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ผู้บาดเจ็บ */}
+                {injuredPersons.length > 0 && (
+                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
+                      <span className="font-bold">::: ผู้บาดเจ็บ ({injuredPersons.length} คน)</span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {injuredPersons.map((p: any, idx: number) => {
+                        const genderLabel = p?.gender === 'M' ? 'ชาย' : p?.gender === 'F' ? 'หญิง' : (p?.gender || '');
+                        const nameWithGender = [p?.name, genderLabel ? `(${genderLabel})` : ''].filter(Boolean).join(' ');
+                        const treatRange = [p?.treat_from, p?.treat_to].filter(Boolean).join(' – ');
+                        const woundColor = WOUND_LEVEL_COLORS[p?.wound_level] || 'bg-gray-100 text-gray-700';
+                        return (
+                          <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-gray-700">ผู้บาดเจ็บคนที่ {idx + 1}</span>
+                              {p?.person_type && (
+                                <span className="text-xs text-gray-500">{p.person_type}</span>
+                              )}
+                              {p?.wound_level && (
+                                <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${woundColor}`}>{p.wound_level}</span>
+                              )}
+                            </div>
+                            <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                              <ReadItem label="ชื่อ" value={nameWithGender} />
+                              <ReadItem label="อายุ" value={p?.age} />
+                              <ReadItem label="เลขบัตรประชาชน" value={p?.cid} />
+                              <ReadItem label="อาชีพ" value={p?.occupation} />
+                              <ReadItem label="โทรศัพท์" value={p?.phone} />
+                              <ReadItem label="โรงพยาบาล" value={p?.hospital} />
+                              <ReadItem label="ระยะเวลารักษา" value={treatRange} />
+                              <ReadItem label="ค่ารักษา" value={currencyFromString(p?.treat_cost)} />
+                              <div className="col-span-2 md:col-span-4">
+                                <ReadItem label="อาการ" value={p?.symptom} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ทรัพย์สินเสียหาย */}
+                {damagedProperty.length > 0 && (
+                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
+                      <span className="font-bold">::: ทรัพย์สินเสียหาย ({damagedProperty.length} ชิ้น)</span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {damagedProperty.map((item: any, idx: number) => (
+                        <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                          <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200">
+                            <span className="text-sm font-semibold text-gray-700">รายการที่ {idx + 1}</span>
+                          </div>
+                          <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                            <ReadItem label="ทรัพย์สิน" value={item?.item} />
+                            <ReadItem label="เจ้าของ" value={item?.owner_name} />
+                            <ReadItem label="โทรศัพท์เจ้าของ" value={item?.owner_phone} />
+                            <ReadItem label="ค่าเสียหายประมาณ" value={currencyFromString(item?.estimated_cost)} />
+                            <div className="col-span-2 md:col-span-4">
+                              <ReadItem label="ที่อยู่เจ้าของ" value={item?.owner_address} />
+                            </div>
+                            <div className="col-span-2 md:col-span-2">
+                              <ReadItem label="สาเหตุ" value={item?.cause} />
+                            </div>
+                            <div className="col-span-2 md:col-span-2">
+                              <ReadItem label="รายละเอียด" value={item?.detail} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* แผนภาพความเสียหายรถประกัน */}
+                {insuredDamage.length > 0 && (
+                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
+                      <span className="font-bold">::: แผนภาพความเสียหายรถประกัน</span>
+                    </div>
+                    <div className="p-4">
+                      <DamageChips items={insuredDamage} />
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
         </>
       )}

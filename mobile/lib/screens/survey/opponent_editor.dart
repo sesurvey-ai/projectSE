@@ -1,0 +1,174 @@
+import 'package:flutter/material.dart';
+import '../../widgets/form_kit.dart';
+import '../../widgets/car_damage_diagram.dart';
+import '../../data/survey_master.dart';
+
+/// Editor คู่กรณีรายคัน (Phase 3) — คืน {'action':'save','data':{...}} หรือ {'action':'delete'}
+class OpponentEditor extends StatefulWidget {
+  final Map<String, dynamic> data;
+  final List<String> provinces;
+  final int number; // คันที่ (1-based)
+  final bool isNew;
+  const OpponentEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false});
+
+  @override
+  State<OpponentEditor> createState() => _OpponentEditorState();
+}
+
+class _OpponentEditorState extends State<OpponentEditor> {
+  late final Map<String, TextEditingController> _c;
+  final _damage = <Map<String, String>>[];
+  String _carType = '', _province = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
+  bool _kfk = false;
+
+  TextEditingController _ctl(String k) => _c[k] ??= TextEditingController(text: (widget.data[k] ?? '').toString());
+
+  @override
+  void initState() {
+    super.initState();
+    _c = {};
+    for (final k in ['owner_name', 'owner_address', 'car_brand', 'car_model', 'car_color', 'plate', 'reg_year', 'mileage', 'vin',
+      'first_name', 'last_name', 'birthdate', 'age', 'phone', 'address', 'cid', 'license_no', 'license_place',
+      'policy_no', 'claim_no', 'estimated_cost']) {
+      _c[k] = TextEditingController(text: (widget.data[k] ?? '').toString());
+    }
+    _carType = (widget.data['car_type'] ?? '').toString();
+    _province = (widget.data['province'] ?? '').toString();
+    _gender = (widget.data['gender'] ?? '').toString();
+    _title = (widget.data['title'] ?? '').toString();
+    _relation = (widget.data['relation'] ?? '').toString();
+    _insurer = (widget.data['insurer'] ?? '').toString();
+    _licenseType = (widget.data['license_type'] ?? '').toString();
+    _policyType = (widget.data['policy_type'] ?? '').toString();
+    _kfk = widget.data['kfk'] == true;
+    final dmg = widget.data['damage'];
+    if (dmg is List) {
+      for (final d in dmg) {
+        if (d is Map) _damage.add({'part': '${d['part'] ?? ''}', 'pos': '${d['pos'] ?? ''}', 'level': '${d['level'] ?? ''}'});
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _c.values) { c.dispose(); }
+    super.dispose();
+  }
+
+  bool get _hasInsurance => _insurer.isNotEmpty && _insurer != 'ไม่มีบริษัทประกันภัย' && _insurer != 'อื่นๆ';
+
+  Map<String, dynamic> _collect() => {
+        'owner_name': _ctl('owner_name').text.trim(),
+        'owner_address': _ctl('owner_address').text.trim(),
+        'car_type': _carType,
+        'car_brand': _ctl('car_brand').text.trim(),
+        'car_model': _ctl('car_model').text.trim(),
+        'car_color': _ctl('car_color').text.trim(),
+        'plate': _ctl('plate').text.trim(),
+        'province': _province,
+        'reg_year': _ctl('reg_year').text.trim(),
+        'mileage': _ctl('mileage').text.trim(),
+        'vin': _ctl('vin').text.trim(),
+        'gender': _gender,
+        'title': _title,
+        'first_name': _ctl('first_name').text.trim(),
+        'last_name': _ctl('last_name').text.trim(),
+        'relation': _relation,
+        'birthdate': _ctl('birthdate').text.trim(),
+        'age': _ctl('age').text.trim(),
+        'phone': _ctl('phone').text.trim(),
+        'address': _ctl('address').text.trim(),
+        'cid': _ctl('cid').text.trim(),
+        'license_no': _ctl('license_no').text.trim(),
+        'license_type': _licenseType,
+        'license_place': _ctl('license_place').text.trim(),
+        'insurer': _insurer,
+        'policy_no': _ctl('policy_no').text.trim(),
+        'claim_no': _ctl('claim_no').text.trim(),
+        'policy_type': _policyType,
+        'damage': _damage,
+        'estimated_cost': _ctl('estimated_cost').text.trim(),
+        'kfk': _kfk,
+      };
+
+  void _save() {
+    Navigator.pop(context, {'action': 'save', 'data': _collect()});
+  }
+
+  void _delete() {
+    Navigator.pop(context, {'action': 'delete'});
+  }
+
+  Widget _cidField() {
+    final ok = cidChecksum(_ctl('cid').text);
+    final has = _ctl('cid').text.replaceAll(RegExp(r'\D'), '').length == 13;
+    return kText(_ctl('cid'), 'เลขบัตรประชาชน', keyboardType: TextInputType.number, onChanged: (_) => setState(() {}),
+        suffixIcon: has ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? kOk : kDanger) : null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return EditorScaffold(
+      title: 'คู่กรณีคันที่ ${widget.number}',
+      subtitle: 'เจ้าของ · รถ · ผู้ขับ · ประกัน · ความเสียหาย',
+      onSave: _save,
+      onDelete: widget.isNew ? null : _delete,
+      saveLabel: 'บันทึกคันนี้',
+      children: [
+        kSubhead('เจ้าของ / รถ'),
+        kText(_ctl('owner_name'), 'เจ้าของคู่กรณี'),
+        kText(_ctl('owner_address'), 'ที่อยู่เจ้าของรถ'),
+        kRow2(
+          KPickerField(label: 'ประเภทรถ', value: _carType, options: kOpoCarTypes, onSelected: (v) => setState(() => _carType = v)),
+          kText(_ctl('car_brand'), 'ยี่ห้อ'),
+        ),
+        kRow2(kText(_ctl('car_model'), 'รุ่น'), kText(_ctl('car_color'), 'สีรถ')),
+        kRow2(
+          kText(_ctl('plate'), 'ทะเบียน'),
+          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, onSelected: (v) => setState(() => _province = v)),
+        ),
+        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
+        kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
+        kSubhead('ผู้ขับขี่'),
+        Row(children: [
+          kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),
+          const SizedBox(width: 8),
+          kChip('หญิง', _gender == 'หญิง', () => setState(() => _gender = 'หญิง'), grow: true),
+        ]),
+        kRow2(
+          KPickerField(label: 'คำนำหน้า', value: _title, options: kTitles, onSelected: (v) => setState(() => _title = v)),
+          KPickerField(label: 'ความสัมพันธ์', value: _relation, options: kRelations, onSelected: (v) => setState(() => _relation = v)),
+        ),
+        kRow2(kText(_ctl('first_name'), 'ชื่อ'), kText(_ctl('last_name'), 'นามสกุล')),
+        kRow2(kText(_ctl('birthdate'), 'วันเกิด (วว/ดด/พ.ศ.)'), kNum(_ctl('age'), 'อายุ')),
+        kRow2(kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone), kText(_ctl('license_no'), 'เลขที่ใบขับขี่')),
+        kText(_ctl('address'), 'ที่อยู่ปัจจุบัน'),
+        _cidField(),
+        kRow2(
+          KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),
+          kText(_ctl('license_place'), 'ออกให้ที่'),
+        ),
+        kSubhead('ประกันภัยคู่กรณี'),
+        KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, onSelected: (v) => setState(() {
+              _insurer = v;
+              _kfk = kKfkInsurers.contains(v);
+            })),
+        if (_hasInsurance) ...[
+          kRow2(kText(_ctl('policy_no'), 'เลขกรมธรรม์'), kText(_ctl('claim_no'), 'เลขเคลม')),
+          KPickerField(label: 'ประเภทประกัน', value: _policyType, options: kPolicyTypes, onSelected: (v) => setState(() => _policyType = v)),
+          GestureDetector(
+            onTap: () => setState(() => _kfk = !_kfk),
+            child: Row(children: [
+              Icon(_kfk ? Icons.check_box : Icons.check_box_outline_blank, color: _kfk ? kPrimary : kMuted2, size: 22),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('เข้าสัญญา KFK (Knock-for-Knock)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kInk))),
+            ]),
+          ),
+        ],
+        kSubhead('ความเสียหาย'),
+        DamageDiagramField(items: _damage, onChanged: () => setState(() {})),
+        kNum(_ctl('estimated_cost'), 'ค่าเสียหายประมาณ (บาท)', decimal: true),
+      ],
+    );
+  }
+}
