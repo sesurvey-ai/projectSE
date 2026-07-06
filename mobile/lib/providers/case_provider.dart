@@ -103,6 +103,16 @@ class CaseProvider extends ChangeNotifier {
     }
   }
 
+  // OCR บัตรประชาชน / ใบขับขี่
+  Future<Map<String, dynamic>?> ocrDocument(String imagePath, String kind) async {
+    try {
+      return await _apiService.ocrDocument(imagePath, kind);
+    } catch (e) {
+      debugPrint('ocrDocument error: $e');
+      return null;
+    }
+  }
+
   // ส่งงานสำรวจแบบรองรับออฟไลน์ — คืน 'ok' | 'queued' (ไม่มีเน็ต เก็บคิวไว้) | 'error'
   Future<String> submitSurveyOffline(int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
     _isSubmitting = true;

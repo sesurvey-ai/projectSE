@@ -9,7 +9,9 @@ class OpponentEditor extends StatefulWidget {
   final List<String> provinces;
   final int number; // คันที่ (1-based)
   final bool isNew;
-  const OpponentEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false});
+  // สแกนเอกสาร (kind = idcard | license) → คืน fields (parent จัดการถ่าย+เก็บรูป+OCR)
+  final Future<Map<String, dynamic>?> Function(String kind)? onScan;
+  const OpponentEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan});
 
   @override
   State<OpponentEditor> createState() => _OpponentEditorState();
@@ -28,7 +30,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
     super.initState();
     _c = {};
     for (final k in ['owner_name', 'owner_address', 'car_brand', 'car_model', 'car_color', 'plate', 'reg_year', 'mileage', 'vin',
-      'first_name', 'last_name', 'birthdate', 'age', 'phone', 'address', 'cid', 'license_no', 'license_place',
+      'first_name', 'last_name', 'birthdate', 'age', 'phone', 'address', 'cid', 'license_no', 'license_place', 'license_start', 'license_end',
       'policy_no', 'claim_no', 'estimated_cost']) {
       _c[k] = TextEditingController(text: (widget.data[k] ?? '').toString());
     }
@@ -82,6 +84,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'license_no': _ctl('license_no').text.trim(),
         'license_type': _licenseType,
         'license_place': _ctl('license_place').text.trim(),
+        'license_start': _ctl('license_start').text.trim(),
+        'license_end': _ctl('license_end').text.trim(),
         'insurer': _insurer,
         'policy_no': _ctl('policy_no').text.trim(),
         'claim_no': _ctl('claim_no').text.trim(),
@@ -97,6 +101,47 @@ class _OpponentEditorState extends State<OpponentEditor> {
 
   void _delete() {
     Navigator.pop(context, {'action': 'delete'});
+  }
+
+  Future<void> _scan(String kind) async {
+    if (widget.onScan == null) return;
+    final fields = await widget.onScan!(kind);
+    if (fields == null || fields.isEmpty || !mounted) return;
+    String f(String k) => (fields[k] ?? '').toString().trim();
+    setState(() {
+      if (kind == 'idcard') {
+        if (f('first_name').isNotEmpty) _ctl('first_name').text = f('first_name');
+        if (f('last_name').isNotEmpty) _ctl('last_name').text = f('last_name');
+        if (f('cid').isNotEmpty) _ctl('cid').text = f('cid');
+        if (f('birthdate').isNotEmpty) _ctl('birthdate').text = f('birthdate');
+        if (f('address').isNotEmpty) _ctl('address').text = f('address');
+        final p = f('prefix');
+        if (const ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'].contains(p)) {
+          _title = p;
+          _gender = (p == 'นาย' || p == 'ด.ช.') ? 'ชาย' : 'หญิง';
+        }
+      } else {
+        if (f('license_no').isNotEmpty) _ctl('license_no').text = f('license_no');
+        if (f('license_type').isNotEmpty) _licenseType = f('license_type');
+        if (f('issue_date').isNotEmpty) _ctl('license_start').text = f('issue_date');
+        if (f('expiry_date').isNotEmpty) _ctl('license_end').text = f('expiry_date');
+        if (_ctl('first_name').text.trim().isEmpty && f('first_name').isNotEmpty) _ctl('first_name').text = f('first_name');
+        if (_ctl('last_name').text.trim().isEmpty && f('last_name').isNotEmpty) _ctl('last_name').text = f('last_name');
+      }
+    });
+  }
+
+  Widget _scanBtns() {
+    if (widget.onScan == null) return const SizedBox.shrink();
+    Widget b(IconData i, String l, String kind) => Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => _scan(kind),
+            icon: Icon(i, size: 17),
+            label: Text(l, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(foregroundColor: kPrimary, backgroundColor: kTint, side: BorderSide.none, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          ),
+        );
+    return Row(children: [b(Icons.credit_card, 'สแกนบัตร', 'idcard'), const SizedBox(width: 8), b(Icons.badge_outlined, 'สแกนใบขับขี่', 'license')]);
   }
 
   Widget _cidField() {
@@ -130,6 +175,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
+        _scanBtns(),
         Row(children: [
           kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),
           const SizedBox(width: 8),
@@ -148,6 +194,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
           KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),
           kText(_ctl('license_place'), 'ออกให้ที่'),
         ),
+        kRow2(kText(_ctl('license_start'), 'วันออกบัตร'), kText(_ctl('license_end'), 'วันหมดอายุ')),
         kSubhead('ประกันภัยคู่กรณี'),
         KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, onSelected: (v) => setState(() {
               _insurer = v;

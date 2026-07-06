@@ -106,52 +106,81 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     }
   }
 
-  // ── OCR: สแกนใบเคลม → เติมเลขเคลม/กรมธรรม์/สถานที่ ──
-  Future<void> _scanClaim() async {
+  // ── OCR core: ถ่าย 1 ครั้ง → เก็บรูปเข้าเคส (หมวดเอกสาร) + สกัดข้อมูล → คืน fields ──
+  // kind = 'claim' | 'idcard' | 'license'
+  Future<Map<String, dynamic>?> _captureRetainOcr(String kind) async {
     try {
       final XFile? shot = await _picker.pickImage(source: ImageSource.camera, imageQuality: 88, maxWidth: 2200);
-      if (shot == null) return;
-      setState(() => _ocrBusy = true);
-      final res = await context.read<CaseProvider>().ocrClaim(shot.path);
-      if (!mounted) return;
+      if (shot == null) return null;
+      // เก็บรูปเข้าโฟลเดอร์เคส (retain, หมวดเอกสาร) — ถ่ายครั้งเดียวได้ทั้งรูป + OCR
+      final caseFolder = await _getCaseFolder();
+      final localPath = '$caseFolder/doc_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(shot.path).copy(localPath);
+      if (!mounted) return null;
+      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = 'เอกสาร'; _ocrBusy = true; });
+      final cp = context.read<CaseProvider>();
+      final res = kind == 'claim' ? await cp.ocrClaim(localPath) : await cp.ocrDocument(localPath, kind);
+      if (!mounted) return null;
+      setState(() => _ocrBusy = false);
       final fields = (res?['fields'] as Map?)?.cast<String, dynamic>() ?? {};
-      if (fields.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('อ่านข้อมูลจากรูปไม่ได้ ลองถ่ายใหม่ให้ชัด'), backgroundColor: Colors.orange));
-        return;
-      }
-      void put(TextEditingController c, String key) {
-        final v = (fields[key] ?? '').toString().trim();
-        if (v.isNotEmpty) c.text = v;
-      }
-      put(_claimRefNoCtl, 'claim_ref_no');
-      put(_claimNoCtl, 'claim_no');
-      put(_prbNumberCtl, 'prb_number');
-      put(_surveyJobNoCtl, 'survey_job_no');
-      put(_policyNoCtl, 'policy_no');
-      final loc = (fields['incident_location'] ?? '').toString().trim();
-      if (loc.isNotEmpty && _accPlaceCtl.text.trim().isEmpty) _accPlaceCtl.text = loc;
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('เติมข้อมูลจากใบเคลมแล้ว (${fields.length} ช่อง)'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(fields.isEmpty ? 'บันทึกรูปแล้ว แต่อ่านข้อมูลไม่ได้ — ลองถ่ายใหม่ให้ชัด' : 'เก็บรูป + เติมข้อมูลแล้ว (${fields.length} ช่อง)'),
+        backgroundColor: fields.isEmpty ? Colors.orange : Colors.green,
+        duration: const Duration(seconds: 2),
+      ));
+      return fields;
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('สแกนไม่สำเร็จ')));
-    } finally {
-      if (mounted) setState(() => _ocrBusy = false);
+      if (mounted) {
+        setState(() => _ocrBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('สแกนไม่สำเร็จ')));
+      }
+      return null;
     }
   }
 
-  // ── สแกน (บัตร/ใบขับขี่/ทะเบียน/VIN): Phase 2 เก็บรูปเข้าโฟลเดอร์เคส (ยังไม่สกัดอัตโนมัติ) ──
-  Future<void> _scanCapture(String label) async {
-    try {
-      final XFile? shot = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85, maxWidth: 2000);
-      if (shot == null) return;
-      final caseFolder = await _getCaseFolder();
-      final localPath = '$caseFolder/scan_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await File(shot.path).copy(localPath);
-      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = 'เอกสาร'; });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('บันทึกรูป$labelแล้ว (สกัดข้อมูลอัตโนมัติจะมาในเฟสถัดไป)'), duration: const Duration(seconds: 2)));
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
+  // สแกนใบเคลม (s1) → เติมเลขเคลม/กรมธรรม์/สถานที่
+  Future<void> _scanClaimFill() async {
+    final fields = await _captureRetainOcr('claim');
+    if (fields == null || fields.isEmpty || !mounted) return;
+    void put(TextEditingController c, String key) {
+      final v = (fields[key] ?? '').toString().trim();
+      if (v.isNotEmpty) c.text = v;
     }
+    put(_claimRefNoCtl, 'claim_ref_no');
+    put(_claimNoCtl, 'claim_no');
+    put(_prbNumberCtl, 'prb_number');
+    put(_surveyJobNoCtl, 'survey_job_no');
+    put(_policyNoCtl, 'policy_no');
+    final loc = (fields['incident_location'] ?? '').toString().trim();
+    if (loc.isNotEmpty && _accPlaceCtl.text.trim().isEmpty) _accPlaceCtl.text = loc;
+    setState(() {});
+  }
+
+  // สแกนบัตร ปชช./ใบขับขี่ ของผู้ขับ (s3)
+  Future<void> _scanDriverDoc(String kind) async {
+    final fields = await _captureRetainOcr(kind);
+    if (fields == null || fields.isEmpty || !mounted) return;
+    String f(String k) => (fields[k] ?? '').toString().trim();
+    if (kind == 'idcard') {
+      if (f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
+      if (f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
+      if (f('cid').isNotEmpty) _driverIdCardCtl.text = f('cid');
+      if (f('birthdate').isNotEmpty) _driverBirthdateCtl.text = f('birthdate');
+      if (f('address').isNotEmpty) _driverAddressCtl.text = f('address');
+      final p = f('prefix');
+      if (const ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'].contains(p)) {
+        _driverTitle = p;
+        _driverGender = (p == 'นาย' || p == 'ด.ช.') ? 'M' : 'F';
+      }
+    } else {
+      if (f('license_no').isNotEmpty) _driverLicenseNoCtl.text = f('license_no');
+      if (f('license_type').isNotEmpty) _driverLicenseTypeCtl.text = f('license_type');
+      if (f('issue_date').isNotEmpty) _driverLicenseStartCtl.text = f('issue_date');
+      if (f('expiry_date').isNotEmpty) _driverLicenseEndCtl.text = f('expiry_date');
+      if (_driverNameCtl.text.trim().isEmpty && f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
+      if (_driverLastnameCtl.text.trim().isEmpty && f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
+    }
+    setState(() {});
   }
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
@@ -1548,7 +1577,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── เนื้อหารายหมวด (reuse ฟิลด์เดิมทั้งหมด) ──
   List<Widget> _secClaimPolicy() => [
         _insurerLockField(),
-        _captureButton(Icons.document_scanner_outlined, _ocrBusy ? 'กำลังอ่านใบเคลม...' : 'สแกนใบเคลม (เติมเลขอัตโนมัติ)', _ocrBusy ? null : _scanClaim, busy: _ocrBusy),
+        _captureButton(Icons.document_scanner_outlined, _ocrBusy ? 'กำลังอ่านใบเคลม...' : 'สแกนใบเคลม (ถ่าย 1 ครั้ง = เก็บรูป + เติมเลข)', _ocrBusy ? null : _scanClaimFill, busy: _ocrBusy),
         _fieldLabel('ประเภทเคลม'),
         Row(children: [
           _chip('เคลมสด', _claimType == 'F', () => setState(() => _claimType = 'F'), grow: true),
@@ -1788,7 +1817,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Future<void> _addOpponent() async {
     if (_opponents.length >= 20) { _snack('เพิ่มคู่กรณีได้สูงสุด 20 คัน'); return; }
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => OpponentEditor(data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true)));
+        builder: (_) => OpponentEditor(data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true, onScan: _captureRetainOcr)));
     if (!mounted || res == null || res['action'] != 'save') return;
     setState(() => _opponents.add(Map<String, dynamic>.from(res['data'] as Map)));
     _autosave();
@@ -1796,7 +1825,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Future<void> _editOpponent(int i) async {
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => OpponentEditor(data: _opponents[i], provinces: _provinceNames, number: i + 1)));
+        builder: (_) => OpponentEditor(data: _opponents[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr)));
     if (!mounted || res == null) return;
     setState(() {
       if (res['action'] == 'save') {
@@ -1828,7 +1857,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Future<void> _addInjured() async {
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => InjuredEditor(data: const {}, provinces: _provinceNames, number: _injured.length + 1, isNew: true)));
+        builder: (_) => InjuredEditor(data: const {}, provinces: _provinceNames, number: _injured.length + 1, isNew: true, onScan: _captureRetainOcr)));
     if (!mounted || res == null || res['action'] != 'save') return;
     setState(() => _injured.add(Map<String, dynamic>.from(res['data'] as Map)));
     _autosave();
@@ -1836,7 +1865,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Future<void> _editInjured(int i) async {
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => InjuredEditor(data: _injured[i], provinces: _provinceNames, number: i + 1)));
+        builder: (_) => InjuredEditor(data: _injured[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr)));
     if (!mounted || res == null) return;
     setState(() {
       if (res['action'] == 'save') {
@@ -2397,7 +2426,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   Widget _scanRow() {
-    Widget btn(IconData icon, String label, VoidCallback onTap) => OutlinedButton.icon(
+    Widget btn(IconData icon, String label, VoidCallback? onTap) => OutlinedButton.icon(
           onPressed: onTap,
           icon: Icon(icon, size: 18),
           label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
@@ -2410,9 +2439,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ),
         );
     return Row(children: [
-      Expanded(child: btn(Icons.credit_card, 'สแกนบัตรประชาชน', () => _scanCapture('บัตรประชาชน'))),
+      Expanded(child: btn(Icons.credit_card, 'สแกนบัตรประชาชน', _ocrBusy ? null : () => _scanDriverDoc('idcard'))),
       const SizedBox(width: 10),
-      Expanded(child: btn(Icons.badge_outlined, 'สแกนใบขับขี่', () => _scanCapture('ใบขับขี่'))),
+      Expanded(child: btn(Icons.badge_outlined, 'สแกนใบขับขี่', _ocrBusy ? null : () => _scanDriverDoc('license'))),
     ]);
   }
 

@@ -8,7 +8,8 @@ class InjuredEditor extends StatefulWidget {
   final List<String> provinces;
   final int number;
   final bool isNew;
-  const InjuredEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false});
+  final Future<Map<String, dynamic>?> Function(String kind)? onScan;
+  const InjuredEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan});
 
   @override
   State<InjuredEditor> createState() => _InjuredEditorState();
@@ -38,6 +39,46 @@ class _InjuredEditorState extends State<InjuredEditor> {
     super.dispose();
   }
 
+  Future<void> _scan() async {
+    if (widget.onScan == null) return;
+    final fields = await widget.onScan!('idcard');
+    if (fields == null || fields.isEmpty || !mounted) return;
+    String f(String k) => (fields[k] ?? '').toString().trim();
+    setState(() {
+      final name = [f('first_name'), f('last_name')].where((s) => s.isNotEmpty).join(' ');
+      if (name.isNotEmpty) _ctl('name').text = name;
+      if (f('cid').isNotEmpty) _ctl('cid').text = f('cid');
+      if (f('address').isNotEmpty) _ctl('address').text = f('address');
+      final p = f('prefix');
+      if (const ['นาย', 'ด.ช.'].contains(p)) {
+        _gender = 'ชาย';
+      } else if (const ['นาง', 'นางสาว', 'ด.ญ.'].contains(p)) {
+        _gender = 'หญิง';
+      }
+      final bd = f('birthdate').split('/');
+      if (bd.length == 3) {
+        final by = int.tryParse(bd[2]);
+        if (by != null && by > 2400) {
+          final age = (DateTime.now().year + 543) - by;
+          if (age > 0 && age < 130) _ctl('age').text = '$age';
+        }
+      }
+    });
+  }
+
+  Widget _scanBtn() {
+    if (widget.onScan == null) return const SizedBox.shrink();
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _scan,
+        icon: const Icon(Icons.credit_card, size: 17),
+        label: const Text('สแกนบัตรประชาชน (เติมชื่อ/เลขบัตร/ที่อยู่)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(foregroundColor: kPrimary, backgroundColor: kTint, side: BorderSide.none, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      ),
+    );
+  }
+
   Map<String, dynamic> _collect() => {
         'person_type': _personType,
         'gender': _gender,
@@ -63,6 +104,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
       onSave: () => Navigator.pop(context, {'action': 'save', 'data': _collect()}),
       onDelete: widget.isNew ? null : () => Navigator.pop(context, {'action': 'delete'}),
       children: [
+        _scanBtn(),
         KPickerField(label: 'ประเภทผู้บาดเจ็บ', value: _personType, options: kPersonTypes, onSelected: (v) => setState(() => _personType = v)),
         Row(children: [
           kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),

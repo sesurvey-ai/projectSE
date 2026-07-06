@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import fs from 'fs';
 import { extractClaimData } from '../services/ocr.service';
 import { flippedExtract, OcrField } from '../services/ocrFlipped.service';
+import { extractDocument, DocKind } from '../services/documentOcr.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
 
@@ -69,6 +70,33 @@ export const ocrController = {
     } catch (error) {
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       console.error('[OCR flipped Error]', error);
+      const message = error instanceof Error ? error.message : 'OCR processing failed';
+      sendError(res, message, 500);
+    }
+  }),
+
+  // บัตรประชาชน / ใบขับขี่ — Gemini อ่าน + Vision ตรวจ (kind มาจาก route param)
+  extractDocument: asyncHandler(async (req: Request, res: Response) => {
+    const file = req.file;
+    const kind = req.params.kind as DocKind;
+    if (!file) {
+      sendError(res, 'กรุณาอัปโหลดรูปภาพ', 400);
+      return;
+    }
+    if (kind !== 'idcard' && kind !== 'license') {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      sendError(res, 'kind ต้องเป็น idcard หรือ license', 400);
+      return;
+    }
+    try {
+      console.log(`[OCR doc:${kind}] ${file.originalname} (${(file.size / 1024).toFixed(0)} KB, ${file.mimetype})`);
+      const t0 = Date.now();
+      const result = await extractDocument(file.path, kind);
+      console.log(`[OCR doc:${kind}] done in ${Date.now() - t0}ms · review=${result.review_needed}`);
+      sendSuccess(res, { ...result, savedImage: file.filename });
+    } catch (error) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      console.error('[OCR doc Error]', error);
       const message = error instanceof Error ? error.message : 'OCR processing failed';
       sendError(res, message, 500);
     }

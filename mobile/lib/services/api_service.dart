@@ -111,6 +111,14 @@ class ApiService {
     return (r.data['data'] as Map<String, dynamic>?) ?? {};
   }
 
+  // OCR บัตรประชาชน / ใบขับขี่ (kind = idcard | license) → { fields, confidence, review_needed }
+  Future<Map<String, dynamic>> ocrDocument(String imagePath, String kind) async {
+    final form = FormData();
+    form.files.add(MapEntry('image', await MultipartFile.fromFile(imagePath, filename: imagePath.split('/').last)));
+    final r = await _dio.post('/api/ocr/document/$kind', data: form);
+    return (r.data['data'] as Map<String, dynamic>?) ?? {};
+  }
+
   Future<List<String>> uploadPhotos(List<String> filePaths) async {
     final formData = FormData();
     for (final path in filePaths) {

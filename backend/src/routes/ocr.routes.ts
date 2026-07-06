@@ -10,5 +10,7 @@ router.post('/typhoon', auth, requireRole('callcenter', 'admin'), upload.single(
 // flipped pipeline (Gemini + Vision) — เร็ว/แม่น ดึง 5 เลขสำคัญ; แทน /typhoon (คง /typhoon เป็น fallback)
 // surveyor เรียกได้ด้วย (สแกนใบเคลมบนมือถือ หน้ากรอกรายละเอียดอุบัติเหตุ)
 router.post('/claim', auth, requireRole('callcenter', 'admin', 'surveyor'), upload.single('image'), ocrController.extractClaimFlipped);
+// บัตรประชาชน / ใบขับขี่ — /api/ocr/document/idcard | /api/ocr/document/license
+router.post('/document/:kind', auth, requireRole('callcenter', 'admin', 'surveyor'), upload.single('image'), ocrController.extractDocument);
 
 export default router;
