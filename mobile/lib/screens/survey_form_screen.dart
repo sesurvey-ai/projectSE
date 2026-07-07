@@ -257,16 +257,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     } catch (_) {}
   }
 
-  void _showBuddhistDatePicker() {
+  void _showBuddhistDatePicker(TextEditingController target, {String title = 'เลือกวันที่', int defaultYearsAgo = 0, int yearsAhead = 5}) {
     // ปล่อย focus ของช่องข้อความที่ค้างอยู่ ก่อนเปิด bottom sheet → ปิดแล้วไม่เด้ง focus/คีย์บอร์ดกลับ
     FocusManager.instance.primaryFocus?.unfocus();
     final now = DateTime.now();
     final thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
     int selDay = now.day;
     int selMonth = now.month;
-    int selYear = now.year + 543 - 25;
+    int selYear = now.year + 543 - defaultYearsAgo;
 
-    final existing = _driverBirthdateCtl.text.trim();
+    final existing = target.text.trim();
     if (existing.isNotEmpty) {
       final parts = existing.split('/');
       if (parts.length == 3) {
@@ -291,11 +291,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('เลือกวันเกิด', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       TextButton(
                         onPressed: () {
                           final formatted = '${selDay.toString().padLeft(2, '0')}/${selMonth.toString().padLeft(2, '0')}/$selYear';
-                          setState(() { _driverBirthdateCtl.text = formatted; });
+                          setState(() { target.text = formatted; });
                           Navigator.pop(ctx);
                         },
                         child: const Text('ตกลง', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -367,7 +367,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                                   controller: FixedExtentScrollController(initialItem: selYear - (now.year + 543 - 100)),
                                   onSelectedItemChanged: (i) => setModalState(() => selYear = (now.year + 543 - 100) + i),
                                   childDelegate: ListWheelChildBuilderDelegate(
-                                    childCount: 101,
+                                    childCount: 101 + yearsAhead,
                                     builder: (ctx, i) {
                                       final y = (now.year + 543 - 100) + i;
                                       return Center(child: Text('$y', style: TextStyle(fontSize: 18, fontWeight: y == selYear ? FontWeight.bold : FontWeight.normal)));
@@ -522,6 +522,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _opoClaims
         ..clear()
         ..addAll(oc.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty));
+
+      // สวิตช์ progressive: เปิดถ้ามีข้อมูลอยู่แล้ว
+      _hasPrb = _prbNumberCtl.text.trim().isNotEmpty;
+      _hasPolice = _accPoliceNameCtl.text.trim().isNotEmpty ||
+          _accPoliceStationCtl.text.trim().isNotEmpty ||
+          _accPoliceCommentCtl.text.trim().isNotEmpty ||
+          _accPoliceBookNoCtl.text.trim().isNotEmpty;
     });
   }
 
@@ -536,6 +543,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   String _claimType = '';
   String _damageLevel = '';
   bool _carLost = false;
+  bool _hasPrb = false;    // สวิตช์ "มี พรบ." — เปิดแล้วโผล่ช่องเลข พรบ.
+  bool _hasPolice = false; // สวิตช์ "มีการแจ้งความ/ลงประจำวัน" — เปิดแล้วโผล่ส่วนตำรวจ
   final _insuranceCompanyCtl = TextEditingController();
   final _insuranceBranchCtl = TextEditingController();
   final _surveyJobNoCtl = TextEditingController();
@@ -1600,15 +1609,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _txt(_claimNoCtl, 'เลขที่เคลม', onChanged: (_) => setState(() {})),
         _txt(_surveyJobNoCtl, 'เลขเรื่องเซอร์เวย์'),
         _subhead('กรมธรรม์'),
-        _txt(_policyNoCtl, 'เลขกรมธรรม์'),
-        _txt(_prbNumberCtl, 'เลข พรบ.'),
+        _txt(_policyNoCtl, 'เลขกรมธรรม์', req: true),
+        _switchRow('มี พรบ.', _hasPrb, (v) => setState(() { _hasPrb = v; if (!v) _prbNumberCtl.clear(); })),
+        if (_hasPrb) _txt(_prbNumberCtl, 'เลข พรบ.', req: true),
+        _row2(_dateField(_policyStartCtl, 'วันเริ่มคุ้มครอง', yearsAhead: 1), _dateField(_policyEndCtl, 'วันสิ้นสุด', yearsAhead: 6)),
+        _txt(_assuredNameCtl, 'ผู้เอาประกันภัย', req: true),
         _txt(_driverByPolicyCtl, 'ชื่อผู้ขับขี่ตามกรมธรรม์'),
-        _row2(_txt(_policyStartCtl, 'วันที่เริ่มต้น'), _txt(_policyEndCtl, 'วันที่สิ้นสุด')),
-        _txt(_assuredNameCtl, 'ผู้เอาประกันภัย'),
-        _row2(_txt(_policyTypeCtl, 'ประเภทประกัน'), _txt(_riskCodeCtl, 'รหัสภัยยานยนต์')),
+        _row2(_policyTypeField(), _txt(_riskCodeCtl, 'รหัสภัยยานยนต์')),
         _txt(_assuredEmailCtl, 'อีเมลผู้เอาประกัน', keyboardType: TextInputType.emailAddress),
         _numField(_deductibleCtl, 'ค่าเสียหายส่วนแรก', decimal: true),
       ];
+
+  // ประเภทประกัน = dropdown (POL_TYPES) + คงค่าเดิมถ้าไม่อยู่ในลิสต์
+  Widget _policyTypeField() {
+    const base = ['ชั้น 1', 'ชั้น 2+', 'ชั้น 2', 'ชั้น 3+', 'ชั้น 3', 'พรบ.', 'ไม่พบความคุ้มครอง'];
+    final cur = _policyTypeCtl.text.trim();
+    final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
+    return _dd('ประเภทประกัน', cur, items, (v) => setState(() => _policyTypeCtl.text = v ?? ''), req: true, key: ValueKey('pt_$cur'));
+  }
 
   List<Widget> _secCar() => [
         _txt(_carModelCtl, 'รุ่น'),
@@ -1638,22 +1656,22 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           const SizedBox(width: 8),
           Expanded(flex: 5, child: _birthdateField()),
         ]),
-        _row2(_txt(_driverNameCtl, 'ชื่อ'), _txt(_driverLastnameCtl, 'นามสกุล')),
+        _row2(_txt(_driverNameCtl, 'ชื่อ', req: true), _txt(_driverLastnameCtl, 'นามสกุล', req: true)),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(width: 64, child: _numField(_driverAgeCtl, 'อายุ')),
           const SizedBox(width: 8),
-          Expanded(child: _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone)),
+          Expanded(child: _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true)),
           const SizedBox(width: 8),
           Expanded(child: _relationDropdown()),
         ]),
-        _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน'),
+        _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true),
         _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
             (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
             hint: 'เลือกจังหวัด', key: ValueKey('dp_${_driverProvinceCtl.text}')),
         _districtDropdown(),
-        _row2(_driverCidField(), _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่')),
+        _row2(_driverCidField(), _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true)),
         _row2(_licenseTypeDropdown(), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
-        _row2(_txt(_driverLicenseStartCtl, 'ออกให้วันที่'), _txt(_driverLicenseEndCtl, 'หมดอายุวันที่')),
+        _row2(_dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0), _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10)),
       ];
 
   List<Widget> _secDamage() => [
@@ -1664,15 +1682,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ];
 
   List<Widget> _secEvent() => [
-        _row2(_txt(_accDateCtl, 'วันที่เกิดเหตุ (วว/ดด/ปปปป)'), _txt(_accTimeCtl, 'เวลา (นน:นน)')),
+        _dateTime(_accDateCtl, _accTimeCtl, 'วันที่เกิดเหตุ', req: true),
         _captureButton(Icons.my_location, _gpsBusy ? 'กำลังหาพิกัด...' : 'ใช้ตำแหน่งปัจจุบัน (GPS)', _gpsBusy ? null : _captureGps, busy: _gpsBusy),
-        _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ'),
+        _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ', req: true),
         _row2(_txt(_accProvinceCtl, 'จังหวัด'), _txt(_accDistrictCtl, 'เขต/อำเภอ')),
         _dd('ลักษณะการเกิดเหตุ', _accCauseCtl.text, _accCauseOptions,
-            (v) => setState(() => _accCauseCtl.text = v ?? ''), key: ValueKey('ac_${_accCauseCtl.text}')),
+            (v) => setState(() => _accCauseCtl.text = v ?? ''), req: true, key: ValueKey('ac_${_accCauseCtl.text}')),
         _dd('ลักษณะความเสียหาย', _accDamageTypeCtl.text, _accDamageOptions,
             (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), key: ValueKey('ad_${_accDamageTypeCtl.text}')),
-        _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5),
+        _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5, req: true),
         _fieldLabel('ฝ่ายประมาท'),
         Wrap(spacing: 8, runSpacing: 8, children: [
           _chip('รถประกันฝ่ายผิด', _accFault == 'ฝ่ายผิด', () => setState(() => _accFault = 'ฝ่ายผิด')),
@@ -1684,22 +1702,26 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           _chip('ไปถึงแล้วไม่พบ', _accFault == 'ไปถึงแล้วไม่พบ', () => setState(() => _accFault = 'ไปถึงแล้วไม่พบ')),
         ]),
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
-        _txt(_accSurveyorCtl, 'ผู้สำรวจภัย'),
+        _txt(_accSurveyorCtl, 'ผู้สำรวจภัย', req: true),
         _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
         _dateTime(_accCustomerReportDateCtl, _accCustomerReportTimeCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'),
         _dateTime(_accInsNotifyDateCtl, _accInsNotifyTimeCtl, 'วันที่ บ.ประกันแจ้งสำรวจ'),
         _dateTime(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl, 'วันที่ถึงที่เกิดเหตุ'),
         _dateTime(_accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl, 'วันที่สำรวจเสร็จ'),
-        _subhead('ตำรวจ'),
-        _row2(_txt(_accPoliceNameCtl, 'ชื่อพนักงานสอบสวน'), _txt(_accPoliceStationCtl, 'สถานีตำรวจ')),
-        _txt(_accPoliceCommentCtl, 'ความเห็นพนักงานสอบสวน'),
-        _row2(_txt(_accPoliceDateCtl, 'วันที่ (ตำรวจ)'), _txt(_accPoliceBookNoCtl, 'ประจำวันข้อที่')),
-        _txt(_accAlcoholTestCtl, 'ผลการตรวจแอลกอฮอล์'),
+        _switchRow(_policeRequired() ? 'มีการแจ้งความ / ลงประจำวัน (จำเป็น)' : 'มีการแจ้งความ / ลงประจำวัน',
+            _hasPolice || _policeRequired(), (v) => setState(() => _hasPolice = v)),
+        if (_hasPolice || _policeRequired()) ...[
+          _subhead('ตำรวจ'),
+          _row2(_txt(_accPoliceNameCtl, 'ชื่อพนักงานสอบสวน', req: true), _txt(_accPoliceStationCtl, 'สถานีตำรวจ', req: true)),
+          _txt(_accPoliceCommentCtl, 'ความเห็นพนักงานสอบสวน'),
+          _row2(_dateField(_accPoliceDateCtl, 'วันที่ (ตำรวจ)'), _txt(_accPoliceBookNoCtl, 'ประจำวันข้อที่')),
+          _txt(_accAlcoholTestCtl, 'ผลการตรวจแอลกอฮอล์'),
+        ],
         _subhead('การติดตามงาน'),
         _followupDropdown(),
         _txt(_accFollowupCountCtl, 'ครั้งที่นัดหมาย'),
         _txt(_accFollowupDetailCtl, 'รายละเอียดการนัดหมาย'),
-        _txt(_accFollowupDateCtl, 'วันที่นัดหมาย'),
+        _dateField(_accFollowupDateCtl, 'วันที่นัดหมาย'),
       ];
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
@@ -2009,9 +2031,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return ts.isEmpty ? ds : '$ds|$ts';
   }
 
-  Widget _dateTime(TextEditingController d, TextEditingController t, String label) {
+  Widget _dateTime(TextEditingController d, TextEditingController t, String label, {bool req = false}) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(child: _txt(d, label)),
+      Expanded(child: _dateField(d, label, req: req, yearsAhead: 1)),
       const SizedBox(width: 8),
       SizedBox(width: 96, child: _txt(t, 'เวลา นน:นน')),
     ]);
@@ -2254,14 +2276,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _row2(Widget a, Widget b) =>
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
 
-  // ── filled, floating-label decoration ──
-  InputDecoration _dec(String label, {Widget? suffixIcon, String? hint}) {
+  // ── filled, floating-label decoration (req=true → จุดแดง ● ท้าย label) ──
+  InputDecoration _dec(String label, {Widget? suffixIcon, String? hint, bool req = false}) {
     OutlineInputBorder b(Color c) => OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: c, width: 1.5));
+    const labelStyle = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: _muted);
     return InputDecoration(
-      labelText: label,
+      label: req
+          ? Text.rich(TextSpan(text: label, children: const [TextSpan(text: ' ●', style: TextStyle(color: Color(0xFFDC2626)))]), style: labelStyle)
+          : null,
+      labelText: req ? null : label,
       hintText: hint,
       floatingLabelBehavior: FloatingLabelBehavior.always,
-      labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: _muted),
+      labelStyle: labelStyle,
       hintStyle: const TextStyle(fontSize: 14.5, color: _muted2),
       filled: true,
       fillColor: _fill,
@@ -2275,11 +2301,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _txt(TextEditingController ctl, String label, {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged}) {
+  Widget _txt(TextEditingController ctl, String label, {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged, bool req = false}) {
     return TextFormField(
       controller: ctl,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec(label),
+      decoration: _dec(label, req: req),
       keyboardType: keyboardType,
       maxLines: maxLines,
       textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
@@ -2287,14 +2313,40 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _numField(TextEditingController ctl, String label, {bool decimal = false}) {
+  Widget _numField(TextEditingController ctl, String label, {bool decimal = false, bool req = false}) {
     return TextFormField(
       controller: ctl,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec(label),
+      decoration: _dec(label, req: req),
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
       inputFormatters: decimal ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))] : [FilteringTextInputFormatter.digitsOnly],
       textInputAction: TextInputAction.next,
+    );
+  }
+
+  // ── ช่องวันที่: แตะเปิด date picker พ.ศ. + ไอคอนปฏิทิน (req → จุดแดง) ──
+  Widget _dateField(TextEditingController ctl, String label, {bool req = false, int defaultYearsAgo = 0, int yearsAhead = 5}) {
+    return GestureDetector(
+      onTap: () => _showBuddhistDatePicker(ctl, title: label, defaultYearsAgo: defaultYearsAgo, yearsAhead: yearsAhead),
+      child: AbsorbPointer(
+        child: TextFormField(
+          controller: ctl,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
+          decoration: _dec(label, req: req, hint: 'วว/ดด/ปปปป', suffixIcon: const Icon(Icons.calendar_month_outlined, size: 18, color: _muted)),
+        ),
+      ),
+    );
+  }
+
+  // แถวสวิตช์ (progressive disclosure — เปิดแล้วโผล่ช่องเพิ่ม)
+  Widget _switchRow(String label, bool value, ValueChanged<bool> onChanged) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(13, 2, 8, 2),
+      decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
+      child: Row(children: [
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink))),
+        Switch(value: value, activeThumbColor: _primary, onChanged: onChanged),
+      ]),
     );
   }
 
@@ -2320,7 +2372,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // ── generic string dropdown (filled style) ──
-  Widget _dd(String label, String? value, List<String> items, ValueChanged<String?> onChanged, {String hint = '-- ระบุ --', Key? key}) {
+  Widget _dd(String label, String? value, List<String> items, ValueChanged<String?> onChanged, {String hint = '-- ระบุ --', Key? key, bool req = false}) {
     final v = (value != null && value.isNotEmpty && items.contains(value)) ? value : null;
     return DropdownButtonFormField<String>(
       key: key,
@@ -2328,7 +2380,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec(label),
+      decoration: _dec(label, req: req),
       hint: Text(hint, style: const TextStyle(fontSize: 14.5, color: _muted2)),
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
       // ปล่อย focus ของช่องข้อความที่ค้างอยู่ก่อนเปิดเมนู → พอเลือกเสร็จเมนูปิด จะไม่เด้ง focus/คีย์บอร์ดกลับช่องเดิม
@@ -2446,18 +2498,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _birthdateField() {
-    return GestureDetector(
-      onTap: _showBuddhistDatePicker,
-      child: AbsorbPointer(
-        child: TextFormField(
-          controller: _driverBirthdateCtl,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-          decoration: _dec('วันเกิด', suffixIcon: const Icon(Icons.calendar_today, size: 15, color: _muted2)),
-        ),
-      ),
-    );
-  }
+  Widget _birthdateField() => _dateField(_driverBirthdateCtl, 'วันเกิด', req: true, defaultYearsAgo: 25, yearsAhead: 0);
 
   Widget _relationDropdown() {
     const rel = [
