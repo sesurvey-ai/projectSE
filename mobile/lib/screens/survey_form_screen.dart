@@ -138,24 +138,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     }
   }
 
-  // สแกนใบเคลม (s1) → เติมเลขเคลม/กรมธรรม์/สถานที่
-  Future<void> _scanClaimFill() async {
-    final fields = await _captureRetainOcr('claim');
-    if (fields == null || fields.isEmpty || !mounted) return;
-    void put(TextEditingController c, String key) {
-      final v = (fields[key] ?? '').toString().trim();
-      if (v.isNotEmpty) c.text = v;
-    }
-    put(_claimRefNoCtl, 'claim_ref_no');
-    put(_claimNoCtl, 'claim_no');
-    put(_prbNumberCtl, 'prb_number');
-    put(_surveyJobNoCtl, 'survey_job_no');
-    put(_policyNoCtl, 'policy_no');
-    final loc = (fields['incident_location'] ?? '').toString().trim();
-    if (loc.isNotEmpty && _accPlaceCtl.text.trim().isEmpty) _accPlaceCtl.text = loc;
-    setState(() {});
-  }
-
   // สแกนบัตร ปชช./ใบขับขี่ ของผู้ขับ (s3)
   Future<void> _scanDriverDoc(String kind) async {
     final fields = await _captureRetainOcr(kind);
@@ -1606,17 +1588,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── เนื้อหารายหมวด (reuse ฟิลด์เดิมทั้งหมด) ──
   List<Widget> _secClaimPolicy() => [
         _insurerLockField(),
-        _captureButton(Icons.document_scanner_outlined, _ocrBusy ? 'กำลังอ่านใบเคลม...' : 'สแกนใบเคลม (ถ่าย 1 ครั้ง = เก็บรูป + เติมเลข)', _ocrBusy ? null : _scanClaimFill, busy: _ocrBusy),
         _fieldLabel('ประเภทเคลม'),
-        Row(children: [
-          _chip('เคลมสด', _claimType == 'F', () => setState(() => _claimType = 'F'), grow: true),
-          const SizedBox(width: 6),
-          _chip('เคลมแห้ง', _claimType == 'D', () => setState(() => _claimType = 'D'), grow: true),
-          const SizedBox(width: 6),
-          _chip('นัดหมาย', _claimType == 'A', () => setState(() => _claimType = 'A'), grow: true),
-          const SizedBox(width: 6),
-          _chip('ติดตาม', _claimType == 'C', () => setState(() => _claimType = 'C'), grow: true),
-        ]),
+        _claimTypeChips(),
         _fieldLabel('ระดับความเสียหาย'),
         Row(children: [
           _chip('หนัก', _damageLevel == 'หนัก', () => setState(() => _damageLevel = 'หนัก'), grow: true),
@@ -1952,9 +1925,46 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     _autosave();
   }
 
+  // ชื่อบริษัทประกันแบบย่อ — ตัด "บริษัท" นำหน้า และ "จำกัด (มหาชน)" ท้าย
+  String get _shortInsurer {
+    var s = _insuranceCompanyCtl.text.trim();
+    s = s.replaceFirst(RegExp(r'^บริษัท\s*'), '');
+    s = s.replaceFirst(RegExp(r'\s*จำกัด.*$'), '');
+    return s.trim();
+  }
+
+  // ปุ่มประเภทเคลม — เหลี่ยม + label บรรทัดเดียว (FittedBox ย่อพอดี)
+  Widget _claimTypeChips() {
+    const opts = [['เคลมสด', 'F'], ['เคลมแห้ง', 'D'], ['นัดหมาย', 'A'], ['ติดตาม', 'C']];
+    return Row(children: [
+      for (var i = 0; i < opts.length; i++) ...[
+        if (i > 0) const SizedBox(width: 6),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _claimType = opts[i][1]),
+            child: Container(
+              height: 42,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: _claimType == opts[i][1] ? _primary : Colors.white,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: _claimType == opts[i][1] ? _primary : _lineStrong, width: 1.5),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(opts[i][0], maxLines: 1, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _claimType == opts[i][1] ? Colors.white : _muted)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ]);
+  }
+
   // ── ป้ายบริษัทประกัน (ล็อกจากงานที่ได้รับ) ──
   Widget _insurerLockField() {
-    final name = _insuranceCompanyCtl.text.trim();
+    final name = _shortInsurer;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
@@ -2057,7 +2067,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── topbar (sticky header: เลขเคลม + บริษัทประกัน + สถานะ; มีปุ่มย้อนกลับเมื่ออยู่ในหมวด) ──
   PreferredSizeWidget _topbar() {
     final claimNo = _claimNoCtl.text.trim();
-    final ins = _insuranceCompanyCtl.text.trim();
+    final ins = _shortInsurer;
     final inSection = _view != _SView.hub;
     return AppBar(
       backgroundColor: Colors.white,
