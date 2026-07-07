@@ -1749,6 +1749,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _dateTime(_accInsNotifyDateCtl, _accInsNotifyTimeCtl, 'วันที่ บ.ประกันแจ้งสำรวจ'),
         _dateTime(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl, 'วันที่ถึงที่เกิดเหตุ'),
         _dateTime(_accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl, 'วันที่สำรวจเสร็จ'),
+        _opoClaimChecks(),
+        _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
+            _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
         _switchRow(_policeRequired() ? 'มีการแจ้งความ / ลงประจำวัน (จำเป็น)' : 'มีการแจ้งความ / ลงประจำวัน',
             _hasPolice || _policeRequired(), (v) => setState(() => _hasPolice = v)),
         if (_hasPolice || _policeRequired()) ...[
@@ -1901,14 +1904,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           final ins = (m['insurer'] ?? '').toString().trim();
           return [if (owner.isNotEmpty) owner, ins.isNotEmpty ? ins : 'ไม่ระบุประกัน'].join(' · ');
         },
-        footer: [
-          const SizedBox(height: 8),
-          _card(6, Icons.request_quote_outlined, 'การเรียกร้องค่าเสียหาย', [
-            _opoClaimChecks(),
-            _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
-                _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
-          ]),
-        ],
       );
 
   Future<void> _addOpponent() async {
@@ -2102,7 +2097,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(child: _dateField(d, label, req: req, yearsAhead: 1)),
       const SizedBox(width: 8),
-      SizedBox(width: 96, child: _txt(t, 'เวลา นน:นน')),
+      _TimeField(t, key: ValueKey('tm_${identityHashCode(t)}')),
     ]);
   }
 
@@ -2897,4 +2892,88 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     'หนูกัดสายไฟ', 'รถหาย', 'น้ำท่วมเสียหาย',
     'ชนคนบาดเจ็บ', 'ผู้โดยสารประกันตกรถ', 'เสียหายทั้งหมด',
   ];
+}
+
+// ช่องเวลา: 2 กล่อง (ชม. : นาที) เก็บค่ารวมเป็น "HH:mm" ใน controller เดียว (target)
+class _TimeField extends StatefulWidget {
+  final TextEditingController target;
+  const _TimeField(this.target, {super.key});
+  @override
+  State<_TimeField> createState() => _TimeFieldState();
+}
+
+class _TimeFieldState extends State<_TimeField> {
+  late final TextEditingController _hh;
+  late final TextEditingController _mm;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.target.text.split(':');
+    _hh = TextEditingController(text: p.isNotEmpty && p[0].trim().isNotEmpty ? p[0].trim() : '');
+    _mm = TextEditingController(text: p.length > 1 && p[1].trim().isNotEmpty ? p[1].trim() : '');
+  }
+
+  @override
+  void dispose() {
+    _hh.dispose();
+    _mm.dispose();
+    super.dispose();
+  }
+
+  void _sync() {
+    final h = _hh.text.trim();
+    final m = _mm.text.trim();
+    widget.target.text = (h.isEmpty && m.isEmpty) ? '' : '$h:$m';
+  }
+
+  Widget _box(TextEditingController c, String hint) {
+    OutlineInputBorder b(Color col) => OutlineInputBorder(borderRadius: BorderRadius.circular(11), borderSide: BorderSide(color: col, width: 1.5));
+    return SizedBox(
+      width: 50,
+      child: TextField(
+        controller: c,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        maxLength: 2,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _ink),
+        onChanged: (_) => _sync(),
+        decoration: InputDecoration(
+          counterText: '',
+          hintText: hint,
+          hintStyle: const TextStyle(fontSize: 13.5, color: _muted2),
+          filled: true,
+          fillColor: _fill,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+          border: b(Colors.transparent),
+          enabledBorder: b(Colors.transparent),
+          focusedBorder: b(_primary),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 2, bottom: 2),
+          child: Text('เวลา', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
+        ),
+        const SizedBox(height: 6),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          _box(_hh, 'ชม.'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text(':', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _muted)),
+          ),
+          _box(_mm, 'นาที'),
+        ]),
+      ],
+    );
+  }
 }
