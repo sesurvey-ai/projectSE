@@ -74,6 +74,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     setState(() => _view = v);
   }
 
+  // หมวดถัดไปแบบเรียงลำดับ (s1→…→s6) — null = ไม่มีถัดไป (โชว์ปุ่ม "กลับ Hub" แทน)
+  static const _sectionOrder = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5, _SView.s6];
+  _SView? _nextSectionView() {
+    final i = _sectionOrder.indexOf(_view);
+    return (i >= 0 && i < _sectionOrder.length - 1) ? _sectionOrder[i + 1] : null;
+  }
+
+  String _sectionShortTitle(_SView v) {
+    switch (v) {
+      case _SView.s2: return 'รถประกัน';
+      case _SView.s3: return 'ผู้ขับขี่';
+      case _SView.s4: return 'ความเสียหาย';
+      case _SView.s5: return 'เหตุการณ์';
+      case _SView.s6: return 'คู่กรณี';
+      default: return '';
+    }
+  }
+
   // บันทึกร่างอัตโนมัติแบบเงียบ (ไม่มี snackbar) + อัปเดตป้ายเวลา
   Future<void> _autosave() async {
     try {
@@ -204,7 +222,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                     ),
                   ),
               ]);
-          return Padding(
+          return SafeArea(
+            top: false,
+            child: Padding(
             padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
@@ -233,7 +253,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                 ),
               ),
             ]),
-          );
+          ));
         },
       ),
     );
@@ -2249,43 +2269,90 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ],
         ]),
         const SizedBox(height: 8),
-        Row(children: [
-          Expanded(
-            child: SizedBox(
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: cp.isSubmitting ? null : (inReview ? _submitWithGate : (inHub ? () => _go(_SView.review) : () => _go(_SView.hub))),
-                icon: cp.isSubmitting
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                    : Icon(inReview ? Icons.send_rounded : (inHub ? Icons.fact_check_outlined : Icons.arrow_back), size: 20),
-                label: Text(inReview ? 'ส่งรายงาน' : (inHub ? 'ตรวจสอบ & ส่ง' : 'กลับ Hub'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 50,
+        _savebarButtons(cp, inHub, inReview),
+      ]),
+    );
+  }
+
+  // ปุ่มแถวล่าง: ในหมวดที่มี "ถัดไป" → [Hub] [ถัดไป: X →] [บันทึก]; นอกนั้น → [ปุ่มหลัก] [บันทึก]
+  Widget _savebarButtons(CaseProvider cp, bool inHub, bool inReview) {
+    final next = (inHub || inReview) ? null : _nextSectionView();
+    final saveBtn = SizedBox(
+      width: 50,
+      height: 50,
+      child: OutlinedButton(
+        onPressed: cp.isSubmitting ? null : _saveDraft,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _primary,
+          side: const BorderSide(color: _lineStrong),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        child: const Icon(Icons.save_outlined, size: 22),
+      ),
+    );
+    if (next != null) {
+      return Row(children: [
+        Expanded(
+          flex: 3,
+          child: SizedBox(
             height: 50,
-            child: OutlinedButton(
-              onPressed: cp.isSubmitting ? null : _saveDraft,
+            child: OutlinedButton.icon(
+              onPressed: cp.isSubmitting ? null : () => _go(_SView.hub),
+              icon: const Icon(Icons.grid_view_rounded, size: 17),
+              label: const Text('Hub', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _primary,
                 side: const BorderSide(color: _lineStrong),
-                padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Icon(Icons.save_outlined, size: 22),
             ),
           ),
-        ]),
-      ]),
-    );
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 5,
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: cp.isSubmitting ? null : () => _go(next),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+              label: Text('ถัดไป: ${_sectionShortTitle(next)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        saveBtn,
+      ]);
+    }
+    return Row(children: [
+      Expanded(
+        child: SizedBox(
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: cp.isSubmitting ? null : (inReview ? _submitWithGate : (inHub ? () => _go(_SView.review) : () => _go(_SView.hub))),
+            icon: cp.isSubmitting
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                : Icon(inReview ? Icons.send_rounded : (inHub ? Icons.fact_check_outlined : Icons.arrow_back), size: 20),
+            label: Text(inReview ? 'ส่งรายงาน' : (inHub ? 'ตรวจสอบ & ส่ง' : 'กลับ Hub'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      saveBtn,
+    ]);
   }
 
   // ── card (section) ──
@@ -2327,7 +2394,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final out = <Widget>[];
     for (var i = 0; i < items.length; i++) {
       out.add(items[i]);
-      if (i < items.length - 1) out.add(const SizedBox(height: 8));
+      if (i < items.length - 1) out.add(const SizedBox(height: 14));
     }
     return out;
   }
