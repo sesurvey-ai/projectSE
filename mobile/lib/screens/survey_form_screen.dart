@@ -1710,28 +1710,29 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   List<Widget> _secDriver() => [
         _scanRow(),
+        // เพศ (ปุ่ม) | คำนำหน้า — ตามดีไซน์
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(flex: 3, child: _genderDropdown()),
-          const SizedBox(width: 8),
-          Expanded(flex: 4, child: _titleDropdown()),
-          const SizedBox(width: 8),
-          Expanded(flex: 5, child: _birthdateField()),
+          Expanded(flex: 9, child: _genderChips()),
+          const SizedBox(width: 10),
+          Expanded(flex: 11, child: _titleDropdown()),
         ]),
         _row2(_txt(_driverNameCtl, 'ชื่อ', req: true), _txt(_driverLastnameCtl, 'นามสกุล', req: true)),
+        _relationDropdown(),
+        // วันเกิด | อายุ
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 72, child: _numField(_driverAgeCtl, 'อายุ', req: true)),
-          const SizedBox(width: 8),
-          Expanded(child: _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true)),
-          const SizedBox(width: 8),
-          Expanded(child: _relationDropdown()),
+          Expanded(flex: 5, child: _birthdateField()),
+          const SizedBox(width: 10),
+          Expanded(flex: 3, child: _numField(_driverAgeCtl, 'อายุ', req: true)),
         ]),
+        _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
+        _driverCidField(),
         _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true),
         _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
             (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
             hint: 'เลือกจังหวัด', req: true, key: ValueKey('dp_${_driverProvinceCtl.text}')),
         _districtDropdown(),
-        _row2(_driverCidField(), _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true)),
-        _row2(_licenseTypeDropdown(), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
+        _row2(_txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
+        _licenseTypeDropdown(),
         _row2(_dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0), _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10)),
       ];
 
@@ -2474,29 +2475,25 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _genderDropdown() {
-    return DropdownButtonFormField<String>(
-      key: ValueKey('gender_$_driverGender'),
-      initialValue: _driverGender == 'M' ? 'ชาย' : _driverGender == 'F' ? 'หญิง' : 'เพศ',
-      isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('เพศ', req: true),
-      items: const [
-        DropdownMenuItem(value: 'เพศ', child: Text('เพศ', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'ชาย', child: Text('ชาย', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'หญิง', child: Text('หญิง', style: TextStyle(fontSize: 14.5))),
-      ],
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) {
-        setState(() {
-          _driverGender = v == 'ชาย' ? 'M' : v == 'หญิง' ? 'F' : '';
-          if (_driverGender == 'M') _driverTitle = 'นาย';
-          else if (_driverGender == 'F') _driverTitle = 'นางสาว';
-        });
-      },
-    );
-  }
+  // เพศ — ปุ่มเลือก ชาย/หญิง (ตามดีไซน์ prototype) เก็บค่าเป็น M/F
+  Widget _genderChips() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel('เพศ', req: true),
+          const SizedBox(height: 6),
+          Row(children: [
+            _chip('ชาย', _driverGender == 'M', () => setState(() {
+                  _driverGender = 'M';
+                  if (_driverTitle == '0' || _driverTitle.isEmpty) _driverTitle = 'นาย';
+                }), grow: true),
+            const SizedBox(width: 8),
+            _chip('หญิง', _driverGender == 'F', () => setState(() {
+                  _driverGender = 'F';
+                  if (_driverTitle == '0' || _driverTitle.isEmpty) _driverTitle = 'นางสาว';
+                }), grow: true),
+          ]),
+        ],
+      );
 
   Widget _titleDropdown() {
     // ตัวเลือกคงที่ 7 รายการ (ไม่ขึ้นกับเพศ) เริ่มต้นที่ '0' = "- คำนำหน้า -"
