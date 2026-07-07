@@ -486,9 +486,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _accCauseCtl: 'acc_cause', _accDamageTypeCtl: 'acc_damage_type', _accDetailCtl: 'acc_detail',
       _accReporterCtl: 'acc_reporter', _accSurveyorCtl: 'acc_surveyor',
       _accSurveyorBranchCtl: 'acc_surveyor_branch', _accSurveyorPhoneCtl: 'acc_surveyor_phone',
-      _accCustomerReportDateCtl: 'acc_customer_report_date', _accInsNotifyDateCtl: 'acc_insurance_notify_date',
-      _accSurveyArriveDateCtl: 'acc_survey_arrive_date', _accSurveyCompleteDateCtl: 'acc_survey_complete_date',
-      _accClaimOpponentCtl: 'acc_claim_opponent', _accClaimAmountCtl: 'acc_claim_amount',
+      _accClaimAmountCtl: 'acc_claim_amount',
       _accClaimTotalAmountCtl: 'acc_claim_total_amount',
       _accPoliceNameCtl: 'acc_police_name', _accPoliceStationCtl: 'acc_police_station',
       _accPoliceCommentCtl: 'acc_police_comment', _accPoliceDateCtl: 'acc_police_date',
@@ -523,6 +521,25 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       }
       final cr = data['customer_reported_at'];
       if (cr is String && cr.isNotEmpty) _slaStart = DateTime.tryParse(cr);
+
+      // 4 ไทม์สแตมป์เก็บเป็น "dd/mm/yyyy|HH:mm" → แยกวันที่/เวลา
+      void splitDT(String key, TextEditingController d, TextEditingController t) {
+        final v = (data[key] ?? '').toString();
+        if (v.isEmpty) return;
+        final parts = v.split('|');
+        d.text = parts[0];
+        if (parts.length > 1) t.text = parts[1];
+      }
+      splitDT('acc_customer_report_date', _accCustomerReportDateCtl, _accCustomerReportTimeCtl);
+      splitDT('acc_insurance_notify_date', _accInsNotifyDateCtl, _accInsNotifyTimeCtl);
+      splitDT('acc_survey_arrive_date', _accSurveyArriveDateCtl, _accSurveyArriveTimeCtl);
+      splitDT('acc_survey_complete_date', _accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl);
+
+      // การเรียกร้องคู่กรณี: comma-separated → set checkbox
+      final oc = (data['acc_claim_opponent'] ?? '').toString();
+      _opoClaims
+        ..clear()
+        ..addAll(oc.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty));
     });
   }
 
@@ -567,6 +584,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _mileageCtl = TextEditingController();
   final _carRegYearCtl = TextEditingController();
   String _evType = '';
+  final _evBatteryNoCtl = TextEditingController();
+  final _evBatteryStartCtl = TextEditingController();
+  final _evChargerNoCtl = TextEditingController();
   final _modelNoCtl = TextEditingController();
 
   // === ผู้ขับขี่ ===
@@ -645,10 +665,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _accReporterCtl = TextEditingController();
   final _accSurveyorCtl = TextEditingController();
   final _accCustomerReportDateCtl = TextEditingController();
+  final _accCustomerReportTimeCtl = TextEditingController();
   final _accInsNotifyDateCtl = TextEditingController();
+  final _accInsNotifyTimeCtl = TextEditingController();
   final _accSurveyArriveDateCtl = TextEditingController();
+  final _accSurveyArriveTimeCtl = TextEditingController();
   final _accSurveyCompleteDateCtl = TextEditingController();
-  final _accClaimOpponentCtl = TextEditingController();
+  final _accSurveyCompleteTimeCtl = TextEditingController();
+  // การเรียกร้องค่าเสียหายจากคู่กรณี (5 ตัวเลือก, เก็บ comma-separated ลง acc_claim_opponent)
+  final Set<String> _opoClaims = {};
   final _accClaimAmountCtl = TextEditingController();
   final _accClaimTotalAmountCtl = TextEditingController();
   final _accPoliceNameCtl = TextEditingController();
@@ -676,6 +701,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _assuredNameCtl, _policyTypeCtl, _assuredEmailCtl, _riskCodeCtl, _deductibleCtl,
       _carBrandCtl, _carModelCtl, _carColorCtl, _licensePlateCtl, _carProvinceCtl,
       _chassisNoCtl, _engineNoCtl, _mileageCtl, _carRegYearCtl, _modelNoCtl,
+      _evBatteryNoCtl, _evBatteryStartCtl, _evChargerNoCtl,
       _driverNameCtl, _driverLastnameCtl, _driverAgeCtl, _driverBirthdateCtl,
       _driverPhoneCtl, _driverAddressCtl, _driverIdCardCtl, _driverLicenseNoCtl,
       _driverLicenseTypeCtl, _driverLicensePlaceCtl, _driverLicenseStartCtl, _driverLicenseEndCtl,
@@ -684,7 +710,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _accDateCtl, _accTimeCtl, _accPlaceCtl, _accProvinceCtl, _accDistrictCtl,
       _accCauseCtl, _accDamageTypeCtl, _accDetailCtl, _accReporterCtl, _accSurveyorCtl,
       _accCustomerReportDateCtl, _accInsNotifyDateCtl, _accSurveyArriveDateCtl, _accSurveyCompleteDateCtl,
-      _accClaimOpponentCtl, _accClaimAmountCtl, _accClaimTotalAmountCtl,
+      _accCustomerReportTimeCtl, _accInsNotifyTimeCtl, _accSurveyArriveTimeCtl, _accSurveyCompleteTimeCtl,
+      _accClaimAmountCtl, _accClaimTotalAmountCtl,
       _accPoliceNameCtl, _accPoliceStationCtl, _accPoliceCommentCtl, _accPoliceDateCtl, _accPoliceBookNoCtl,
       _accAlcoholTestCtl, _accFollowupCountCtl, _accFollowupDetailCtl, _accFollowupDateCtl,
       _accSurveyorBranchCtl, _accSurveyorPhoneCtl, _notesCtl,
@@ -885,6 +912,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'engine_no': _engineNoCtl.text.trim(),
       'car_reg_year': _carRegYearCtl.text.trim(),
       'ev_type': _evType.isNotEmpty ? _evType : null,
+      'ev_battery_no': _evBatteryNoCtl.text.trim(),
+      'ev_battery_start': _evBatteryStartCtl.text.trim(),
+      'ev_charger_no': _evChargerNoCtl.text.trim(),
       'model_no': _modelNoCtl.text.trim(),
       'driver_gender': _driverGender,
       'driver_title': _driverTitle,
@@ -921,11 +951,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'acc_surveyor': _accSurveyorCtl.text.trim(),
       'acc_surveyor_branch': _accSurveyorBranchCtl.text.trim(),
       'acc_surveyor_phone': _accSurveyorPhoneCtl.text.trim(),
-      'acc_customer_report_date': _accCustomerReportDateCtl.text.trim(),
-      'acc_insurance_notify_date': _accInsNotifyDateCtl.text.trim(),
-      'acc_survey_arrive_date': _accSurveyArriveDateCtl.text.trim(),
-      'acc_survey_complete_date': _accSurveyCompleteDateCtl.text.trim(),
-      'acc_claim_opponent': _accClaimOpponentCtl.text.trim(),
+      'acc_customer_report_date': _combineDT(_accCustomerReportDateCtl, _accCustomerReportTimeCtl),
+      'acc_insurance_notify_date': _combineDT(_accInsNotifyDateCtl, _accInsNotifyTimeCtl),
+      'acc_survey_arrive_date': _combineDT(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl),
+      'acc_survey_complete_date': _combineDT(_accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl),
+      'acc_claim_opponent': _opoClaims.join(','),
       'acc_police_name': _accPoliceNameCtl.text.trim(),
       'acc_police_station': _accPoliceStationCtl.text.trim(),
       'acc_police_comment': _accPoliceCommentCtl.text.trim(),
@@ -1281,7 +1311,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _s3Filled() => _driverNameCtl.text.trim().isNotEmpty;
   bool _s4Filled() => _damageItems.isNotEmpty;
   bool _s5Filled() => _accDateCtl.text.trim().isNotEmpty;
-  bool _s6Filled() => _opponents.isNotEmpty || _accClaimOpponentCtl.text.trim().isNotEmpty;
+  bool _s6Filled() => _opponents.isNotEmpty || _opoClaims.isNotEmpty;
   int _filledCount() {
     const views = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5, _SView.s6];
     final started = [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled(), _s6Filled()];
@@ -1317,8 +1347,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
   String _s6Summary() {
     if (_opponents.isNotEmpty) return '${_opponents.length} คัน';
-    final o = _accClaimOpponentCtl.text.trim();
-    return o.isNotEmpty ? o : 'ยังไม่มีคู่กรณี';
+    return _opoClaims.isNotEmpty ? '${_opoClaims.length} รายการเรียกร้อง' : 'ยังไม่มีคู่กรณี';
   }
 
   // ══ Validation (Phase 4) ══════════════════════════════════════════
@@ -1621,6 +1650,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _txt(_chassisNoCtl, 'หมายเลขตัวถัง'),
         _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
         _row2(_numField(_mileageCtl, 'หมายเลข กม.'), _evTypeDropdown()),
+        if (_evType.isNotEmpty) ...[
+          _row2(_txt(_evBatteryNoCtl, 'หมายเลขแบตเตอรี่'), _txt(_evChargerNoCtl, 'หมายเลขเครื่องชาร์จ')),
+          _txt(_evBatteryStartCtl, 'วันเริ่มใช้งานแบตเตอรี่'),
+        ],
       ];
 
   List<Widget> _secDriver() => [
@@ -1680,8 +1713,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
         _txt(_accSurveyorCtl, 'ผู้สำรวจภัย'),
         _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
-        _row2(_txt(_accCustomerReportDateCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'), _txt(_accInsNotifyDateCtl, 'วันที่ บ.ประกันแจ้งสำรวจ')),
-        _row2(_txt(_accSurveyArriveDateCtl, 'วันที่ถึงที่เกิดเหตุ'), _txt(_accSurveyCompleteDateCtl, 'วันที่สำรวจเสร็จ')),
+        _dateTime(_accCustomerReportDateCtl, _accCustomerReportTimeCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'),
+        _dateTime(_accInsNotifyDateCtl, _accInsNotifyTimeCtl, 'วันที่ บ.ประกันแจ้งสำรวจ'),
+        _dateTime(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl, 'วันที่ถึงที่เกิดเหตุ'),
+        _dateTime(_accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl, 'วันที่สำรวจเสร็จ'),
         _subhead('ตำรวจ'),
         _row2(_txt(_accPoliceNameCtl, 'ชื่อพนักงานสอบสวน'), _txt(_accPoliceStationCtl, 'สถานีตำรวจ')),
         _txt(_accPoliceCommentCtl, 'ความเห็นพนักงานสอบสวน'),
@@ -1807,7 +1842,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         footer: [
           const SizedBox(height: 8),
           _card(6, Icons.request_quote_outlined, 'การเรียกร้องค่าเสียหาย', [
-            _txt(_accClaimOpponentCtl, 'การเรียกร้องค่าเสียหายจากคู่กรณี'),
+            _opoClaimChecks(),
             _row2(_numField(_accClaimAmountCtl, 'รับเงินจำนวน (บาท)', decimal: true),
                 _numField(_accClaimTotalAmountCtl, 'จากจำนวนเรียกร้องทั้งหมด (บาท)', decimal: true)),
           ]),
@@ -1954,6 +1989,48 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       keyboardType: TextInputType.number,
       onChanged: (_) => setState(() {}),
     );
+  }
+
+  // รวมวันที่+เวลา เป็น "dd/mm/yyyy|HH:mm" (ตรงกับที่หน้าเว็บ checker อ่าน)
+  String _combineDT(TextEditingController d, TextEditingController t) {
+    final ds = d.text.trim();
+    final ts = t.text.trim();
+    if (ds.isEmpty) return '';
+    return ts.isEmpty ? ds : '$ds|$ts';
+  }
+
+  Widget _dateTime(TextEditingController d, TextEditingController t, String label) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(child: _txt(d, label)),
+      const SizedBox(width: 8),
+      SizedBox(width: 96, child: _txt(t, 'เวลา นน:นน')),
+    ]);
+  }
+
+  // การเรียกร้องค่าเสียหายจากคู่กรณี — 5 ตัวเลือก (ตรงกับหน้าเว็บ checker)
+  Widget _opoClaimChecks() {
+    const opts = {
+      'คัดประจำวัน': 'คัดประจำวัน',
+      'รับหลักฐานจากคู่กรณีผิด': 'รับหลักฐานจากคู่กรณีผิด',
+      'บันทึกยอมรับผิด': 'บันทึกยอมรับผิด',
+      'บัตรติดต่อ': 'บัตรติดต่อ',
+      'รับเงิน': 'รับเงินจำนวน',
+    };
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _fieldLabel('การเรียกร้องค่าเสียหายจากคู่กรณี'),
+      for (final e in opts.entries)
+        GestureDetector(
+          onTap: () => setState(() => _opoClaims.contains(e.key) ? _opoClaims.remove(e.key) : _opoClaims.add(e.key)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(children: [
+              Icon(_opoClaims.contains(e.key) ? Icons.check_box : Icons.check_box_outline_blank, color: _opoClaims.contains(e.key) ? _primary : _muted2, size: 22),
+              const SizedBox(width: 8),
+              Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13.5, color: _ink))),
+            ]),
+          ),
+        ),
+    ]);
   }
 
   // ปุ่ม capture (สแกน/GPS) เต็มความกว้าง มีสถานะ busy

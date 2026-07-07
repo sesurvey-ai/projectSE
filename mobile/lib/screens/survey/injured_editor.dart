@@ -17,7 +17,7 @@ class InjuredEditor extends StatefulWidget {
 
 class _InjuredEditorState extends State<InjuredEditor> {
   late final Map<String, TextEditingController> _c;
-  String _personType = '', _gender = '', _wound = '';
+  String _personType = '', _gender = '', _wound = '', _relation = '';
 
   TextEditingController _ctl(String k) => _c[k]!;
 
@@ -25,12 +25,13 @@ class _InjuredEditorState extends State<InjuredEditor> {
   void initState() {
     super.initState();
     _c = {
-      for (final k in ['name', 'age', 'cid', 'occupation', 'address', 'phone', 'hospital', 'treat_from', 'treat_to', 'treat_cost', 'symptom'])
+      for (final k in ['name', 'age', 'cid', 'car_reg', 'occupation', 'work_place', 'position', 'income', 'address', 'phone', 'hospital', 'treat_from', 'treat_to', 'treat_cost', 'symptom'])
         k: TextEditingController(text: (widget.data[k] ?? '').toString()),
     };
     _personType = (widget.data['person_type'] ?? '').toString();
     _gender = (widget.data['gender'] ?? '').toString();
     _wound = (widget.data['wound_level'] ?? '').toString();
+    _relation = (widget.data['relation'] ?? '').toString();
   }
 
   @override
@@ -81,11 +82,16 @@ class _InjuredEditorState extends State<InjuredEditor> {
 
   Map<String, dynamic> _collect() => {
         'person_type': _personType,
+        'relation': _relation,
         'gender': _gender,
         'name': _ctl('name').text.trim(),
         'age': _ctl('age').text.trim(),
         'cid': _ctl('cid').text.trim(),
+        'car_reg': _ctl('car_reg').text.trim(),
         'occupation': _ctl('occupation').text.trim(),
+        'work_place': _ctl('work_place').text.trim(),
+        'position': _ctl('position').text.trim(),
+        'income': _ctl('income').text.trim(),
         'address': _ctl('address').text.trim(),
         'phone': _ctl('phone').text.trim(),
         'hospital': _ctl('hospital').text.trim(),
@@ -106,6 +112,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
       children: [
         _scanBtn(),
         KPickerField(label: 'ประเภทผู้บาดเจ็บ', value: _personType, options: kPersonTypes, onSelected: (v) => setState(() => _personType = v)),
+        KPickerField(label: 'ความสัมพันธ์ของผู้บาดเจ็บ', value: _relation, options: kRelations, onSelected: (v) => setState(() => _relation = v)),
         Row(children: [
           kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),
           const SizedBox(width: 8),
@@ -113,7 +120,10 @@ class _InjuredEditorState extends State<InjuredEditor> {
         ]),
         kText(_ctl('name'), 'ชื่อ-นามสกุลผู้บาดเจ็บ'),
         kRow2(kNum(_ctl('age'), 'อายุ'), kText(_ctl('cid'), 'เลขบัตร/พาสปอร์ต')),
+        kText(_ctl('car_reg'), 'เลขทะเบียนรถ (ของผู้บาดเจ็บ)'),
         kText(_ctl('occupation'), 'อาชีพ'),
+        kRow2(kText(_ctl('work_place'), 'ทำงานที่'), kText(_ctl('position'), 'ตำแหน่ง')),
+        kNum(_ctl('income'), 'รายได้ประจำเดือน/วันละ (บาท)', decimal: true),
         kText(_ctl('address'), 'ที่อยู่ปัจจุบัน'),
         kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone),
         kSubhead('การรักษา'),

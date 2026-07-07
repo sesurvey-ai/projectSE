@@ -858,9 +858,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                             </div>
                             <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
                               <ReadItem label="ชื่อ" value={nameWithGender} />
+                              <ReadItem label="ความสัมพันธ์" value={p?.relation} />
                               <ReadItem label="อายุ" value={p?.age} />
                               <ReadItem label="เลขบัตรประชาชน" value={p?.cid} />
+                              <ReadItem label="เลขทะเบียนรถ" value={p?.car_reg} />
                               <ReadItem label="อาชีพ" value={p?.occupation} />
+                              <ReadItem label="ทำงานที่" value={p?.work_place} />
+                              <ReadItem label="ตำแหน่ง" value={p?.position} />
+                              <ReadItem label="รายได้" value={p?.income} />
                               <ReadItem label="โทรศัพท์" value={p?.phone} />
                               <ReadItem label="โรงพยาบาล" value={p?.hospital} />
                               <ReadItem label="ระยะเวลารักษา" value={treatRange} />
