@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
 import '../config/api_config.dart';
-import '../services/location_service.dart';
 import '../widgets/car_damage_diagram.dart';
 import '../data/survey_master.dart' show cidChecksum;
 import 'survey/opponent_editor.dart';
@@ -58,9 +57,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final List<GlobalKey> _secKeys = List.generate(8, (_) => GlobalKey());
 
   // Phase 2: capture tools
-  final LocationService _loc = LocationService();
   String? _savedAt;      // เวลาบันทึกร่างอัตโนมัติล่าสุด (HH:MM)
-  bool _gpsBusy = false; // กำลังดึงพิกัด GPS
   bool _ocrBusy = false; // กำลังสแกน OCR
 
   // Phase 3: ข้อมูลหลายรายการ (persist เป็น JSONB)
@@ -107,26 +104,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final t = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
       if (mounted) setState(() => _savedAt = t);
     } catch (_) {}
-  }
-
-  // ── GPS: ดึงพิกัดปัจจุบัน เติมสถานที่เกิดเหตุ ──
-  Future<void> _captureGps() async {
-    setState(() => _gpsBusy = true);
-    try {
-      final pos = await _loc.getCurrentPosition();
-      if (!mounted) return;
-      if (pos == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('เปิด GPS และอนุญาตตำแหน่งก่อน'), backgroundColor: Colors.orange));
-        return;
-      }
-      final coord = '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
-      // เติมลงช่องสถานที่ถ้ายังว่าง (ไม่ทับข้อความที่พิมพ์ไว้)
-      if (_accPlaceCtl.text.trim().isEmpty) _accPlaceCtl.text = 'พิกัด $coord';
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('บันทึกพิกัดแล้ว: $coord'), backgroundColor: Colors.green, duration: const Duration(seconds: 2)));
-    } finally {
-      if (mounted) setState(() => _gpsBusy = false);
-    }
   }
 
   // ── OCR core: ถ่าย 1 ครั้ง → เก็บรูปเข้าเคส (หมวดเอกสาร) + สกัดข้อมูล → คืน fields ──
@@ -1757,7 +1734,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   List<Widget> _secEvent() => [
         _dateTime(_accDateCtl, _accTimeCtl, 'วันที่เกิดเหตุ', req: true),
-        _captureButton(Icons.my_location, _gpsBusy ? 'กำลังหาพิกัด...' : 'ใช้ตำแหน่งปัจจุบัน (GPS)', _gpsBusy ? null : _captureGps, busy: _gpsBusy),
         _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ', req: true),
         _row2(_txt(_accProvinceCtl, 'จังหวัด'), _txt(_accDistrictCtl, 'เขต/อำเภอ')),
         _dd('ลักษณะการเกิดเหตุ', _accCauseCtl.text, _accCauseOptions,
@@ -1765,16 +1741,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _dd('ลักษณะความเสียหาย', _accDamageTypeCtl.text, _accDamageOptions,
             (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), key: ValueKey('ad_${_accDamageTypeCtl.text}')),
         _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5, req: true),
-        _fieldLabel('ฝ่ายประมาท'),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          _chip('รถประกันฝ่ายผิด', _accFault == 'ฝ่ายผิด', () => setState(() => _accFault = 'ฝ่ายผิด')),
-          _chip('ฝ่ายถูกและผิด', _accFault == 'ฝ่ายถูกและผิด', () => setState(() => _accFault = 'ฝ่ายถูกและผิด')),
-          _chip('คู่กรณีผิด', _accFault == 'คู่กรณีผิด', () => setState(() => _accFault = 'คู่กรณีผิด')),
-          _chip('ประมาทร่วม', _accFault == 'ประมาทร่วม', () => setState(() => _accFault = 'ประมาทร่วม')),
-          _chip('รอสรุปผลคดี', _accFault == 'รอสรุปผลคดี', () => setState(() => _accFault = 'รอสรุปผลคดี')),
-          _chip('ยกเลิกการเคลม', _accFault == 'ยกเลิกการเคลม', () => setState(() => _accFault = 'ยกเลิกการเคลม')),
-          _chip('ไปถึงแล้วไม่พบ', _accFault == 'ไปถึงแล้วไม่พบ', () => setState(() => _accFault = 'ไปถึงแล้วไม่พบ')),
-        ]),
+        _faultDropdown(),
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
         _txt(_accSurveyorCtl, 'ผู้สำรวจภัย', req: true),
         _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
@@ -1797,6 +1764,32 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _txt(_accFollowupDetailCtl, 'รายละเอียดการนัดหมาย'),
         _dateField(_accFollowupDateCtl, 'วันที่นัดหมาย'),
       ];
+
+  // ฝ่ายประมาท — dropdown (โชว์ป้ายเต็ม, เก็บค่าเดิมแบบสั้น)
+  Widget _faultDropdown() {
+    const opts = <String, String>{
+      'ฝ่ายผิด': 'รถประกันฝ่ายผิด',
+      'ฝ่ายถูกและผิด': 'ฝ่ายถูกและผิด',
+      'คู่กรณีผิด': 'คู่กรณีผิด',
+      'ประมาทร่วม': 'ประมาทร่วม',
+      'รอสรุปผลคดี': 'รอสรุปผลคดี',
+      'ยกเลิกการเคลม': 'ยกเลิกการเคลม',
+      'ไปถึงแล้วไม่พบ': 'ไปถึงแล้วไม่พบ',
+    };
+    final keys = opts.keys.toList();
+    return DropdownButtonFormField<String>(
+      key: ValueKey('fault_$_accFault'),
+      initialValue: keys.contains(_accFault) ? _accFault : null,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
+      decoration: _dec('ฝ่ายประมาท'),
+      hint: const Text('เลือกฝ่ายประมาท', style: TextStyle(fontSize: 14.5, color: _muted2)),
+      items: keys.map((k) => DropdownMenuItem(value: k, child: Text(opts[k]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      onChanged: (v) => setState(() => _accFault = v ?? _accFault),
+    );
+  }
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
 
@@ -2140,25 +2133,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // ปุ่ม capture (สแกน/GPS) เต็มความกว้าง มีสถานะ busy
-  Widget _captureButton(IconData icon, String label, VoidCallback? onTap, {bool busy = false}) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: busy
-            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _primary))
-            : Icon(icon, size: 18),
-        label: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: _primary,
-          backgroundColor: _tint,
-          side: BorderSide.none,
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-        ),
-      ),
-    );
-  }
 
   // ── topbar (sticky header: เลขเคลม + บริษัทประกัน + สถานะ; มีปุ่มย้อนกลับเมื่ออยู่ในหมวด) ──
   PreferredSizeWidget _topbar() {
