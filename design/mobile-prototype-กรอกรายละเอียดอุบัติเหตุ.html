@@ -563,7 +563,7 @@ textarea{min-height:96px; resize:vertical;}
     </div>
     <div class="fgroup">
       <label class="flabel req">ประเภทรถ</label>
-      <div class="chips" id="chipsCType"></div>
+      <div class="pseudo-input" onclick="openPicker('ctype','fCType')"><span class="val ph" id="vfCType">-- ระบุ --</span><span class="car">▾</span></div>
     </div>
     <div class="frow">
       <div class="fgroup">
@@ -587,7 +587,7 @@ textarea{min-height:96px; resize:vertical;}
     </div>
     <div class="fgroup">
       <label class="flabel">รถยนต์ไฟฟ้า (EV)</label>
-      <div class="chips" id="chipsEV"></div>
+      <div class="pseudo-input" onclick="openPicker('ev','fEV')"><span class="val ph" id="vfEV">ไม่ใช่ EV</span><span class="car">▾</span></div>
       <div id="evExtra" style="display:none; margin-top:10px;">
         <div class="fgroup"><label class="flabel req">หมายเลขแบตเตอรี่</label><input type="text" id="fBatt" oninput="autosave()"></div>
         <div class="frow">
@@ -1372,7 +1372,7 @@ const REQ = {
   s2:()=>{ const m=[];
     if(!$('fCarReg').value) m.push(['ทะเบียนรถประกัน','s2','fCarReg']);
     if(!S.pick.fCarProv) m.push(['จังหวัดทะเบียนรถ','s2','vfCarProv']);
-    if(!S.pick.ctype) m.push(['ประเภทรถ','s2','chipsCType']);
+    if(!S.pick.ctype) m.push(['ประเภทรถ','s2','vfCType']);
     if(!S.pick.fBrand) m.push(['ยี่ห้อรถ','s2','vfBrand']);
     if(!$('fKm').value) m.push(['หมายเลข กม.','s2','fKm']);
     if(S.pick.ev && S.pick.ev!=='ไม่ใช่ EV' && !$('fBatt').value) m.push(['หมายเลขแบตเตอรี่ (รถ EV)','s2','fBatt']);
@@ -1516,7 +1516,8 @@ const PICKERS = {
   }},
   province:{t:'จังหวัด', mk:()=>({'ใช้บ่อย ⭐':['ชลบุรี','กรุงเทพมหานคร','สมุทรปราการ','ระยอง','ฉะเชิงเทรา'],'ทั้งหมด':PROVINCES}),
     on:(v,tg)=>{ S.pick[tg]=v; $('v'+tg).textContent=v; $('v'+tg).classList.remove('ph'); }},
-  ctype:{t:'ประเภทรถ', mk:()=>CTYPES.map(c=>c.e+' '+c.v), on:(v,tg)=>{S.pick[tg]=v.split(' ')[1]||v; $('v'+tg).textContent=v; $('v'+tg).classList.remove('ph');}},
+  ctype:{t:'ประเภทรถ', mk:()=>['เก๋งเอเชีย','เก๋งยุโรป','รถจักรยานยนต์','รถอื่นๆ','กระบะ','รถตู้','รถบรรทุก'], on:(v,tg)=>{S.pick.ctype=v; const el=$('v'+tg); if(el){el.textContent=v; el.classList.remove('ph');} delete S.pick.fBrand; const b=$('vfBrand'); if(b){b.textContent='เลือกยี่ห้อ'; b.classList.add('ph');} autosave&&autosave();}},
+  ev:{t:'รถยนต์ไฟฟ้า (EV)', mk:()=>['ไม่ใช่ EV','BEV','HEV','PHEV','FCEV','MEV'], on:(v,tg)=>{S.pick.ev=v; const el=$('v'+tg); if(el){el.textContent=v; el.classList.remove('ph');} const x=$('evExtra'); if(x) x.style.display=(v&&v!=='ไม่ใช่ EV')?'':'none'; autosave&&autosave();}},
   brand:{t:'ยี่ห้อรถ', mk:()=> BRANDS[S.pick.ctype]||BRANDS['เก๋ง'], on:(v,tg)=>{S.pick[tg]=v; $('v'+tg).textContent=v; $('v'+tg).classList.remove('ph');}},
   color:{t:'สีรถ', mk:()=>COLORS, swatch:true,
     on:(v,tg)=>{S.pick[tg]=v; $('v'+tg).textContent=v; $('v'+tg).classList.remove('ph');}},
@@ -2561,8 +2562,7 @@ function init(){
   chipGroup('chipsClaimType', ['เคลมสด','เคลมแห้ง','งานนัดหมาย','งานติดตาม'], 'claimType', v=>{
     S.claimType=v; $('bClaimType').textContent=v; $('bClaimType').style.display=''; tickSLA(); renderHubIfOn();
   });
-  chipGroup('chipsCType', CTYPES, 'ctype', ()=>{ delete S.pick.fBrand; $('vfBrand').textContent='เลือกยี่ห้อ'; $('vfBrand').classList.add('ph'); });
-  chipGroup('chipsEV', ['ไม่ใช่ EV','BEV','HEV','PHEV','FCEV','MEV'], 'ev', v=>{ $('evExtra').style.display=(v&&v!=='ไม่ใช่ EV')?'':'none'; });
+  // ประเภทรถ + EV เปลี่ยนเป็น dropdown (openPicker 'ctype'/'ev') — ไม่ใช้ chipGroup แล้ว
   chipGroup('chipsFlu', FLU_ST, 'flu');
   setInsurer('ไอโออิกรุงเทพประกันภัย'); // ล็อกตามงานที่ได้รับจาก dispatch
   [0,1].forEach(i=>{ S.dates['tl'+i]=fmtDTH(S.tlStamp[i])+' '+S.tl[i];
