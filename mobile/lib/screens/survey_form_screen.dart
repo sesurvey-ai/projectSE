@@ -1710,11 +1710,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   List<Widget> _secDriver() => [
         _scanRow(),
-        // เพศ (ปุ่ม) | คำนำหน้า — ตามดีไซน์
+        // เพศ (ปุ่ม) | คำนำหน้า — แถวเดียวกัน, dropdown แคบลง
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(flex: 9, child: _genderChips()),
-          const SizedBox(width: 10),
-          Expanded(flex: 11, child: _titleDropdown()),
+          Expanded(flex: 6, child: _genderChips()),
+          const SizedBox(width: 12),
+          Expanded(flex: 5, child: _titleDropdown()),
         ]),
         _row2(_txt(_driverNameCtl, 'ชื่อ', req: true), _txt(_driverLastnameCtl, 'นามสกุล', req: true)),
         _relationDropdown(),
@@ -2475,47 +2475,78 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // เพศ — ปุ่มเลือก ชาย/หญิง (ตามดีไซน์ prototype) เก็บค่าเป็น M/F
+  // เพศ — ปุ่มเลือก ชาย/หญิง แบบเหลี่ยม (เก็บค่าเป็น M/F) สูง 48 เท่า dropdown คำนำหน้า → อยู่แถวเดียวกันพอดี
   Widget _genderChips() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _fieldLabel('เพศ', req: true),
           const SizedBox(height: 6),
           Row(children: [
-            _chip('ชาย', _driverGender == 'M', () => setState(() {
-                  _driverGender = 'M';
-                  if (_driverTitle == '0' || _driverTitle.isEmpty) _driverTitle = 'นาย';
-                }), grow: true),
+            _genderBtn('ชาย', 'M'),
             const SizedBox(width: 8),
-            _chip('หญิง', _driverGender == 'F', () => setState(() {
-                  _driverGender = 'F';
-                  if (_driverTitle == '0' || _driverTitle.isEmpty) _driverTitle = 'นางสาว';
-                }), grow: true),
+            _genderBtn('หญิง', 'F'),
           ]),
         ],
       );
 
+  Widget _genderBtn(String label, String code) {
+    final sel = _driverGender == code;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() {
+          _driverGender = code;
+          if (_driverTitle == '0' || _driverTitle.isEmpty) {
+            _driverTitle = code == 'M' ? 'นาย' : 'นางสาว';
+          }
+        }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? _primary : Colors.white,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: sel ? _primary : _lineStrong, width: 1.5),
+          ),
+          child: Text(label, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: sel ? Colors.white : _muted)),
+        ),
+      ),
+    );
+  }
+
+  // คำนำหน้า — label ภายนอก + dropdown เตี้ย (สูง 48) ให้อยู่แถวเดียว/ตรงกับปุ่มเพศ และแคบลง
   Widget _titleDropdown() {
-    // ตัวเลือกคงที่ 7 รายการ (ไม่ขึ้นกับเพศ) เริ่มต้นที่ '0' = "- คำนำหน้า -"
     const items = ['0', 'นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.', 'คุณ'];
-    return DropdownButtonFormField<String>(
-      key: ValueKey('title_$_driverTitle'),
-      initialValue: items.contains(_driverTitle) ? _driverTitle : '0',
-      isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('คำนำหน้า', req: true),
-      items: const [
-        DropdownMenuItem(value: '0', child: Text('คำนำหน้า', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'นาย', child: Text('นาย', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'นาง', child: Text('นาง', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'นางสาว', child: Text('นางสาว', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'ด.ช.', child: Text('ด.ช.', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'ด.ญ.', child: Text('ด.ญ.', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'คุณ', child: Text('คุณ', style: TextStyle(fontSize: 14.5))),
+    const labels = {'0': '-- ระบุ --', 'นาย': 'นาย', 'นาง': 'นาง', 'นางสาว': 'นางสาว', 'ด.ช.': 'ด.ช.', 'ด.ญ.': 'ด.ญ.', 'คุณ': 'คุณ'};
+    OutlineInputBorder b(Color c) => OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: c, width: 1.5));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fieldLabel('คำนำหน้า', req: true),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 48,
+          child: DropdownButtonFormField<String>(
+            key: ValueKey('title_$_driverTitle'),
+            initialValue: items.contains(_driverTitle) ? _driverTitle : '0',
+            isExpanded: true,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: _ink),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _fill,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              border: b(Colors.transparent),
+              enabledBorder: b(Colors.transparent),
+              focusedBorder: b(_primary),
+            ),
+            items: items.map((e) => DropdownMenuItem(value: e, child: Text(labels[e]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            onChanged: (v) => setState(() => _driverTitle = v ?? '0'),
+          ),
+        ),
       ],
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) => setState(() => _driverTitle = v ?? '0'),
     );
   }
 
