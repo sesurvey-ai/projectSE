@@ -147,7 +147,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   Widget _cidField() {
     final ok = cidChecksum(_ctl('cid').text);
     final has = _ctl('cid').text.replaceAll(RegExp(r'\D'), '').length == 13;
-    return kText(_ctl('cid'), 'เลขบัตรประชาชน', keyboardType: TextInputType.number, onChanged: (_) => setState(() {}),
+    return kText(_ctl('cid'), 'เลขบัตรประชาชน', keyboardType: TextInputType.number, req: true, onChanged: (_) => setState(() {}),
         suffixIcon: has ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? kOk : kDanger) : null);
   }
 
@@ -161,18 +161,18 @@ class _OpponentEditorState extends State<OpponentEditor> {
       saveLabel: 'บันทึกคันนี้',
       children: [
         kSubhead('เจ้าของ / รถ'),
-        kText(_ctl('owner_name'), 'เจ้าของคู่กรณี'),
+        kText(_ctl('owner_name'), 'เจ้าของคู่กรณี', req: true),
         kText(_ctl('owner_address'), 'ที่อยู่เจ้าของรถ'),
         kRow2(
-          KPickerField(label: 'ประเภทรถ', value: _carType, options: kOpoCarTypes, onSelected: (v) => setState(() => _carType = v)),
+          KPickerField(label: 'ประเภทรถ', value: _carType, options: kOpoCarTypes, req: true, onSelected: (v) => setState(() => _carType = v)),
           kText(_ctl('car_brand'), 'ยี่ห้อ'),
         ),
         kRow2(kText(_ctl('car_model'), 'รุ่น'), kText(_ctl('car_color'), 'สีรถ')),
         kRow2(
-          kText(_ctl('plate'), 'ทะเบียน'),
-          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, onSelected: (v) => setState(() => _province = v)),
+          kText(_ctl('plate'), 'ทะเบียน', req: true),
+          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, req: true, onSelected: (v) => setState(() => _province = v)),
         ),
-        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
+        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.', req: true)),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
         _scanBtns(),
@@ -182,27 +182,27 @@ class _OpponentEditorState extends State<OpponentEditor> {
           kChip('หญิง', _gender == 'หญิง', () => setState(() => _gender = 'หญิง'), grow: true),
         ]),
         kRow2(
-          KPickerField(label: 'คำนำหน้า', value: _title, options: kTitles, onSelected: (v) => setState(() => _title = v)),
-          KPickerField(label: 'ความสัมพันธ์', value: _relation, options: kRelations, onSelected: (v) => setState(() => _relation = v)),
+          KPickerField(label: 'คำนำหน้า', value: _title, options: kTitles, req: true, onSelected: (v) => setState(() => _title = v)),
+          KPickerField(label: 'ความสัมพันธ์', value: _relation, options: kRelations, req: true, onSelected: (v) => setState(() => _relation = v)),
         ),
-        kRow2(kText(_ctl('first_name'), 'ชื่อ'), kText(_ctl('last_name'), 'นามสกุล')),
-        kRow2(kText(_ctl('birthdate'), 'วันเกิด (วว/ดด/พ.ศ.)'), kNum(_ctl('age'), 'อายุ')),
-        kRow2(kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone), kText(_ctl('license_no'), 'เลขที่ใบขับขี่')),
-        kText(_ctl('address'), 'ที่อยู่ปัจจุบัน'),
+        kRow2(kText(_ctl('first_name'), 'ชื่อ', req: true), kText(_ctl('last_name'), 'นามสกุล', req: true)),
+        kRow2(KDateField(_ctl('birthdate'), 'วันเกิด (พ.ศ.)', req: true, defaultYearsAgo: 25, yearsAhead: 0), kNum(_ctl('age'), 'อายุ', req: true)),
+        kRow2(kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone, req: true), kText(_ctl('license_no'), 'เลขที่ใบขับขี่', req: true)),
+        kText(_ctl('address'), 'ที่อยู่ปัจจุบัน', req: true),
         _cidField(),
         kRow2(
           KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),
           kText(_ctl('license_place'), 'ออกให้ที่'),
         ),
-        kRow2(kText(_ctl('license_start'), 'วันออกบัตร'), kText(_ctl('license_end'), 'วันหมดอายุ')),
+        kRow2(KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0), KDateField(_ctl('license_end'), 'วันหมดอายุ', yearsAhead: 10)),
         kSubhead('ประกันภัยคู่กรณี'),
-        KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, onSelected: (v) => setState(() {
+        KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, req: true, onSelected: (v) => setState(() {
               _insurer = v;
               _kfk = kKfkInsurers.contains(v);
             })),
         if (_hasInsurance) ...[
-          kRow2(kText(_ctl('policy_no'), 'เลขกรมธรรม์'), kText(_ctl('claim_no'), 'เลขเคลม')),
-          KPickerField(label: 'ประเภทประกัน', value: _policyType, options: kPolicyTypes, onSelected: (v) => setState(() => _policyType = v)),
+          kRow2(kText(_ctl('policy_no'), 'เลขกรมธรรม์', req: true), kText(_ctl('claim_no'), 'เลขเคลม', req: true)),
+          KPickerField(label: 'ประเภทประกัน', value: _policyType, options: kPolicyTypes, req: true, onSelected: (v) => setState(() => _policyType = v)),
           GestureDetector(
             onTap: () => setState(() => _kfk = !_kfk),
             child: Row(children: [

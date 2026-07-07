@@ -1633,17 +1633,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _row2(
           _dd('จังหวัด', _carProvinceCtl.text, _provinceNames,
               (v) => setState(() => _carProvinceCtl.text = v ?? ''),
-              hint: 'เลือกจังหวัด', key: ValueKey('cp_${_carProvinceCtl.text}')),
+              hint: 'เลือกจังหวัด', req: true, key: ValueKey('cp_${_carProvinceCtl.text}')),
           _carTypeDropdown(),
         ),
-        _row2(_txt(_carBrandCtl, 'ยี่ห้อ'), _txt(_licensePlateCtl, 'หมายเลขทะเบียน')),
+        _row2(_txt(_carBrandCtl, 'ยี่ห้อ'), _txt(_licensePlateCtl, 'หมายเลขทะเบียน', req: true)),
         _row2(_txt(_carColorCtl, 'สีรถ'), _txt(_carRegYearCtl, 'ปีจดทะเบียน')),
         _txt(_chassisNoCtl, 'หมายเลขตัวถัง'),
         _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
-        _row2(_numField(_mileageCtl, 'หมายเลข กม.'), _evTypeDropdown()),
+        _row2(_numField(_mileageCtl, 'หมายเลข กม.', req: true), _evTypeDropdown()),
         if (_evType.isNotEmpty) ...[
           _row2(_txt(_evBatteryNoCtl, 'หมายเลขแบตเตอรี่'), _txt(_evChargerNoCtl, 'หมายเลขเครื่องชาร์จ')),
-          _txt(_evBatteryStartCtl, 'วันเริ่มใช้งานแบตเตอรี่'),
+          _dateField(_evBatteryStartCtl, 'วันเริ่มใช้งานแบตเตอรี่', yearsAhead: 0),
         ],
       ];
 
@@ -1658,7 +1658,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]),
         _row2(_txt(_driverNameCtl, 'ชื่อ', req: true), _txt(_driverLastnameCtl, 'นามสกุล', req: true)),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 64, child: _numField(_driverAgeCtl, 'อายุ')),
+          SizedBox(width: 72, child: _numField(_driverAgeCtl, 'อายุ', req: true)),
           const SizedBox(width: 8),
           Expanded(child: _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true)),
           const SizedBox(width: 8),
@@ -1667,7 +1667,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true),
         _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
             (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
-            hint: 'เลือกจังหวัด', key: ValueKey('dp_${_driverProvinceCtl.text}')),
+            hint: 'เลือกจังหวัด', req: true, key: ValueKey('dp_${_driverProvinceCtl.text}')),
         _districtDropdown(),
         _row2(_driverCidField(), _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true)),
         _row2(_licenseTypeDropdown(), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
@@ -2017,7 +2017,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return TextFormField(
       controller: _driverIdCardCtl,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('บัตรประชาชนเลขที่', suffixIcon: digits.length == 13 ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? _ok : _warn) : null),
+      decoration: _dec('บัตรประชาชนเลขที่', req: true, suffixIcon: digits.length == 13 ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? _ok : _warn) : null),
       keyboardType: TextInputType.number,
       onChanged: (_) => setState(() {}),
     );
@@ -2395,7 +2395,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('ประเภทรถ'),
+      decoration: _dec('ประเภทรถ', req: true),
       items: const [
         DropdownMenuItem(value: '0', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'A', child: Text('เก๋งเอเชีย', style: TextStyle(fontSize: 14.5))),
@@ -2457,7 +2457,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('เพศ'),
+      decoration: _dec('เพศ', req: true),
       items: const [
         DropdownMenuItem(value: 'เพศ', child: Text('เพศ', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'ชาย', child: Text('ชาย', style: TextStyle(fontSize: 14.5))),
@@ -2483,7 +2483,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('คำนำหน้า'),
+      decoration: _dec('คำนำหน้า', req: true),
       items: const [
         DropdownMenuItem(value: '0', child: Text('คำนำหน้า', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'นาย', child: Text('นาย', style: TextStyle(fontSize: 14.5))),
@@ -2512,7 +2512,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     ];
     return _dd('ความสัมพันธ์', _driverRelationCtl.text, rel,
         (v) => setState(() => _driverRelationCtl.text = v ?? ''),
-        key: ValueKey('rel_${_driverRelationCtl.text}'));
+        req: true, key: ValueKey('rel_${_driverRelationCtl.text}'));
   }
 
   Widget _districtDropdown() {

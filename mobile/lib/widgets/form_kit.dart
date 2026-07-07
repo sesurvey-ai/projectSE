@@ -16,13 +16,17 @@ const kOk = Color(0xFF1F9D6B);
 const kOkTint = Color(0xFFE4F6EE);
 const kDanger = Color(0xFFDC2626);
 
-InputDecoration kDec(String label, {String? hint, Widget? suffixIcon}) {
+InputDecoration kDec(String label, {String? hint, Widget? suffixIcon, bool req = false}) {
   OutlineInputBorder b(Color c) => OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: c, width: 1.5));
+  const labelStyle = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: kMuted);
   return InputDecoration(
-    labelText: label,
+    label: req
+        ? Text.rich(TextSpan(text: label, children: const [TextSpan(text: ' ●', style: TextStyle(color: kDanger))]), style: labelStyle)
+        : null,
+    labelText: req ? null : label,
     hintText: hint,
     floatingLabelBehavior: FloatingLabelBehavior.always,
-    labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: kMuted),
+    labelStyle: labelStyle,
     hintStyle: const TextStyle(fontSize: 14.5, color: kMuted2),
     filled: true,
     fillColor: kFill,
@@ -39,11 +43,11 @@ InputDecoration kDec(String label, {String? hint, Widget? suffixIcon}) {
 }
 
 Widget kText(TextEditingController c, String label,
-    {TextInputType? keyboardType, int maxLines = 1, void Function(String)? onChanged, String? Function(String?)? validator, Widget? suffixIcon, List<TextInputFormatter>? formatters}) {
+    {TextInputType? keyboardType, int maxLines = 1, void Function(String)? onChanged, String? Function(String?)? validator, Widget? suffixIcon, List<TextInputFormatter>? formatters, bool req = false}) {
   return TextFormField(
     controller: c,
     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: kInk),
-    decoration: kDec(label, suffixIcon: suffixIcon),
+    decoration: kDec(label, suffixIcon: suffixIcon, req: req),
     keyboardType: keyboardType,
     maxLines: maxLines,
     onChanged: onChanged,
@@ -53,13 +57,97 @@ Widget kText(TextEditingController c, String label,
   );
 }
 
-Widget kNum(TextEditingController c, String label, {bool decimal = false}) {
+Widget kNum(TextEditingController c, String label, {bool decimal = false, bool req = false}) {
   return TextFormField(
     controller: c,
     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: kInk),
-    decoration: kDec(label),
+    decoration: kDec(label, req: req),
     keyboardType: TextInputType.numberWithOptions(decimal: decimal),
     inputFormatters: decimal ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))] : [FilteringTextInputFormatter.digitsOnly],
+  );
+}
+
+// ── ช่องวันที่ (แตะเปิด date picker พ.ศ.) + ไอคอนปฏิทิน ──
+class KDateField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final bool req;
+  final int defaultYearsAgo;
+  final int yearsAhead;
+  const KDateField(this.controller, this.label, {super.key, this.req = false, this.defaultYearsAgo = 0, this.yearsAhead = 5});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final r = await showKDate(context, title: label, current: controller.text, defaultYearsAgo: defaultYearsAgo, yearsAhead: yearsAhead);
+        if (r != null) controller.text = r;
+      },
+      child: AbsorbPointer(
+        child: TextFormField(
+          controller: controller,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: kInk),
+          decoration: kDec(label, req: req, hint: 'วว/ดด/ปปปป', suffixIcon: const Icon(Icons.calendar_month_outlined, size: 18, color: kMuted)),
+        ),
+      ),
+    );
+  }
+}
+
+// date picker พ.ศ. (wheel) → คืน "dd/mm/yyyy" หรือ null
+Future<String?> showKDate(BuildContext context, {String title = 'เลือกวันที่', String? current, int defaultYearsAgo = 0, int yearsAhead = 5}) {
+  FocusManager.instance.primaryFocus?.unfocus();
+  final now = DateTime.now();
+  const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  int selDay = now.day, selMonth = now.month, selYear = now.year + 543 - defaultYearsAgo;
+  final ex = (current ?? '').trim();
+  if (ex.isNotEmpty) {
+    final p = ex.split('/');
+    if (p.length == 3) {
+      selDay = int.tryParse(p[0]) ?? selDay;
+      selMonth = int.tryParse(p[1]) ?? selMonth;
+      selYear = int.tryParse(p[2]) ?? selYear;
+    }
+  }
+  final minYear = now.year + 543 - 100;
+  return showModalBottomSheet<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) {
+      final maxDay = DateTime(selYear - 543, selMonth + 1, 0).day;
+      if (selDay > maxDay) selDay = maxDay;
+      Widget wheel(int count, int initial, ValueChanged<int> onSel, String Function(int) label, {int flex = 2}) => Expanded(
+            flex: flex,
+            child: ListWheelScrollView.useDelegate(
+              itemExtent: 36,
+              diameterRatio: 1.5,
+              physics: const FixedExtentScrollPhysics(),
+              controller: FixedExtentScrollController(initialItem: initial),
+              onSelectedItemChanged: onSel,
+              childDelegate: ListWheelChildBuilderDelegate(childCount: count, builder: (ctx, i) => Center(child: Text(label(i), style: const TextStyle(fontSize: 17)))),
+            ),
+          );
+      return SizedBox(
+        height: 320,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, '${selDay.toString().padLeft(2, '0')}/${selMonth.toString().padLeft(2, '0')}/$selYear'),
+                child: const Text('ตกลง', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Expanded(child: Row(children: [
+              wheel(maxDay, selDay - 1, (i) => setSt(() => selDay = i + 1), (i) => '${i + 1}'),
+              wheel(12, selMonth - 1, (i) => setSt(() => selMonth = i + 1), (i) => thaiMonths[i], flex: 4),
+              wheel(101 + yearsAhead, selYear - minYear, (i) => setSt(() => selYear = minYear + i), (i) => '${minYear + i}', flex: 3),
+            ])),
+          ]),
+        ),
+      );
+    }),
   );
 }
 
@@ -104,7 +192,8 @@ class KPickerField extends StatelessWidget {
   final String hint;
   final List<String> options;
   final ValueChanged<String> onSelected;
-  const KPickerField({super.key, required this.label, required this.value, required this.options, required this.onSelected, this.hint = 'เลือก'});
+  final bool req;
+  const KPickerField({super.key, required this.label, required this.value, required this.options, required this.onSelected, this.hint = 'เลือก', this.req = false});
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +203,7 @@ class KPickerField extends StatelessWidget {
         if (r != null) onSelected(r);
       },
       child: InputDecorator(
-        decoration: kDec(label, suffixIcon: const Icon(Icons.expand_more, color: kMuted, size: 20)),
+        decoration: kDec(label, req: req, suffixIcon: const Icon(Icons.expand_more, color: kMuted, size: 20)),
         child: Text(
           value.isNotEmpty ? value : hint,
           maxLines: 1,
