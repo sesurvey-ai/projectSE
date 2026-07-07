@@ -775,21 +775,15 @@ textarea{min-height:96px; resize:vertical;}
     <div class="fgroup">
       <label class="flabel req">วัน-เวลาเกิดเหตุ (พ.ศ.)</label>
       <div class="pseudo-input" onclick="openDate('accDate')"><span class="val ph" id="vAccDate">เลือกวัน-เวลา</span><span class="car">📅</span></div>
-      <div class="chips ro-hide" style="margin-top:8px;">
-        <button class="chip sm" onclick="quickDate('now')">⏱ ตอนนี้</button>
-        <button class="chip sm" onclick="quickDate('today')">วันนี้</button>
-        <button class="chip sm" onclick="quickDate('yesterday')">เมื่อวาน</button>
-      </div>
     </div>
     <div class="fgroup">
       <label class="flabel req">สถานที่เกิดเหตุ</label>
-      <button class="btn sec sm ro-hide" style="margin-bottom:8px;" onclick="gpsPin()">📍 ใช้ตำแหน่งปัจจุบัน (GPS)</button>
       <div id="mapMock" style="display:none; height:110px; border-radius:11px; background:linear-gradient(135deg,#BFDBFE 0%,#DCFCE7 60%, #FEF9C3 100%); position:relative; margin-bottom:8px; border:1px solid var(--border); overflow:hidden;">
         <div style="position:absolute; inset:0; opacity:.35; background-image:repeating-linear-gradient(0deg,transparent 0 24px,#94A3B8 24px 25px),repeating-linear-gradient(90deg,transparent 0 34px,#94A3B8 34px 35px);"></div>
         <div style="position:absolute; top:34%; left:48%; font-size:26px; filter:drop-shadow(0 3px 2px rgba(0,0,0,.3));">📍</div>
         <div style="position:absolute; bottom:6px; right:8px; font-size:9.5px; color:#334155; background:rgba(255,255,255,.8); border-radius:6px; padding:1px 6px;">ลากหมุดเพื่อปรับตำแหน่ง (จำลอง)</div>
       </div>
-      <input type="text" id="fAccPlace" placeholder="ถนน / จุดสังเกต เช่น หน้าปั๊ม ปตท." oninput="autosave()">
+      <input type="text" id="fAccPlace" placeholder="ถนน / จุดสังเกต เช่น หน้าปั๊มน้ำมัน" oninput="autosave()">
       <div class="pseudo-input" style="margin-top:8px;" onclick="openPicker('location','fAccLoc')"><span class="val ph" id="vfAccLoc">ตำบล / อำเภอ / จังหวัด</span><span class="car">▾</span></div>
       <div class="fwarn" id="gpsWarn">⚠ ตำแหน่ง GPS อยู่ห่างจากจังหวัดที่เลือกมาก — <b style="cursor:pointer" onclick="this.parentNode.style.display='none'">ยืนยันตามนี้</b></div>
     </div>
@@ -804,14 +798,10 @@ textarea{min-height:96px; resize:vertical;}
     <div class="fgroup">
       <label class="flabel req">รายละเอียดการเกิดเหตุ <span class="hint-later">เรียบเรียงทีหลังได้ — บังคับตอนส่งรายงาน</span></label>
       <textarea id="fAccDetail" placeholder="เล่าเหตุการณ์ตามลำดับ..." oninput="autosave()"></textarea>
-      <div class="frow ro-hide" style="margin-top:8px;">
-        <button class="btn ghost sm" onclick="voiceMock()">🎙 พูดเพื่อพิมพ์</button>
-        <button class="btn ghost sm" onclick="tmplInsert()">📋 เทมเพลตประโยคเปิด</button>
-      </div>
     </div>
     <div class="fgroup">
       <label class="flabel req">ฝ่ายประมาท</label>
-      <div id="faultCards"></div>
+      <div class="pseudo-input" onclick="openPicker('fault')"><span class="val ph" id="vFault">เลือกฝ่ายประมาท</span><span class="car">▾</span></div>
       <div id="faultOpoPick" style="display:none;">
         <div class="note" id="faultOpoNote" style="margin-bottom:8px;"></div>
         <div class="chips" id="faultOpoChips"></div>
@@ -824,7 +814,7 @@ textarea{min-height:96px; resize:vertical;}
       </div>
       <div class="fgroup">
         <label class="flabel req">ผู้สำรวจภัย</label>
-        <input type="text" id="fAccSurv" value="SV104 สมชาย สำรวจดี" oninput="autosave()">
+        <input type="text" id="fAccSurv" placeholder="เติมจากโปรไฟล์ผู้ล็อกอินอัตโนมัติ" oninput="autosave()">
       </div>
     </div>
     <div class="fhelp" style="margin:-8px 0 12px;">ผู้สำรวจภัยเติมจากโปรไฟล์ผู้ล็อกอินอัตโนมัติ — แก้ได้กรณีสำรวจแทน/งานส่งต่อ</div>
@@ -1280,8 +1270,8 @@ const S = {
   insurer:null, claimType:null, prb:false,
   sections:{s1:'none',s2:'none',s3:'none',s4:'none',s5:'none',s6:'none'},
   pick:{}, dates:{},
-  tl:[fmtHM(addH(NOW(),-5.2)), fmtHM(addH(NOW(),-5.15)), null, null],
-  tlStamp:[addH(NOW(),-5.2), addH(NOW(),-5.15), null, null],
+  tl:[null, null, null, null],
+  tlStamp:[null, null, null, null],
   dmg:[], opo:[], fault:null, faultOpo:null, opoClaims:{}, viewonly:false, offline:false,
   fluNo:1, editingOpo:null, errList:[], fixedCnt:0, dmgTarget:null, dateTarget:null, tlTarget:null, pickTarget:null,
 };
@@ -1400,7 +1390,7 @@ const REQ = {
     if(!S.pick.fAccLoc) m.push(['ตำบล/อำเภอ/จังหวัดที่เกิดเหตุ','s5','vfAccLoc']);
     if(!S.pick.cause) m.push(['ลักษณะการเกิดเหตุ','s5','vCause']);
     if(!S.pick.lossType||!S.pick.lossType.length) m.push(['ลักษณะความเสียหาย','s5','vLoss']);
-    if(!S.fault) m.push(['ฝ่ายประมาท','s5','faultCards']);
+    if(!S.fault) m.push(['ฝ่ายประมาท','s5','vFault']);
     if(S.fault==='รถคู่กรณีเป็นฝ่ายผิด' && !S.faultOpo) m.push(['ระบุคู่กรณีคันที่เป็นฝ่ายผิด','s5','faultOpoPick']);
     if(!$('fAccDetail').value) m.push(['รายละเอียดการเกิดเหตุ (บังคับตอนส่ง)','s5','fAccDetail']);
     if(!$('fAccSurv').value) m.push(['ผู้สำรวจภัย','s5','fAccSurv']);
@@ -1533,6 +1523,7 @@ const PICKERS = {
     if(tg==='injRel'&&S.editingInj!=null) S.inj[S.editingInj].rel=v;}},
   licType:{t:'ประเภทใบขับขี่', mk:()=>LIC_TYPES, on:(v,tg)=>{S.pick[tg]=v; $('v'+tg).textContent=v; $('v'+tg).classList.remove('ph');}},
   cause:{t:'ลักษณะการเกิดเหตุ', mk:()=>CAUSES, on:v=>{S.pick.cause=v; $('vCause').textContent=v; $('vCause').classList.remove('ph'); autosave();}},
+  fault:{t:'ฝ่ายประมาท', mk:()=>FAULTS.map(f=>f.l||f.v), on:v=>{ const f=FAULTS.find(x=>(x.l||x.v)===v); setFault(f?f.v:v); }},
   lossType:{t:'ลักษณะความเสียหาย (เลือกได้หลายรายการ)', mk:()=>LOSS_TYPES, multi:'lossType',
     on:()=>{ const a=S.pick.lossType||[]; $('vLoss').textContent=a.length? a.join(', '):'เลือกได้หลายรายการ'; $('vLoss').classList.toggle('ph',!a.length); }},
   opoInsurer:{t:'ประกันภัยคู่กรณี', mk:()=>({'พบบ่อย ⭐':OPO_INSURERS.slice(0,7),'ทั้งหมด':OPO_INSURERS}), on:(v,tg)=>{S.pick[tg]=v; $('v'+tg).textContent=v; $('v'+tg).classList.remove('ph');}},
@@ -1936,9 +1927,10 @@ function renderDmgFor(kind){
 function renderDmg(){ renderDmgFor('main'); }
 /* ================= FAULT + CLAIMS ================= */
 function renderFaults(){
-  const host=$('faultCards'); host.innerHTML='';
-  FAULTS.forEach(f=> host.insertAdjacentHTML('beforeend',
-    `<div class="rcard ${S.fault===f.v?'on':''}" onclick="setFault('${f.v}')"><div class="rdot"></div><div><b>${f.l||f.v}</b></div></div>`));
+  const el=$('vFault');
+  if(el){ const f=FAULTS.find(x=>x.v===S.fault);
+    if(f){ el.textContent=f.l||f.v; el.classList.remove('ph'); }
+    else { el.textContent='เลือกฝ่ายประมาท'; el.classList.add('ph'); } }
   const pickWrap=$('faultOpoPick');
   if(S.fault==='รถคู่กรณีเป็นฝ่ายผิด'){
     pickWrap.style.display='';
@@ -1959,9 +1951,9 @@ function renderClaims(){
     const on=S.opoClaims[i];
     const amtBlock = i===4? `<div id="claimAmt4" style="display:${on?'':'none'}; padding:6px 0 10px;">
         <div class="frow">
-          <div class="fgroup" style="margin-bottom:4px;"><label class="flabel">รับเงินจำนวน (บาท)</label>
+          <div class="fgroup" style="margin-bottom:4px; flex:0 0 36%;"><label class="flabel">รับเงินจำนวน (บาท)</label>
             <input type="text" class="money" value="${on&&on.amt||''}" onblur="fmtMoney(this); S.opoClaims[4].amt=this.value; sumClaims()"></div>
-          <div class="fgroup" style="margin-bottom:4px;"><label class="flabel req">จากจำนวนเงินเรียกร้องทั้งหมด</label>
+          <div class="fgroup" style="margin-bottom:4px; flex:1 1 0; min-width:0;"><label class="flabel req">จากจำนวนเงินเรียกร้องทั้งหมด</label>
             <input type="text" class="money" value="${on&&on.rec||''}" onblur="fmtMoney(this); S.opoClaims[4].rec=this.value; sumClaims()"></div>
         </div>
         <div class="ferr" id="payErr">⚠ รับเงินต้องไม่เกินยอดเรียกร้องทั้งหมด (กติกาเดิมของระบบ)</div></div>` : '';
@@ -2565,8 +2557,6 @@ function init(){
   // ประเภทรถ + EV เปลี่ยนเป็น dropdown (openPicker 'ctype'/'ev') — ไม่ใช้ chipGroup แล้ว
   chipGroup('chipsFlu', FLU_ST, 'flu');
   setInsurer('ไอโออิกรุงเทพประกันภัย'); // ล็อกตามงานที่ได้รับจาก dispatch
-  [0,1].forEach(i=>{ S.dates['tl'+i]=fmtDTH(S.tlStamp[i])+' '+S.tl[i];
-    const sp=$('vTl'+i); if(sp){ sp.textContent=S.dates['tl'+i]; sp.classList.remove('ph'); } });
   renderFaults(); renderClaims(); renderDmg(); updateDur(); tickSLA(); renderHub(); updateTabs();
   autosave();
 }
