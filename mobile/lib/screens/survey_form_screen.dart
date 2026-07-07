@@ -1629,23 +1629,92 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   List<Widget> _secCar() => [
-        _txt(_carModelCtl, 'รุ่น'),
         _row2(
+          _txt(_licensePlateCtl, 'ทะเบียน', req: true),
           _dd('จังหวัด', _carProvinceCtl.text, _provinceNames,
               (v) => setState(() => _carProvinceCtl.text = v ?? ''),
               hint: 'เลือกจังหวัด', req: true, key: ValueKey('cp_${_carProvinceCtl.text}')),
-          _carTypeDropdown(),
         ),
-        _row2(_txt(_carBrandCtl, 'ยี่ห้อ'), _txt(_licensePlateCtl, 'หมายเลขทะเบียน', req: true)),
-        _row2(_txt(_carColorCtl, 'สีรถ'), _txt(_carRegYearCtl, 'ปีจดทะเบียน')),
-        _txt(_chassisNoCtl, 'หมายเลขตัวถัง'),
-        _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
-        _row2(_numField(_mileageCtl, 'หมายเลข กม.', req: true), _evTypeDropdown()),
+        _fieldLabel('ประเภทรถ', req: true),
+        _carTypeChips(),
+        _row2(_carBrandField(), _txt(_carModelCtl, 'รุ่น')),
+        _row2(_carColorField(), _txt(_carRegYearCtl, 'ปีจดทะเบียน (พ.ศ.)')),
+        _fieldLabel('รถยนต์ไฟฟ้า (EV)'),
+        _evChips(),
         if (_evType.isNotEmpty) ...[
           _row2(_txt(_evBatteryNoCtl, 'หมายเลขแบตเตอรี่'), _txt(_evChargerNoCtl, 'หมายเลขเครื่องชาร์จ')),
           _dateField(_evBatteryStartCtl, 'วันเริ่มใช้งานแบตเตอรี่', yearsAhead: 0),
         ],
+        _txt(_chassisNoCtl, 'หมายเลขตัวถัง (VIN)'),
+        _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
+        _numField(_mileageCtl, 'หมายเลข กม.', req: true),
       ];
+
+  // ประเภทรถ = ชิปมีไอคอน (7)
+  Widget _carTypeChips() {
+    const types = [
+      ['A', 'เก๋ง', Icons.directions_car],
+      ['T', 'กระบะ', Icons.local_shipping],
+      ['M', 'จักรยานยนต์', Icons.two_wheeler],
+      ['V', 'รถตู้', Icons.airport_shuttle],
+      ['W', 'รถบรรทุก', Icons.fire_truck],
+      ['E', 'เก๋งยุโรป', Icons.directions_car_filled],
+      ['O', 'อื่นๆ', Icons.agriculture],
+    ];
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final t in types) _iconChip(t[2] as IconData, t[1] as String, _carType == t[0], () => setState(() => _carType = t[0] as String)),
+    ]);
+  }
+
+  // EV = ชิป (6, "ไม่ใช่ EV" = '')
+  Widget _evChips() {
+    const evs = [['', 'ไม่ใช่ EV'], ['BEV', 'BEV'], ['HEV', 'HEV'], ['PHEV', 'PHEV'], ['FCEV', 'FCEV'], ['MEV', 'MEV']];
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final e in evs) _rectChip(e[1], _evType == e[0], () => setState(() => _evType = e[0])),
+    ]);
+  }
+
+  Widget _iconChip(IconData icon, String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(color: selected ? _primary : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? _primary : _lineStrong, width: 1.5)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 16, color: selected ? Colors.white : _muted),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: selected ? Colors.white : _muted)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _rectChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(color: selected ? _primary : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? _primary : _lineStrong, width: 1.5)),
+        child: Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: selected ? Colors.white : _muted)),
+      ),
+    );
+  }
+
+  // ยี่ห้อ = dropdown (คงค่าเดิมถ้าไม่อยู่ในลิสต์)
+  Widget _carBrandField() {
+    const base = ['โตโยต้า', 'ฮอนด้า', 'อีซูซุ', 'นิสสัน', 'มิตซูบิชิ', 'มาสด้า', 'ฟอร์ด', 'เชฟโรเลต', 'เอ็มจี', 'ซูซูกิ', 'ฮุนได', 'เกีย', 'บีเอ็มดับเบิลยู', 'เมอร์เซเดส-เบนซ์', 'ยามาฮ่า', 'เวสป้า', 'อื่นๆ'];
+    final cur = _carBrandCtl.text.trim();
+    final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
+    return _dd('ยี่ห้อ', cur, items, (v) => setState(() => _carBrandCtl.text = v ?? ''), hint: 'เลือกยี่ห้อ', req: true, key: ValueKey('cb_$cur'));
+  }
+
+  // สีรถ = dropdown
+  Widget _carColorField() {
+    const base = ['ขาว', 'ดำ', 'เทา', 'เงิน', 'บรอนซ์', 'แดง', 'น้ำเงิน', 'ฟ้า', 'เขียว', 'เหลือง', 'ส้ม', 'น้ำตาล', 'ทอง', 'ม่วง', 'ชมพู', 'หลายสี', 'อื่นๆ'];
+    final cur = _carColorCtl.text.trim();
+    final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
+    return _dd('สีรถ', cur, items, (v) => setState(() => _carColorCtl.text = v ?? ''), hint: 'เลือกสี', key: ValueKey('cc_$cur'));
+  }
 
   List<Widget> _secDriver() => [
         _scanRow(),
@@ -2270,8 +2339,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return out;
   }
 
-  Widget _fieldLabel(String text) =>
-      Padding(padding: const EdgeInsets.only(top: 2, bottom: 2), child: Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)));
+  Widget _fieldLabel(String text, {bool req = false}) => Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: 2),
+        child: Text.rich(
+          TextSpan(text: text, children: req ? const [TextSpan(text: ' ●', style: TextStyle(color: Color(0xFFDC2626)))] : const []),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _ink),
+        ),
+      );
 
   Widget _row2(Widget a, Widget b) =>
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
@@ -2386,48 +2460,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       // ปล่อย focus ของช่องข้อความที่ค้างอยู่ก่อนเปิดเมนู → พอเลือกเสร็จเมนูปิด จะไม่เด้ง focus/คีย์บอร์ดกลับช่องเดิม
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: onChanged,
-    );
-  }
-
-  Widget _carTypeDropdown() {
-    return DropdownButtonFormField<String>(
-      initialValue: _carType,
-      isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('ประเภทรถ', req: true),
-      items: const [
-        DropdownMenuItem(value: '0', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'A', child: Text('เก๋งเอเชีย', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'E', child: Text('เก๋งยุโรป', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'M', child: Text('รถจักรยานยนต์', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'T', child: Text('กระบะ', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'V', child: Text('รถตู้', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'W', child: Text('รถบรรทุก', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'O', child: Text('รถอื่นๆ', style: TextStyle(fontSize: 14.5))),
-      ],
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) => setState(() => _carType = v!),
-    );
-  }
-
-  Widget _evTypeDropdown() {
-    return DropdownButtonFormField<String>(
-      initialValue: _evType.isEmpty ? '' : _evType,
-      isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('ประเภทรถ EV'),
-      items: const [
-        DropdownMenuItem(value: '', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'BEV', child: Text('BEV (100%)', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'PHEV', child: Text('PHEV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'HEV', child: Text('HEV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'FCEV', child: Text('FCEV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'MEV', child: Text('MEV ดัดแปลง', style: TextStyle(fontSize: 14.5))),
-      ],
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) => setState(() => _evType = v ?? ''),
     );
   }
 
