@@ -81,6 +81,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return (i >= 0 && i < _sectionOrder.length - 1) ? _sectionOrder[i + 1] : null;
   }
 
+  _SView? _prevSectionView() {
+    final i = _sectionOrder.indexOf(_view);
+    return (i > 0) ? _sectionOrder[i - 1] : null;
+  }
+
   String _sectionShortTitle(_SView v) {
     switch (v) {
       case _SView.s2: return 'รถประกัน';
@@ -868,19 +873,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   String get _draftKey => 'survey_draft_${widget.caseId}';
-
-  Future<void> _saveDraft() async {
-    final data = _collectFormData();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_draftKey, jsonEncode(data));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('บันทึกร่างสำเร็จ'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 1),
-      ));
-    }
-  }
 
   Future<void> _loadDraft() async {
     final prefs = await SharedPreferences.getInstance();
@@ -2274,84 +2266,99 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // ปุ่มแถวล่าง: ในหมวดที่มี "ถัดไป" → [Hub] [ถัดไป: X →] [บันทึก]; นอกนั้น → [ปุ่มหลัก] [บันทึก]
+  // ปุ่มแถวล่าง — มี autosave แล้วจึงตัดปุ่มบันทึกออก
+  //  hub/review → ปุ่มหลักเต็มแถว | หมวดหลัก → [Hub ไอคอน] [ก่อนหน้า] [ถัดไป/ตรวจสอบ] | หน้าเสริม → กลับ Hub
   Widget _savebarButtons(CaseProvider cp, bool inHub, bool inReview) {
-    final next = (inHub || inReview) ? null : _nextSectionView();
-    final saveBtn = SizedBox(
-      width: 50,
-      height: 50,
-      child: OutlinedButton(
-        onPressed: cp.isSubmitting ? null : _saveDraft,
-        style: OutlinedButton.styleFrom(
+    ButtonStyle primaryStyle() => ElevatedButton.styleFrom(
+          backgroundColor: _primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        );
+    ButtonStyle outlinedStyle() => OutlinedButton.styleFrom(
           foregroundColor: _primary,
           side: const BorderSide(color: _lineStrong),
-          padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        );
+
+    if (inHub || inReview) {
+      return SizedBox(
+        height: 50,
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: cp.isSubmitting ? null : (inReview ? _submitWithGate : () => _go(_SView.review)),
+          icon: cp.isSubmitting
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+              : Icon(inReview ? Icons.send_rounded : Icons.fact_check_outlined, size: 20),
+          label: Text(inReview ? 'ส่งรายงาน' : 'ตรวจสอบ & ส่ง', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          style: primaryStyle(),
         ),
-        child: const Icon(Icons.save_outlined, size: 22),
+      );
+    }
+
+    final prev = _prevSectionView();
+    final next = _nextSectionView();
+
+    // หน้าเสริม (ไม่อยู่ในลำดับหมวด) → ปุ่มกลับ Hub เต็มแถว
+    if (prev == null && next == null) {
+      return SizedBox(
+        height: 50,
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () => _go(_SView.hub),
+          icon: const Icon(Icons.arrow_back, size: 19),
+          label: const Text('กลับ Hub', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          style: outlinedStyle(),
+        ),
+      );
+    }
+
+    // ปุ่มขวา: มีถัดไป → "ถัดไป: X" | หมวดสุดท้าย → "ตรวจสอบ & ส่ง"
+    final forwardBtn = SizedBox(
+      height: 50,
+      child: ElevatedButton.icon(
+        onPressed: () => _go(next ?? _SView.review),
+        icon: Icon(next != null ? Icons.arrow_forward_rounded : Icons.fact_check_outlined, size: 19),
+        label: Text(next != null ? 'ถัดไป: ${_sectionShortTitle(next)}' : 'ตรวจสอบ & ส่ง',
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+        style: primaryStyle(),
       ),
     );
-    if (next != null) {
-      return Row(children: [
-        Expanded(
-          flex: 3,
-          child: SizedBox(
-            height: 50,
-            child: OutlinedButton.icon(
-              onPressed: cp.isSubmitting ? null : () => _go(_SView.hub),
-              icon: const Icon(Icons.grid_view_rounded, size: 17),
-              label: const Text('Hub', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primary,
-                side: const BorderSide(color: _lineStrong),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 5,
-          child: SizedBox(
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: cp.isSubmitting ? null : () => _go(next),
-              icon: const Icon(Icons.arrow_forward_rounded, size: 19),
-              label: Text('ถัดไป: ${_sectionShortTitle(next)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        saveBtn,
-      ]);
-    }
+
     return Row(children: [
-      Expanded(
-        child: SizedBox(
-          height: 50,
-          child: ElevatedButton.icon(
-            onPressed: cp.isSubmitting ? null : (inReview ? _submitWithGate : (inHub ? () => _go(_SView.review) : () => _go(_SView.hub))),
-            icon: cp.isSubmitting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                : Icon(inReview ? Icons.send_rounded : (inHub ? Icons.fact_check_outlined : Icons.arrow_back), size: 20),
-            label: Text(inReview ? 'ส่งรายงาน' : (inHub ? 'ตรวจสอบ & ส่ง' : 'กลับ Hub'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
+      SizedBox(
+        width: 50,
+        height: 50,
+        child: OutlinedButton(
+          onPressed: () => _go(_SView.hub),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primary,
+            side: const BorderSide(color: _lineStrong),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
+          child: const Icon(Icons.grid_view_rounded, size: 20),
         ),
       ),
-      const SizedBox(width: 10),
-      saveBtn,
+      const SizedBox(width: 8),
+      if (prev != null) ...[
+        SizedBox(
+          width: 50,
+          height: 50,
+          child: OutlinedButton(
+            onPressed: () => _go(prev),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _lineStrong),
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Icon(Icons.arrow_back_rounded, size: 20),
+          ),
+        ),
+        const SizedBox(width: 8),
+      ],
+      Expanded(child: forwardBtn),
     ]);
   }
 
