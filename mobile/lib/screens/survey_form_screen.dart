@@ -1664,20 +1664,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // รถยนต์ไฟฟ้า (EV) = dropdown
   Widget _evTypeField() {
+    // '' = ยังไม่ระบุ (โชว์ placeholder เทาจาง) ; เก็บ null = ไม่ใช่ EV เหมือนเดิม
+    const labels = {'': '-- ระบุ --', 'BEV': 'BEV (100%)', 'HEV': 'HEV', 'PHEV': 'PHEV', 'FCEV': 'FCEV', 'MEV': 'MEV ดัดแปลง'};
     return DropdownButtonFormField<String>(
-      initialValue: const ['', 'BEV', 'HEV', 'PHEV', 'FCEV', 'MEV'].contains(_evType) ? _evType : '',
+      initialValue: labels.containsKey(_evType) ? _evType : '',
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec('รถยนต์ไฟฟ้า (EV)'),
-      items: const [
-        DropdownMenuItem(value: '', child: Text('ไม่ใช่ EV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'BEV', child: Text('BEV (100%)', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'HEV', child: Text('HEV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'PHEV', child: Text('PHEV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'FCEV', child: Text('FCEV', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'MEV', child: Text('MEV ดัดแปลง', style: TextStyle(fontSize: 14.5))),
-      ],
+      selectedItemBuilder: (context) => labels.entries
+          .map((e) => Align(alignment: Alignment.centerLeft, child: Text(e.value, style: TextStyle(fontSize: e.key.isEmpty ? 13 : 15, color: e.key.isEmpty ? _muted2 : _ink))))
+          .toList(),
+      items: labels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value, style: const TextStyle(fontSize: 14.5)))).toList(),
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _evType = v ?? ''),
     );
