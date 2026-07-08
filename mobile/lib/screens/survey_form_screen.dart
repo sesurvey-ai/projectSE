@@ -10,9 +10,11 @@ import '../providers/case_provider.dart';
 import '../config/api_config.dart';
 import '../widgets/car_damage_diagram.dart';
 import '../data/survey_master.dart' show cidChecksum, kWounds;
+import 'package:permission_handler/permission_handler.dart';
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
 import 'survey/property_editor.dart';
+import 'survey/camera_capture_screen.dart';
 
 // ── Design tokens (from Claude design "survey-form.html") ──
 const _bg = Color(0xFFEEF0F4);
@@ -783,13 +785,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Future<void> _takePhoto() async {
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80, maxWidth: 1920);
-      if (photo == null) return;
-      // Copy to local case folder
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
+        return;
+      }
+      // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าหมวดที่เลือก
+      final shots = await Navigator.of(context).push<List<XFile>>(
+          MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: _captureCat)));
+      if (shots == null || shots.isEmpty || !mounted) return;
       final caseFolder = await _getCaseFolder();
-      final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await File(photo.path).copy(localPath);
-      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = _captureCat; });
+      final added = <String>[];
+      for (final x in shots) {
+        final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
+        try { await File(x.path).copy(localPath); added.add(localPath); } catch (_) {}
+      }
+      if (added.isEmpty || !mounted) return;
+      setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = _captureCat; } });
+      _autosave();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
     }
