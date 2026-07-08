@@ -1337,8 +1337,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // ══ Validation (Phase 4) ══════════════════════════════════════════
-  // ตำรวจจำเป็นเมื่อ: ฝ่ายประมาท="รอสรุปผลคดี" หรือ มีผู้บาดเจ็บ ≥1
-  bool _policeRequired() => _accFault == 'รอสรุปผลคดี' || _injured.isNotEmpty;
+  // ตำรวจจำเป็นเมื่อ: ฝ่ายประมาท="รอสรุปผลคดี" เท่านั้น (มีผู้บาดเจ็บไม่บังคับ)
+  bool _policeRequired() => _accFault == 'รอสรุปผลคดี';
   bool _driverCidValid() {
     final t = _driverIdCardCtl.text.trim();
     return t.isEmpty ? false : cidChecksum(t);
@@ -1384,7 +1384,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]);
         if (_policeRequired()) {
           base.addAll(miss([
-            ['ชื่อพนักงานสอบสวน (มีผู้บาดเจ็บ/รอคดี)', has(_accPoliceNameCtl)],
+            ['ชื่อพนักงานสอบสวน (รอสรุปผลคดี)', has(_accPoliceNameCtl)],
             ['สถานีตำรวจ', has(_accPoliceStationCtl)],
           ]));
         }
