@@ -27,7 +27,7 @@ InputDecoration kDec(String label, {String? hint, Widget? suffixIcon, bool req =
     hintText: hint,
     floatingLabelBehavior: FloatingLabelBehavior.always,
     labelStyle: labelStyle,
-    hintStyle: const TextStyle(fontSize: 14.5, color: kMuted2),
+    hintStyle: const TextStyle(fontSize: 13, color: kMuted2),
     filled: true,
     fillColor: kFill,
     isDense: true,
@@ -208,7 +208,7 @@ class KPickerField extends StatelessWidget {
           value.isNotEmpty ? value : hint,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: value.isNotEmpty ? kInk : kMuted2),
+          style: TextStyle(fontSize: value.isNotEmpty ? 15 : 13, fontWeight: FontWeight.w500, color: value.isNotEmpty ? kInk : kMuted2),
         ),
       ),
     );

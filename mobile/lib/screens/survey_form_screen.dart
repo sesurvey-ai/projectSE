@@ -1022,7 +1022,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s4:
         return _sectionScroll(_card(4, Icons.minor_crash_outlined, '4. ความเสียหาย', _secDamage(), asset: 'assets/section_icons/s4.png'));
       case _SView.s5:
-        return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _secEvent(), asset: 'assets/section_icons/s5.png'));
+        return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. สถานที่เกิดเหตุ', _secEvent(), asset: 'assets/section_icons/s5.png'));
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
@@ -1153,7 +1153,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           _hubCard(Icons.directions_car_outlined, '2. รถประกัน', _s2Summary(), _SView.s2, _s2Filled(), asset: 'assets/section_icons/s2.png'),
           _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled(), asset: 'assets/section_icons/s3.png'),
           _hubCard(Icons.minor_crash_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled(), asset: 'assets/section_icons/s4.png'),
-          _hubCard(Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _s5Summary(), _SView.s5, _s5Filled(), asset: 'assets/section_icons/s5.png'),
+          _hubCard(Icons.car_crash_outlined, '5. สถานที่เกิดเหตุ', _s5Summary(), _SView.s5, _s5Filled(), asset: 'assets/section_icons/s5.png'),
           _hubCard(Icons.groups_2_outlined, '6. คู่กรณี', _s6Summary(), _SView.s6, _s6Filled(), asset: 'assets/section_icons/s6.png'),
         ],
       ),
@@ -1190,11 +1190,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             child: Row(children: [
               Container(width: 40, height: 40, decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28 * _iconScale(asset), height: 28 * _iconScale(asset))) : Icon(icon, size: 21, color: warn ? _warn : _primary)),
               const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
-                const SizedBox(height: 3),
-                Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: _muted)),
-              ])),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink))),
               const SizedBox(width: 8),
               _statusChipHub(missing, started),
               const Icon(Icons.chevron_right, color: _muted2),
@@ -1405,7 +1401,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final e = <String, List<String>>{};
     const titles = {
       _SView.s1: '1. เคลม & กรมธรรม์', _SView.s2: '2. รถประกัน', _SView.s3: '3. ผู้ขับขี่',
-      _SView.s4: '4. ความเสียหาย', _SView.s5: '5. เหตุการณ์ & สถานที่',
+      _SView.s4: '4. ความเสียหาย', _SView.s5: '5. สถานที่เกิดเหตุ',
     };
     for (final entry in titles.entries) {
       final m = _sectionMissing(entry.key);
@@ -1421,7 +1417,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ['2. รถประกัน', _SView.s2, Icons.directions_car_outlined],
       ['3. ผู้ขับขี่', _SView.s3, Icons.person_outline],
       ['4. ความเสียหาย', _SView.s4, Icons.minor_crash_outlined],
-      ['5. เหตุการณ์ & สถานที่', _SView.s5, Icons.car_crash_outlined],
+      ['5. สถานที่เกิดเหตุ', _SView.s5, Icons.car_crash_outlined],
       ['6. คู่กรณี', _SView.s6, Icons.groups_2_outlined],
     ];
     final errors = _collectErrors();
@@ -1519,7 +1515,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final total = errors.values.fold<int>(0, (a, b) => a + b.length);
     const titleToView = {
       '1. เคลม & กรมธรรม์': _SView.s1, '2. รถประกัน': _SView.s2, '3. ผู้ขับขี่': _SView.s3,
-      '4. ความเสียหาย': _SView.s4, '5. เหตุการณ์ & สถานที่': _SView.s5,
+      '4. ความเสียหาย': _SView.s4, '5. สถานที่เกิดเหตุ': _SView.s5,
     };
     showModalBottomSheet(
       context: context,
@@ -2106,11 +2102,23 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   Widget _dateTime(TextEditingController d, TextEditingController t, String label, {bool req = false}) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(child: _dateField(d, label, req: req, yearsAhead: 1)),
-      const SizedBox(width: 8),
-      _TimeField(t, key: ValueKey('tm_${identityHashCode(t)}')),
-    ]);
+    // label 2 อันอยู่แถวเดียว, ช่อง input อยู่แถวถัดไปให้ตรงกัน (วัน + เวลา แถวเดียวกัน)
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: _fieldLabel(label, req: req)),
+          const SizedBox(width: 8),
+          SizedBox(width: 118, child: _fieldLabel('เวลา')),
+        ]),
+        const SizedBox(height: 4),
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Expanded(child: _dateField(d, label, req: req, yearsAhead: 1, showLabel: false)),
+          const SizedBox(width: 8),
+          _TimeField(t, key: ValueKey('tm_${identityHashCode(t)}'), showLabel: false),
+        ]),
+      ]),
+    );
   }
 
   // การเรียกร้องค่าเสียหายจากคู่กรณี — 5 ตัวเลือก (ตรงกับหน้าเว็บ checker)
@@ -2392,18 +2400,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
 
   // ── filled, floating-label decoration (req=true → จุดแดง ● ท้าย label) ──
-  InputDecoration _dec(String label, {Widget? suffixIcon, String? hint, bool req = false}) {
+  InputDecoration _dec(String label, {Widget? suffixIcon, String? hint, bool req = false, bool showLabel = true}) {
     OutlineInputBorder b(Color c) => OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: c, width: 1.5));
     const labelStyle = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: _muted);
     return InputDecoration(
-      label: req
+      label: (showLabel && req)
           ? Text.rich(TextSpan(text: label, children: const [TextSpan(text: ' ●', style: TextStyle(color: Color(0xFFDC2626)))]), style: labelStyle)
           : null,
-      labelText: req ? null : label,
+      labelText: (showLabel && !req) ? label : null,
       hintText: hint,
       floatingLabelBehavior: FloatingLabelBehavior.always,
       labelStyle: labelStyle,
-      hintStyle: const TextStyle(fontSize: 14.5, color: _muted2),
+      hintStyle: const TextStyle(fontSize: 13, color: _muted2),
       filled: true,
       fillColor: _fill,
       isDense: true,
@@ -2440,14 +2448,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // ── ช่องวันที่: แตะเปิด date picker พ.ศ. + ไอคอนปฏิทิน (req → จุดแดง) ──
-  Widget _dateField(TextEditingController ctl, String label, {bool req = false, int defaultYearsAgo = 0, int yearsAhead = 5}) {
+  Widget _dateField(TextEditingController ctl, String label, {bool req = false, int defaultYearsAgo = 0, int yearsAhead = 5, bool showLabel = true}) {
     return GestureDetector(
       onTap: () => _showBuddhistDatePicker(ctl, title: label, defaultYearsAgo: defaultYearsAgo, yearsAhead: yearsAhead),
       child: AbsorbPointer(
         child: TextFormField(
           controller: ctl,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-          decoration: _dec(label, req: req, hint: 'วว/ดด/ปปปป', suffixIcon: const Icon(Icons.calendar_month_outlined, size: 18, color: _muted)),
+          decoration: _dec(label, req: req, showLabel: showLabel, hint: 'วว/ดด/ปปปป', suffixIcon: const Icon(Icons.calendar_month_outlined, size: 18, color: _muted)),
         ),
       ),
     );
@@ -2496,7 +2504,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec(label, req: req),
-      hint: Text(hint, style: const TextStyle(fontSize: 14.5, color: _muted2)),
+      hint: Text(hint, style: const TextStyle(fontSize: 13, color: _muted2)),
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
       // ปล่อย focus ของช่องข้อความที่ค้างอยู่ก่อนเปิดเมนู → พอเลือกเสร็จเมนูปิด จะไม่เด้ง focus/คีย์บอร์ดกลับช่องเดิม
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -2728,7 +2736,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _ink),
                 decoration: InputDecoration(
                   hintText: 'ชิ้นส่วน เช่น กันชนหน้า, ประตูหน้า',
-                  hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade400),
+                  hintStyle: const TextStyle(fontSize: 13, color: _muted2),
                   filled: true,
                   fillColor: Colors.white,
                   isDense: true,
@@ -2902,7 +2910,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 // ช่องเวลา: 2 กล่อง (ชม. : นาที) เก็บค่ารวมเป็น "HH:mm" ใน controller เดียว (target)
 class _TimeField extends StatefulWidget {
   final TextEditingController target;
-  const _TimeField(this.target, {super.key});
+  final bool showLabel;
+  const _TimeField(this.target, {super.key, this.showLabel = true});
   @override
   State<_TimeField> createState() => _TimeFieldState();
 }
@@ -2947,7 +2956,7 @@ class _TimeFieldState extends State<_TimeField> {
         decoration: InputDecoration(
           counterText: '',
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 13.5, color: _muted2),
+          hintStyle: const TextStyle(fontSize: 13, color: _muted2),
           filled: true,
           fillColor: _fill,
           isDense: true,
@@ -2962,6 +2971,15 @@ class _TimeFieldState extends State<_TimeField> {
 
   @override
   Widget build(BuildContext context) {
+    final boxes = Row(mainAxisSize: MainAxisSize.min, children: [
+      _box(_hh, 'ชม.'),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        child: Text(':', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _muted)),
+      ),
+      _box(_mm, 'นาที'),
+    ]);
+    if (!widget.showLabel) return boxes;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2970,14 +2988,7 @@ class _TimeFieldState extends State<_TimeField> {
           child: Text('เวลา', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
         ),
         const SizedBox(height: 6),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          _box(_hh, 'ชม.'),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
-            child: Text(':', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _muted)),
-          ),
-          _box(_mm, 'นาที'),
-        ]),
+        boxes,
       ],
     );
   }
