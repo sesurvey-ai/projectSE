@@ -14,12 +14,16 @@ class CameraCaptureScreen extends StatefulWidget {
 
 class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsBindingObserver {
   CameraController? _controller;
+  List<CameraDescription> _cams = [];
+  CameraLensDirection _lens = CameraLensDirection.back;
+  ResolutionPreset _preset = ResolutionPreset.high;
   final List<XFile> _shots = [];
   bool _busy = false;
   bool _flashOn = false;
   String? _error;
 
   static const _primary = Color(0xFF2F6BD8);
+  static const _presets = [ResolutionPreset.medium, ResolutionPreset.high, ResolutionPreset.veryHigh, ResolutionPreset.max];
 
   @override
   void initState() {
@@ -30,16 +34,69 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsB
 
   Future<void> _setup() async {
     try {
-      final cams = await availableCameras();
-      if (cams.isEmpty) { setState(() => _error = 'ไม่พบกล้องบนอุปกรณ์'); return; }
-      final back = cams.firstWhere((c) => c.lensDirection == CameraLensDirection.back, orElse: () => cams.first);
-      final ctrl = CameraController(back, ResolutionPreset.high, enableAudio: false);
+      if (_cams.isEmpty) _cams = await availableCameras();
+      if (_cams.isEmpty) { setState(() => _error = 'ไม่พบกล้องบนอุปกรณ์'); return; }
+      final cam = _cams.firstWhere((c) => c.lensDirection == _lens, orElse: () => _cams.first);
+      final ctrl = CameraController(cam, _preset, enableAudio: false);
       await ctrl.initialize();
-      try { await ctrl.setFlashMode(FlashMode.off); } catch (_) {}
+      try { await ctrl.setFlashMode(_flashOn ? FlashMode.torch : FlashMode.off); } catch (_) {}
       if (!mounted) { await ctrl.dispose(); return; }
       setState(() { _controller = ctrl; _error = null; });
     } catch (e) {
       if (mounted) setState(() => _error = 'เปิดกล้องไม่ได้');
+    }
+  }
+
+  // ตั้งค่ากล้องใหม่ (สลับหน้า/หลัง หรือเปลี่ยนความละเอียด) → dispose ตัวเดิมแล้วเปิดใหม่
+  Future<void> _applyCamera() async {
+    final old = _controller;
+    setState(() => _controller = null);
+    await old?.dispose();
+    await _setup();
+  }
+
+  bool get _hasFrontAndBack =>
+      _cams.any((c) => c.lensDirection == CameraLensDirection.front) &&
+      _cams.any((c) => c.lensDirection == CameraLensDirection.back);
+
+  Future<void> _switchCamera() async {
+    if (!_hasFrontAndBack || _controller == null) return;
+    _lens = _lens == CameraLensDirection.back ? CameraLensDirection.front : CameraLensDirection.back;
+    await _applyCamera();
+  }
+
+  Future<void> _pickResolution() async {
+    final chosen = await showModalBottomSheet<ResolutionPreset>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.all(14), child: Text('ความละเอียดรูป', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+          for (final p in _presets)
+            ListTile(
+              dense: true,
+              title: Text(_resLabel(p)),
+              trailing: p == _preset ? const Icon(Icons.check, color: _primary, size: 20) : null,
+              onTap: () => Navigator.pop(ctx, p),
+            ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (chosen != null && chosen != _preset && mounted) {
+      _preset = chosen;
+      await _applyCamera();
+    }
+  }
+
+  String _resLabel(ResolutionPreset p) {
+    switch (p) {
+      case ResolutionPreset.low: return 'ต่ำ';
+      case ResolutionPreset.medium: return 'ปานกลาง';
+      case ResolutionPreset.high: return 'สูง';
+      case ResolutionPreset.veryHigh: return 'สูงมาก';
+      case ResolutionPreset.max: return 'สูงสุด';
+      default: return 'สูง';
     }
   }
 
@@ -95,22 +152,28 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsB
         backgroundColor: Colors.black,
         body: SafeArea(
           child: Column(children: [
-            // ── แถบบน: ปิด + หมวด + แฟลช ──
+            // ── แถบบน: ปิด · ความละเอียด · หมวด · สลับกล้อง · แฟลช ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Row(children: [
                 _roundBtn(Icons.close, _done),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(999)),
+                const SizedBox(width: 8),
+                _pill(
+                  onTap: _pickResolution,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.photo_camera_outlined, size: 15, color: Colors.white70),
-                    const SizedBox(width: 6),
-                    Text(widget.captureCat, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Icon(Icons.high_quality_outlined, size: 15, color: Colors.white70),
+                    const SizedBox(width: 5),
+                    Text(_resLabel(_preset), style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600)),
                   ]),
                 ),
                 const Spacer(),
+                _pill(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.photo_camera_outlined, size: 14, color: Colors.white70),
+                  const SizedBox(width: 5),
+                  Text(widget.captureCat, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ])),
+                const Spacer(),
+                if (_hasFrontAndBack) ...[_roundBtn(Icons.cameraswitch_outlined, _switchCamera), const SizedBox(width: 8)],
                 _roundBtn(_flashOn ? Icons.flash_on : Icons.flash_off, _toggleFlash),
               ]),
             ),
@@ -194,6 +257,15 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsB
           width: 40, height: 40,
           decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
           child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      );
+
+  Widget _pill({required Widget child, VoidCallback? onTap}) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(999)),
+          child: child,
         ),
       );
 }
