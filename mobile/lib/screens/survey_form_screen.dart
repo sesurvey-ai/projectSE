@@ -940,6 +940,29 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         setState(() { _photoCat.remove(_photoPaths[index]); _photoPaths.removeAt(index); });
       });
 
+  // เลือก/เปลี่ยนหมวดของรูปแบบเร็ว (แตะป้ายหมวดบนรูป)
+  Future<void> _changePhotoCat(int index) async {
+    final path = _photoPaths[index];
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.all(14), child: Text('เลือกหมวดรูป', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink))),
+          for (final c in _imgCats)
+            ListTile(
+              dense: true,
+              title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
+              trailing: _photoCat[path] == c ? const Icon(Icons.check, color: _primary, size: 20) : null,
+              onTap: () => Navigator.pop(ctx, c),
+            ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (chosen != null) { setState(() => _photoCat[path] = chosen); _autosave(); }
+  }
+
   // ชีทรายละเอียดรูป: พรีวิวใหญ่ + เปลี่ยนหมวด + เวลา + ลบ
   void _openPhotoSheet(int index) {
     final path = _photoPaths[index];
@@ -3056,10 +3079,26 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(13), child: Container(color: _primary.withValues(alpha: 0.20)))),
                 if (selMode)
                   Positioned(top: 4, left: 4, child: Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked, size: 22, color: selected ? _primary : Colors.white)),
+                // ปุ่มเลือกหมวด (แตะเพื่อเปลี่ยนหมวดรูปเร็ว ๆ)
+                if (!selMode)
+                  Positioned(
+                    bottom: 4, left: 4, right: 4,
+                    child: GestureDetector(
+                      onTap: () => _changePhotoCat(index),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: _ink.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(6)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Flexible(child: Text(cat, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600))),
+                          const Icon(Icons.arrow_drop_down, size: 13, color: Colors.white),
+                        ]),
+                      ),
+                    ),
+                  ),
               ]),
             ),
             const SizedBox(height: 3),
-            Text(time.isEmpty ? cat : '$cat · $time', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: _muted)),
+            Text(time.isEmpty ? ' ' : time, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: _muted)),
           ]),
         );
       },
