@@ -1020,7 +1020,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s3:
         return _sectionScroll(_card(3, Icons.person_outline, '3. ผู้ขับขี่รถประกัน', _secDriver()));
       case _SView.s4:
-        return _sectionScroll(_card(4, Icons.report_problem_outlined, '4. ความเสียหาย', _secDamage()));
+        return _sectionScroll(_card(4, Icons.minor_crash_outlined, '4. ความเสียหาย', _secDamage()));
       case _SView.s5:
         return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _secEvent()));
       case _SView.s6:
@@ -1152,7 +1152,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           _hubCard(Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _s1Summary(), _SView.s1, _s1Filled()),
           _hubCard(Icons.directions_car_outlined, '2. รถประกัน', _s2Summary(), _SView.s2, _s2Filled()),
           _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled()),
-          _hubCard(Icons.report_problem_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled()),
+          _hubCard(Icons.minor_crash_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled()),
           _hubCard(Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _s5Summary(), _SView.s5, _s5Filled()),
           _hubCard(Icons.groups_2_outlined, '6. คู่กรณี', _s6Summary(), _SView.s6, _s6Filled()),
         ],
@@ -1410,7 +1410,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ['1. เคลม & กรมธรรม์', _SView.s1, Icons.verified_user_outlined],
       ['2. รถประกัน', _SView.s2, Icons.directions_car_outlined],
       ['3. ผู้ขับขี่', _SView.s3, Icons.person_outline],
-      ['4. ความเสียหาย', _SView.s4, Icons.report_problem_outlined],
+      ['4. ความเสียหาย', _SView.s4, Icons.minor_crash_outlined],
       ['5. เหตุการณ์ & สถานที่', _SView.s5, Icons.car_crash_outlined],
       ['6. คู่กรณี', _SView.s6, Icons.groups_2_outlined],
     ];
