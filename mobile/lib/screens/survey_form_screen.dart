@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
 import '../config/api_config.dart';
 import '../widgets/car_damage_diagram.dart';
-import '../data/survey_master.dart' show cidChecksum;
+import '../data/survey_master.dart' show cidChecksum, kWounds;
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
 import 'survey/property_editor.dart';
@@ -1811,6 +1811,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     required String Function(Map<String, dynamic> m) lineSub,
     required void Function(int) onTap,
     required void Function(int) onDelete,
+    Widget? Function(Map<String, dynamic> m)? badgeBuilder,
     List<Widget> footer = const [],
     String? asset,
   }) {
@@ -1834,7 +1835,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: _line)),
             child: Center(child: Text(emptyHint, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: _muted))),
           ),
-        for (int i = 0; i < items.length; i++) _recordCard(lineTitle(items[i], i), lineSub(items[i]), () => onTap(i), () => onDelete(i)),
+        for (int i = 0; i < items.length; i++) _recordCard(lineTitle(items[i], i), lineSub(items[i]), () => onTap(i), () => onDelete(i), badge: badgeBuilder?.call(items[i])),
         const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
@@ -1850,7 +1851,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _recordCard(String title, String sub, VoidCallback onTap, VoidCallback onDelete) {
+  Widget _recordCard(String title, String sub, VoidCallback onTap, VoidCallback onDelete, {Widget? badge}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -1864,7 +1865,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: _line)),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _ink)),
+                Row(children: [
+                  Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _ink))),
+                  if (badge != null) ...[const SizedBox(width: 8), badge],
+                ]),
                 const SizedBox(height: 2),
                 Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: _muted)),
               ])),
@@ -1874,6 +1878,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // แบดจ์สีระดับความรุนแรง (จาก wound_level ที่เลือกในหน้า editor)
+  Widget? _woundBadge(String? wound) {
+    final w = (wound ?? '').trim();
+    if (w.isEmpty) return null;
+    final match = kWounds.where((e) => e['label'] == w);
+    final color = match.isNotEmpty ? Color(match.first['color'] as int) : _muted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+      child: Text(w, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
     );
   }
 
@@ -1944,11 +1961,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         onAdd: _addInjured,
         onTap: _editInjured,
         onDelete: (i) => _confirmDelete('ผู้บาดเจ็บคนที่ ${i + 1}', () => setState(() => _injured.removeAt(i))),
+        badgeBuilder: (m) => _woundBadge((m['wound_level'] ?? '').toString()),
         lineTitle: (m, i) => '${i + 1}. ${(m['name'] ?? '').toString().trim().isNotEmpty ? m['name'] : 'ไม่ระบุชื่อ'}',
         lineSub: (m) {
           final t = (m['person_type'] ?? '').toString().trim();
-          final w = (m['wound_level'] ?? '').toString().trim();
-          return [if (t.isNotEmpty) t, if (w.isNotEmpty) w].join(' · ');
+          final reg = (m['car_reg'] ?? '').toString().trim();
+          final hosp = (m['hospital'] ?? '').toString().trim();
+          return [if (t.isNotEmpty) t, if (reg.isNotEmpty) reg, if (hosp.isNotEmpty) hosp].join(' · ');
         },
       );
 
