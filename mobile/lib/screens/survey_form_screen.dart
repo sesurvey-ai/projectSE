@@ -1160,6 +1160,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
+  // ไอคอนหมวด 4-6 เป็นรูปแนวกว้าง (เตี้ย) เต็มความกว้าง canvas อยู่แล้ว
+  // เลยขยายเป็น asset ไม่ได้ ต้องเรนเดอร์กล่องใหญ่ขึ้นนิดหน่อยให้ดูสมส่วนกับ 1-3
+  double _iconScale(String? asset) {
+    if (asset == null) return 1;
+    if (asset.endsWith('s6.png')) return 1.20;
+    if (asset.endsWith('s4.png')) return 1.18;
+    if (asset.endsWith('s5.png')) return 1.10;
+    return 1;
+  }
+
   Widget _hubCard(IconData icon, String title, String summary, _SView target, bool started, {bool warn = false, String? asset}) {
     final missing = _sectionMissing(target);
     return Padding(
@@ -1178,7 +1188,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               boxShadow: [BoxShadow(color: const Color(0xFF141E3C).withValues(alpha: 0.035), blurRadius: 20, offset: const Offset(0, 6))],
             ),
             child: Row(children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28, height: 28)) : Icon(icon, size: 21, color: warn ? _warn : _primary)),
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28 * _iconScale(asset), height: 28 * _iconScale(asset))) : Icon(icon, size: 21, color: warn ? _warn : _primary)),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
@@ -1815,7 +1825,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(11)), child: asset != null ? Center(child: Image.asset(asset, width: 24, height: 24)) : Icon(icon, size: 19, color: _primary)),
+          Container(width: 36, height: 36, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(11)), child: asset != null ? Center(child: Image.asset(asset, width: 24 * _iconScale(asset), height: 24 * _iconScale(asset))) : Icon(icon, size: 19, color: _primary)),
           const SizedBox(width: 10),
           Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink))),
           Container(
@@ -2356,7 +2366,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(10)),
-                child: asset != null ? Center(child: Image.asset(asset, width: 22, height: 22)) : Icon(icon, size: 18, color: warn ? _warn : _primary),
+                child: asset != null ? Center(child: Image.asset(asset, width: 22 * _iconScale(asset), height: 22 * _iconScale(asset))) : Icon(icon, size: 18, color: warn ? _warn : _primary),
               ),
               const SizedBox(width: 11),
               Expanded(child: Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: _ink))),
