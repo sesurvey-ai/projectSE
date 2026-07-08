@@ -55,7 +55,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     'เอกสาร': 'ใบขับขี่ + เอกสารประกอบ',
     'แผนที่': 'แผนผัง/แผนที่จุดเกิดเหตุ',
   };
-  String _imgFilter = 'ทั้งหมด';   // ชิปกรองหมวดรูป
+  String _captureCat = 'รถประกัน'; // หมวดที่รูปถ่ายใหม่จะเข้า (เลือกก่อนถ่าย)
+  String _imgFilter = 'รถประกัน';  // ชิปกรอง/มุมมองหมวดรูปที่กำลังดู
   Set<int>? _imgSel;               // โหมดเลือกหลายรูป (null = ปิด)
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
@@ -788,7 +789,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final caseFolder = await _getCaseFolder();
       final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}.jpg';
       await File(photo.path).copy(localPath);
-      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = _imgFilter != 'ทั้งหมด' ? _imgFilter : 'รถประกัน'; });
+      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = _captureCat; });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
     }
@@ -839,35 +840,49 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // ชิปกรองหมวดรูป (ทั้งหมด + 6 หมวด) พร้อมจำนวน
-  Widget _imgFilterChips() {
-    final cats = ['ทั้งหมด', ..._imgCats];
-    return SizedBox(
-      height: 34,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cats.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final c = cats[i];
-          final n = c == 'ทั้งหมด' ? _photoPaths.length : _photoCountOf(c);
-          final sel = c == _imgFilter;
-          return GestureDetector(
-            onTap: () => setState(() => _imgFilter = c),
-            child: Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: sel ? _primary : Colors.white,
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: sel ? _primary : _lineStrong, width: 1.4),
+  // แถบ "เลือกหมวดก่อนถ่าย" — เลือกหมวด แล้วถ่ายรูปกี่รูปก็ได้เข้าหมวดนั้น จนกว่าจะเปลี่ยน
+  // แตะหมวด = ตั้งหมวดที่จะถ่าย + กรองมุมมองไปหมวดนั้น / "ทั้งหมด" = ดูรวมทุกหมวด (หมวดที่จะถ่ายคงเดิม)
+  Widget _captureBar() {
+    final cats = [..._imgCats, 'ทั้งหมด'];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.photo_camera_outlined, size: 15, color: _muted),
+        const SizedBox(width: 5),
+        const Text('ถ่ายเข้าหมวด: ', style: TextStyle(fontSize: 12, color: _muted)),
+        Text(_captureCat, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _primary)),
+      ]),
+      const SizedBox(height: 7),
+      SizedBox(
+        height: 34,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: cats.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, i) {
+            final c = cats[i];
+            final isAll = c == 'ทั้งหมด';
+            final n = isAll ? _photoPaths.length : _photoCountOf(c);
+            final sel = c == _imgFilter;
+            final isCapture = !isAll && c == _captureCat;
+            return GestureDetector(
+              onTap: () => setState(() {
+                if (isAll) { _imgFilter = 'ทั้งหมด'; } else { _imgFilter = c; _captureCat = c; }
+              }),
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: sel ? _primary : Colors.white,
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: sel ? _primary : (isCapture ? _primary : _lineStrong), width: 1.4),
+                ),
+                child: Text('$c ($n)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: sel ? Colors.white : (isCapture ? _primary : _muted))),
               ),
-              child: Text('$c ($n)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: sel ? Colors.white : _muted)),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
-    );
+    ]);
   }
 
   // แถบเครื่องมือ: ปุ่มเลือกหลายรูป + แถบลบเมื่ออยู่โหมดเลือก
@@ -1203,7 +1218,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [
           _imgSubline(),
           _imgChecklist(),
-          if (_photoPaths.isNotEmpty) _imgFilterChips(),
+          _captureBar(),
           if (_photoPaths.isNotEmpty) _imgToolbar(),
           _buildPhotoGrid(),
         ]));
