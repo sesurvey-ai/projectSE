@@ -197,7 +197,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: item[group] == e.key ? (colors[e.key] ?? _primary) : Colors.white,
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(11),
                         border: Border.all(color: item[group] == e.key ? (colors[e.key] ?? _primary) : _lineStrong, width: 1.5),
                       ),
                       child: Text(e.value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: item[group] == e.key ? Colors.white : _muted)),
@@ -1285,7 +1285,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               child: Container(
                 alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(color: active ? _primary : Colors.white, borderRadius: BorderRadius.circular(999), border: Border.all(color: active ? _primary : _line)),
+                decoration: BoxDecoration(color: active ? _primary : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: active ? _primary : _line)),
                 child: Text(tabs[i][0] as String, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: active ? Colors.white : _muted)),
               ),
             );
@@ -2484,7 +2484,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         alignment: grow ? Alignment.center : null,
         decoration: BoxDecoration(
           color: selected ? _primary : Colors.white,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(11),
           border: Border.all(color: selected ? _primary : _lineStrong, width: 1.5),
         ),
         child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: selected ? Colors.white : _muted)),
@@ -2759,7 +2759,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       onTap: () => _updateDamageItem(i, 'pos', selected ? '' : pos),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: selected ? _primary : Colors.white, borderRadius: BorderRadius.circular(999), border: Border.all(color: selected ? _primary : _lineStrong)),
+                        decoration: BoxDecoration(color: selected ? _primary : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? _primary : _lineStrong)),
                         child: Text(labels[pos]!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: selected ? Colors.white : _muted)),
                       ),
                     ),
@@ -2779,7 +2779,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       onTap: () => _updateDamageItem(i, 'level', selected ? '' : lv),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: selected ? colors[lv] : Colors.white, borderRadius: BorderRadius.circular(999), border: Border.all(color: selected ? colors[lv]! : _lineStrong)),
+                        decoration: BoxDecoration(color: selected ? colors[lv] : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? colors[lv]! : _lineStrong)),
                         child: Text(labels[lv]!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: selected ? Colors.white : colors[lv])),
                       ),
                     ),

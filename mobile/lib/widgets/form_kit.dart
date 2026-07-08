@@ -176,7 +176,7 @@ Widget kChip(String label, bool selected, VoidCallback onTap, {Color? color, boo
       alignment: grow ? Alignment.center : null,
       decoration: BoxDecoration(
         color: selected ? c : Colors.white,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(color: selected ? c : kLineStrong, width: 1.5),
       ),
       child: Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: selected ? Colors.white : (color ?? kMuted))),
