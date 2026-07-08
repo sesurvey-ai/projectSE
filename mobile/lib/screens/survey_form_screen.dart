@@ -1596,9 +1596,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── เนื้อหารายหมวด (reuse ฟิลด์เดิมทั้งหมด) ──
   List<Widget> _secClaimPolicy() => [
         _insurerLockField(),
-        _fieldLabel('ประเภทเคลม'),
+        _fieldLabel('ประเภทเคลม', req: true),
         _claimTypeChips(),
-        _fieldLabel('ระดับความเสียหาย'),
+        _fieldLabel('ระดับความเสียหาย', req: true),
         Row(children: [
           _chip('หนัก', _damageLevel == 'หนัก', () => setState(() => _damageLevel = 'หนัก'), grow: true),
           const SizedBox(width: 10),
@@ -2141,10 +2141,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // ปุ่ม capture (สแกน/GPS) เต็มความกว้าง มีสถานะ busy
 
-  // ── topbar (sticky header: เลขเคลม + บริษัทประกัน + สถานะ; มีปุ่มย้อนกลับเมื่ออยู่ในหมวด) ──
+  // ── topbar (sticky header: เลขเคลม + สถานะ; มีปุ่มย้อนกลับเมื่ออยู่ในหมวด) ──
   PreferredSizeWidget _topbar() {
     final claimNo = _claimNoCtl.text.trim();
-    final ins = _shortInsurer;
     final inSection = _view != _SView.hub;
     return AppBar(
       backgroundColor: Colors.white,
@@ -2161,14 +2160,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('งานสำรวจ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink)),
-          Row(children: [
-            if (claimNo.isNotEmpty)
-              Text('เคลม #$claimNo', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _muted)),
-            if (claimNo.isNotEmpty && ins.isNotEmpty)
-              const Text('  ·  ', style: TextStyle(fontSize: 11, color: _muted2)),
-            if (ins.isNotEmpty)
-              Flexible(child: Text(ins, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _primary))),
-          ]),
+          if (claimNo.isNotEmpty)
+            Text('เคลม #$claimNo', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _muted)),
         ],
       ),
       actions: [
