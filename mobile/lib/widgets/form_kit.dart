@@ -205,7 +205,8 @@ class KPickerField extends StatelessWidget {
       child: InputDecorator(
         decoration: kDec(label, req: req, suffixIcon: const Icon(Icons.expand_more, color: kMuted, size: 20)),
         child: Text(
-          value.isNotEmpty ? value : hint,
+          // แสดง placeholder เฉพาะช่องบังคับ; ช่องไม่บังคับปล่อยว่าง (label ลอยด้านบนพออยู่แล้ว)
+          value.isNotEmpty ? value : (req ? hint : ''),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: value.isNotEmpty ? 15 : 13, fontWeight: FontWeight.w500, color: value.isNotEmpty ? kInk : kMuted2),

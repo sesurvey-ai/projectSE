@@ -1645,22 +1645,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // ประเภทรถ = dropdown (ตัวเลือก + ค่าตาม ddlCType จริง)
   Widget _carTypeField() {
+    const labels = {'0': '-- ระบุ --', 'A': 'เก๋งเอเชีย', 'E': 'เก๋งยุโรป', 'M': 'รถจักรยานยนต์', 'O': 'รถอื่นๆ', 'T': 'กระบะ', 'V': 'รถตู้', 'W': 'รถบรรทุก'};
     return DropdownButtonFormField<String>(
-      initialValue: const ['0', 'A', 'E', 'M', 'O', 'T', 'V', 'W'].contains(_carType) ? _carType : '0',
+      initialValue: labels.containsKey(_carType) ? _carType : '0',
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec('ประเภทรถ', req: true),
-      items: const [
-        DropdownMenuItem(value: '0', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'A', child: Text('เก๋งเอเชีย', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'E', child: Text('เก๋งยุโรป', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'M', child: Text('รถจักรยานยนต์', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'O', child: Text('รถอื่นๆ', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'T', child: Text('กระบะ', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'V', child: Text('รถตู้', style: TextStyle(fontSize: 14.5))),
-        DropdownMenuItem(value: 'W', child: Text('รถบรรทุก', style: TextStyle(fontSize: 14.5))),
-      ],
+      // ยังไม่เลือก ('0') → โชว์ "-- ระบุ --" สีเทาจางแบบ placeholder (บังคับกรอก)
+      selectedItemBuilder: (context) => labels.entries
+          .map((e) => Align(alignment: Alignment.centerLeft, child: Text(e.value, style: TextStyle(fontSize: e.key == '0' ? 13 : 15, color: e.key == '0' ? _muted2 : _ink))))
+          .toList(),
+      items: labels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value, style: const TextStyle(fontSize: 14.5)))).toList(),
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _carType = v ?? '0'),
     );
@@ -1793,7 +1789,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec('ฝ่ายประมาท'),
-      hint: const Text('เลือกฝ่ายประมาท', style: TextStyle(fontSize: 14.5, color: _muted2)),
+      // ไม่บังคับ → ไม่มี placeholder (ว่างเปล่าเมื่อยังไม่เลือก)
       items: keys.map((k) => DropdownMenuItem(value: k, child: Text(opts[k]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: (v) => setState(() => _accFault = v ?? _accFault),
@@ -2455,7 +2451,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         child: TextFormField(
           controller: ctl,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-          decoration: _dec(label, req: req, showLabel: showLabel, hint: 'วว/ดด/ปปปป', suffixIcon: const Icon(Icons.calendar_month_outlined, size: 18, color: _muted)),
+          decoration: _dec(label, req: req, showLabel: showLabel, hint: req ? 'วว/ดด/ปปปป' : null, suffixIcon: const Icon(Icons.calendar_month_outlined, size: 18, color: _muted)),
         ),
       ),
     );
@@ -2504,7 +2500,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec(label, req: req),
-      hint: Text(hint, style: const TextStyle(fontSize: 13, color: _muted2)),
+      hint: req ? Text(hint, style: const TextStyle(fontSize: 13, color: _muted2)) : null,
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
       // ปล่อย focus ของช่องข้อความที่ค้างอยู่ก่อนเปิดเมนู → พอเลือกเสร็จเมนูปิด จะไม่เด้ง focus/คีย์บอร์ดกลับช่องเดิม
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -2597,6 +2593,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               enabledBorder: b(Colors.transparent),
               focusedBorder: b(_primary),
             ),
+            // ยังไม่เลือก ('0') → "-- ระบุ --" สีเทาจางแบบ placeholder (บังคับกรอก)
+            selectedItemBuilder: (context) => items.map((e) => Align(alignment: Alignment.centerLeft, child: Text(labels[e]!, style: TextStyle(fontSize: 14.5, color: e == '0' ? _muted2 : _ink), overflow: TextOverflow.ellipsis))).toList(),
             items: items.map((e) => DropdownMenuItem(value: e, child: Text(labels[e]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
             onChanged: (v) => setState(() => _driverTitle = v ?? '0'),
