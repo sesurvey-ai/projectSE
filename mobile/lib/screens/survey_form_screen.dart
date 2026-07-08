@@ -1167,7 +1167,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     if (asset.endsWith('s6.png')) return 1.20;
     if (asset.endsWith('s4.png')) return 1.18;
     if (asset.endsWith('s5.png')) return 1.10;
-    return 1;
+    return 0.90; // s1/s2/s3 — ลดลงนิดหน่อยให้เข้าชุดกับหมวด 4-6
   }
 
   Widget _hubCard(IconData icon, String title, String summary, _SView target, bool started, {bool warn = false, String? asset}) {
