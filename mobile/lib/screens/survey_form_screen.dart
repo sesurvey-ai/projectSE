@@ -2499,7 +2499,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec(label, req: req),
       hint: req ? Text(hint, style: const TextStyle(fontSize: 13, color: _muted2)) : null,
-      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
+      items: [
+        // ตัวเลือกบนสุด = ล้างค่ากลับเป็น placeholder (dropdown ไม่งั้นล้างค่าเองไม่ได้)
+        DropdownMenuItem(value: '', child: Text(hint, style: const TextStyle(fontSize: 14.5, color: _muted2))),
+        ...items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))),
+      ],
       // ปล่อย focus ของช่องข้อความที่ค้างอยู่ก่อนเปิดเมนู → พอเลือกเสร็จเมนูปิด จะไม่เด้ง focus/คีย์บอร์ดกลับช่องเดิม
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onChanged: onChanged,
