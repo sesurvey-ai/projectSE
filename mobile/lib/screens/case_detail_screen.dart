@@ -185,7 +185,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       case 'assigned':
         return Colors.orange;
       case 'surveyed':
-        return Colors.blue;
+        return const Color(0xFF2F6BD8);
       case 'reviewed':
         return Colors.green;
       case 'pending':
@@ -514,7 +514,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                         icon: const Icon(Icons.assignment),
                         label: const Text('เริ่มสำรวจ', style: TextStyle(fontSize: 16)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: const Color(0xFF2F6BD8),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
@@ -544,9 +544,9 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: const Color(0xFF0174BE)),
+                Icon(icon, size: 18, color: const Color(0xFF2F6BD8)),
                 const SizedBox(width: 8),
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2F6BD8))),
                 const Spacer(),
                 Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey),
               ],
@@ -572,11 +572,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0174BE), Color(0xFF4988C4)],
-              ),
-            ),
+            decoration: const BoxDecoration(color: Color(0xFF2F6BD8)),
             child: Row(
               children: [
                 const Icon(Icons.description, color: Colors.white, size: 20),
@@ -690,7 +686,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('เอกสารใบแจ้งเคลม', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+              const Text('เอกสารใบแจ้งเคลม', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2F6BD8))),
               const SizedBox(height: 8),
               ...images.map((img) {
                 final filePath = img['file_path']?.toString() ?? '';
@@ -900,7 +896,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('ข้อมูลผู้ขับขี่', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+          const Text('ข้อมูลผู้ขับขี่', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2F6BD8))),
           const SizedBox(height: 10),
           // ปุ่มสแกน
           Padding(
@@ -914,8 +910,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                   icon: const Icon(Icons.credit_card, size: 18),
                   label: const Text('สแกนบัตรประชาชน', style: TextStyle(fontSize: 13)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0174BE),
-                    side: const BorderSide(color: Color(0xFF0174BE)),
+                    foregroundColor: const Color(0xFF2F6BD8),
+                    side: const BorderSide(color: Color(0xFF2F6BD8)),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -930,8 +926,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                   icon: const Icon(Icons.badge, size: 18),
                   label: const Text('สแกนใบขับขี่', style: TextStyle(fontSize: 13)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0174BE),
-                    side: const BorderSide(color: Color(0xFF0174BE)),
+                    foregroundColor: const Color(0xFF2F6BD8),
+                    side: const BorderSide(color: Color(0xFF2F6BD8)),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -1060,7 +1056,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0174BE))),
+          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2F6BD8))),
           const SizedBox(height: 8),
           ...rows,
         ],
