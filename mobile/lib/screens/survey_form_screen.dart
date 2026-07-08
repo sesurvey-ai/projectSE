@@ -654,7 +654,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _accCauseCtl = TextEditingController();
   final _accDamageTypeCtl = TextEditingController();
   final _accDetailCtl = TextEditingController();
-  String _accFault = 'ฝ่ายผิด';
+  String _accFault = '';
   final _accReporterCtl = TextEditingController();
   final _accSurveyorCtl = TextEditingController();
   final _accCustomerReportDateCtl = TextEditingController();
@@ -673,7 +673,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _accPoliceStationCtl = TextEditingController();
   final _accPoliceCommentCtl = TextEditingController();
   final _accAlcoholTestCtl = TextEditingController();
-  String _accFollowup = 'ไม่มีการนัดหมาย';
+  String _accFollowup = '';
   final _accFollowupCountCtl = TextEditingController();
   final _accFollowupDetailCtl = TextEditingController();
   final _accFollowupDateCtl = TextEditingController();
@@ -1787,10 +1787,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec('ฝ่ายประมาท'),
-      // ไม่บังคับ → ไม่มี placeholder (ว่างเปล่าเมื่อยังไม่เลือก)
-      items: keys.map((k) => DropdownMenuItem(value: k, child: Text(opts[k]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
+      hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: _muted2)),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5, color: _muted2))),
+        ...keys.map((k) => DropdownMenuItem(value: k, child: Text(opts[k]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))),
+      ],
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) => setState(() => _accFault = v ?? _accFault),
+      onChanged: (v) => setState(() => _accFault = v ?? ''),
     );
   }
 
@@ -2514,18 +2517,21 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _followupDropdown() {
     const stored = ['ไม่มีการนัดหมาย', 'รอการนัดหมาย', 'มีการนัดหมาย'];
     return DropdownButtonFormField<String>(
-      initialValue: stored.contains(_accFollowup) ? _accFollowup : 'ไม่มีการนัดหมาย',
+      key: ValueKey('fu_$_accFollowup'),
+      initialValue: stored.contains(_accFollowup) ? _accFollowup : null,
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec('การติดตามงาน'),
+      hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: _muted2)),
       items: const [
+        DropdownMenuItem(value: '', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5, color: _muted2))),
         DropdownMenuItem(value: 'ไม่มีการนัดหมาย', child: Text('ไม่มีนัดหมาย', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'รอการนัดหมาย', child: Text('รอการนัดหมาย', style: TextStyle(fontSize: 14.5))),
         DropdownMenuItem(value: 'มีการนัดหมาย', child: Text('มีการนัดหมาย', style: TextStyle(fontSize: 14.5))),
       ],
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) => setState(() => _accFollowup = v ?? 'ไม่มีการนัดหมาย'),
+      onChanged: (v) => setState(() => _accFollowup = v ?? ''),
     );
   }
 
