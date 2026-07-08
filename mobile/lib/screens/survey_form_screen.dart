@@ -46,6 +46,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final List<String> _photoPaths = [];
   final Map<String, String> _photoCat = {}; // path → หมวดรูป (Phase 5)
   static const List<String> _imgCats = ['รถประกัน', 'คู่กรณี', 'ทรัพย์สิน', 'ผู้บาดเจ็บ', 'เอกสาร', 'แผนที่'];
+  // เหตุผลกำกับแต่ละหมวด (แนะนำว่าควรถ่ายอะไร) — จาก prototype IMG_REQS
+  static const Map<String, String> _imgWhy = {
+    'รถประกัน': 'รอบคัน 4 มุม + ทะเบียน + เลขตัวถัง + จุดเสียหาย',
+    'คู่กรณี': 'รอบคัน + ทะเบียน + จุดเสียหาย ต่อคู่กรณี 1 คัน',
+    'ทรัพย์สิน': 'ต่อทรัพย์สินเสียหาย 1 รายการ',
+    'ผู้บาดเจ็บ': 'ต่อผู้บาดเจ็บ 1 คน อย่างน้อย 2 รูป',
+    'เอกสาร': 'ใบขับขี่ + เอกสารประกอบ',
+    'แผนที่': 'แผนผัง/แผนที่จุดเกิดเหตุ',
+  };
+  String _imgFilter = 'ทั้งหมด';   // ชิปกรองหมวดรูป
+  Set<int>? _imgSel;               // โหมดเลือกหลายรูป (null = ปิด)
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
   List<Map<String, dynamic>> _caseImages = [];
@@ -777,39 +788,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final caseFolder = await _getCaseFolder();
       final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}.jpg';
       await File(photo.path).copy(localPath);
-      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = 'รถประกัน'; });
+      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = _imgFilter != 'ทั้งหมด' ? _imgFilter : 'รถประกัน'; });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
     }
   }
 
-  void _removePhoto(int index) => setState(() {
-        _photoCat.remove(_photoPaths[index]);
-        _photoPaths.removeAt(index);
-      });
-
-  // เปลี่ยนหมวดของรูป (Phase 5)
-  void _changePhotoCat(int index) async {
-    final path = _photoPaths[index];
-    final chosen = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Padding(padding: EdgeInsets.all(14), child: Text('เลือกหมวดรูป', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink))),
-          for (final c in _imgCats)
-            ListTile(
-              dense: true,
-              title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
-              trailing: _photoCat[path] == c ? const Icon(Icons.check, color: _primary, size: 20) : null,
-              onTap: () => Navigator.pop(ctx, c),
-            ),
-          const SizedBox(height: 8),
-        ]),
-      ),
-    );
-    if (chosen != null) setState(() => _photoCat[path] = chosen);
-  }
 
   Map<String, int> _photoMin() => {
         'รถประกัน': 8,
@@ -821,31 +805,198 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       };
   int _photoCountOf(String cat) => _photoCat.values.where((c) => c == cat).length;
 
-  // การ์ดเช็คลิสต์ความครบของรูปตามหมวด (เฉพาะหมวดที่ min>0)
+  // sub ใต้หัวข้อ "รูปภาพ"
+  Widget _imgSubline() => const Padding(
+        padding: EdgeInsets.only(top: 2, bottom: 2),
+        child: Text('ถ่ายเข้าเคสโดยตรง · แตะรูปเพื่อดูรายละเอียด/จัดหมวด', style: TextStyle(fontSize: 11.5, color: _muted)),
+      );
+
+  // การ์ดสรุปจำนวนรูปตามหมวด + เหตุผลแนะนำว่าควรถ่ายอะไร (โชว์หมวดที่ควรมี หรือมีรูปแล้ว)
   Widget _imgChecklist() {
     final min = _photoMin();
-    final rows = min.entries.where((e) => e.value > 0).toList();
+    final rows = _imgCats.where((c) => (min[c] ?? 0) > 0 || _photoCountOf(c) > 0).toList();
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('เงื่อนไขจำนวนรูปภาพ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
-        const SizedBox(height: 8),
-        for (final e in rows) ...[
+        const Text('จำนวนรูปภาพแต่ละหมวด', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+        const SizedBox(height: 6),
+        for (final c in rows)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(children: [
-              Icon(_photoCountOf(e.key) >= e.value ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 15, color: _photoCountOf(e.key) >= e.value ? _ok : _muted2),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _ink)),
+                if (_imgWhy[c] != null)
+                  Padding(padding: const EdgeInsets.only(top: 1), child: Text(_imgWhy[c]!, style: const TextStyle(fontSize: 10.5, color: _muted2))),
+              ])),
               const SizedBox(width: 8),
-              Expanded(child: Text(e.key, style: const TextStyle(fontSize: 12.5, color: _ink))),
-              Text('${_photoCountOf(e.key)}/${e.value}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _photoCountOf(e.key) >= e.value ? _ok : _warn)),
+              Text('${_photoCountOf(c)} รูป',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _photoCountOf(c) > 0 ? _primary : _muted2)),
             ]),
           ),
-        ],
       ]),
+    );
+  }
+
+  // ชิปกรองหมวดรูป (ทั้งหมด + 6 หมวด) พร้อมจำนวน
+  Widget _imgFilterChips() {
+    final cats = ['ทั้งหมด', ..._imgCats];
+    return SizedBox(
+      height: 34,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: cats.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final c = cats[i];
+          final n = c == 'ทั้งหมด' ? _photoPaths.length : _photoCountOf(c);
+          final sel = c == _imgFilter;
+          return GestureDetector(
+            onTap: () => setState(() => _imgFilter = c),
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: sel ? _primary : Colors.white,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: sel ? _primary : _lineStrong, width: 1.4),
+              ),
+              child: Text('$c ($n)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: sel ? Colors.white : _muted)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // แถบเครื่องมือ: ปุ่มเลือกหลายรูป + แถบลบเมื่ออยู่โหมดเลือก
+  Widget _imgToolbar() {
+    final sel = _imgSel;
+    return Column(children: [
+      Row(children: [
+        const Spacer(),
+        TextButton.icon(
+          onPressed: () => setState(() => _imgSel = sel == null ? <int>{} : null),
+          icon: Icon(sel == null ? Icons.checklist_rtl : Icons.close, size: 18),
+          label: Text(sel == null ? 'เลือก' : 'ยกเลิก', style: const TextStyle(fontWeight: FontWeight.w600)),
+          style: TextButton.styleFrom(foregroundColor: _primary, padding: const EdgeInsets.symmetric(horizontal: 8)),
+        ),
+      ]),
+      if (sel != null)
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.fromLTRB(12, 4, 6, 4),
+          decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(11)),
+          child: Row(children: [
+            Text('เลือก ${sel.length} รูป', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ink)),
+            const Spacer(),
+            TextButton(onPressed: _imgSelectAllVisible, child: const Text('ทั้งหมด')),
+            TextButton(
+              onPressed: sel.isEmpty ? null : _imgDeleteSelected,
+              child: Text('ลบ', style: TextStyle(color: sel.isEmpty ? _muted2 : Colors.red, fontWeight: FontWeight.w700)),
+            ),
+          ]),
+        ),
+    ]);
+  }
+
+  List<int> _visiblePhotoIndices() {
+    final out = <int>[];
+    for (var i = 0; i < _photoPaths.length; i++) {
+      final c = _photoCat[_photoPaths[i]] ?? 'รถประกัน';
+      if (_imgFilter == 'ทั้งหมด' || c == _imgFilter) out.add(i);
+    }
+    return out;
+  }
+
+  void _imgSelectAllVisible() => setState(() => _imgSel = {..._visiblePhotoIndices()});
+
+  void _imgDeleteSelected() {
+    final sel = _imgSel;
+    if (sel == null || sel.isEmpty) return;
+    _confirmDelete('${sel.length} รูปที่เลือก', () {
+      final idx = sel.toList()..sort((a, b) => b.compareTo(a));
+      setState(() {
+        for (final i in idx) {
+          if (i >= 0 && i < _photoPaths.length) { _photoCat.remove(_photoPaths[i]); _photoPaths.removeAt(i); }
+        }
+        _imgSel = null;
+      });
+    });
+  }
+
+  DateTime? _photoStamp(String path) {
+    try { return File(path).statSync().modified; } catch (_) { return null; }
+  }
+
+  String _photoTimeLabel(String path) {
+    final dt = _photoStamp(path);
+    if (dt == null) return '';
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _confirmDeletePhoto(int index) => _confirmDelete('รูป', () {
+        setState(() { _photoCat.remove(_photoPaths[index]); _photoPaths.removeAt(index); });
+      });
+
+  // ชีทรายละเอียดรูป: พรีวิวใหญ่ + เปลี่ยนหมวด + เวลา + ลบ
+  void _openPhotoSheet(int index) {
+    final path = _photoPaths[index];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        final cat = _photoCat[path] ?? 'รถประกัน';
+        final dt = _photoStamp(path);
+        final when = dt == null
+            ? '-'
+            : '${dt.day}/${dt.month}/${dt.year + 543} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} น.';
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 12),
+              ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(File(path), width: double.infinity, height: 220, fit: BoxFit.cover)),
+              const SizedBox(height: 14),
+              const Text('หมวดรูป', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final c in _imgCats)
+                  _chip(c, c == cat, () { setState(() => _photoCat[path] = c); setSheet(() {}); _autosave(); }),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                const Icon(Icons.schedule, size: 15, color: _muted2),
+                const SizedBox(width: 6),
+                Text('ถ่ายเมื่อ $when', style: const TextStyle(fontSize: 12, color: _muted)),
+              ]),
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () { Navigator.pop(ctx); _confirmDeletePhoto(index); },
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('ลบรูปนี้'),
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Color(0xFFF0C0C0)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: FilledButton.styleFrom(backgroundColor: _primary, padding: const EdgeInsets.symmetric(vertical: 12)),
+                    child: const Text('ปิด'),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+        );
+      }),
     );
   }
 
@@ -1026,7 +1177,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
-        return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [_imgChecklist(), _buildPhotoGrid()]));
+        return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [
+          _imgSubline(),
+          _imgChecklist(),
+          if (_photoPaths.isNotEmpty) _imgFilterChips(),
+          if (_photoPaths.isNotEmpty) _imgToolbar(),
+          _buildPhotoGrid(),
+        ]));
       case _SView.notes:
         return _sectionScroll(_card(6, Icons.sticky_note_2_outlined, 'หมายเหตุ', [_txt(_notesCtl, 'หมายเหตุเพิ่มเติม', maxLines: 3)]));
       case _SView.injured:
@@ -2835,51 +2992,76 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _buildPhotoGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10),
-      itemCount: _photoPaths.length + 1,
-      itemBuilder: (context, index) {
-        if (index == _photoPaths.length) {
-          return InkWell(
+  Widget _addPhotoTile() => Column(children: [
+        Expanded(
+          child: InkWell(
             onTap: _takePhoto,
             borderRadius: BorderRadius.circular(13),
             child: Container(
+              width: double.infinity,
               decoration: BoxDecoration(color: _fill, border: Border.all(color: _lineStrong), borderRadius: BorderRadius.circular(13)),
               child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.photo_camera_outlined, size: 28, color: _muted),
+                Icon(Icons.photo_camera_outlined, size: 26, color: _muted),
                 SizedBox(height: 4),
                 Text('ถ่ายรูป', style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500)),
               ]),
             ),
-          );
-        }
-        return Stack(children: [
-          ClipRRect(borderRadius: BorderRadius.circular(13), child: Image.file(File(_photoPaths[index]), fit: BoxFit.cover, width: double.infinity, height: double.infinity)),
-          Positioned(
-            top: 4, right: 4,
-            child: GestureDetector(
-              onTap: () => _removePhoto(index),
-              child: Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: _ink, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)), child: const Icon(Icons.close, size: 14, color: Colors.white)),
-            ),
           ),
-          Positioned(
-            bottom: 4, left: 4, right: 4,
-            child: GestureDetector(
-              onTap: () => _changePhotoCat(index),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: _ink.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(6)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(child: Text(_photoCat[_photoPaths[index]] ?? 'รถประกัน', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600))),
-                  const Icon(Icons.arrow_drop_down, size: 13, color: Colors.white),
-                ]),
-              ),
+        ),
+        const SizedBox(height: 3),
+        const Text(' ', style: TextStyle(fontSize: 9.5)),
+      ]);
+
+  Widget _buildPhotoGrid() {
+    final vis = _visiblePhotoIndices();
+    final selMode = _imgSel != null;
+    final count = vis.length + (selMode ? 0 : 1); // ซ่อนช่อง "ถ่ายรูป" ตอนเลือกหลายรูป
+    if (vis.isEmpty && _photoPaths.isNotEmpty && !selMode) {
+      // มีรูปแต่ถูกกรองจนว่าง → โชว์ข้อความ + ช่องถ่ายรูป
+      return Column(children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          alignment: Alignment.center,
+          child: const Text('ยังไม่มีรูปในหมวดนี้', style: TextStyle(fontSize: 12.5, color: _muted)),
+        ),
+        SizedBox(height: 96, width: 108, child: _addPhotoTile()),
+      ]);
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.78),
+      itemCount: count,
+      itemBuilder: (context, gi) {
+        if (!selMode && gi == vis.length) return _addPhotoTile();
+        final index = vis[gi];
+        final path = _photoPaths[index];
+        final cat = _photoCat[path] ?? 'รถประกัน';
+        final time = _photoTimeLabel(path);
+        final selected = _imgSel?.contains(index) ?? false;
+        return GestureDetector(
+          onTap: () {
+            if (selMode) {
+              setState(() { selected ? _imgSel!.remove(index) : _imgSel!.add(index); });
+            } else {
+              _openPhotoSheet(index);
+            }
+          },
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Stack(children: [
+                Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(13), child: Image.file(File(path), fit: BoxFit.cover))),
+                if (selMode && selected)
+                  Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(13), child: Container(color: _primary.withValues(alpha: 0.20)))),
+                if (selMode)
+                  Positioned(top: 4, left: 4, child: Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked, size: 22, color: selected ? _primary : Colors.white)),
+              ]),
             ),
-          ),
-        ]);
+            const SizedBox(height: 3),
+            Text(time.isEmpty ? cat : '$cat · $time', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: _muted)),
+          ]),
+        );
       },
     );
   }
