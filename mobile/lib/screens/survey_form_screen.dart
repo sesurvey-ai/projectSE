@@ -1014,15 +1014,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.hub:
         return _hubBody();
       case _SView.s1:
-        return _sectionScroll(_card(0, Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _secClaimPolicy()));
+        return _sectionScroll(_card(0, Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _secClaimPolicy(), asset: 'assets/section_icons/s1.png'));
       case _SView.s2:
-        return _sectionScroll(_card(2, Icons.directions_car_outlined, '2. รถประกัน', _secCar()));
+        return _sectionScroll(_card(2, Icons.directions_car_outlined, '2. รถประกัน', _secCar(), asset: 'assets/section_icons/s2.png'));
       case _SView.s3:
-        return _sectionScroll(_card(3, Icons.person_outline, '3. ผู้ขับขี่รถประกัน', _secDriver()));
+        return _sectionScroll(_card(3, Icons.person_outline, '3. ผู้ขับขี่รถประกัน', _secDriver(), asset: 'assets/section_icons/s3.png'));
       case _SView.s4:
-        return _sectionScroll(_card(4, Icons.minor_crash_outlined, '4. ความเสียหาย', _secDamage()));
+        return _sectionScroll(_card(4, Icons.minor_crash_outlined, '4. ความเสียหาย', _secDamage(), asset: 'assets/section_icons/s4.png'));
       case _SView.s5:
-        return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _secEvent()));
+        return _sectionScroll(_card(5, Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _secEvent(), asset: 'assets/section_icons/s5.png'));
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
@@ -1149,18 +1149,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         children: [
           _timelineStrip(),
           const SizedBox(height: 16),
-          _hubCard(Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _s1Summary(), _SView.s1, _s1Filled()),
-          _hubCard(Icons.directions_car_outlined, '2. รถประกัน', _s2Summary(), _SView.s2, _s2Filled()),
-          _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled()),
-          _hubCard(Icons.minor_crash_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled()),
-          _hubCard(Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _s5Summary(), _SView.s5, _s5Filled()),
-          _hubCard(Icons.groups_2_outlined, '6. คู่กรณี', _s6Summary(), _SView.s6, _s6Filled()),
+          _hubCard(Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _s1Summary(), _SView.s1, _s1Filled(), asset: 'assets/section_icons/s1.png'),
+          _hubCard(Icons.directions_car_outlined, '2. รถประกัน', _s2Summary(), _SView.s2, _s2Filled(), asset: 'assets/section_icons/s2.png'),
+          _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled(), asset: 'assets/section_icons/s3.png'),
+          _hubCard(Icons.minor_crash_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled(), asset: 'assets/section_icons/s4.png'),
+          _hubCard(Icons.car_crash_outlined, '5. เหตุการณ์ & สถานที่', _s5Summary(), _SView.s5, _s5Filled(), asset: 'assets/section_icons/s5.png'),
+          _hubCard(Icons.groups_2_outlined, '6. คู่กรณี', _s6Summary(), _SView.s6, _s6Filled(), asset: 'assets/section_icons/s6.png'),
         ],
       ),
     );
   }
 
-  Widget _hubCard(IconData icon, String title, String summary, _SView target, bool started, {bool warn = false}) {
+  Widget _hubCard(IconData icon, String title, String summary, _SView target, bool started, {bool warn = false, String? asset}) {
     final missing = _sectionMissing(target);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1178,7 +1178,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               boxShadow: [BoxShadow(color: const Color(0xFF141E3C).withValues(alpha: 0.035), blurRadius: 20, offset: const Offset(0, 6))],
             ),
             child: Row(children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 21, color: warn ? _warn : _primary)),
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28, height: 28)) : Icon(icon, size: 21, color: warn ? _warn : _primary)),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
@@ -1809,12 +1809,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     required void Function(int) onTap,
     required void Function(int) onDelete,
     List<Widget> footer = const [],
+    String? asset,
   }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(11)), child: Icon(icon, size: 19, color: _primary)),
+          Container(width: 36, height: 36, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(11)), child: asset != null ? Center(child: Image.asset(asset, width: 24, height: 24)) : Icon(icon, size: 19, color: _primary)),
           const SizedBox(width: 10),
           Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink))),
           Container(
@@ -1891,6 +1892,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── คู่กรณี ──
   Widget _opponentsBody() => _recordListScroll(
         icon: Icons.groups_2_outlined,
+        asset: 'assets/section_icons/s6.png',
         title: '6. คู่กรณี (${_opponents.length}/20)',
         items: _opponents,
         emptyHint: 'ยังไม่มีคู่กรณีในเคสนี้\nกด "เพิ่มคู่กรณี" เพื่อเริ่ม',
@@ -2332,7 +2334,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // ── card (section) ──
-  Widget _card(int idx, IconData icon, String title, List<Widget> children, {bool warn = false}) {
+  Widget _card(int idx, IconData icon, String title, List<Widget> children, {bool warn = false, String? asset}) {
     return Container(
       key: _secKeys[idx],
       margin: const EdgeInsets.only(bottom: 14),
@@ -2354,7 +2356,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(color: warn ? _warnTint : _tint, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, size: 18, color: warn ? _warn : _primary),
+                child: asset != null ? Center(child: Image.asset(asset, width: 22, height: 22)) : Icon(icon, size: 18, color: warn ? _warn : _primary),
               ),
               const SizedBox(width: 11),
               Expanded(child: Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: _ink))),

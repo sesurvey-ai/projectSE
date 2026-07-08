@@ -83,6 +83,7 @@ flutter:
     - assets/se-mark.png
     - assets/splash_logo.png
     - assets/avatar.png
+    - assets/section_icons/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
