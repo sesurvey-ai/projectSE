@@ -1213,7 +1213,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
-        return _sectionScroll(_card(7, MyFlutterApp.camera, '9. รูปภาพ', [
+        return _sectionScroll(_card(7, MyFlutterApp.camera, 'รูปภาพ', [
           _imgSubline(),
           _imgChecklist(),
           if (_photoPaths.isNotEmpty) _imgToolbar(),
@@ -1341,6 +1341,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         children: [
           _timelineStrip(),
           const SizedBox(height: 16),
+          // ปุ่มถ่ายรูป (ไอคอนกล้องตรงกลาง) — ยกขึ้นบนสุด เข้าหน้ารูปภาพเหมือนเดิม (จำนวนรูปโชว์ด้านใน)
+          _photoButton(),
           _hubCard(Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _s1Summary(), _SView.s1, _s1Filled(), asset: 'assets/section_icons/s1.png'),
           _hubCard(Icons.directions_car_outlined, '2. รถประกัน', _s2Summary(), _SView.s2, _s2Filled(), asset: 'assets/section_icons/s2.png'),
           _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled(), asset: 'assets/section_icons/s3.png'),
@@ -1353,13 +1355,32 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               (v) => _hasInjured = v),
           _hubToggleCard(Icons.category, '8. ทรัพย์สิน', _SView.property, _hasProperty, _property.length, _property, 'ทรัพย์สิน',
               (v) => _hasProperty = v),
-          // 9. รูปภาพ — หมวดปกติ ไม่มีสวิตช์
-          _hubCard(MyFlutterApp.camera, '9. รูปภาพ',
-              _photoPaths.isEmpty ? 'ยังไม่มีรูป' : '${_photoPaths.length} รูป', _SView.photos, _photoPaths.isNotEmpty),
         ],
       ),
     );
   }
+
+  // ปุ่มถ่ายรูปบนสุด — ไอคอนกล้องอยู่กลาง (ไม่โชว์จำนวน) กดแล้วเข้าหน้ารูปภาพ
+  Widget _photoButton() => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Material(
+          color: _tint,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => _go(_SView.photos),
+            child: Container(
+              height: 60,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _line),
+              ),
+              child: const Icon(MyFlutterApp.camera, size: 30, color: _primary),
+            ),
+          ),
+        ),
+      );
 
   // ไอคอนหมวด 4-6 เป็นรูปแนวกว้าง (เตี้ย) เต็มความกว้าง canvas อยู่แล้ว
   // เลยขยายเป็น asset ไม่ได้ ต้องเรนเดอร์กล่องใหญ่ขึ้นนิดหน่อยให้ดูสมส่วนกับ 1-3
@@ -1680,7 +1701,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _reviewMini('6. คู่กรณี', _hasOpponents ? '${_opponents.length} คัน' : 'ไม่มี', Icons.groups_2_outlined, () => _go(_SView.s6)),
         _reviewMini('7. ผู้บาดเจ็บ', _hasInjured ? '${_injured.length} คน' : 'ไม่มี', MyFlutterApp.procedures, () => _go(_SView.injured)),
         _reviewMini('8. ทรัพย์สิน', _hasProperty ? '${_property.length} ชิ้น' : 'ไม่มี', Icons.category, () => _go(_SView.property)),
-        _reviewMini('9. รูปภาพ', '${_photoPaths.length} รูป', MyFlutterApp.camera, () => _go(_SView.photos)),
+        _reviewMini('รูปภาพ', '${_photoPaths.length} รูป', MyFlutterApp.camera, () => _go(_SView.photos)),
         const SizedBox(height: 10),
         const Text('กด "ส่งรายงาน" ด้านล่างเพื่อส่งเข้าระบบ', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _muted)),
       ]),
