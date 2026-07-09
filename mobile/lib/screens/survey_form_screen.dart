@@ -1408,8 +1408,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   Widget _timelineStrip() {
+    // node "ลูกค้าแจ้ง": ถ้าช่างยังไม่กรอกวัน/เวลาเอง ให้ fallback ไปโชว์ "เวลาแจ้งจริง"
+    // จาก customer_reported_at (= _slaStart) — แสดงอย่างเดียว ไม่เขียนทับข้อมูลที่บันทึก
+    String crDate = _accCustomerReportDateCtl.text.trim();
+    String crTime = _accCustomerReportTimeCtl.text.trim();
+    if ((crDate.isEmpty || crTime.isEmpty) && _slaStart != null) {
+      final s = _slaStart!;
+      String two(int v) => v.toString().padLeft(2, '0');
+      if (crDate.isEmpty) crDate = '${two(s.day)}/${two(s.month)}/${s.year + 543}';
+      if (crTime.isEmpty) crTime = '${two(s.hour)}:${two(s.minute)}';
+    }
     final nodes = <List<String>>[
-      ['ลูกค้าแจ้ง', _accCustomerReportDateCtl.text.trim(), _accCustomerReportTimeCtl.text.trim()],
+      ['ลูกค้าแจ้ง', crDate, crTime],
       ['แจ้งเซอร์เวย์', _accInsNotifyDateCtl.text.trim(), _accInsNotifyTimeCtl.text.trim()],
       ['ถึงที่เกิดเหตุ', _accSurveyArriveDateCtl.text.trim(), _accSurveyArriveTimeCtl.text.trim()],
       ['สำรวจเสร็จ', _accSurveyCompleteDateCtl.text.trim(), _accSurveyCompleteTimeCtl.text.trim()],
