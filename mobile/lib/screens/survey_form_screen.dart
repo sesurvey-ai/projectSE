@@ -83,6 +83,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final List<Map<String, dynamic>> _opponents = [];
   final List<Map<String, dynamic>> _injured = [];
   final List<Map<String, dynamic>> _property = [];
+  // สวิตช์ "มี/ไม่มี" ของ 3 หมวด optional (ค่าเริ่มต้น "ไม่มี") — เปิด "มี" ถ้ามีข้อมูลอยู่แล้ว
+  bool _hasOpponents = false;
+  bool _hasInjured = false;
+  bool _hasProperty = false;
 
   void _go(_SView v) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -90,8 +94,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     setState(() => _view = v);
   }
 
-  // หมวดถัดไปแบบเรียงลำดับ (s1→…→s6) — null = ไม่มีถัดไป (โชว์ปุ่ม "กลับ Hub" แทน)
-  static const _sectionOrder = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5, _SView.s6];
+  // หมวดถัดไปแบบเรียงลำดับ (s1→…→s5 หมวดหลัก) — null = ไม่มีถัดไป (โชว์ปุ่ม "กลับ Hub"/"ตรวจสอบ")
+  // 6-8 (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน) + รูปภาพ เป็น optional เข้าจาก Hub เท่านั้น ไม่อยู่ในลำดับบังคับ
+  static const _sectionOrder = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5];
   _SView? _nextSectionView() {
     final i = _sectionOrder.indexOf(_view);
     return (i >= 0 && i < _sectionOrder.length - 1) ? _sectionOrder[i + 1] : null;
@@ -515,6 +520,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       restoreList('opposing_parties', _opponents);
       restoreList('injured_persons', _injured);
       restoreList('damaged_property', _property);
+      // มีข้อมูลอยู่แล้ว → เปิดสวิตช์ "มี" (กันข้อมูลถูกซ่อน); ว่าง → "ไม่มี"
+      _hasOpponents = _opponents.isNotEmpty;
+      _hasInjured = _injured.isNotEmpty;
+      _hasProperty = _property.isNotEmpty;
       final idmg = data['insured_damage'];
       if (idmg is List) {
         _damageItems
@@ -1174,7 +1183,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             children: [
               Column(
                 children: [
-                  _chipTabs(),
                   Expanded(child: _viewBody()),
                 ],
               ),
@@ -1204,7 +1212,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
-        return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [
+        return _sectionScroll(_card(7, Icons.photo_camera_outlined, '9. รูปภาพ', [
           _imgSubline(),
           _imgChecklist(),
           if (_photoPaths.isNotEmpty) _imgToolbar(),
@@ -1337,7 +1345,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           _hubCard(Icons.person_outline, '3. ผู้ขับขี่', _s3Summary(), _SView.s3, _s3Filled(), asset: 'assets/section_icons/s3.png'),
           _hubCard(Icons.minor_crash_outlined, '4. ความเสียหาย', _s4Summary(), _SView.s4, _s4Filled(), asset: 'assets/section_icons/s4.png'),
           _hubCard(Icons.car_crash_outlined, '5. สถานที่เกิดเหตุ', _s5Summary(), _SView.s5, _s5Filled(), asset: 'assets/section_icons/s5.png'),
-          _hubCard(Icons.groups_2_outlined, '6. คู่กรณี', _s6Summary(), _SView.s6, _s6Filled(), asset: 'assets/section_icons/s6.png'),
+          // 6-8: หมวด optional มีสวิตช์ "มี/ไม่มี" (ค่าเริ่มต้น "ไม่มี")
+          _hubToggleCard(Icons.groups_2_outlined, '6. คู่กรณี', _SView.s6, _hasOpponents, _opponents.length, _opponents, 'คู่กรณี',
+              (v) => _hasOpponents = v, asset: 'assets/section_icons/s6.png'),
+          _hubToggleCard(Icons.healing_outlined, '7. ผู้บาดเจ็บ', _SView.injured, _hasInjured, _injured.length, _injured, 'ผู้บาดเจ็บ',
+              (v) => _hasInjured = v),
+          _hubToggleCard(Icons.chair_outlined, '8. ทรัพย์สิน', _SView.property, _hasProperty, _property.length, _property, 'ทรัพย์สิน',
+              (v) => _hasProperty = v),
+          // 9. รูปภาพ — หมวดปกติ ไม่มีสวิตช์
+          _hubCard(Icons.photo_camera_outlined, '9. รูปภาพ',
+              _photoPaths.isEmpty ? 'ยังไม่มีรูป' : '${_photoPaths.length} รูป', _SView.photos, _photoPaths.isNotEmpty),
         ],
       ),
     );
@@ -1382,6 +1399,72 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ),
       ),
     );
+  }
+
+  // การ์ดหมวด optional (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน): สวิตช์ "มี/ไม่มี"
+  //  ไม่มี → แถวเทา ไม่กดเข้า; มี → กดเข้าหน้ากรอกได้ (โชว์จำนวน)
+  Widget _hubToggleCard(IconData icon, String title, _SView target, bool on, int count,
+      List<Map<String, dynamic>> list, String noun, void Function(bool) apply, {String? asset}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: on ? () => _go(target) : null,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _line),
+              boxShadow: [BoxShadow(color: const Color(0xFF141E3C).withValues(alpha: 0.035), blurRadius: 20, offset: const Offset(0, 6))],
+            ),
+            child: Row(children: [
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: on ? _tint : _fill, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28 * _iconScale(asset), height: 28 * _iconScale(asset))) : Icon(icon, size: 21, color: on ? _primary : _muted2)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+                const SizedBox(height: 2),
+                Text(on ? (count > 0 ? '$count รายการ' : 'มี — แตะเพื่อกรอก') : 'ไม่มีในเคสนี้',
+                    style: TextStyle(fontSize: 12, color: on ? _primary : _muted)),
+              ])),
+              const SizedBox(width: 6),
+              Switch(
+                value: on,
+                onChanged: (v) => _toggleOptional(v, list, apply, noun),
+                activeTrackColor: _primary,
+              ),
+              Icon(Icons.chevron_right, color: on ? _muted2 : _line),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // สลับ "มี/ไม่มี": เปิดได้เลย; ปิดขณะมีข้อมูล → ถามยืนยันลบทั้งหมดก่อน
+  Future<void> _toggleOptional(bool v, List<Map<String, dynamic>> list, void Function(bool) apply, String noun) async {
+    if (v || list.isEmpty) {
+      setState(() => apply(v));
+      _autosave();
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ตั้งเป็น "ไม่มี"?'),
+        content: Text('จะลบข้อมูล$noun ${list.length} รายการทั้งหมด'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ยกเลิก')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('ลบทั้งหมด', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok == true) {
+      setState(() { list.clear(); apply(false); });
+      _autosave();
+    }
   }
 
   // ป้ายสถานะรายหมวด: ขาด N (เหลือง) / ครบ (เขียว) / ว่าง (เทา)
@@ -1449,47 +1532,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // ── chip tabs (4) — เต็มความกว้าง อยู่หน้าเดียว ไม่ต้องเลื่อน ──
-  Widget _chipTabs() {
-    final inDetail = _view != _SView.injured && _view != _SView.property && _view != _SView.photos;
-    String cnt(List l) => l.isNotEmpty ? ' (${l.length})' : '';
-    final tabs = <List<dynamic>>[
-      ['รายละเอียดเหตุ', inDetail, () => _go(_SView.hub)],
-      ['ผู้บาดเจ็บ${cnt(_injured)}', _view == _SView.injured, () => _go(_SView.injured)],
-      ['ทรัพย์สิน${cnt(_property)}', _view == _SView.property, () => _go(_SView.property)],
-      ['รูปภาพ', _view == _SView.photos, () => _go(_SView.photos)],
-    ];
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-      child: Row(children: [
-        for (var i = 0; i < tabs.length; i++)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: i < tabs.length - 1 ? 6 : 0),
-              child: GestureDetector(
-                onTap: tabs[i][2] as VoidCallback,
-                child: Container(
-                  height: 32,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: (tabs[i][1] as bool) ? _primary : Colors.white,
-                    borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: (tabs[i][1] as bool) ? _primary : _line),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(tabs[i][0] as String, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: (tabs[i][1] as bool) ? Colors.white : _muted)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ]),
-    );
-  }
-
   // ── สถานะ/สรุปรายหมวด (Hub) ──
   bool _s1Filled() => _claimType.isNotEmpty || _claimNoCtl.text.trim().isNotEmpty;
   bool _s2Filled() => _licensePlateCtl.text.trim().isNotEmpty || _carBrandCtl.text.trim().isNotEmpty;
@@ -1498,8 +1540,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _s5Filled() => _accDateCtl.text.trim().isNotEmpty;
   bool _s6Filled() => _opponents.isNotEmpty || _opoClaims.isNotEmpty;
   int _filledCount() {
-    const views = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5, _SView.s6];
-    final started = [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled(), _s6Filled()];
+    const views = [_SView.s1, _SView.s2, _SView.s3, _SView.s4, _SView.s5];
+    final started = [_s1Filled(), _s2Filled(), _s3Filled(), _s4Filled(), _s5Filled()];
     var n = 0;
     for (var i = 0; i < views.length; i++) {
       if (_sectionMissing(views[i]).isEmpty && started[i]) n++;
@@ -1529,10 +1571,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final c = _accCauseCtl.text.trim();
     if (d.isEmpty && c.isEmpty) return 'วัน-เวลา · สถานที่ · สาเหตุ';
     return [if (d.isNotEmpty) d, if (c.isNotEmpty) c].join(' · ');
-  }
-  String _s6Summary() {
-    if (_opponents.isNotEmpty) return '${_opponents.length} คัน';
-    return _opoClaims.isNotEmpty ? '${_opoClaims.length} รายการเรียกร้อง' : 'ยังไม่มีคู่กรณี';
   }
 
   // ══ Validation (Phase 4) ══════════════════════════════════════════
@@ -1617,7 +1655,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ['3. ผู้ขับขี่', _SView.s3, Icons.person_outline],
       ['4. ความเสียหาย', _SView.s4, Icons.minor_crash_outlined],
       ['5. สถานที่เกิดเหตุ', _SView.s5, Icons.car_crash_outlined],
-      ['6. คู่กรณี', _SView.s6, Icons.groups_2_outlined],
     ];
     final errors = _collectErrors();
     final total = errors.values.fold<int>(0, (a, b) => a + b.length);
@@ -1639,9 +1676,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         const SizedBox(height: 14),
         for (final s in sections) _reviewRow(s[0] as String, s[1] as _SView, s[2] as IconData),
         const SizedBox(height: 6),
-        _reviewMini('ผู้บาดเจ็บ', '${_injured.length} คน', Icons.healing_outlined, () => _go(_SView.injured)),
-        _reviewMini('ทรัพย์สินเสียหาย', '${_property.length} ชิ้น', Icons.chair_outlined, () => _go(_SView.property)),
-        _reviewMini('รูปภาพ', '${_photoPaths.length} รูป', Icons.photo_camera_outlined, () => _go(_SView.photos)),
+        _reviewMini('6. คู่กรณี', _hasOpponents ? '${_opponents.length} คัน' : 'ไม่มี', Icons.groups_2_outlined, () => _go(_SView.s6)),
+        _reviewMini('7. ผู้บาดเจ็บ', _hasInjured ? '${_injured.length} คน' : 'ไม่มี', Icons.healing_outlined, () => _go(_SView.injured)),
+        _reviewMini('8. ทรัพย์สิน', _hasProperty ? '${_property.length} ชิ้น' : 'ไม่มี', Icons.chair_outlined, () => _go(_SView.property)),
+        _reviewMini('9. รูปภาพ', '${_photoPaths.length} รูป', Icons.photo_camera_outlined, () => _go(_SView.photos)),
         const SizedBox(height: 10),
         const Text('กด "ส่งรายงาน" ด้านล่างเพื่อส่งเข้าระบบ', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _muted)),
       ]),
@@ -2153,7 +2191,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── ผู้บาดเจ็บ ──
   Widget _injuredBody() => _recordListScroll(
         icon: Icons.healing_outlined,
-        title: 'ผู้บาดเจ็บ',
+        title: '7. ผู้บาดเจ็บ',
         items: _injured,
         emptyHint: 'ยังไม่มีผู้บาดเจ็บ\nกด "เพิ่มผู้บาดเจ็บ" หากมี',
         addLabel: 'เพิ่มผู้บาดเจ็บ',
@@ -2195,7 +2233,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // ── ทรัพย์สิน ──
   Widget _propertyBody() => _recordListScroll(
         icon: Icons.chair_outlined,
-        title: 'ทรัพย์สินเสียหาย',
+        title: '8. ทรัพย์สิน',
         items: _property,
         emptyHint: 'ยังไม่มีทรัพย์สินเสียหาย\nกด "เพิ่มทรัพย์สิน" หากมี',
         addLabel: 'เพิ่มทรัพย์สิน',
@@ -2447,9 +2485,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: _line))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          Text('ครบ $n/6 หมวด', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
+          Text('ครบ $n/5 หมวด', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
           const SizedBox(width: 10),
-          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: n / 6, minHeight: 6, backgroundColor: _line, color: _ok))),
+          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: n / 5, minHeight: 6, backgroundColor: _line, color: _ok))),
           if (_savedAt != null) ...[
             const SizedBox(width: 10),
             const Icon(Icons.check_circle, size: 13, color: _ok),
