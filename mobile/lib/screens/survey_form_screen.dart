@@ -2151,7 +2151,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _opponentsBody() => _recordListScroll(
         icon: Icons.groups_2_outlined,
         asset: 'assets/section_icons/s6.png',
-        title: '6. คู่กรณี (${_opponents.length}/20)',
+        title: '6. คู่กรณี (${_opponents.length})',
         items: _opponents,
         emptyHint: 'ยังไม่มีคู่กรณีในเคสนี้\nกด "เพิ่มคู่กรณี" เพื่อเริ่ม',
         addLabel: 'เพิ่มคู่กรณี',
