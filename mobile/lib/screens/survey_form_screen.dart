@@ -945,13 +945,20 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     if (sel == null || sel.isEmpty) return;
     _confirmDelete('${sel.length} รูปที่เลือก', () {
       final idx = sel.toList()..sort((a, b) => b.compareTo(a));
+      final paths = <String>[];
       setState(() {
         for (final i in idx) {
-          if (i >= 0 && i < _photoPaths.length) { _photoCat.remove(_photoPaths[i]); _photoPaths.removeAt(i); }
+          if (i >= 0 && i < _photoPaths.length) { paths.add(_photoPaths[i]); _photoCat.remove(_photoPaths[i]); _photoPaths.removeAt(i); }
         }
         _imgSel = null;
       });
+      for (final p in paths) { _deletePhotoFile(p); }
     });
+  }
+
+  // ลบไฟล์รูปจริงออกจากเครื่อง (กันไฟล์ค้างสะสม)
+  void _deletePhotoFile(String path) {
+    try { final f = File(path); if (f.existsSync()) f.deleteSync(); } catch (_) {}
   }
 
   DateTime? _photoStamp(String path) {
@@ -965,7 +972,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   void _confirmDeletePhoto(int index) => _confirmDelete('รูป', () {
-        setState(() { _photoCat.remove(_photoPaths[index]); _photoPaths.removeAt(index); });
+        final path = _photoPaths[index];
+        setState(() { _photoCat.remove(path); _photoPaths.removeAt(index); });
+        _deletePhotoFile(path);
       });
 
   // เลือก/เปลี่ยนหมวดของรูปแบบเร็ว (แตะป้ายหมวดบนรูป)
