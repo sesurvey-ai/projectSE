@@ -47,19 +47,26 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<String> _photoPaths = [];
   final Map<String, String> _photoCat = {}; // path → หมวดรูป (Phase 5)
-  static const List<String> _imgCats = ['รถประกัน', 'คู่กรณี', 'ทรัพย์สิน', 'ผู้บาดเจ็บ', 'เอกสาร', 'แผนที่'];
-  // เหตุผลกำกับแต่ละหมวด (แนะนำว่าควรถ่ายอะไร) — จาก prototype IMG_REQS
-  static const Map<String, String> _imgWhy = {
-    'รถประกัน': 'รอบคัน 4 มุม + ทะเบียน + เลขตัวถัง + จุดเสียหาย',
-    'คู่กรณี': 'รอบคัน + ทะเบียน + จุดเสียหาย ต่อคู่กรณี 1 คัน',
-    'ทรัพย์สิน': 'ต่อทรัพย์สินเสียหาย 1 รายการ',
-    'ผู้บาดเจ็บ': 'ต่อผู้บาดเจ็บ 1 คน อย่างน้อย 2 รูป',
-    'เอกสาร': 'ใบขับขี่ + เอกสารประกอบ',
-    'แผนที่': 'แผนผัง/แผนที่จุดเกิดเหตุ',
-  };
-  String _captureCat = 'รถประกัน'; // หมวดที่รูปถ่ายใหม่จะเข้า (เลือกก่อนถ่าย)
-  String _imgFilter = 'รถประกัน';  // ชิปกรอง/มุมมองหมวดรูปที่กำลังดู
-  Set<int>? _imgSel;               // โหมดเลือกหลายรูป (null = ปิด)
+  // ประเภทรูปตามระบบประกัน (จาก edit.txt) — เลือกหมวดก่อนเปิดกล้อง
+  static const List<String> _imgCats = [
+    'รูปประกอบ',
+    'รูปแผนที่เกิดเหตุ',
+    'รูปรถประกัน',
+    'รูปรถคู่กรณี',
+    'รูปรถคู่กรณี คันที่ 1',
+    'ใบรายงานความเสียหาย',
+    'ใบแจ้งความเสียหาย',
+    'ใบรับเงินจากคู่กรณี',
+    'ใบขับขี่รถประกัน',
+    'ใบขับขี่รถคู่กรณี',
+    'ใบขับขี่รถคู่กรณี คันที่ 1',
+    'ใบรายการแจ้งความ',
+    'รูปผู้บาดเจ็บรถประกัน',
+    'รูปผู้บาดเจ็บรถคู่กรณี',
+    'รูปทรัพย์สินอื่นๆของคู่กรณี',
+  ];
+  static const String _imgCatDefault = 'รูปประกอบ';
+  Set<int>? _imgSel; // โหมดเลือกหลายรูป (null = ปิด)
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
   List<Map<String, dynamic>> _caseImages = [];
@@ -783,16 +790,50 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return folder.path;
   }
 
+  // เลือกประเภทรูปก่อน (ใช้ทั้งตอนถ่ายใหม่ + เปลี่ยนหมวดรูปเดิม) — คืน label หรือ null ถ้ายกเลิก
+  Future<String?> _pickImageCategory({String? current, String title = 'เลือกประเภทรูป'}) {
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 6), child: Row(children: [
+            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+            const Spacer(),
+            IconButton(icon: const Icon(Icons.close, size: 22, color: _muted), onPressed: () => Navigator.pop(ctx)),
+          ])),
+          Flexible(
+            child: ListView(shrinkWrap: true, children: [
+              for (final c in _imgCats)
+                ListTile(
+                  dense: true,
+                  title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
+                  trailing: c == current ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                  onTap: () => Navigator.pop(ctx, c),
+                ),
+            ]),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
   Future<void> _takePhoto() async {
     try {
+      // เลือกประเภทรูปก่อน ค่อยเปิดกล้อง
+      final cat = await _pickImageCategory(title: 'ถ่ายรูปเข้าประเภท');
+      if (cat == null || !mounted) return;
       final status = await Permission.camera.request();
       if (!status.isGranted) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
         return;
       }
-      // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าหมวดที่เลือก
+      if (!mounted) return;
+      // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าประเภทที่เลือก
       final shots = await Navigator.of(context).push<List<XFile>>(
-          MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: _captureCat)));
+          MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: cat)));
       if (shots == null || shots.isEmpty || !mounted) return;
       final caseFolder = await _getCaseFolder();
       final added = <String>[];
@@ -801,22 +842,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         try { await File(x.path).copy(localPath); added.add(localPath); } catch (_) {}
       }
       if (added.isEmpty || !mounted) return;
-      setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = _captureCat; } });
+      setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = cat; } });
       _autosave();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
     }
   }
 
-
-  Map<String, int> _photoMin() => {
-        'รถประกัน': 8,
-        'คู่กรณี': _opponents.isNotEmpty ? 6 : 0,
-        'ทรัพย์สิน': _property.isNotEmpty ? 3 : 0,
-        'ผู้บาดเจ็บ': _injured.length * 2,
-        'เอกสาร': 2,
-        'แผนที่': 1,
-      };
   int _photoCountOf(String cat) => _photoCat.values.where((c) => c == cat).length;
 
   // sub ใต้หัวข้อ "รูปภาพ"
@@ -825,77 +857,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         child: Text('ถ่ายเข้าเคสโดยตรง · แตะรูปเพื่อดูรายละเอียด/จัดหมวด', style: TextStyle(fontSize: 11.5, color: _muted)),
       );
 
-  // การ์ดสรุปจำนวนรูปตามหมวด + เหตุผลแนะนำว่าควรถ่ายอะไร (โชว์หมวดที่ควรมี หรือมีรูปแล้ว)
+  // การ์ดสรุปจำนวนรูปแต่ละประเภท (โชว์เฉพาะประเภทที่มีรูปแล้ว) — ซ่อนถ้ายังไม่มีรูป
   Widget _imgChecklist() {
-    final min = _photoMin();
-    final rows = _imgCats.where((c) => (min[c] ?? 0) > 0 || _photoCountOf(c) > 0).toList();
+    final rows = _imgCats.where((c) => _photoCountOf(c) > 0).toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('จำนวนรูปภาพแต่ละหมวด', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+        Text('จำนวนรูปภาพ (${_photoPaths.length})', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
         const SizedBox(height: 6),
         for (final c in rows)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _ink)),
-                if (_imgWhy[c] != null)
-                  Padding(padding: const EdgeInsets.only(top: 1), child: Text(_imgWhy[c]!, style: const TextStyle(fontSize: 10.5, color: _muted2))),
-              ])),
+            padding: const EdgeInsets.symmetric(vertical: 3.5),
+            child: Row(children: [
+              Expanded(child: Text(c, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _ink))),
               const SizedBox(width: 8),
-              Text('${_photoCountOf(c)} รูป',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _photoCountOf(c) > 0 ? _primary : _muted2)),
+              Text('${_photoCountOf(c)} รูป', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _primary)),
             ]),
           ),
       ]),
     );
-  }
-
-  // แถบ "เลือกหมวดก่อนถ่าย" — เลือกหมวด แล้วถ่ายรูปกี่รูปก็ได้เข้าหมวดนั้น จนกว่าจะเปลี่ยน
-  // แตะหมวด = ตั้งหมวดที่จะถ่าย + กรองมุมมองไปหมวดนั้น / "ทั้งหมด" = ดูรวมทุกหมวด (หมวดที่จะถ่ายคงเดิม)
-  Widget _captureBar() {
-    final cats = [..._imgCats, 'ทั้งหมด'];
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        const Icon(Icons.photo_camera_outlined, size: 15, color: _muted),
-        const SizedBox(width: 5),
-        const Text('ถ่ายเข้าหมวด: ', style: TextStyle(fontSize: 12, color: _muted)),
-        Text(_captureCat, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _primary)),
-      ]),
-      const SizedBox(height: 7),
-      SizedBox(
-        height: 34,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: cats.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final c = cats[i];
-            final isAll = c == 'ทั้งหมด';
-            final n = isAll ? _photoPaths.length : _photoCountOf(c);
-            final sel = c == _imgFilter;
-            final isCapture = !isAll && c == _captureCat;
-            return GestureDetector(
-              onTap: () => setState(() {
-                if (isAll) { _imgFilter = 'ทั้งหมด'; } else { _imgFilter = c; _captureCat = c; }
-              }),
-              child: Container(
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: sel ? _primary : Colors.white,
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: sel ? _primary : (isCapture ? _primary : _lineStrong), width: 1.4),
-                ),
-                child: Text('$c ($n)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: sel ? Colors.white : (isCapture ? _primary : _muted))),
-              ),
-            );
-          },
-        ),
-      ),
-    ]);
   }
 
   // แถบเครื่องมือ: ปุ่มเลือกหลายรูป + แถบลบเมื่ออยู่โหมดเลือก
@@ -929,14 +911,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     ]);
   }
 
-  List<int> _visiblePhotoIndices() {
-    final out = <int>[];
-    for (var i = 0; i < _photoPaths.length; i++) {
-      final c = _photoCat[_photoPaths[i]] ?? 'รถประกัน';
-      if (_imgFilter == 'ทั้งหมด' || c == _imgFilter) out.add(i);
-    }
-    return out;
-  }
+  List<int> _visiblePhotoIndices() => [for (var i = 0; i < _photoPaths.length; i++) i];
 
   void _imgSelectAllVisible() => setState(() => _imgSel = {..._visiblePhotoIndices()});
 
@@ -977,27 +952,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _deletePhotoFile(path);
       });
 
-  // เลือก/เปลี่ยนหมวดของรูปแบบเร็ว (แตะป้ายหมวดบนรูป)
+  // เปลี่ยนประเภทของรูป (แตะป้ายบนรูป) — ใช้ตัวเลือกประเภทเดียวกับตอนถ่าย
   Future<void> _changePhotoCat(int index) async {
     final path = _photoPaths[index];
-    final chosen = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Padding(padding: EdgeInsets.all(14), child: Text('เลือกหมวดรูป', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink))),
-          for (final c in _imgCats)
-            ListTile(
-              dense: true,
-              title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
-              trailing: _photoCat[path] == c ? const Icon(Icons.check, color: _primary, size: 20) : null,
-              onTap: () => Navigator.pop(ctx, c),
-            ),
-          const SizedBox(height: 8),
-        ]),
-      ),
-    );
-    if (chosen != null) { setState(() => _photoCat[path] = chosen); _autosave(); }
+    final chosen = await _pickImageCategory(current: _photoCat[path], title: 'เปลี่ยนประเภทรูป');
+    if (chosen != null && mounted) { setState(() => _photoCat[path] = chosen); _autosave(); }
   }
 
   // ชีทรายละเอียดรูป: พรีวิวใหญ่ + เปลี่ยนหมวด + เวลา + ลบ
@@ -1009,7 +968,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
-        final cat = _photoCat[path] ?? 'รถประกัน';
+        final cat = _photoCat[path] ?? _imgCatDefault;
         final dt = _photoStamp(path);
         final when = dt == null
             ? '-'
@@ -1022,12 +981,22 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               const SizedBox(height: 12),
               ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(File(path), width: double.infinity, height: 220, fit: BoxFit.cover)),
               const SizedBox(height: 14),
-              const Text('หมวดรูป', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+              const Text('ประเภทรูป', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final c in _imgCats)
-                  _chip(c, c == cat, () { setState(() => _photoCat[path] = c); setSheet(() {}); _autosave(); }),
-              ]),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await _pickImageCategory(current: cat, title: 'เปลี่ยนประเภทรูป');
+                  if (picked != null) { setState(() => _photoCat[path] = picked); setSheet(() {}); _autosave(); }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(11), border: Border.all(color: _lineStrong)),
+                  child: Row(children: [
+                    Expanded(child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink))),
+                    const Icon(Icons.arrow_drop_down, size: 22, color: _muted),
+                  ]),
+                ),
+              ),
               const SizedBox(height: 14),
               Row(children: [
                 const Icon(Icons.schedule, size: 15, color: _muted2),
@@ -1240,7 +1209,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         return _sectionScroll(_card(7, Icons.photo_camera_outlined, 'รูปภาพ', [
           _imgSubline(),
           _imgChecklist(),
-          _captureBar(),
           if (_photoPaths.isNotEmpty) _imgToolbar(),
           _buildPhotoGrid(),
         ]));
@@ -3076,18 +3044,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final vis = _visiblePhotoIndices();
     final selMode = _imgSel != null;
     final count = vis.length + (selMode ? 0 : 1); // ซ่อนช่อง "ถ่ายรูป" ตอนเลือกหลายรูป
-    if (vis.isEmpty && _photoPaths.isNotEmpty && !selMode) {
-      // มีรูปแต่ถูกกรองจนว่าง → โชว์ข้อความ + ช่องถ่ายรูป
-      return Column(children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          alignment: Alignment.center,
-          child: const Text('ยังไม่มีรูปในหมวดนี้', style: TextStyle(fontSize: 12.5, color: _muted)),
-        ),
-        SizedBox(height: 96, width: 108, child: _addPhotoTile()),
-      ]);
-    }
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -3097,7 +3053,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         if (!selMode && gi == vis.length) return _addPhotoTile();
         final index = vis[gi];
         final path = _photoPaths[index];
-        final cat = _photoCat[path] ?? 'รถประกัน';
+        final cat = _photoCat[path] ?? _imgCatDefault;
         final time = _photoTimeLabel(path);
         final selected = _imgSel?.contains(index) ?? false;
         return GestureDetector(

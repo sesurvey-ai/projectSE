@@ -166,13 +166,17 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsB
                     Text(_resLabel(_preset), style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600)),
                   ]),
                 ),
-                const Spacer(),
-                _pill(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.photo_camera_outlined, size: 14, color: Colors.white70),
-                  const SizedBox(width: 5),
-                  Text(widget.captureCat, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600)),
-                ])),
-                const Spacer(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Center(
+                    child: _pill(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.photo_camera_outlined, size: 14, color: Colors.white70),
+                      const SizedBox(width: 5),
+                      Flexible(child: Text(widget.captureCat, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600))),
+                    ])),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 if (_hasFrontAndBack) ...[_roundBtn(Icons.cameraswitch_outlined, _switchCamera), const SizedBox(width: 8)],
                 _roundBtn(_flashOn ? Icons.flash_on : Icons.flash_off, _toggleFlash),
               ]),
