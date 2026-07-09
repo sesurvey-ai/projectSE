@@ -1437,40 +1437,44 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  // ── chip tabs (5) ──
+  // ── chip tabs (4) — เต็มความกว้าง อยู่หน้าเดียว ไม่ต้องเลื่อน ──
   Widget _chipTabs() {
-    final inDetail = _view != _SView.injured && _view != _SView.property && _view != _SView.photos && _view != _SView.expenses;
+    final inDetail = _view != _SView.injured && _view != _SView.property && _view != _SView.photos;
     String cnt(List l) => l.isNotEmpty ? ' (${l.length})' : '';
     final tabs = <List<dynamic>>[
       ['รายละเอียดเหตุ', inDetail, () => _go(_SView.hub)],
       ['ผู้บาดเจ็บ${cnt(_injured)}', _view == _SView.injured, () => _go(_SView.injured)],
       ['ทรัพย์สิน${cnt(_property)}', _view == _SView.property, () => _go(_SView.property)],
       ['รูปภาพ', _view == _SView.photos, () => _go(_SView.photos)],
-      ['ค่าใช้จ่าย', _view == _SView.expenses, () => _go(_SView.expenses)],
     ];
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-      child: SizedBox(
-        height: 32,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: tabs.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 6),
-          itemBuilder: (_, i) {
-            final active = tabs[i][1] as bool;
-            return GestureDetector(
-              onTap: tabs[i][2] as VoidCallback,
-              child: Container(
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(color: active ? _primary : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: active ? _primary : _line)),
-                child: Text(tabs[i][0] as String, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: active ? Colors.white : _muted)),
+      child: Row(children: [
+        for (var i = 0; i < tabs.length; i++)
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < tabs.length - 1 ? 6 : 0),
+              child: GestureDetector(
+                onTap: tabs[i][2] as VoidCallback,
+                child: Container(
+                  height: 32,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: (tabs[i][1] as bool) ? _primary : Colors.white,
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(color: (tabs[i][1] as bool) ? _primary : _line),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(tabs[i][0] as String, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: (tabs[i][1] as bool) ? Colors.white : _muted)),
+                  ),
+                ),
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+      ]),
     );
   }
 
