@@ -1608,10 +1608,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     bool has(TextEditingController c) => c.text.trim().isNotEmpty;
     switch (v) {
       case _SView.s1:
+        // เลขรับแจ้ง/เลขเคลม/เลขเรื่องเซอร์เวย์ มาจากงานมอบหมาย + OCR ตอนรับแจ้ง → ไม่บังคับให้ช่างกรอก
+        // บังคับเฉพาะช่องที่ช่างต้องกรอก/ยืนยัน (ตรงกับจุดแดงในหน้า)
         return miss([
           ['ประเภทเคลม', _claimType.isNotEmpty],
-          ['เลขรับแจ้ง/เลขเคลม', has(_claimRefNoCtl) || has(_claimNoCtl)],
+          ['ระดับความเสียหาย', _damageLevel.isNotEmpty],
           ['เลขกรมธรรม์', has(_policyNoCtl)],
+          ['ประเภทประกัน', has(_policyTypeCtl)],
           ['ผู้เอาประกันภัย', has(_assuredNameCtl)],
         ]);
       case _SView.s2:
@@ -2889,7 +2892,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _birthdateField() => _dateField(_driverBirthdateCtl, 'วันเกิด', req: true, defaultYearsAgo: 25, yearsAhead: 0);
+  Widget _birthdateField() => _dateField(_driverBirthdateCtl, 'วันเกิด', req: true, yearsAhead: 0);
 
   Widget _relationDropdown() {
     const rel = [
