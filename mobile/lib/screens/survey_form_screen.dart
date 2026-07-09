@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
 import '../config/api_config.dart';
+import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
 import '../data/survey_master.dart' show cidChecksum, kWounds;
 import 'package:permission_handler/permission_handler.dart';
@@ -1212,7 +1213,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       case _SView.s6:
         return _opponentsBody();
       case _SView.photos:
-        return _sectionScroll(_card(7, Icons.photo_camera_outlined, '9. รูปภาพ', [
+        return _sectionScroll(_card(7, MyFlutterApp.camera, '9. รูปภาพ', [
           _imgSubline(),
           _imgChecklist(),
           if (_photoPaths.isNotEmpty) _imgToolbar(),
@@ -1348,12 +1349,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           // 6-8: หมวด optional มีสวิตช์ "มี/ไม่มี" (ค่าเริ่มต้น "ไม่มี")
           _hubToggleCard(Icons.groups_2_outlined, '6. คู่กรณี', _SView.s6, _hasOpponents, _opponents.length, _opponents, 'คู่กรณี',
               (v) => _hasOpponents = v, asset: 'assets/section_icons/s6.png'),
-          _hubToggleCard(Icons.healing_outlined, '7. ผู้บาดเจ็บ', _SView.injured, _hasInjured, _injured.length, _injured, 'ผู้บาดเจ็บ',
+          _hubToggleCard(MyFlutterApp.procedures, '7. ผู้บาดเจ็บ', _SView.injured, _hasInjured, _injured.length, _injured, 'ผู้บาดเจ็บ',
               (v) => _hasInjured = v),
-          _hubToggleCard(Icons.chair_outlined, '8. ทรัพย์สิน', _SView.property, _hasProperty, _property.length, _property, 'ทรัพย์สิน',
+          _hubToggleCard(Icons.category, '8. ทรัพย์สิน', _SView.property, _hasProperty, _property.length, _property, 'ทรัพย์สิน',
               (v) => _hasProperty = v),
           // 9. รูปภาพ — หมวดปกติ ไม่มีสวิตช์
-          _hubCard(Icons.photo_camera_outlined, '9. รูปภาพ',
+          _hubCard(MyFlutterApp.camera, '9. รูปภาพ',
               _photoPaths.isEmpty ? 'ยังไม่มีรูป' : '${_photoPaths.length} รูป', _SView.photos, _photoPaths.isNotEmpty),
         ],
       ),
@@ -1421,7 +1422,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               boxShadow: [BoxShadow(color: const Color(0xFF141E3C).withValues(alpha: 0.035), blurRadius: 20, offset: const Offset(0, 6))],
             ),
             child: Row(children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(color: on ? _tint : _fill, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28 * _iconScale(asset), height: 28 * _iconScale(asset))) : Icon(icon, size: 21, color: on ? _primary : _muted2)),
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(12)), child: asset != null ? Center(child: Image.asset(asset, width: 28 * _iconScale(asset), height: 28 * _iconScale(asset))) : Icon(icon, size: 21, color: _primary)),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
@@ -1677,9 +1678,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         for (final s in sections) _reviewRow(s[0] as String, s[1] as _SView, s[2] as IconData),
         const SizedBox(height: 6),
         _reviewMini('6. คู่กรณี', _hasOpponents ? '${_opponents.length} คัน' : 'ไม่มี', Icons.groups_2_outlined, () => _go(_SView.s6)),
-        _reviewMini('7. ผู้บาดเจ็บ', _hasInjured ? '${_injured.length} คน' : 'ไม่มี', Icons.healing_outlined, () => _go(_SView.injured)),
-        _reviewMini('8. ทรัพย์สิน', _hasProperty ? '${_property.length} ชิ้น' : 'ไม่มี', Icons.chair_outlined, () => _go(_SView.property)),
-        _reviewMini('9. รูปภาพ', '${_photoPaths.length} รูป', Icons.photo_camera_outlined, () => _go(_SView.photos)),
+        _reviewMini('7. ผู้บาดเจ็บ', _hasInjured ? '${_injured.length} คน' : 'ไม่มี', MyFlutterApp.procedures, () => _go(_SView.injured)),
+        _reviewMini('8. ทรัพย์สิน', _hasProperty ? '${_property.length} ชิ้น' : 'ไม่มี', Icons.category, () => _go(_SView.property)),
+        _reviewMini('9. รูปภาพ', '${_photoPaths.length} รูป', MyFlutterApp.camera, () => _go(_SView.photos)),
         const SizedBox(height: 10),
         const Text('กด "ส่งรายงาน" ด้านล่างเพื่อส่งเข้าระบบ', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _muted)),
       ]),
@@ -2190,7 +2191,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // ── ผู้บาดเจ็บ ──
   Widget _injuredBody() => _recordListScroll(
-        icon: Icons.healing_outlined,
+        icon: MyFlutterApp.procedures,
         title: '7. ผู้บาดเจ็บ',
         items: _injured,
         emptyHint: 'ยังไม่มีผู้บาดเจ็บ\nกด "เพิ่มผู้บาดเจ็บ" หากมี',
@@ -2232,7 +2233,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // ── ทรัพย์สิน ──
   Widget _propertyBody() => _recordListScroll(
-        icon: Icons.chair_outlined,
+        icon: Icons.category,
         title: '8. ทรัพย์สิน',
         items: _property,
         emptyHint: 'ยังไม่มีทรัพย์สินเสียหาย\nกด "เพิ่มทรัพย์สิน" หากมี',
