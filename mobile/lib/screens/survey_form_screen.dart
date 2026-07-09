@@ -1409,10 +1409,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Widget _timelineStrip() {
     final nodes = <List<String>>[
-      ['ลูกค้าแจ้ง', _accCustomerReportDateCtl.text.trim()],
-      ['แจ้งเซอร์เวย์', _accInsNotifyDateCtl.text.trim()],
-      ['ถึงที่เกิดเหตุ', _accSurveyArriveDateCtl.text.trim()],
-      ['สำรวจเสร็จ', _accSurveyCompleteDateCtl.text.trim()],
+      ['ลูกค้าแจ้ง', _accCustomerReportDateCtl.text.trim(), _accCustomerReportTimeCtl.text.trim()],
+      ['แจ้งเซอร์เวย์', _accInsNotifyDateCtl.text.trim(), _accInsNotifyTimeCtl.text.trim()],
+      ['ถึงที่เกิดเหตุ', _accSurveyArriveDateCtl.text.trim(), _accSurveyArriveTimeCtl.text.trim()],
+      ['สำรวจเสร็จ', _accSurveyCompleteDateCtl.text.trim(), _accSurveyCompleteTimeCtl.text.trim()],
     ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -1431,6 +1431,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               const SizedBox(height: 5),
               Text(n[0], textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: _ink)),
               Text(n[1].isNotEmpty ? n[1] : '—', textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: _muted)),
+              if (n[2].isNotEmpty)
+                Text(n[2], textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: _muted2)),
             ])),
         ]),
       ]),
