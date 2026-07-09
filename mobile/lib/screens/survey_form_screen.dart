@@ -67,6 +67,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     'รูปทรัพย์สินอื่นๆของคู่กรณี',
   ];
   static const String _imgCatDefault = 'รูปประกอบ';
+  static const String _catOpponentCar = 'รูปรถคู่กรณี'; // หมวดที่แยก "คันที่ N" ตามจำนวนคู่กรณี
   Set<int>? _imgSel; // โหมดเลือกหลายรูป (null = ปิด)
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
@@ -802,8 +803,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // เลือกประเภทรูปก่อน (ใช้ทั้งตอนถ่ายใหม่ + เปลี่ยนหมวดรูปเดิม) — คืน label หรือ null ถ้ายกเลิก
-  Future<String?> _pickImageCategory({String? current, String title = 'เลือกประเภทรูป'}) {
-    return showModalBottomSheet<String>(
+  // ถ้าเลือก "รูปรถคู่กรณี" และมีคู่กรณีในเคส → เลือกต่อว่าเป็น "คันที่ N"
+  Future<String?> _pickImageCategory({String? current, String title = 'เลือกประเภทรูป'}) async {
+    final base = _baseCat(current); // ไฮไลต์หมวดฐาน (ตัด "คันที่ N" ออก)
+    final picked = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
@@ -820,7 +823,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                 ListTile(
                   dense: true,
                   title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
-                  trailing: c == current ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                  trailing: c == base ? const Icon(Icons.check, color: _primary, size: 20) : null,
                   onTap: () => Navigator.pop(ctx, c),
                 ),
             ]),
@@ -829,6 +832,59 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]),
       ),
     );
+    if (picked == null || !mounted) return picked;
+    // รูปรถคู่กรณี + มีคู่กรณีในเคส → เลือกต่อว่าเป็นคันที่เท่าไร
+    if (picked == _catOpponentCar && _opponents.isNotEmpty) {
+      return _pickOpponentVehicle(current: current);
+    }
+    return picked;
+  }
+
+  // เลือกว่าเป็นรถคู่กรณีคันไหน (จำนวนตามคู่กรณีในเคส) — คืน 'รูปรถคู่กรณี คันที่ N' หรือ 'รูปรถคู่กรณี'
+  Future<String?> _pickOpponentVehicle({String? current}) {
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 6), child: Row(children: [
+            const Text('รูปรถคู่กรณี — เลือกคัน', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+            const Spacer(),
+            IconButton(icon: const Icon(Icons.close, size: 22, color: _muted), onPressed: () => Navigator.pop(ctx)),
+          ])),
+          Flexible(
+            child: ListView(shrinkWrap: true, children: [
+              for (var i = 0; i < _opponents.length; i++)
+                ListTile(
+                  dense: true,
+                  title: Text(
+                    'คันที่ ${i + 1}${(_opponents[i]['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${_opponents[i]['plate']}' : ''}',
+                    style: const TextStyle(fontSize: 14.5, color: _ink),
+                  ),
+                  trailing: current == '$_catOpponentCar คันที่ ${i + 1}' ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                  onTap: () => Navigator.pop(ctx, '$_catOpponentCar คันที่ ${i + 1}'),
+                ),
+              const Divider(height: 1),
+              ListTile(
+                dense: true,
+                title: const Text('ไม่ระบุคัน', style: TextStyle(fontSize: 14.5, color: _muted)),
+                trailing: current == _catOpponentCar ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                onTap: () => Navigator.pop(ctx, _catOpponentCar),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
+  // หมวดฐาน (ตัด " คันที่ N" ออก) — ใช้ไฮไลต์ในตัวเลือก + จัดกลุ่มในตารางนับ
+  String _baseCat(String? c) {
+    if (c == null || c.isEmpty) return '';
+    for (final k in _imgCats) { if (c == k || c.startsWith('$k ')) return k; }
+    return c;
   }
 
   Future<void> _takePhoto() async {
@@ -870,7 +926,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // การ์ดสรุปจำนวนรูปแต่ละประเภท (โชว์เฉพาะประเภทที่มีรูปแล้ว) — ซ่อนถ้ายังไม่มีรูป
   Widget _imgChecklist() {
-    final rows = _imgCats.where((c) => _photoCountOf(c) > 0).toList();
+    // จัดกลุ่ม: หมวดฐานก่อน แล้วตามด้วย variant "คันที่ N" ที่มีรูป (กันหมวด dynamic หลุดจากตารางนับ)
+    final present = _photoCat.values.toSet();
+    final rows = <String>[];
+    for (final base in _imgCats) {
+      if (present.contains(base)) rows.add(base);
+      final variants = present.where((c) => c != base && c.startsWith('$base ')).toList()..sort();
+      rows.addAll(variants);
+    }
+    for (final c in present) { if (!rows.contains(c)) rows.add(c); } // safety: หมวดที่ไม่ตรงฐานใด
     if (rows.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(12),
