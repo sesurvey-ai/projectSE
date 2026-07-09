@@ -30,6 +30,8 @@ const _primary = Color(0xFF2F6BD8);
 const _tint = Color(0xFFEAF1FD);
 const _warn = Color(0xFFC98A06);
 const _warnTint = Color(0xFFFDF3DF);
+const _alert = Color(0xFFDC2626); // แดง — แจ้งเตือน "ขาดข้อมูล"
+const _alertTint = Color(0xFFFDECEC);
 const _ok = Color(0xFF1F9D6B);
 const _okTint = Color(0xFFE4F6EE);
 
@@ -1491,7 +1493,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final Color c, bg;
     final String label;
     if (missing.isNotEmpty) {
-      c = _warn; bg = _warnTint; label = 'ขาด ${missing.length}';
+      c = _alert; bg = _alertTint; label = 'ขาด ${missing.length}';
     } else if (started) {
       c = _ok; bg = _okTint; label = 'ครบ';
     } else {
@@ -1682,13 +1684,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: total == 0 ? _okTint : _warnTint, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: total == 0 ? _okTint : _alertTint, borderRadius: BorderRadius.circular(16)),
           child: Row(children: [
-            Icon(total == 0 ? Icons.check_circle : Icons.warning_amber_rounded, color: total == 0 ? _ok : _warn),
+            Icon(total == 0 ? Icons.check_circle : Icons.warning_amber_rounded, color: total == 0 ? _ok : _alert),
             const SizedBox(width: 10),
             Expanded(child: Text(
               total == 0 ? 'ข้อมูลครบ พร้อมส่งรายงาน' : 'ยังขาด $total รายการ — แตะหมวดเพื่อไปแก้ (ส่งได้แต่ควรกรอกให้ครบ)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: total == 0 ? _ok : _warn, height: 1.4),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: total == 0 ? _ok : _alert, height: 1.4),
             )),
           ]),
         ),
@@ -1731,7 +1733,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               ]),
               if (missing.isNotEmpty) ...[
                 const SizedBox(height: 7),
-                Text('ขาด: ${missing.join(", ")}', style: const TextStyle(fontSize: 11.5, color: _warn, height: 1.35)),
+                Text('ขาด: ${missing.join(", ")}', style: const TextStyle(fontSize: 11.5, color: _alert, height: 1.35)),
               ],
             ]),
           ),
@@ -1789,7 +1791,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(children: [
-              const Icon(Icons.warning_amber_rounded, color: _warn),
+              const Icon(Icons.warning_amber_rounded, color: _alert),
               const SizedBox(width: 8),
               Expanded(child: Text('พบ $total รายการที่ยังไม่ครบ', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: _ink))),
             ]),
@@ -1805,14 +1807,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: _warnTint, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: _alertTint, borderRadius: BorderRadius.circular(12)),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(children: [
-                          Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _warn))),
-                          const Icon(Icons.arrow_forward, size: 16, color: _warn),
+                          Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _alert))),
+                          const Icon(Icons.arrow_forward, size: 16, color: _alert),
                         ]),
                         const SizedBox(height: 4),
-                        Text('• ${entry.value.join("\n• ")}', style: const TextStyle(fontSize: 12, color: _warn, height: 1.5)),
+                        Text('• ${entry.value.join("\n• ")}', style: const TextStyle(fontSize: 12, color: _alert, height: 1.5)),
                       ]),
                     ),
                   ),
@@ -1834,7 +1836,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () { Navigator.pop(ctx); _submitSurvey(); },
-                  style: ElevatedButton.styleFrom(backgroundColor: _warn, foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                  style: ElevatedButton.styleFrom(backgroundColor: _alert, foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
                   child: const Text('ส่งทั้งที่ยังไม่ครบ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 ),
               ),
