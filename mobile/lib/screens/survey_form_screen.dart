@@ -208,6 +208,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet(
       context: context,
+      useSafeArea: true, // กันปุ่ม "เสร็จ" โดน nav bar บัง (route-level SafeArea)
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) {
@@ -1622,7 +1623,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ['ทะเบียนรถ', has(_licensePlateCtl)],
           ['จังหวัด', has(_carProvinceCtl)],
           ['ประเภทรถ', _carType != '0'],
-          ['เลข กม.', has(_mileageCtl)],
         ]);
       case _SView.s3:
         return miss([
@@ -1901,7 +1901,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ],
         _txt(_chassisNoCtl, 'หมายเลขตัวถัง (VIN)'),
         _row2(_txt(_engineNoCtl, 'หมายเลขเครื่อง'), _txt(_modelNoCtl, 'หมายเลข Model')),
-        _numField(_mileageCtl, 'หมายเลข กม.', req: true),
+        _numField(_mileageCtl, 'หมายเลข กม.'),
       ];
 
   // ประเภทรถ = dropdown (ตัวเลือก + ค่าตาม ddlCType จริง)

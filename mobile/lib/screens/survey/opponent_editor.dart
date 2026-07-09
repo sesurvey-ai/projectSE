@@ -172,7 +172,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
           kText(_ctl('plate'), 'ทะเบียน', req: true),
           KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, req: true, onSelected: (v) => setState(() => _province = v)),
         ),
-        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.', req: true)),
+        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
         _scanBtns(),
