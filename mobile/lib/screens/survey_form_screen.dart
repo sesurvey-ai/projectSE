@@ -1364,7 +1364,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _photoButton() => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Material(
-          color: _tint,
+          color: _primary,
           borderRadius: BorderRadius.circular(18),
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
@@ -1372,11 +1372,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             child: Container(
               height: 60,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _line),
-              ),
-              child: const Icon(MyFlutterApp.camera, size: 30, color: _primary),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(18)),
+              child: const Icon(MyFlutterApp.camera, size: 30, color: Colors.white),
             ),
           ),
         ),
