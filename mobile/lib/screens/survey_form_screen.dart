@@ -1090,6 +1090,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'driver_gender': _driverGender,
       'driver_title': _driverTitle,
       'driver_name': driverFullName,
+      // เก็บชื่อ/นามสกุลแยกด้วย (restore อ่านจาก 2 ตัวนี้ — ไม่งั้น draft round-trip แล้วหาย)
+      'driver_first_name': _driverNameCtl.text.trim(),
+      'driver_last_name': _driverLastnameCtl.text.trim(),
       'driver_birthdate': _driverBirthdateCtl.text.trim(),
       'driver_phone': _driverPhoneCtl.text.trim(),
       'driver_address': _driverAddressCtl.text.trim(),
