@@ -819,7 +819,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ])),
           Flexible(
             child: ListView(shrinkWrap: true, children: [
-              for (final c in _imgCats)
+              for (final c in _imgCats.where(_catAvailable))
                 ListTile(
                   dense: true,
                   title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
@@ -885,6 +885,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     if (c == null || c.isEmpty) return '';
     for (final k in _imgCats) { if (c == k || c.startsWith('$k ')) return k; }
     return c;
+  }
+
+  // หมวดรูปที่อ้างถึงหมวด optional (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน) จะเลือกได้เฉพาะเมื่อหมวดนั้นเปิด "มี"
+  bool _catAvailable(String c) {
+    if (c.contains('คู่กรณี') && !_hasOpponents) return false;
+    if (c.contains('ผู้บาดเจ็บ') && !_hasInjured) return false;
+    if (c.contains('ทรัพย์สิน') && !_hasProperty) return false;
+    return true;
   }
 
   Future<void> _takePhoto() async {
