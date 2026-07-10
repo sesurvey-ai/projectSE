@@ -1451,7 +1451,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               height: 60,
               alignment: Alignment.center,
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(18)),
-              child: const Icon(MyFlutterApp.camera, size: 30, color: Colors.white),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(MyFlutterApp.camera, size: 26, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text('ถ่ายรูป & ดูรูป', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                ],
+              ),
             ),
           ),
         ),
