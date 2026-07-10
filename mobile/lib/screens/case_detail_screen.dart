@@ -172,37 +172,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     }
   }
 
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'assigned':
-        return Colors.orange;
-      case 'surveyed':
-        return const Color(0xFF2F6BD8);
-      case 'reviewed':
-        return Colors.green;
-      case 'pending':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String _statusText(String status) {
-    switch (status) {
-      case 'assigned':
-        return 'มอบหมายแล้ว';
-      case 'surveyed':
-        return 'สำรวจแล้ว';
-      case 'reviewed':
-        return 'ตรวจสอบแล้ว';
-      case 'pending':
-        return 'รอดำเนินการ';
-      default:
-        return status;
-    }
-  }
-
-
   void _showBuddhistDatePicker() {
     // ปล่อย focus ของช่องข้อความที่ค้างอยู่ ก่อนเปิด bottom sheet → ปิดแล้วไม่เด้ง focus/คีย์บอร์ดกลับ
     FocusManager.instance.primaryFocus?.unfocus();
@@ -376,29 +345,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Status badge
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _statusColor(caseModel.status).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _statusText(caseModel.status),
-                      style: TextStyle(
-                        color: _statusColor(caseModel.status),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                const SizedBox(height: 16),
-
-                // Vehicle details card
+                // การ์ด "หน้าการ์ด" (ตัด badge สถานะออก — โชว์ "มอบหมายแล้ว" ในหน้างานของฉันอยู่แล้ว)
                 if (_loadingDetail)
                   const Card(
                     child: Padding(
