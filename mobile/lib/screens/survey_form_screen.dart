@@ -3285,8 +3285,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.78),
       itemCount: count,
       itemBuilder: (context, gi) {
-        if (!selMode && gi == vis.length) return _addPhotoTile();
-        final index = vis[gi];
+        if (!selMode && gi == 0) return _addPhotoTile(); // ปุ่มถ่ายรูปอยู่ซ้ายบนสุดเสมอ
+        final index = vis[selMode ? gi : gi - 1];
         final path = _photoPaths[index];
         final cat = _photoCat[path] ?? _imgCatDefault;
         final time = _photoTimeLabel(path);
