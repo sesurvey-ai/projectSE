@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="#F4F6F9">
 
-    <!-- Center section: title + info (จัดกึ่งกลาง — ไม่มีไอคอน/mute) -->
+    <!-- Center section: title + logo + ชื่อบริษัท + การ์ดสถานที่ (จัดกึ่งกลาง) -->
     <LinearLayout
         android:id="@+id/top_section"
         android:layout_width="match_parent"
@@ -15,19 +15,7 @@
         android:layout_marginBottom="64dp"
         android:paddingHorizontal="32dp">
 
-        <!-- โลโก้บริษัทประกัน (แสดงตามบริษัทในเคส) -->
-        <ImageView
-            android:id="@+id/img_logo"
-            android:layout_width="86dp"
-            android:layout_height="86dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="20dp"
-            android:scaleType="fitCenter"
-            android:adjustViewBounds="true"
-            android:contentDescription="company logo"
-            android:visibility="gone" />
-
-        <!-- Title -->
+        <!-- Title (อยู่บนโลโก้) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -35,9 +23,32 @@
             android:textSize="32sp"
             android:textColor="#1A2733"
             android:textStyle="bold"
+            android:layout_marginBottom="20dp" />
+
+        <!-- โลโก้บริษัทประกัน (แสดงตามบริษัทในเคส) -->
+        <ImageView
+            android:id="@+id/img_logo"
+            android:layout_width="86dp"
+            android:layout_height="86dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="10dp"
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true"
+            android:contentDescription="company logo"
+            android:visibility="gone" />
+
+        <!-- ชื่อย่อบริษัทประกัน (ใต้โลโก้) -->
+        <TextView
+            android:id="@+id/txt_insurance_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="18sp"
+            android:textColor="#1A2733"
+            android:textStyle="bold"
             android:layout_marginBottom="22dp" />
 
-        <!-- Info card -->
+        <!-- Info card: สถานที่เกิดเหตุ อย่างเดียว -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -45,85 +56,7 @@
             android:background="@drawable/card_bg_light"
             android:padding="20dp">
 
-            <!-- Row 1: บริษัทประกัน -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="14dp">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_agenda"
-                    android:tint="#FF9800"
-                    android:contentDescription="insurance" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="บริษัทประกัน"
-                        android:textSize="12sp"
-                        android:textColor="#64748B" />
-
-                    <TextView
-                        android:id="@+id/txt_insurance"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textSize="16sp"
-                        android:textColor="#1A2733"
-                        android:maxLines="2"
-                        android:ellipsize="end" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Row 2: เลขเคลม -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="14dp">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_info_details"
-                    android:tint="#FF9800"
-                    android:contentDescription="claim" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="เลขเคลม"
-                        android:textSize="12sp"
-                        android:textColor="#64748B" />
-
-                    <TextView
-                        android:id="@+id/txt_claim"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="16sp"
-                        android:textColor="#1A2733" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Row 3: สถานที่เกิดเหตุ (แสดงเต็ม ไม่ตัด) -->
+            <!-- สถานที่เกิดเหตุ (แสดงเต็ม ไม่ตัด) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -163,7 +96,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Bottom buttons -->
+    <!-- Bottom button -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

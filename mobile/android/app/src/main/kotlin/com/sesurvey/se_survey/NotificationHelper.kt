@@ -20,6 +20,15 @@ object NotificationHelper {
     private const val CHANNEL_ID = "incoming_call_channel_v5"
     private var mediaPlayer: MediaPlayer? = null
 
+    // ชื่อย่อบริษัทประกัน — ตัด "บริษัท" นำหน้า และ "จำกัด (มหาชน)" ท้าย
+    // เช่น "บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)" → "ไทยไพบูลย์ประกันภัย"
+    fun shortInsurer(name: String): String {
+        var s = name.trim()
+        s = s.replace(Regex("^บริษัท\\s*"), "")
+        s = s.replace(Regex("\\s*จำกัด.*$"), "")
+        return s.trim()
+    }
+
     // ── สถานะหน้าจอ ──────────────────────────────────────────────
     enum class ScreenState {
         SCREEN_OFF,      // จอปิด (ดับ)
@@ -106,11 +115,10 @@ object NotificationHelper {
         // Custom layout
         val customView = RemoteViews(context.packageName, R.layout.notification_incoming)
         customView.setTextViewText(R.id.notification_title, title)
-        // บรรทัดรอง: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน (เว้นตัวที่ว่าง)
+        // บรรทัดรอง: สถานที่เกิดเหตุ · บริษัทประกัน (ตัดเลขเคลม + ใช้ชื่อย่อบริษัท ให้สอดคล้องกับหน้าเต็มจอ)
         val sub = listOf(
             incidentLocation.trim(),
-            if (claimNo.isNotBlank()) "เคลม ${claimNo.trim()}" else "",
-            insuranceCompany.trim()
+            shortInsurer(insuranceCompany)
         ).filter { it.isNotBlank() }.joinToString("  ·  ")
         customView.setTextViewText(R.id.notification_subtitle, sub)
 

@@ -61,12 +61,13 @@ class IncomingCallActivity : Activity() {
         claimNo = source.getStringExtra("claim_no") ?: claimNo
         insuranceCompany = source.getStringExtra("insurance_company") ?: insuranceCompany
 
-        // 3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน
-        findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "-"
-        findViewById<TextView>(R.id.txt_claim).text = if (claimNo.isNotBlank()) claimNo else "-"
-        findViewById<TextView>(R.id.txt_insurance).text = if (insuranceCompany.isNotBlank()) insuranceCompany else "-"
+        // การ์ด: สถานที่เกิดเหตุ อย่างเดียว (ว่าง = "ไม่ระบุสถานที่")
+        findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "ไม่ระบุสถานที่"
+        // ชื่อย่อบริษัทประกัน (ใต้โลโก้)
+        val shortName = NotificationHelper.shortInsurer(insuranceCompany)
+        findViewById<TextView>(R.id.txt_insurance_name).text = if (shortName.isNotBlank()) shortName else "-"
 
-        // โลโก้บริษัทประกัน — ตอนนี้มี TPB; บริษัทที่ไม่มีโลโก้ = ซ่อน
+        // โลโก้บริษัทประกัน — ตอนนี้มี TPB; บริษัทที่ไม่มีโลโก้ = ซ่อน (เหลือชื่อย่อบอก identity)
         val logoView = findViewById<ImageView>(R.id.img_logo)
         if (insuranceCompany.contains("ไทยไพบูลย์") || insuranceCompany.contains("TPB", ignoreCase = true)) {
             logoView.setImageResource(R.drawable.logo_tpb)
