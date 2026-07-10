@@ -29,14 +29,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   bool _uploadingArrival = false;
   final _picker = ImagePicker();
 
-  // collapsible sections state
-  final Map<String, bool> _expandedSections = {
-    'company': false,
-    'policy': false,
-    'vehicle': false,
-    'card_face': false,
-  };
-
   @override
   void initState() {
     super.initState();
@@ -530,39 +522,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     );
   }
 
-  Widget _buildCollapsibleSection(String key, String title, IconData icon, List<Widget> rows) {
-    final expanded = _expandedSections[key] ?? false;
-    return Column(
-      children: [
-        InkWell(
-          onTap: () => setState(() => _expandedSections[key] = !expanded),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: const Color(0xFF2F6BD8)),
-                const SizedBox(width: 8),
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2F6BD8))),
-                const Spacer(),
-                Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey),
-              ],
-            ),
-          ),
-        ),
-        if (expanded)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(children: rows),
-          ),
-      ],
-    );
-  }
-
+  // การ์ด "หน้าการ์ด": โชว์รูปใบรับแจ้งเคลมที่ระบบ OCR อ่าน (แทนการแสดงรายละเอียดที่แยกฟิลด์)
   Widget _buildVehicleCard() {
+    final images = (_report?['case_images'] as List?) ?? [];
+    final ocrImages = images.where((img) => img['image_type'] == 'ocr').toList();
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -575,10 +538,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             decoration: const BoxDecoration(color: Color(0xFF2F6BD8)),
             child: Row(
               children: [
-                const Icon(Icons.description, color: Colors.white, size: 20),
+                const Icon(Icons.credit_card, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 const Text(
-                  'รายละเอียด',
+                  'หน้าการ์ด',
                   style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
@@ -598,55 +561,39 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
           ),
 
-          _buildCollapsibleSection('company', 'บริษัทประกัน / เคลม', Icons.business, [
-            _buildTableRow('บริษัทประกัน', _val('insurance_company')),
-            _buildTableRow('สาขา', _val('insurance_branch')),
-            _buildTableRow('เลขเรื่องเซอร์เวย์', _val('survey_job_no')),
-            _buildTableRow('เลขที่รับแจ้ง', _val('claim_ref_no')),
-            _buildTableRow('เลขที่เคลม', _val('claim_no')),
-          ]),
-
-          _buildCollapsibleSection('policy', 'ข้อมูลกรมธรรม์', Icons.policy, [
-            _buildTableRow('เลข พ.ร.บ.', _val('prb_number')),
-            _buildTableRow('เลขกรมธรรม์', _val('policy_no')),
-            _buildTableRow('ผู้ขับตามกรมธรรม์', _val('driver_by_policy')),
-            _buildTableRow('เริ่มต้น', _val('policy_start')),
-            _buildTableRow('สิ้นสุด', _val('policy_end')),
-            _buildTableRow('ชื่อผู้เอาประกัน', _val('assured_name')),
-            _buildTableRow('ประเภทกรมธรรม์', _val('policy_type')),
-            _buildTableRow('รหัสความเสี่ยง', _val('risk_code')),
-            _buildTableRow('ค่าเสียหายส่วนแรก', _val('deductible')),
-          ]),
-
-          _buildCollapsibleSection('vehicle', 'ข้อมูลรถยนต์', Icons.directions_car, [
-            _buildTableRow('หมายเลขทะเบียน', _val('license_plate')),
-            _buildTableRow('จังหวัด', _val('car_province')),
-            _buildTableRow('ประเภทรถ', _val('car_type')),
-            _buildTableRow('ยี่ห้อ', _val('car_brand')),
-            _buildTableRow('รุ่น', _val('car_model')),
-            _buildTableRow('สี', _val('car_color')),
-            _buildTableRow('ปีจดทะเบียน', _val('car_reg_year')),
-            _buildTableRow('ประเภท EV', _val('ev_type')),
-            _buildTableRow('หมายเลขตัวรถ', _val('chassis_no')),
-            _buildTableRow('รุ่นรถ', _val('model_no')),
-            _buildTableRow('หมายเลขเครื่อง', _val('engine_no')),
-            _buildTableRow('เลขไมล์', _val('mileage')),
-          ]),
-
-          if (_report?['case_images'] != null && (_report!['case_images'] as List).where((img) => img['image_type'] == 'ocr').isNotEmpty)
-            _buildCollapsibleSection('card_face', 'หน้าการ์ด', Icons.credit_card, [
-              _buildCardFaceImage(),
-            ]),
+          // รูปหน้าการ์ด (ที่ระบบ OCR อ่าน) — แตะเพื่อดูเต็มจอ
+          if (ocrImages.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  for (int i = 0; i < ocrImages.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _cardImage(ocrImages[i]['file_path']?.toString() ?? ''),
+                  ],
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.credit_card_off, size: 40, color: Colors.grey.shade400),
+                    const SizedBox(height: 8),
+                    Text('ยังไม่มีรูปหน้าการ์ด', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildCardFaceImage() {
-    final images = _report!['case_images'] as List;
-    final ocrImages = images.where((img) => img['image_type'] == 'ocr').toList();
-    if (ocrImages.isEmpty) return const SizedBox.shrink();
-    final filePath = ocrImages.first['file_path']?.toString() ?? '';
+  Widget _cardImage(String filePath) {
+    if (filePath.isEmpty) return const SizedBox.shrink();
     final imageUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
     return GestureDetector(
       onTap: () => _showFullImage(imageUrl),
@@ -659,13 +606,13 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             return const SizedBox(
-              height: 100,
+              height: 120,
               child: Center(child: CircularProgressIndicator()),
             );
           },
           errorBuilder: (context, error, stackTrace) {
             return Container(
-              height: 80,
+              height: 100,
               color: Colors.grey.shade200,
               child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
             );
@@ -1059,24 +1006,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2F6BD8))),
           const SizedBox(height: 8),
           ...rows,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTableRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-          ),
-          Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 13)),
-          ),
         ],
       ),
     );
