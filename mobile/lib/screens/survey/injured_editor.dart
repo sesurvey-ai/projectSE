@@ -9,7 +9,9 @@ class InjuredEditor extends StatefulWidget {
   final int number;
   final bool isNew;
   final Future<Map<String, dynamic>?> Function(String kind)? onScan;
-  const InjuredEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan});
+  // เรียกทันทีหลังสแกน OCR สำเร็จ → ส่ง snapshot ปัจจุบันให้ parent เซฟ draft (กันข้อมูลหายถ้าถูก kill ก่อนกด "บันทึก")
+  final void Function(Map<String, dynamic> data)? onDraft;
+  const InjuredEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan, this.onDraft});
 
   @override
   State<InjuredEditor> createState() => _InjuredEditorState();
@@ -65,6 +67,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
         }
       }
     });
+    widget.onDraft?.call(_collect());   // autosave ทันทีหลังสแกน — กันข้อมูลหายถ้าแอปถูก kill ก่อนกด "บันทึก"
   }
 
   Widget _scanBtn() {

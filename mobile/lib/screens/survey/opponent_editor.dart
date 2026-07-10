@@ -11,7 +11,9 @@ class OpponentEditor extends StatefulWidget {
   final bool isNew;
   // สแกนเอกสาร (kind = idcard | license) → คืน fields (parent จัดการถ่าย+เก็บรูป+OCR)
   final Future<Map<String, dynamic>?> Function(String kind)? onScan;
-  const OpponentEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan});
+  // เรียกทันทีหลังสแกน OCR สำเร็จ → ส่ง snapshot ปัจจุบันให้ parent เซฟ draft (กันข้อมูลหายถ้าถูก kill ก่อนกด "บันทึก")
+  final void Function(Map<String, dynamic> data)? onDraft;
+  const OpponentEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan, this.onDraft});
 
   @override
   State<OpponentEditor> createState() => _OpponentEditorState();
@@ -129,6 +131,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         if (_ctl('last_name').text.trim().isEmpty && f('last_name').isNotEmpty) _ctl('last_name').text = f('last_name');
       }
     });
+    widget.onDraft?.call(_collect());   // autosave ทันทีหลังสแกน — กันข้อมูลหายถ้าแอปถูก kill ก่อนกด "บันทึก"
   }
 
   Widget _scanBtns() {

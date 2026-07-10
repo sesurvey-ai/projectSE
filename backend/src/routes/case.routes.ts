@@ -179,6 +179,10 @@ const submitSurveySchema = z.object({
   injured_persons: optJsonArr,
   damaged_property: optJsonArr,
   insured_damage: optJsonArr,
+  // toggle "มี/ไม่มี" (เก็บเจตนา เผื่อเปิด "มี" แต่ยังไม่กรอกรายการ)
+  has_opponents: optBool,
+  has_injured: optBool,
+  has_property: optBool,
   // ตำรวจ
   acc_police_name: optStr,
   acc_police_station: optStr,

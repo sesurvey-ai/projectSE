@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -90,6 +91,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _hasOpponents = false;
   bool _hasInjured = false;
   bool _hasProperty = false;
+  // snapshot ของหน้าย่อย (คู่กรณี/ผู้บาดเจ็บ) ที่กำลังเปิดค้าง หลังเพิ่งสแกน OCR — เก็บลง draft เพื่อกู้ถ้าแอปถูก kill
+  // {'type': 'opponent'|'injured', 'index': int? (null=รายการใหม่), 'data': {...}}
+  Map<String, dynamic>? _pendingEditor;
 
   void _go(_SView v) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -190,6 +194,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       if (_driverLastnameCtl.text.trim().isEmpty && f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
     }
     setState(() {});
+    _autosave(); // เซฟทันทีหลัง OCR เติมช่องสำคัญ (กล้อง/OCR กินแรม — เสี่ยงโดน kill)
   }
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
@@ -269,9 +274,30 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
+  // debounce autosave ระหว่างพิมพ์ (กันข้อมูลหายถ้าแอปโดน kill/กด Back ระบบ ก่อนเปลี่ยนหน้า)
+  Timer? _autosaveTimer;
+  // ตั้ง true ตอนส่งสำเร็จ (ลบ draft แล้ว) → กัน dispose เขียน draft กลับมาหลอน
+  bool _skipDraftFlush = false;
+  // ค่าสรุปความเสียหายอัตโนมัติล่าสุด — ใช้กัน _syncDamageDesc เขียนทับ note ที่ช่างพิมพ์เอง
+  String _lastAutoDesc = '';
+  // ฟังการเปลี่ยนของช่องบังคับ → อัปเดตป้าย "ครบ N/5" แบบ real-time ระหว่างพิมพ์
+  late final Listenable _completionListenable;
+
+  void _scheduleAutosave() {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(const Duration(milliseconds: 1200), _autosave);
+  }
+
   @override
   void initState() {
     super.initState();
+    _completionListenable = Listenable.merge([
+      _policyNoCtl, _policyTypeCtl, _assuredNameCtl, _claimNoCtl,
+      _licensePlateCtl, _carProvinceCtl, _carBrandCtl,
+      _driverNameCtl, _driverLastnameCtl, _driverPhoneCtl, _driverIdCardCtl, _driverLicenseNoCtl,
+      _accDateCtl, _accPlaceCtl, _accCauseCtl, _accDetailCtl, _accSurveyorCtl,
+      _accPoliceNameCtl, _accPoliceStationCtl,
+    ]);
     _loadProvinces();
     _loadExistingReport();
   }
@@ -308,6 +334,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
     showModalBottomSheet(
       context: context,
+      enableDrag: false, // กันปัดลง (โดยเฉพาะบนหัว sheet) เผลอปิด picker แทนที่จะหมุน wheel
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
@@ -524,6 +551,33 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       restoreList('opposing_parties', _opponents);
       restoreList('injured_persons', _injured);
       restoreList('damaged_property', _property);
+      // กู้ snapshot หน้าย่อยที่สแกน OCR ค้างไว้ตอนแอปถูก kill (editor ยังไม่ได้กด "บันทึก")
+      // append (รายการใหม่) หรือ replace (แก้รายการเดิม) — idempotent เพราะ restoreList เคลียร์+เติมใหม่ก่อนทุกครั้ง
+      final pe = data['pending_editor'];
+      if (pe is Map && pe['data'] is Map) {
+        final rec = Map<String, dynamic>.from(pe['data'] as Map);
+        final target = pe['type'] == 'injured' ? _injured : _opponents;
+        final idx = pe['index'];
+        if (idx is int && idx >= 0 && idx < target.length) {
+          target[idx] = rec;
+        } else {
+          target.add(rec);
+        }
+      }
+      // restore รูป + หมวดรูป จาก draft (กรองเฉพาะไฟล์ที่ยังอยู่จริง — กันแกลเลอรีว่างหลังเปิดใหม่)
+      final pp = data['photo_paths_local'];
+      if (pp is List) {
+        _photoPaths
+          ..clear()
+          ..addAll(pp.map((e) => e.toString()).where((p) => File(p).existsSync()));
+      }
+      final pc = data['photo_categories'];
+      if (pc is Map) {
+        _photoCat.clear();
+        pc.forEach((k, v) {
+          if (File(k.toString()).existsSync()) _photoCat[k.toString()] = v.toString();
+        });
+      }
       // มีข้อมูลอยู่แล้ว → เปิดสวิตช์ "มี" (กันข้อมูลถูกซ่อน); ว่าง → "ไม่มี"
       _hasOpponents = _opponents.isNotEmpty || data['has_opponents'] == true;
       _hasInjured = _injured.isNotEmpty || data['has_injured'] == true;
@@ -640,6 +694,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final List<Map<String, String>> _damageItems = [];
   bool _damageExpanded = false;
 
+  // เฉพาะแถวที่กรอกชิ้นส่วนจริง (ตัดแถวเปล่าจากการกด "+" ที่ยังไม่กรอก ออกจากการนับ/complete)
+  List<Map<String, String>> _filledDamageItems() =>
+      _damageItems.where((it) => (it['part'] ?? '').trim().isNotEmpty).toList();
+
   void _addDamageItem() {
     setState(() {
       _damageItems.add({'part': '', 'pos': '', 'level': ''});
@@ -674,7 +732,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         lines.add('${i + 1}. ${parts.join(' - ')}');
       }
     }
-    _damageDescCtl.text = lines.join('\n');
+    // เขียนสรุปอัตโนมัติเฉพาะเมื่อช่องยังว่าง หรือยังเป็นค่าสรุปเดิม (ยังไม่ถูกช่างแก้เอง)
+    // → note ที่ช่างพิมพ์เองจะไม่ถูกเขียนทับ
+    final auto = lines.join('\n');
+    if (_damageDescCtl.text.isEmpty || _damageDescCtl.text == _lastAutoDesc) {
+      _damageDescCtl.text = auto;
+    }
+    _lastAutoDesc = auto;
   }
 
   // === อุบัติเหตุ ===
@@ -719,6 +783,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
+    // best-effort เซฟร่างล่าสุดก่อน controllers ถูก dispose (กัน back/kill ระหว่างกรอก)
+    // อ่าน controllers แบบ sync ก่อน await → ปลอดภัยแม้ dispose ต่อทันที
+    if (!_skipDraftFlush) {
+      try {
+        final data = _collectFormData();
+        SharedPreferences.getInstance()
+            .then((p) => p.setString(_draftKey, jsonEncode(data)))
+            .catchError((_) => false);
+      } catch (_) {}
+    }
     for (final c in [
       _surveyCompanyCtl, _surveyCompanyAddressCtl, _surveyCompanyPhoneCtl,
       _insuranceCompanyCtl, _insuranceBranchCtl, _surveyJobNoCtl, _claimRefNoCtl, _claimNoCtl,
@@ -1257,12 +1332,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'driver_province': _driverProvinceCtl.text.trim(),
       'driver_district': _driverDistrictCtl.text.trim(),
       'damage_description': _damageDescCtl.text.trim(),
-      // แผนภาพความเสียหายรถประกัน (structured) → JSONB คอลัมน์ insured_damage
-      'insured_damage': _damageItems,
+      // แผนภาพความเสียหายรถประกัน (structured) → JSONB คอลัมน์ insured_damage (ตัดแถวเปล่า)
+      'insured_damage': _filledDamageItems(),
+      // รูป + หมวดรูป — เก็บลง draft เพื่อ restore ตอนเปิดใหม่ (server strip คีย์ที่ไม่รู้จักทิ้งเอง)
+      'photo_paths_local': _photoPaths,
+      'photo_categories': _photoCat,
       // ข้อมูลหลายรายการ → JSONB
       'opposing_parties': _opponents,
       'injured_persons': _injured,
       'damaged_property': _property,
+      // snapshot หน้าย่อยที่เปิดค้างหลังสแกน (draft-only — server strip ทิ้ง) → กู้ถ้าแอปถูก kill ก่อนกด "บันทึก"
+      'pending_editor': _pendingEditor,
       // สถานะ toggle มี/ไม่มี (เก็บเอง เผื่อเปิด "มี" แต่ยังไม่มีรายการ — ถ่ายก่อนกรอกทีหลัง)
       'has_opponents': _hasOpponents,
       'has_injured': _hasInjured,
@@ -1311,9 +1391,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final caseProvider = context.read<CaseProvider>();
     final r = await caseProvider.submitSurveyOffline(widget.caseId, data, _photoPaths);
     if (!mounted) return;
+    if (r == 'busy') return; // กันกดส่งซ้ำ (double-tap) — provider กำลังส่งอยู่
     if (r == 'ok') {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_draftKey);
+      _skipDraftFlush = true; // ส่งสำเร็จ + ลบ draft แล้ว → อย่าให้ dispose เขียน draft กลับ
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ส่งข้อมูลสำรวจสำเร็จ'), backgroundColor: Colors.green));
       context.go('/cases');
@@ -1734,7 +1816,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _s1Filled() => _claimType.isNotEmpty || _claimNoCtl.text.trim().isNotEmpty;
   bool _s2Filled() => _licensePlateCtl.text.trim().isNotEmpty || _carBrandCtl.text.trim().isNotEmpty;
   bool _s3Filled() => _driverNameCtl.text.trim().isNotEmpty;
-  bool _s4Filled() => _damageItems.isNotEmpty;
+  bool _s4Filled() => _filledDamageItems().isNotEmpty;
   bool _s5Filled() => _accDateCtl.text.trim().isNotEmpty;
   bool _s6Filled() => _opponents.isNotEmpty || _opoClaims.isNotEmpty;
   int _filledCount() {
@@ -1763,7 +1845,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final n = '${_driverNameCtl.text.trim()} ${_driverLastnameCtl.text.trim()}'.trim();
     return n.isNotEmpty ? n : 'สแกนบัตร / กรอกผู้ขับขี่';
   }
-  String _s4Summary() => _damageItems.isEmpty ? 'ยังไม่มีรายการความเสียหาย' : '${_damageItems.length} รายการ';
+  String _s4Summary() => _filledDamageItems().isEmpty ? 'ยังไม่มีรายการความเสียหาย' : '${_filledDamageItems().length} รายการ';
   String _s5Summary() {
     final d = _accDateCtl.text.trim();
     final c = _accCauseCtl.text.trim();
@@ -1809,7 +1891,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]);
       case _SView.s4:
         return miss([
-          ['รายการความเสียหาย ≥1', _damageItems.isNotEmpty],
+          ['รายการความเสียหาย ≥1', _filledDamageItems().isNotEmpty],
         ]);
       case _SView.s5:
         final base = miss([
@@ -2391,19 +2473,29 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         },
       );
 
+  // เปิด editor หน้าย่อย (คู่กรณี/ผู้บาดเจ็บ) พร้อมกัน OCR-draft หาย:
+  // onDraft (เรียกตอนสแกนในหน้าย่อย) → เก็บ snapshot ลง _pendingEditor + autosave ทันที;
+  // พอ editor ปิด (ผลลัพธ์ใดก็ตาม) → เคลียร์ _pendingEditor แล้ว persist (กัน snapshot ค้างถ้ากดยกเลิกหลังสแกน)
+  Future<Map?> _openRecordEditor(String type, int? index, Widget Function(void Function(Map<String, dynamic>) onDraft) build) async {
+    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
+        builder: (_) => build((d) { _pendingEditor = {'type': type, 'index': index, 'data': d}; _autosave(); })));
+    if (_pendingEditor != null) { _pendingEditor = null; if (mounted) _autosave(); }
+    return mounted ? res : null;
+  }
+
   Future<void> _addOpponent() async {
     if (_opponents.length >= 20) { _snack('เพิ่มคู่กรณีได้สูงสุด 20 คัน'); return; }
-    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => OpponentEditor(data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true, onScan: _captureRetainOcr)));
-    if (!mounted || res == null || res['action'] != 'save') return;
+    final res = await _openRecordEditor('opponent', null, (onDraft) => OpponentEditor(
+        data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true, onScan: _captureRetainOcr, onDraft: onDraft));
+    if (res == null || res['action'] != 'save') return;
     setState(() { _opponents.add(Map<String, dynamic>.from(res['data'] as Map)); _hasOpponents = true; });
     _autosave();
   }
 
   Future<void> _editOpponent(int i) async {
-    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => OpponentEditor(data: _opponents[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr)));
-    if (!mounted || res == null) return;
+    final res = await _openRecordEditor('opponent', i, (onDraft) => OpponentEditor(
+        data: _opponents[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr, onDraft: onDraft));
+    if (res == null) return;
     setState(() {
       if (res['action'] == 'save') {
         _opponents[i] = Map<String, dynamic>.from(res['data'] as Map);
@@ -2436,17 +2528,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       );
 
   Future<void> _addInjured() async {
-    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => InjuredEditor(data: const {}, provinces: _provinceNames, number: _injured.length + 1, isNew: true, onScan: _captureRetainOcr)));
-    if (!mounted || res == null || res['action'] != 'save') return;
+    final res = await _openRecordEditor('injured', null, (onDraft) => InjuredEditor(
+        data: const {}, provinces: _provinceNames, number: _injured.length + 1, isNew: true, onScan: _captureRetainOcr, onDraft: onDraft));
+    if (res == null || res['action'] != 'save') return;
     setState(() { _injured.add(Map<String, dynamic>.from(res['data'] as Map)); _hasInjured = true; });
     _autosave();
   }
 
   Future<void> _editInjured(int i) async {
-    final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
-        builder: (_) => InjuredEditor(data: _injured[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr)));
-    if (!mounted || res == null) return;
+    final res = await _openRecordEditor('injured', i, (onDraft) => InjuredEditor(
+        data: _injured[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr, onDraft: onDraft));
+    if (res == null) return;
     setState(() {
       if (res['action'] == 'save') {
         _injured[i] = Map<String, dynamic>.from(res['data'] as Map);
@@ -2708,22 +2800,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   Widget _savebar(CaseProvider cp) {
     final inHub = _view == _SView.hub;
     final inReview = _view == _SView.review;
-    final n = _filledCount();
     return Container(
       padding: EdgeInsets.fromLTRB(10, 8, 10, 10 + MediaQuery.of(context).padding.bottom),
       decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: _line))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          Text('ครบ $n/5 หมวด', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
-          const SizedBox(width: 10),
-          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: n / 5, minHeight: 6, backgroundColor: _line, color: _ok))),
-          if (_savedAt != null) ...[
-            const SizedBox(width: 10),
-            const Icon(Icons.check_circle, size: 13, color: _ok),
-            const SizedBox(width: 3),
-            Text('บันทึก $_savedAt', style: const TextStyle(fontSize: 10.5, color: _muted)),
-          ],
-        ]),
+        // ฟังช่องบังคับ → อัปเดต "ครบ N/5" ทันทีระหว่างพิมพ์ (ไม่ต้องรอ blur/rebuild)
+        ListenableBuilder(
+          listenable: _completionListenable,
+          builder: (context, _) {
+            final n = _filledCount();
+            return Row(children: [
+              Text('ครบ $n/5 หมวด', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
+              const SizedBox(width: 10),
+              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(999), child: LinearProgressIndicator(value: n / 5, minHeight: 6, backgroundColor: _line, color: _ok))),
+              if (_savedAt != null) ...[
+                const SizedBox(width: 10),
+                const Icon(Icons.check_circle, size: 13, color: _ok),
+                const SizedBox(width: 3),
+                Text('บันทึก $_savedAt', style: const TextStyle(fontSize: 10.5, color: _muted)),
+              ],
+            ]);
+          },
+        ),
         const SizedBox(height: 8),
         _savebarButtons(cp, inHub, inReview),
       ]),
@@ -2914,7 +3012,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       keyboardType: keyboardType,
       maxLines: maxLines,
       textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
-      onChanged: onChanged,
+      onChanged: (v) { onChanged?.call(v); _scheduleAutosave(); },
     );
   }
 
@@ -2926,6 +3024,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
       inputFormatters: decimal ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))] : [FilteringTextInputFormatter.digitsOnly],
       textInputAction: TextInputAction.next,
+      onChanged: (_) => _scheduleAutosave(),
     );
   }
 
@@ -3097,7 +3196,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _birthdateField() => _dateField(_driverBirthdateCtl, 'วันเกิด', req: true, yearsAhead: 0);
+  Widget _birthdateField() => _dateField(_driverBirthdateCtl, 'วันเกิด', req: true, yearsAhead: 0, defaultYearsAgo: 30);
 
   Widget _relationDropdown() {
     const rel = [
@@ -3185,7 +3284,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           tilePadding: const EdgeInsets.symmetric(horizontal: 13),
           childrenPadding: const EdgeInsets.fromLTRB(13, 0, 13, 13),
           leading: const Icon(Icons.build_circle_outlined, color: _primary, size: 20),
-          title: Text('รายการชิ้นส่วนเสียหาย (${_damageItems.length})', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _primary)),
+          title: Text('รายการชิ้นส่วนเสียหาย (${_filledDamageItems().length})', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _primary)),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
             GestureDetector(
               onTap: _addDamageItem,
@@ -3295,7 +3394,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: _ink),
           decoration: _dec('รายละเอียดความเสียหาย'),
           maxLines: null,
-          readOnly: _damageItems.isNotEmpty,
+          onChanged: (_) => _scheduleAutosave(),
         ),
       ),
     );

@@ -115,6 +115,7 @@ class CaseProvider extends ChangeNotifier {
 
   // ส่งงานสำรวจแบบรองรับออฟไลน์ — คืน 'ok' | 'queued' (ไม่มีเน็ต เก็บคิวไว้) | 'error'
   Future<String> submitSurveyOffline(int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
+    if (_isSubmitting) return 'busy'; // กันกดส่งซ้ำ (double-tap ก่อนปุ่ม disable)
     _isSubmitting = true;
     _error = null;
     notifyListeners();
@@ -149,6 +150,7 @@ class CaseProvider extends ChangeNotifier {
   }
 
   Future<bool> updateSurvey(int caseId, Map<String, dynamic> data) async {
+    if (_isSubmitting) return false; // กันกดซ้ำระหว่างกำลังบันทึก
     _isSubmitting = true;
     _error = null;
     notifyListeners();
