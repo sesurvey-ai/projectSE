@@ -562,6 +562,19 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
           ),
 
+          // เลขอ้างอิงเคลม (callcenter กรอก หรือได้จาก OCR) — แสดงเสมอ แม้งานนั้นไม่มีรูปหน้าการ์ด
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Column(
+              children: [
+                _refRow('เลขรับแจ้ง', _val('claim_ref_no')),
+                _refRow('เลขเคลม', _val('claim_no')),
+                _refRow('เลขเซอร์เวย์', _val('survey_job_no')),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
           // รูปหน้าการ์ด (ที่ระบบ OCR อ่าน) เต็มการ์ด ไม่มี padding — แตะเพื่อดูเต็มจอ
           if (ocrImages.isNotEmpty)
             Column(
@@ -583,6 +596,33 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  // แถวเลขอ้างอิง (ป้าย + ค่า) — ค่าเป็น '-' ถ้ายังไม่มีข้อมูล
+  Widget _refRow(String label, String value) {
+    final empty = value == '-';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 108,
+            child: Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: empty ? FontWeight.normal : FontWeight.w600,
+                color: empty ? Colors.grey.shade400 : const Color(0xFF1E2330),
+              ),
+            ),
+          ),
         ],
       ),
     );
