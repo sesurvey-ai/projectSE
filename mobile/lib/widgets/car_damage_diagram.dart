@@ -30,6 +30,7 @@ class _DamageDiagramFieldState extends State<DamageDiagramField> {
     FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet(
       context: context,
+      useSafeArea: true, // กันปุ่ม "เสร็จ" โดน nav bar บัง
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
         final item = widget.items[idx];
@@ -53,7 +54,9 @@ class _DamageDiagramFieldState extends State<DamageDiagramField> {
                   ),
                 ),
             ]);
-        return Padding(
+        return SafeArea(
+          top: false,
+          child: Padding(
           padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -74,7 +77,7 @@ class _DamageDiagramFieldState extends State<DamageDiagramField> {
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, height: 46, child: ElevatedButton(onPressed: () => Navigator.pop(ctx), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2F6BD8), foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))), child: const Text('เสร็จ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)))),
           ]),
-        );
+        ));
       }),
     );
   }
