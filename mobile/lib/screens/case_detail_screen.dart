@@ -562,18 +562,13 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
           ),
 
-          // รูปหน้าการ์ด (ที่ระบบ OCR อ่าน) — แตะเพื่อดูเต็มจอ
+          // รูปหน้าการ์ด (ที่ระบบ OCR อ่าน) เต็มการ์ด ไม่มี padding — แตะเพื่อดูเต็มจอ
           if (ocrImages.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  for (int i = 0; i < ocrImages.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 10),
-                    _cardImage(ocrImages[i]['file_path']?.toString() ?? ''),
-                  ],
-                ],
-              ),
+            Column(
+              children: [
+                for (int i = 0; i < ocrImages.length; i++)
+                  _cardImage(ocrImages[i]['file_path']?.toString() ?? ''),
+              ],
             )
           else
             Padding(
@@ -598,27 +593,24 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     final imageUrl = '${ApiConfig.baseUrl}/uploads/$filePath';
     return GestureDetector(
       onTap: () => _showFullImage(imageUrl),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          imageUrl,
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return const SizedBox(
-              height: 120,
-              child: Center(child: CircularProgressIndicator()),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              height: 100,
-              color: Colors.grey.shade200,
-              child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-            );
-          },
-        ),
+      child: Image.network(
+        imageUrl,
+        width: double.infinity,
+        fit: BoxFit.fitWidth,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return const SizedBox(
+            height: 120,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: 100,
+            color: Colors.grey.shade200,
+            child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+          );
+        },
       ),
     );
   }
