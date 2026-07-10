@@ -526,9 +526,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       restoreList('injured_persons', _injured);
       restoreList('damaged_property', _property);
       // มีข้อมูลอยู่แล้ว → เปิดสวิตช์ "มี" (กันข้อมูลถูกซ่อน); ว่าง → "ไม่มี"
-      _hasOpponents = _opponents.isNotEmpty;
-      _hasInjured = _injured.isNotEmpty;
-      _hasProperty = _property.isNotEmpty;
+      _hasOpponents = _opponents.isNotEmpty || data['has_opponents'] == true;
+      _hasInjured = _injured.isNotEmpty || data['has_injured'] == true;
+      _hasProperty = _property.isNotEmpty || data['has_property'] == true;
       final idmg = data['insured_damage'];
       if (idmg is List) {
         _damageItems
@@ -819,7 +819,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ])),
           Flexible(
             child: ListView(shrinkWrap: true, children: [
-              for (final c in _imgCats.where(_catAvailable))
+              for (final c in _imgCats)
                 ListTile(
                   dense: true,
                   title: Text(c, style: const TextStyle(fontSize: 14.5, color: _ink)),
@@ -833,14 +833,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ),
     );
     if (picked == null || !mounted) return picked;
-    // รูปรถคู่กรณี + มีคู่กรณีในเคส → เลือกต่อว่าเป็นคันที่เท่าไร
-    if (picked == _catOpponentCar && _opponents.isNotEmpty) {
-      return _pickOpponentVehicle(current: current);
-    }
-    return picked;
+    // รูปรถคู่กรณี → เลือกคัน (หรือเพิ่มคันใหม่ ณ ที่เกิดเหตุ) เสมอ แม้ยังไม่ได้กรอกคู่กรณี
+    final result = picked == _catOpponentCar ? await _pickOpponentVehicle(current: current) : picked;
+    // เลือกหมวดคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน → เปิด toggle "มี" ให้อัตโนมัติ (flow ถ่ายก่อนกรอกทีหลัง)
+    if (result != null && mounted) setState(() => _autoEnableForCat(result));
+    return result;
   }
 
-  // เลือกว่าเป็นรถคู่กรณีคันไหน (จำนวนตามคู่กรณีในเคส) — คืน 'รูปรถคู่กรณี คันที่ N' หรือ 'รูปรถคู่กรณี'
+  // เลือกว่าเป็นรถคู่กรณีคันไหน + เพิ่มคันใหม่ได้ (ณ ที่เกิดเหตุ ยังไม่ต้องกรอก) — สร้างช่องคู่กรณีให้เลย
   Future<String?> _pickOpponentVehicle({String? current}) {
     return showModalBottomSheet<String>(
       context: context,
@@ -865,6 +865,20 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   trailing: current == '$_catOpponentCar คันที่ ${i + 1}' ? const Icon(Icons.check, color: _primary, size: 20) : null,
                   onTap: () => Navigator.pop(ctx, '$_catOpponentCar คันที่ ${i + 1}'),
                 ),
+              // เพิ่มคันคู่กรณีใหม่ → สร้างช่องว่างในหมวด 6 (กรอกทีหลัง) แล้วผูกรูปกับคันนั้น
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.add_circle_outline, color: _primary, size: 22),
+                title: Text('เพิ่มคันคู่กรณี (คันที่ ${_opponents.length + 1})',
+                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _primary)),
+                onTap: () {
+                  if (_opponents.length >= 20) { _snack('เพิ่มคู่กรณีได้สูงสุด 20 คัน'); return; }
+                  final n = _opponents.length + 1;
+                  setState(() => _opponents.add(<String, dynamic>{}));
+                  _autosave();
+                  Navigator.pop(ctx, '$_catOpponentCar คันที่ $n');
+                },
+              ),
               const Divider(height: 1),
               ListTile(
                 dense: true,
@@ -887,29 +901,60 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return c;
   }
 
-  // หมวดรูปที่อ้างถึงหมวด optional (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน) จะเลือกได้เฉพาะเมื่อหมวดนั้นเปิด "มี"
-  bool _catAvailable(String c) {
-    if (c.contains('คู่กรณี') && !_hasOpponents) return false;
-    if (c.contains('ผู้บาดเจ็บ') && !_hasInjured) return false;
-    if (c.contains('ทรัพย์สิน') && !_hasProperty) return false;
-    return true;
+  // เลือกหมวดรูปที่อ้างถึงหมวด optional → เปิด toggle "มี" ให้อัตโนมัติ (ไม่ต้องกดเอง ก่อนถ่ายที่เกิดเหตุ)
+  // คู่กรณีเปิดเฉพาะ "รูปรถคู่กรณี" เท่านั้น — รูปทรัพย์สิน/ผู้บาดเจ็บ/เอกสารของคู่กรณี ให้เปิดหมวดของตัวเอง ไม่ปลุกหมวด 6 เกินจำเป็น
+  void _autoEnableForCat(String c) {
+    if (c.contains('ทรัพย์สิน')) _hasProperty = true;
+    if (c.contains('ผู้บาดเจ็บ')) _hasInjured = true;
+    if (_baseCat(c) == _catOpponentCar) _hasOpponents = true;
+  }
+
+  // ── จัดการ tag รูป "รูปรถคู่กรณี คันที่ N" เมื่อลบ/ล้างคู่กรณี (กันรูปชี้คันที่ไม่มีอยู่) ──
+  void _remapOpponentPhotoTags(int removedIdx) {
+    final prefix = '$_catOpponentCar คันที่ ';
+    final removed = removedIdx + 1;
+    for (final key in _photoCat.keys.toList()) {
+      final v = _photoCat[key]!;
+      if (!v.startsWith(prefix)) continue;
+      final n = int.tryParse(v.substring(prefix.length));
+      if (n == null) continue;
+      if (n == removed) _photoCat[key] = _catOpponentCar;      // คันที่ถูกลบ → กลับเป็นหมวดฐาน
+      else if (n > removed) _photoCat[key] = '$prefix${n - 1}'; // คันหลังเลื่อนเลขลง 1
+    }
+  }
+
+  void _demoteAllOpponentPhotoTags() {
+    final prefix = '$_catOpponentCar คันที่ ';
+    for (final key in _photoCat.keys.toList()) {
+      if (_photoCat[key]!.startsWith(prefix)) _photoCat[key] = _catOpponentCar;
+    }
   }
 
   Future<void> _takePhoto() async {
+    // snapshot ก่อนเลือกหมวด — ถ้ายกเลิกกล้อง/ไม่อนุญาต จะคืนสถานะ (toggle + คันที่เพิ่งเพิ่ม) กันรายการค้าง
+    final oppBefore = _opponents.length;
+    final hadOpp = _hasOpponents, hadInj = _hasInjured, hadProp = _hasProperty;
+    void revertProvisional() {
+      if (_opponents.length > oppBefore && _emptyRec(_opponents.last)) _opponents.removeLast();
+      _hasOpponents = hadOpp; _hasInjured = hadInj; _hasProperty = hadProp;
+      if (mounted) setState(() {});
+      _autosave();
+    }
     try {
       // เลือกประเภทรูปก่อน ค่อยเปิดกล้อง
       final cat = await _pickImageCategory(title: 'ถ่ายรูปเข้าประเภท');
-      if (cat == null || !mounted) return;
+      if (cat == null || !mounted) { revertProvisional(); return; }
       final status = await Permission.camera.request();
       if (!status.isGranted) {
+        revertProvisional();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
         return;
       }
-      if (!mounted) return;
+      if (!mounted) { revertProvisional(); return; }
       // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าประเภทที่เลือก
       final shots = await Navigator.of(context).push<List<XFile>>(
           MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: cat)));
-      if (shots == null || shots.isEmpty || !mounted) return;
+      if (shots == null || shots.isEmpty || !mounted) { revertProvisional(); return; }
       final caseFolder = await _getCaseFolder();
       final added = <String>[];
       for (final x in shots) {
@@ -1184,6 +1229,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'opposing_parties': _opponents,
       'injured_persons': _injured,
       'damaged_property': _property,
+      // สถานะ toggle มี/ไม่มี (เก็บเอง เผื่อเปิด "มี" แต่ยังไม่มีรายการ — ถ่ายก่อนกรอกทีหลัง)
+      'has_opponents': _hasOpponents,
+      'has_injured': _hasInjured,
+      'has_property': _hasProperty,
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
       'acc_place': _accPlaceCtl.text.trim(),
@@ -1567,7 +1616,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ),
     );
     if (ok == true) {
-      setState(() { list.clear(); apply(false); });
+      setState(() { if (identical(list, _opponents)) _demoteAllOpponentPhotoTags(); list.clear(); apply(false); });
       _autosave();
     }
   }
@@ -1741,6 +1790,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   // รวม error ทุกหมวด (สำหรับ gate ตอนส่ง) — key = ชื่อหมวด
+  // รายการว่าง (เพิ่มคันไว้แต่ยังไม่กรอก) — นับ false/ลิสต์ว่าง/แผนที่ว่างเป็นค่าว่างด้วย
+  // (เผื่อ editor ใส่ field โครงสร้างมาเสมอ เช่น kfk:false, damage:[] ) เพื่อไม่ให้รายการเปล่าหลุดการเตือน
+  static bool _emptyRec(Map<String, dynamic> m) => m.values.every((v) =>
+      v == null || v == false || (v is String && v.trim().isEmpty) || (v is Iterable && v.isEmpty) || (v is Map && v.isEmpty));
+
   Map<String, List<String>> _collectErrors() {
     final e = <String, List<String>>{};
     const titles = {
@@ -1751,8 +1805,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final m = _sectionMissing(entry.key);
       if (m.isNotEmpty) e[entry.value] = m;
     }
+    // หมวด optional เปิด "มี" แต่ยังไม่ได้กรอก (เช่น เพิ่มคันคู่กรณีไว้แต่ลืมกรอก) → แจ้งเตือนดักตอนส่ง
+    void checkOpt(String title, bool has, List<Map<String, dynamic>> items, String noun) {
+      if (!has) return;
+      if (items.isEmpty) { e[title] = ['เปิด "มี" แต่ยังไม่ได้เพิ่ม$noun']; return; }
+      final n = items.where(_emptyRec).length;
+      if (n > 0) e[title] = ['$noun $n รายการยังไม่ได้กรอก'];
+    }
+    checkOpt('6. คู่กรณี', _hasOpponents, _opponents, 'คู่กรณี');
+    checkOpt('7. ผู้บาดเจ็บ', _hasInjured, _injured, 'ผู้บาดเจ็บ');
+    checkOpt('8. ทรัพย์สิน', _hasProperty, _property, 'ทรัพย์สิน');
     return e;
   }
+
+  // สรุปข้อความ + สถานะเตือน ของหมวด optional สำหรับหน้าตรวจสอบ
+  String _optText(bool has, List<Map<String, dynamic>> items, String noun) {
+    if (!has) return 'ไม่มี';
+    if (items.isEmpty) return 'ยังไม่ได้เพิ่ม';
+    final n = items.where(_emptyRec).length;
+    return n > 0 ? '${items.length} $noun · $n ยังไม่ครบ' : '${items.length} $noun';
+  }
+
+  bool _optBad(bool has, List<Map<String, dynamic>> items) => has && (items.isEmpty || items.any(_emptyRec));
 
   // ── หน้าตรวจสอบ & ส่ง ──
   Widget _reviewBody() {
@@ -1783,9 +1857,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         const SizedBox(height: 14),
         for (final s in sections) _reviewRow(s[0] as String, s[1] as _SView, s[2] as IconData),
         const SizedBox(height: 6),
-        _reviewMini('6. คู่กรณี', _hasOpponents ? '${_opponents.length} คัน' : 'ไม่มี', Icons.groups_2_outlined, () => _go(_SView.s6)),
-        _reviewMini('7. ผู้บาดเจ็บ', _hasInjured ? '${_injured.length} คน' : 'ไม่มี', MyFlutterApp.procedures, () => _go(_SView.injured)),
-        _reviewMini('8. ทรัพย์สิน', _hasProperty ? '${_property.length} ชิ้น' : 'ไม่มี', Icons.category, () => _go(_SView.property)),
+        _reviewMini('6. คู่กรณี', _optText(_hasOpponents, _opponents, 'คัน'), Icons.groups_2_outlined, () => _go(_SView.s6), alert: _optBad(_hasOpponents, _opponents)),
+        _reviewMini('7. ผู้บาดเจ็บ', _optText(_hasInjured, _injured, 'คน'), MyFlutterApp.procedures, () => _go(_SView.injured), alert: _optBad(_hasInjured, _injured)),
+        _reviewMini('8. ทรัพย์สิน', _optText(_hasProperty, _property, 'ชิ้น'), Icons.category, () => _go(_SView.property), alert: _optBad(_hasProperty, _property)),
         _reviewMini('รูปภาพ', '${_photoPaths.length} รูป', MyFlutterApp.camera, () => _go(_SView.photos)),
         const SizedBox(height: 10),
         const Text('กด "ส่งรายงาน" ด้านล่างเพื่อส่งเข้าระบบ', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _muted)),
@@ -1828,19 +1902,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _reviewMini(String title, String value, IconData icon, VoidCallback onTap) {
+  Widget _reviewMini(String title, String value, IconData icon, VoidCallback onTap, {bool alert = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-          decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
+          decoration: BoxDecoration(color: alert ? _alertTint : _cardBg, borderRadius: BorderRadius.circular(13), border: Border.all(color: alert ? _alert.withValues(alpha: 0.4) : _line)),
           child: Row(children: [
-            Icon(icon, size: 17, color: _muted),
+            Icon(icon, size: 17, color: alert ? _alert : _muted),
             const SizedBox(width: 9),
             Expanded(child: Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _ink))),
-            Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
+            Text(value, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: alert ? _alert : _muted)),
             const Icon(Icons.chevron_right, size: 18, color: _muted2),
           ]),
         ),
@@ -1860,6 +1934,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     const titleToView = {
       '1. เคลม & กรมธรรม์': _SView.s1, '2. รถประกัน': _SView.s2, '3. ผู้ขับขี่': _SView.s3,
       '4. ความเสียหาย': _SView.s4, '5. สถานที่เกิดเหตุ': _SView.s5,
+      '6. คู่กรณี': _SView.s6, '7. ผู้บาดเจ็บ': _SView.injured, '8. ทรัพย์สิน': _SView.property,
     };
     showModalBottomSheet(
       context: context,
@@ -2263,7 +2338,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         addLabel: 'เพิ่มคู่กรณี',
         onAdd: _addOpponent,
         onTap: _editOpponent,
-        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() => _opponents.removeAt(i))),
+        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() { _opponents.removeAt(i); _remapOpponentPhotoTags(i); })),
         lineTitle: (m, i) => 'คันที่ ${i + 1}${(m['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${m['plate']}' : ''}',
         lineSub: (m) {
           final owner = (m['owner_name'] ?? '').toString().trim();
@@ -2277,7 +2352,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
         builder: (_) => OpponentEditor(data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true, onScan: _captureRetainOcr)));
     if (!mounted || res == null || res['action'] != 'save') return;
-    setState(() => _opponents.add(Map<String, dynamic>.from(res['data'] as Map)));
+    setState(() { _opponents.add(Map<String, dynamic>.from(res['data'] as Map)); _hasOpponents = true; });
     _autosave();
   }
 
@@ -2290,6 +2365,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _opponents[i] = Map<String, dynamic>.from(res['data'] as Map);
       } else if (res['action'] == 'delete') {
         _opponents.removeAt(i);
+        _remapOpponentPhotoTags(i);
       }
     });
     _autosave();
@@ -2319,7 +2395,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
         builder: (_) => InjuredEditor(data: const {}, provinces: _provinceNames, number: _injured.length + 1, isNew: true, onScan: _captureRetainOcr)));
     if (!mounted || res == null || res['action'] != 'save') return;
-    setState(() => _injured.add(Map<String, dynamic>.from(res['data'] as Map)));
+    setState(() { _injured.add(Map<String, dynamic>.from(res['data'] as Map)); _hasInjured = true; });
     _autosave();
   }
 
@@ -2359,7 +2435,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final res = await Navigator.of(context).push<Map>(MaterialPageRoute(
         builder: (_) => PropertyEditor(data: const {}, number: _property.length + 1, isNew: true)));
     if (!mounted || res == null || res['action'] != 'save') return;
-    setState(() => _property.add(Map<String, dynamic>.from(res['data'] as Map)));
+    setState(() { _property.add(Map<String, dynamic>.from(res['data'] as Map)); _hasProperty = true; });
     _autosave();
   }
 
