@@ -860,7 +860,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                   dense: true,
                   title: Text(
                     'คันที่ ${i + 1}${(_opponents[i]['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${_opponents[i]['plate']}' : ''}',
-                    style: const TextStyle(fontSize: 14.5, color: _ink),
+                    style: const TextStyle(fontSize: 14.5, color: _primary),
                   ),
                   trailing: current == '$_catOpponentCar คันที่ ${i + 1}' ? const Icon(Icons.check, color: _primary, size: 20) : null,
                   onTap: () => Navigator.pop(ctx, '$_catOpponentCar คันที่ ${i + 1}'),
