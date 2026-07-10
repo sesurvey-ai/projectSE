@@ -257,6 +257,7 @@ Future<String?> showKPicker(BuildContext context, String title, List<String> opt
                   final filtered = query.isEmpty ? options : options.where((o) => o.toLowerCase().contains(query.toLowerCase())).toList();
                   return ListView.builder(
                     controller: scroll,
+                    padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewPadding.bottom), // ตัวเลือกท้ายลิสต์ไม่โดน nav bar บัง
                     itemCount: filtered.length,
                     itemBuilder: (ctx, i) {
                       final o = filtered[i];
