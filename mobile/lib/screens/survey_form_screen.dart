@@ -67,7 +67,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     'รูปทรัพย์สินอื่นๆของคู่กรณี',
   ];
   static const String _imgCatDefault = 'รูปประกอบ';
-  static const String _catOpponentCar = 'รูปรถคู่กรณี'; // หมวดที่แยก "คันที่ N" ตามจำนวนคู่กรณี
   Set<int>? _imgSel; // โหมดเลือกหลายรูป (null = ปิด)
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
@@ -833,15 +832,37 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ),
     );
     if (picked == null || !mounted) return picked;
-    // รูปรถคู่กรณี → เลือกคัน (หรือเพิ่มคันใหม่ ณ ที่เกิดเหตุ) เสมอ แม้ยังไม่ได้กรอกคู่กรณี
-    final result = picked == _catOpponentCar ? await _pickOpponentVehicle(current: current) : picked;
+    // หมวดที่ผูกกับ record list (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน) → เลือก "คันที่/คนที่/ชิ้นที่ N"
+    // (หรือเพิ่มรายการใหม่ ณ ที่เกิดเหตุ) เสมอ แม้ยังไม่ได้กรอกข้อมูล
+    final rc = _recordCatFor(picked);
+    final result = rc != null ? await _pickRecord(picked, rc, current: current) : picked;
     // เลือกหมวดคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน → เปิด toggle "มี" ให้อัตโนมัติ (flow ถ่ายก่อนกรอกทีหลัง)
     if (result != null && mounted) setState(() => _autoEnableForCat(result));
     return result;
   }
 
-  // เลือกว่าเป็นรถคู่กรณีคันไหน + เพิ่มคันใหม่ได้ (ณ ที่เกิดเหตุ ยังไม่ต้องกรอก) — สร้างช่องคู่กรณีให้เลย
-  Future<String?> _pickOpponentVehicle({String? current}) {
+  // config หมวดรูปที่ผูกกับ record list — คืน null ถ้าหมวดนั้นไม่ผูกกับลิสต์ใด
+  _RecordCat? _recordCatFor(String baseCat) {
+    switch (baseCat) {
+      case 'รูปรถคู่กรณี':
+      case 'ใบขับขี่รถคู่กรณี':
+      case 'ใบรับเงินจากคู่กรณี':
+        return _RecordCat(_opponents, 'คันที่', 'คัน', 'คู่กรณี',
+            (m, i) => 'คันที่ ${i + 1}${(m['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${m['plate']}' : ''}');
+      case 'รูปผู้บาดเจ็บรถประกัน':
+      case 'รูปผู้บาดเจ็บรถคู่กรณี':
+        return _RecordCat(_injured, 'คนที่', 'คน', 'ผู้บาดเจ็บ',
+            (m, i) => 'คนที่ ${i + 1}${(m['name'] ?? '').toString().trim().isNotEmpty ? ' · ${m['name']}' : ''}');
+      case 'รูปทรัพย์สินอื่นๆของคู่กรณี':
+        return _RecordCat(_property, 'ชิ้นที่', 'ชิ้น', 'ทรัพย์สิน',
+            (m, i) => 'ชิ้นที่ ${i + 1}${(m['item'] ?? '').toString().trim().isNotEmpty ? ' · ${m['item']}' : ''}');
+      default:
+        return null;
+    }
+  }
+
+  // เลือกว่าเป็นรายการไหน (คันที่/คนที่/ชิ้นที่ N) + เพิ่มรายการใหม่ได้ (ณ ที่เกิดเหตุ ยังไม่ต้องกรอก) — สร้างช่องให้เลย
+  Future<String?> _pickRecord(String cat, _RecordCat rc, {String? current}) {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -849,42 +870,38 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 6), child: Row(children: [
-            const Text('รูปรถคู่กรณี — เลือกคัน', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
-            const Spacer(),
+            Expanded(child: Text('$cat — เลือก${rc.noun}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink))),
             IconButton(icon: const Icon(Icons.close, size: 22, color: _muted), onPressed: () => Navigator.pop(ctx)),
           ])),
           Flexible(
             child: ListView(shrinkWrap: true, children: [
-              for (var i = 0; i < _opponents.length; i++)
+              for (var i = 0; i < rc.list.length; i++)
                 ListTile(
                   dense: true,
-                  title: Text(
-                    'คันที่ ${i + 1}${(_opponents[i]['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${_opponents[i]['plate']}' : ''}',
-                    style: const TextStyle(fontSize: 14.5, color: _primary),
-                  ),
-                  trailing: current == '$_catOpponentCar คันที่ ${i + 1}' ? const Icon(Icons.check, color: _primary, size: 20) : null,
-                  onTap: () => Navigator.pop(ctx, '$_catOpponentCar คันที่ ${i + 1}'),
+                  title: Text(rc.label(rc.list[i], i), style: const TextStyle(fontSize: 14.5, color: _primary)),
+                  trailing: current == '$cat ${rc.word} ${i + 1}' ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                  onTap: () => Navigator.pop(ctx, '$cat ${rc.word} ${i + 1}'),
                 ),
-              // เพิ่มคันคู่กรณีใหม่ → สร้างช่องว่างในหมวด 6 (กรอกทีหลัง) แล้วผูกรูปกับคันนั้น
+              // เพิ่มรายการใหม่ → สร้างช่องว่างในหมวดของมัน (กรอกทีหลัง) แล้วผูกรูปกับรายการนั้น
               ListTile(
                 dense: true,
                 leading: const Icon(Icons.add_circle_outline, color: _primary, size: 22),
-                title: Text('เพิ่มคันคู่กรณี (คันที่ ${_opponents.length + 1})',
+                title: Text('เพิ่ม${rc.addNoun} (${rc.word} ${rc.list.length + 1})',
                     style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _primary)),
                 onTap: () {
-                  if (_opponents.length >= 20) { _snack('เพิ่มคู่กรณีได้สูงสุด 20 คัน'); return; }
-                  final n = _opponents.length + 1;
-                  setState(() => _opponents.add(<String, dynamic>{}));
+                  if (rc.list.length >= rc.max) { _snack('เพิ่ม${rc.addNoun}ได้สูงสุด ${rc.max} ${rc.noun}'); return; }
+                  final n = rc.list.length + 1;
+                  setState(() => rc.list.add(<String, dynamic>{}));
                   _autosave();
-                  Navigator.pop(ctx, '$_catOpponentCar คันที่ $n');
+                  Navigator.pop(ctx, '$cat ${rc.word} $n');
                 },
               ),
               const Divider(height: 1),
               ListTile(
                 dense: true,
-                title: const Text('ไม่ระบุคัน', style: TextStyle(fontSize: 14.5, color: _muted)),
-                trailing: current == _catOpponentCar ? const Icon(Icons.check, color: _primary, size: 20) : null,
-                onTap: () => Navigator.pop(ctx, _catOpponentCar),
+                title: Text('ไม่ระบุ${rc.noun}', style: const TextStyle(fontSize: 14.5, color: _muted)),
+                trailing: current == cat ? const Icon(Icons.check, color: _primary, size: 20) : null,
+                onTap: () => Navigator.pop(ctx, cat),
               ),
             ]),
           ),
@@ -901,41 +918,56 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return c;
   }
 
-  // เลือกหมวดรูปที่อ้างถึงหมวด optional → เปิด toggle "มี" ให้อัตโนมัติ (ไม่ต้องกดเอง ก่อนถ่ายที่เกิดเหตุ)
-  // คู่กรณีเปิดเฉพาะ "รูปรถคู่กรณี" เท่านั้น — รูปทรัพย์สิน/ผู้บาดเจ็บ/เอกสารของคู่กรณี ให้เปิดหมวดของตัวเอง ไม่ปลุกหมวด 6 เกินจำเป็น
+  // เลือกหมวดรูปที่ผูกกับ record list → เปิด toggle "มี" ของหมวดนั้นให้อัตโนมัติ (flow ถ่ายก่อนกรอกทีหลัง)
+  // ผูกตามลิสต์จริง: รูป/เอกสารคู่กรณี→หมวด6, ผู้บาดเจ็บ→หมวด7, ทรัพย์สิน→หมวด8 (ไม่ปลุกหมวดอื่นเกินจำเป็น)
   void _autoEnableForCat(String c) {
-    if (c.contains('ทรัพย์สิน')) _hasProperty = true;
-    if (c.contains('ผู้บาดเจ็บ')) _hasInjured = true;
-    if (_baseCat(c) == _catOpponentCar) _hasOpponents = true;
-  }
-
-  // ── จัดการ tag รูป "รูปรถคู่กรณี คันที่ N" เมื่อลบ/ล้างคู่กรณี (กันรูปชี้คันที่ไม่มีอยู่) ──
-  void _remapOpponentPhotoTags(int removedIdx) {
-    final prefix = '$_catOpponentCar คันที่ ';
-    final removed = removedIdx + 1;
-    for (final key in _photoCat.keys.toList()) {
-      final v = _photoCat[key]!;
-      if (!v.startsWith(prefix)) continue;
-      final n = int.tryParse(v.substring(prefix.length));
-      if (n == null) continue;
-      if (n == removed) _photoCat[key] = _catOpponentCar;      // คันที่ถูกลบ → กลับเป็นหมวดฐาน
-      else if (n > removed) _photoCat[key] = '$prefix${n - 1}'; // คันหลังเลื่อนเลขลง 1
+    final rc = _recordCatFor(_baseCat(c));
+    if (rc == null) return;
+    if (identical(rc.list, _opponents)) {
+      _hasOpponents = true;
+    } else if (identical(rc.list, _injured)) {
+      _hasInjured = true;
+    } else if (identical(rc.list, _property)) {
+      _hasProperty = true;
     }
   }
 
-  void _demoteAllOpponentPhotoTags() {
-    final prefix = '$_catOpponentCar คันที่ ';
+  // ── จัดการ tag รูป "<หมวด> <คำ> N" เมื่อลบ/ล้าง record (กันรูปชี้รายการที่ไม่มีอยู่) ──
+  // word = "คันที่"/"คนที่"/"ชิ้นที่" — จับทุกหมวดที่ผูกกับลิสต์เดียวกัน (ใช้คำเดียวกัน)
+  void _remapRecordPhotoTags(String word, int removedIdx) {
+    final marker = ' $word ';
+    final removed = removedIdx + 1;
     for (final key in _photoCat.keys.toList()) {
-      if (_photoCat[key]!.startsWith(prefix)) _photoCat[key] = _catOpponentCar;
+      final v = _photoCat[key]!;
+      final idx = v.lastIndexOf(marker);
+      if (idx < 0) continue;
+      final n = int.tryParse(v.substring(idx + marker.length));
+      if (n == null) continue;
+      final base = v.substring(0, idx);
+      if (n == removed) _photoCat[key] = base;                       // รายการที่ถูกลบ → กลับเป็นหมวดฐาน
+      else if (n > removed) _photoCat[key] = '$base $word ${n - 1}'; // รายการหลังเลื่อนเลขลง 1
+    }
+  }
+
+  void _demoteRecordPhotoTags(String word) {
+    final marker = ' $word ';
+    for (final key in _photoCat.keys.toList()) {
+      final v = _photoCat[key]!;
+      final idx = v.lastIndexOf(marker);
+      if (idx < 0) continue;
+      if (int.tryParse(v.substring(idx + marker.length)) == null) continue;
+      _photoCat[key] = v.substring(0, idx);
     }
   }
 
   Future<void> _takePhoto() async {
     // snapshot ก่อนเลือกหมวด — ถ้ายกเลิกกล้อง/ไม่อนุญาต จะคืนสถานะ (toggle + คันที่เพิ่งเพิ่ม) กันรายการค้าง
-    final oppBefore = _opponents.length;
+    final oppBefore = _opponents.length, injBefore = _injured.length, propBefore = _property.length;
     final hadOpp = _hasOpponents, hadInj = _hasInjured, hadProp = _hasProperty;
     void revertProvisional() {
       if (_opponents.length > oppBefore && _emptyRec(_opponents.last)) _opponents.removeLast();
+      if (_injured.length > injBefore && _emptyRec(_injured.last)) _injured.removeLast();
+      if (_property.length > propBefore && _emptyRec(_property.last)) _property.removeLast();
       _hasOpponents = hadOpp; _hasInjured = hadInj; _hasProperty = hadProp;
       if (mounted) setState(() {});
       _autosave();
@@ -961,7 +993,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
         try { await File(x.path).copy(localPath); added.add(localPath); } catch (_) {}
       }
-      if (added.isEmpty || !mounted) return;
+      if (added.isEmpty || !mounted) { revertProvisional(); return; } // คัดลอกรูปไม่สำเร็จ/ถูก unmount → คืนช่องที่เพิ่งเพิ่ม
       setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = cat; } });
       _autosave();
     } catch (e) {
@@ -982,9 +1014,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     // จัดกลุ่ม: หมวดฐานก่อน แล้วตามด้วย variant "คันที่ N" ที่มีรูป (กันหมวด dynamic หลุดจากตารางนับ)
     final present = _photoCat.values.toSet();
     final rows = <String>[];
+    int tailNum(String s) => int.tryParse(s.substring(s.lastIndexOf(' ') + 1)) ?? 0; // เลขท้าย "…คันที่ N"
     for (final base in _imgCats) {
       if (present.contains(base)) rows.add(base);
-      final variants = present.where((c) => c != base && c.startsWith('$base ')).toList()..sort();
+      final variants = present.where((c) => c != base && c.startsWith('$base ')).toList()
+        ..sort((a, b) => tailNum(a).compareTo(tailNum(b))); // เรียงตามเลข ไม่ใช่ตัวอักษร (10 ต้องหลัง 2)
       rows.addAll(variants);
     }
     for (final c in present) { if (!rows.contains(c)) rows.add(c); } // safety: หมวดที่ไม่ตรงฐานใด
@@ -1616,7 +1650,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       ),
     );
     if (ok == true) {
-      setState(() { if (identical(list, _opponents)) _demoteAllOpponentPhotoTags(); list.clear(); apply(false); });
+      setState(() {
+        if (identical(list, _opponents)) {
+          _demoteRecordPhotoTags('คันที่');
+        } else if (identical(list, _injured)) {
+          _demoteRecordPhotoTags('คนที่');
+        } else if (identical(list, _property)) {
+          _demoteRecordPhotoTags('ชิ้นที่');
+        }
+        list.clear();
+        apply(false);
+      });
       _autosave();
     }
   }
@@ -2338,7 +2382,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         addLabel: 'เพิ่มคู่กรณี',
         onAdd: _addOpponent,
         onTap: _editOpponent,
-        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() { _opponents.removeAt(i); _remapOpponentPhotoTags(i); })),
+        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() { _opponents.removeAt(i); _remapRecordPhotoTags('คันที่', i); })),
         lineTitle: (m, i) => 'คันที่ ${i + 1}${(m['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${m['plate']}' : ''}',
         lineSub: (m) {
           final owner = (m['owner_name'] ?? '').toString().trim();
@@ -2365,7 +2409,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _opponents[i] = Map<String, dynamic>.from(res['data'] as Map);
       } else if (res['action'] == 'delete') {
         _opponents.removeAt(i);
-        _remapOpponentPhotoTags(i);
+        _remapRecordPhotoTags('คันที่', i);
       }
     });
     _autosave();
@@ -2380,7 +2424,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         addLabel: 'เพิ่มผู้บาดเจ็บ',
         onAdd: _addInjured,
         onTap: _editInjured,
-        onDelete: (i) => _confirmDelete('ผู้บาดเจ็บคนที่ ${i + 1}', () => setState(() => _injured.removeAt(i))),
+        onDelete: (i) => _confirmDelete('ผู้บาดเจ็บคนที่ ${i + 1}', () => setState(() { _injured.removeAt(i); _remapRecordPhotoTags('คนที่', i); })),
         badgeBuilder: (m) => _woundBadge((m['wound_level'] ?? '').toString()),
         lineTitle: (m, i) => '${i + 1}. ${(m['name'] ?? '').toString().trim().isNotEmpty ? m['name'] : 'ไม่ระบุชื่อ'}',
         lineSub: (m) {
@@ -2408,6 +2452,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _injured[i] = Map<String, dynamic>.from(res['data'] as Map);
       } else if (res['action'] == 'delete') {
         _injured.removeAt(i);
+        _remapRecordPhotoTags('คนที่', i);
       }
     });
     _autosave();
@@ -2422,7 +2467,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         addLabel: 'เพิ่มทรัพย์สิน',
         onAdd: _addProperty,
         onTap: _editProperty,
-        onDelete: (i) => _confirmDelete('ทรัพย์สินชิ้นที่ ${i + 1}', () => setState(() => _property.removeAt(i))),
+        onDelete: (i) => _confirmDelete('ทรัพย์สินชิ้นที่ ${i + 1}', () => setState(() { _property.removeAt(i); _remapRecordPhotoTags('ชิ้นที่', i); })),
         lineTitle: (m, i) => '${i + 1}. ${(m['item'] ?? '').toString().trim().isNotEmpty ? m['item'] : 'ไม่ระบุ'}',
         lineSub: (m) {
           final o = (m['owner_name'] ?? '').toString().trim();
@@ -2448,6 +2493,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _property[i] = Map<String, dynamic>.from(res['data'] as Map);
       } else if (res['action'] == 'delete') {
         _property.removeAt(i);
+        _remapRecordPhotoTags('ชิ้นที่', i);
       }
     });
     _autosave();
@@ -3466,4 +3512,15 @@ class _TimeFieldState extends State<_TimeField> {
       ],
     );
   }
+}
+
+/// config หมวดรูปที่ผูกกับ record list (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน) — ให้ picker เลือก "คันที่/คนที่/ชิ้นที่ N" + เพิ่มรายการได้
+class _RecordCat {
+  final List<Map<String, dynamic>> list;                  // ลิสต์จริงในฟอร์ม (_opponents/_injured/_property)
+  final String word;                                      // คำนำหน้าเลขในป้ายรูป: "คันที่"/"คนที่"/"ชิ้นที่"
+  final String noun;                                      // คำเรียกรายการสั้น ๆ: "คัน"/"คน"/"ชิ้น"
+  final String addNoun;                                   // ชื่อหมวดสำหรับปุ่มเพิ่ม: "คู่กรณี"/"ผู้บาดเจ็บ"/"ทรัพย์สิน"
+  final String Function(Map<String, dynamic> m, int i) label; // ป้ายรายการในชีตเลือก
+  final int max = 20;                                     // เพิ่มได้สูงสุดต่อหมวด
+  const _RecordCat(this.list, this.word, this.noun, this.addNoun, this.label);
 }
