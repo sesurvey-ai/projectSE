@@ -371,7 +371,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            // เผื่อขอบล่าง = ความสูง nav bar (กันปุ่ม "ถ่ายรูปยืนยัน"/"เริ่มสำรวจ" โดน nav bar บัง)
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
