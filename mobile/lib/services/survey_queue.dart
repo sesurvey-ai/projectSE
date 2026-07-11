@@ -56,9 +56,12 @@ Future<int> flushSurveyQueue() async {
       done.add(entry.key);
     } on DioException catch (e) {
       final code = e.response?.statusCode;
-      // 4xx = ล้มถาวร (เช่น 403 เคสไม่อยู่สถานะ assigned = ส่งไปแล้ว/ถูกยกเลิก) → ทิ้ง ไม่ retry ตลอดกาล
-      // 5xx / network (response == null) = ชั่วคราว → คงไว้ลองใหม่รอบหน้า
-      if (code != null && code >= 400 && code < 500) done.add(entry.key);
+      // ทิ้งเฉพาะ code ที่ "ล้มถาวรจริง" (payload/สถานะเดิมไม่มีทางผ่าน เช่น 403 เคสไม่อยู่สถานะ assigned = ส่งไปแล้ว/ยกเลิก)
+      // สำคัญ: อย่าเหมา 4xx ทั้งหมด — 401 (token หมดอายุใน background), 408/429 (timeout/rate-limit), 413 = กู้ได้ ต้องคงไว้ retry
+      // ไม่งั้น background flush จะทิ้งงานสำรวจที่ส่งเสร็จแล้วทิ้งเงียบ ๆ (ข้อมูลหายกู้ไม่ได้)
+      const permanent = [400, 403, 404, 409, 410, 422];
+      if (code != null && permanent.contains(code)) done.add(entry.key);
+      // 401/408/413/429 / 5xx / network (response == null) → คงไว้ลองใหม่รอบหน้า
     } catch (_) {
       // error อื่น → คงไว้ลองใหม่
     }

@@ -158,7 +158,8 @@ export default function AttendanceTable() {
       const map: Record<string, string> = {};
       try {
         const res = await api.get(`/api/duty/schedules?y=${view.y}&m=${view.m}`);
-        const data = (res.data?.data ?? {}) as Record<string, { staff?: { id: string; code: string }[]; schedule?: Record<string, Record<string, string>> }>;
+        // getSchedules คืน { schedules, updatedAt } — อ่าน .schedules (เดิม .data ตรง ๆ ทำให้ loop ไม่เจอศูนย์ → คอลัมน์เวรเป็น '-')
+        const data = (res.data?.data?.schedules ?? {}) as Record<string, { staff?: { id: string; code: string }[]; schedule?: Record<string, Record<string, string>> }>;
         for (const centerId of Object.keys(data)) {
           const z = data[centerId];
           for (const st of z.staff ?? []) {

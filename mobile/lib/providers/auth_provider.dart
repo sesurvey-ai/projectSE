@@ -131,9 +131,10 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _apiService.clearMyLocation();
     } catch (_) {}
-    // 3) พยายามส่งงานสำรวจที่ค้างคิว (ยังมี token) แล้วล้างคิว — กัน survey ของ user นี้ถูกส่งด้วย token ของ user ถัดไป (เครื่องแชร์)
+    // 3) พยายามส่งงานสำรวจที่ค้างคิว "ตอนยังมี token ของ user นี้" — ไม่ล้างคิวทิ้ง
+    //    (ออฟไลน์แล้วล้าง = งานที่ส่งไม่ได้หายถาวร) งานที่ยังส่งไม่ได้จะคงในคิว:
+    //    user เดิมกลับมา login → ส่งต่อได้; ถ้าเป็นคนอื่น flush จะโดน 403 (ไม่ใช่เคสตน) แล้วถูกทิ้งเอง — ไม่ mis-submit ข้าม user
     try { await flushSurveyQueue(); } catch (_) {}
-    try { await clearSurveyQueue(); } catch (_) {}
     // 4) ล้าง FCM token ของเครื่อง — หยุด noti งานของ user นี้ยิงเข้าเครื่องหลัง logout
     try { await _fcmService.clearToken(); } catch (_) {}
     await ConsultBackground.cancel();
