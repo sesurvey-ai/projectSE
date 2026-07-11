@@ -5,9 +5,13 @@ import morgan from 'morgan';
 import path from 'path';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
+import { uploadsAuth } from './middleware/uploadsAuth';
 import routes from './routes';
 
 const app = express();
+
+// อยู่หลัง Traefik (reverse proxy) — trust first hop เพื่อให้ req.ip = client จริง (ใช้กับ rate limit)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -15,8 +19,20 @@ app.use(cors({ origin: env.CORS_ORIGIN.split(',') }));
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Static files (uploaded photos)
-app.use('/uploads', express.static(path.resolve(env.UPLOAD_DIR)));
+// Static files (uploaded photos) — ต้องผ่าน auth (รูปเป็น PII: บัตร ปชช./ใบขับขี่/รูปลงเวลา)
+app.use(
+  '/uploads',
+  uploadsAuth,
+  express.static(path.resolve(env.UPLOAD_DIR), {
+    dotfiles: 'deny',       // กันเข้าถึงไฟล์ซ่อน (.env ฯลฯ) ที่อาจถูกย้ายเข้ามา
+    index: false,           // ไม่ list ไดเรกทอรี
+    setHeaders: (res) => {
+      res.set('Cache-Control', 'private, max-age=300'); // เป็นข้อมูลส่วนตัว — ห้าม shared cache
+      res.set('X-Content-Type-Options', 'nosniff');
+      res.set('Referrer-Policy', 'no-referrer');
+    },
+  })
+);
 
 // API responses ต้องไม่ถูก cache — กัน browser เสิร์ฟข้อมูลเก่า (304) หลัง create/update/delete
 app.use('/api', (_req, res, next) => {

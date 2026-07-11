@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { db } from '../config/database';
 import { setupLocationHandler } from './locationHandler';
 
 let ioInstance: Server | null = null;
@@ -18,8 +19,8 @@ export function setupSocket(httpServer: HttpServer) {
     },
   });
 
-  // Authenticate socket connections with JWT
-  io.use((socket, next) => {
+  // Authenticate socket connections with JWT + เช็คสถานะบัญชีสดกับ DB (เพิกถอนสิทธิ์ได้ทันที)
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
       return next(new Error('Authentication required'));
@@ -31,7 +32,15 @@ export function setupSocket(httpServer: HttpServer) {
         username: string;
         role: string;
       };
-      socket.data.user = decoded;
+      const result = await db.query(
+        'SELECT id, username, role, is_active FROM users WHERE id = $1 LIMIT 1',
+        [decoded.id]
+      );
+      const user = result.rows[0];
+      if (!user || !user.is_active) {
+        return next(new Error('Account is deactivated'));
+      }
+      socket.data.user = { id: user.id, username: user.username, role: user.role };
       next();
     } catch {
       next(new Error('Invalid token'));

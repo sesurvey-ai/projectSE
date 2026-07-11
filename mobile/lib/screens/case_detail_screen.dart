@@ -9,6 +9,7 @@ import '../providers/case_provider.dart';
 import '../models/case_model.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/auth_token.dart';
 
 class CaseDetailScreen extends StatefulWidget {
   final int caseId;
@@ -83,6 +84,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         try {
           final url = '${ApiConfig.baseUrl}/uploads/$filePath';
           final request = await httpClient.getUrl(Uri.parse(url));
+          AuthToken.imageHeaders.forEach(request.headers.set); // /uploads ต้องผ่าน auth
           final response = await request.close();
           if (response.statusCode == 200) {
             final bytes = await response.fold<List<int>>([], (prev, chunk) => prev..addAll(chunk));
@@ -582,6 +584,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       onTap: () => _showFullImage(imageUrl),
       child: Image.network(
         imageUrl,
+        headers: AuthToken.imageHeaders,
         width: double.infinity,
         fit: BoxFit.fitWidth,
         loadingBuilder: (context, child, progress) {
@@ -626,6 +629,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
                         imageUrl,
+                        headers: AuthToken.imageHeaders,
                         width: double.infinity,
                         fit: BoxFit.fitWidth,
                         loadingBuilder: (context, child, progress) {
@@ -665,6 +669,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             InteractiveViewer(
               child: Image.network(
                 imageUrl,
+                headers: AuthToken.imageHeaders,
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, progress) =>
                     progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),

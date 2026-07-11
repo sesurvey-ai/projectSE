@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/auth_token.dart';
 import '../services/location_service.dart';
 
 // ── tokens (match app design) ──
@@ -93,6 +94,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: Center(
                 child: Image.network(
                   url,
+                  headers: AuthToken.imageHeaders,
                   fit: BoxFit.contain,
                   loadingBuilder: (context, child, progress) =>
                       progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
@@ -127,6 +129,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         borderRadius: BorderRadius.circular(11),
         child: Image.network(
           url,
+          headers: AuthToken.imageHeaders,
           width: size,
           height: size,
           fit: BoxFit.cover,

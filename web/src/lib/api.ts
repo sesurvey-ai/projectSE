@@ -28,8 +28,13 @@ api.interceptors.response.use(
 );
 
 export function getPhotoUrl(filename: string): string {
-  if (filename.startsWith('/uploads/')) return `${API_URL}${filename}`;
-  return `${API_URL}/uploads/${filename}`;
+  const base = filename.startsWith('/uploads/')
+    ? `${API_URL}${filename}`
+    : `${API_URL}/uploads/${filename}`;
+  // /uploads ต้องผ่าน auth — <img>/<a> แนบ header ไม่ได้ จึงส่ง token ทาง query
+  const token = getToken();
+  if (!token) return base;
+  return `${base}${base.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
 }
 
 export default api;

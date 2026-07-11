@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'api_service.dart';
+import 'auth_token.dart';
 
 class AuthService {
   final ApiService _apiService;
@@ -21,6 +22,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
     await prefs.setString('user', jsonEncode(user.toJson()));
+    AuthToken.set(token);
 
     return user;
   }
@@ -29,11 +31,14 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('user');
+    AuthToken.set(null);
   }
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
+    final token = prefs.getString('token');
+    AuthToken.set(token);
+    return token;
   }
 
   Future<User?> getUser() async {

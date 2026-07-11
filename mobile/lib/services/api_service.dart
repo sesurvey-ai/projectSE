@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'auth_token.dart';
 
 class ApiService {
   late final Dio _dio;
@@ -23,6 +24,7 @@ class ApiService {
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token');
+        AuthToken.set(token); // sync cache ให้ Image.network ใช้ต่อ
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }

@@ -82,8 +82,16 @@ export const caseService = {
           fs.default.mkdirSync(folderPath, { recursive: true });
         }
 
-        for (const filePath of ocrImagePaths) {
+        for (const rawFilePath of ocrImagePaths) {
+          // กัน path traversal: ใช้เฉพาะชื่อไฟล์ (basename) — client ส่ง '../../.env' มาย้าย/ลบไฟล์ระบบไม่ได้
+          const filePath = pathMod.default.basename(String(rawFilePath));
+          if (!filePath || filePath === '.' || filePath === '..') continue;
+
           const srcPath = pathMod.default.resolve(env.UPLOAD_DIR, filePath);
+          const uploadRoot = pathMod.default.resolve(env.UPLOAD_DIR);
+          // ยืนยันว่า src อยู่ใน UPLOAD_DIR จริง (กันหลุดกรอบแม้ basename แล้ว)
+          if (srcPath !== uploadRoot && !srcPath.startsWith(uploadRoot + pathMod.default.sep)) continue;
+
           const destPath = pathMod.default.join(folderPath, filePath);
           try {
             if (fs.default.existsSync(srcPath) && !fs.default.existsSync(destPath)) {

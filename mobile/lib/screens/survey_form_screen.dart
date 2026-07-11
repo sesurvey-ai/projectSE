@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
 import '../config/api_config.dart';
+import '../services/auth_token.dart';
 import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
 import '../data/survey_master.dart' show cidChecksum, kWounds;
@@ -839,6 +840,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               itemBuilder: (context, index) => InteractiveViewer(
                 child: Image.network(
                   urls[index],
+                  headers: AuthToken.imageHeaders,
                   fit: BoxFit.contain,
                   loadingBuilder: (context, child, progress) =>
                       progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
@@ -1551,6 +1553,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
                                 imageUrl,
+                                headers: AuthToken.imageHeaders,
                                 width: double.infinity,
                                 fit: BoxFit.fitWidth,
                                 loadingBuilder: (context, child, progress) {
