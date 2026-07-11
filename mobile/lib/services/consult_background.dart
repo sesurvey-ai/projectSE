@@ -9,14 +9,11 @@ const String kConsultTask = 'se_consult_sync';
 void consultCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task != kConsultTask) return true;
-    try {
-      await runConsultSync();
-      // piggyback: ส่งงานสำรวจที่ค้างในคิวออฟไลน์เมื่อมีเน็ต (task มี network constraint อยู่แล้ว)
-      await flushSurveyQueue();
-      return true;
-    } catch (_) {
-      return false; // ให้ WorkManager retry
-    }
+    // แยก try/catch แต่ละงาน — consult sync ล้ม (เช่น ไม่ได้สิทธิ์ call-log) ต้องไม่บล็อกการ flush คิวสำรวจ
+    // (เดิมอยู่ try เดียวกัน → runConsultSync throw แล้ว flushSurveyQueue ไม่ทำงานตลอดไป งานสำรวจค้างคิวไม่ถูกส่ง)
+    try { await runConsultSync(); } catch (_) {}
+    try { await flushSurveyQueue(); } catch (_) {}
+    return true; // งานเป็น periodic 15 นาทีอยู่แล้ว รอบถัดไป retry เอง
   });
 }
 

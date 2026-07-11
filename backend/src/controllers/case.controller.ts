@@ -46,7 +46,7 @@ export const caseController = {
 
   getDetail: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const detail = await caseService.getDetail(caseId);
+    const detail = await caseService.getDetail(caseId, req.user);
     sendSuccess(res, detail);
   }),
 
@@ -60,13 +60,13 @@ export const caseController = {
     const caseId = parseInt(req.params.id as string);
     const folder = req.body?.folder || '';
     const files = req.files as Express.Multer.File[];
-    const result = await caseService.uploadCaseFolder(caseId, folder, files || []);
+    const result = await caseService.uploadCaseFolder(caseId, folder, files || [], req.user);
     sendSuccess(res, result);
   }),
 
   createCaseFolder: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const result = await caseService.createCaseFolder(caseId);
+    const result = await caseService.createCaseFolder(caseId, req.user);
     sendSuccess(res, result);
   }),
 
@@ -85,7 +85,7 @@ export const caseController = {
 
   getArrivalPhotos: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const photos = await caseService.getArrivalPhotos(caseId);
+    const photos = await caseService.getArrivalPhotos(caseId, req.user);
     sendSuccess(res, photos);
   }),
 

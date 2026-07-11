@@ -83,7 +83,7 @@ export type DocResult = {
 };
 
 export async function extractDocument(imagePath: string, kind: DocKind): Promise<DocResult> {
-  const buf = fs.readFileSync(imagePath);
+  const buf = await fs.promises.readFile(imagePath);
   const [prompt, schema] = kind === 'idcard' ? [IDCARD_PROMPT, IDCARD_SCHEMA] : [LICENSE_PROMPT, LICENSE_SCHEMA];
 
   // Gemini อ่าน (หลัก) + Vision ตรวจ (ขนานกัน)

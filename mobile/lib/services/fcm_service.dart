@@ -22,6 +22,8 @@ class FcmService {
   // Callback เมื่อได้รับงานสำรวจใหม่ (urgent notification)
   void Function(Map<String, dynamic> data)? onNewSurveyReceived;
 
+  bool _listenersAttached = false; // subscribe stream ครั้งเดียว (initialize ถูกเรียกซ้ำทุก re-login)
+
   FcmService(this._apiService);
 
   Future<void> initialize() async {
@@ -56,75 +58,78 @@ class FcmService {
     try {
       final messaging = FirebaseMessaging.instance;
 
-      // Register background message handler
-      FirebaseMessaging.onBackgroundMessage(
-          _firebaseMessagingBackgroundHandler);
+      // subscribe listeners ครั้งเดียวตลอดอายุแอป — กัน listener ซ้อนเมื่อ initialize() ถูกเรียกซ้ำ (re-login/session-expiry)
+      if (!_listenersAttached) {
+        _listenersAttached = true;
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-      // Request notification permissions
-      final settings = await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-      debugPrint(
-          'FCM permission status: ${settings.authorizationStatus}');
+        // Listen for token refresh
+        messaging.onTokenRefresh.listen((String newToken) {
+          debugPrint('FCM token refreshed');
+          _sendTokenToServer(newToken);
+        });
 
-      // Get and send FCM token to server
+        // Handle foreground messages
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint('Foreground message received: ${message.messageId}');
+          final data = message.data;
+
+          // Data message type: new_survey → แสดงหน้ารับงาน
+          if (data['type'] == 'new_survey') {
+            debugPrint('FCM foreground new_survey received');
+            onNewSurveyReceived?.call(data);
+            return;
+          }
+
+          // Regular notification message
+          final notification = message.notification;
+          if (notification != null) {
+            showLocalNotification(
+              title: notification.title ?? 'SE Survey',
+              body: notification.body ?? '',
+              payload: data['case_id'],
+            );
+          }
+        });
+
+        // Handle notification tap when app is in background
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          debugPrint('Notification opened app: ${message.messageId}');
+          final caseId = int.tryParse(message.data['case_id'] ?? '');
+          if (caseId != null && onNotificationTapWithCaseId != null) {
+            onNotificationTapWithCaseId!(caseId);
+          }
+        });
+      }
+
+      // ทำทุกครั้ง: ขอ permission + (re)ส่ง token → ผูก token กับ user ปัจจุบัน (เครื่องแชร์: user ใหม่ต้องรับ noti ตัวเอง)
+      final settings = await messaging.requestPermission(alert: true, badge: true, sound: true);
+      debugPrint('FCM permission status: ${settings.authorizationStatus}');
       final String? token = await messaging.getToken();
       if (token != null) {
         debugPrint('FCM token obtained');
         await _sendTokenToServer(token);
       }
 
-      // Listen for token refresh
-      messaging.onTokenRefresh.listen((String newToken) {
-        debugPrint('FCM token refreshed');
-        _sendTokenToServer(newToken);
-      });
-
-      // Handle foreground messages
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Foreground message received: ${message.messageId}');
-        final data = message.data;
-
-        // Data message type: new_survey → แสดงหน้ารับงาน
-        if (data['type'] == 'new_survey') {
-          debugPrint('FCM foreground new_survey received');
-          onNewSurveyReceived?.call(data);
-          return;
-        }
-
-        // Regular notification message
-        final notification = message.notification;
-        if (notification != null) {
-          showLocalNotification(
-            title: notification.title ?? 'SE Survey',
-            body: notification.body ?? '',
-            payload: data['case_id'],
-          );
-        }
-      });
-
-      // Handle notification tap when app is in background
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('Notification opened app: ${message.messageId}');
-        final caseId = int.tryParse(message.data['case_id'] ?? '');
-        if (caseId != null && onNotificationTapWithCaseId != null) {
-          onNotificationTapWithCaseId!(caseId);
-        }
-      });
-
       // Check if app was opened from a terminated state via notification
       final initialMessage = await messaging.getInitialMessage();
       if (initialMessage != null) {
-        final caseId =
-            int.tryParse(initialMessage.data['case_id'] ?? '');
+        final caseId = int.tryParse(initialMessage.data['case_id'] ?? '');
         if (caseId != null && onNotificationTapWithCaseId != null) {
           onNotificationTapWithCaseId!(caseId);
         }
       }
     } catch (e) {
       debugPrint('Firebase messaging setup failed: $e');
+    }
+  }
+
+  // ล้าง FCM token ของเครื่อง (logout) → server ที่เก็บ token เดิมไว้จะส่ง noti ไม่ถึงอีก (กัน noti ข้าม user บนเครื่องแชร์)
+  Future<void> clearToken() async {
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e) {
+      debugPrint('deleteToken failed: $e');
     }
   }
 

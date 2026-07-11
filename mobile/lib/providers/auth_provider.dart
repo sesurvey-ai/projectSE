@@ -7,6 +7,7 @@ import '../services/fcm_service.dart';
 import '../services/notification_service.dart';
 import '../services/consult_background.dart';
 import '../services/consult_sync.dart';
+import '../services/survey_queue.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -130,6 +131,11 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _apiService.clearMyLocation();
     } catch (_) {}
+    // 3) พยายามส่งงานสำรวจที่ค้างคิว (ยังมี token) แล้วล้างคิว — กัน survey ของ user นี้ถูกส่งด้วย token ของ user ถัดไป (เครื่องแชร์)
+    try { await flushSurveyQueue(); } catch (_) {}
+    try { await clearSurveyQueue(); } catch (_) {}
+    // 4) ล้าง FCM token ของเครื่อง — หยุด noti งานของ user นี้ยิงเข้าเครื่องหลัง logout
+    try { await _fcmService.clearToken(); } catch (_) {}
     await ConsultBackground.cancel();
     await _authService.logout();
     _user = null;

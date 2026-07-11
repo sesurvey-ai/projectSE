@@ -356,12 +356,26 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
       return { day, dow: DOW_TH[di], isSat: di === 6, isSun: di === 0, isWeekend: di === 0 || di === 6 };
     });
   }, [view]);
-  const changeMonth = (delta: number) => setView((v) => {
-    let m = v.m + delta, y = v.y;
-    if (m > 12) { m = 1; y += 1; }
-    if (m < 1) { m = 12; y -= 1; }
-    return { y, m };
-  });
+  const changeMonth = (delta: number) => {
+    // มีแก้ไขค้าง → เตือนก่อน เพราะเปลี่ยนเดือนจะโหลดใหม่ทับ (ข้อมูลที่ยังไม่บันทึกหายทันที)
+    if (Object.values(dirty).some(Boolean) &&
+        !window.confirm('มีการแก้ไขที่ยังไม่บันทึก — เปลี่ยนเดือนจะทิ้งการแก้ไขทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) return;
+    setView((v) => {
+      let m = v.m + delta, y = v.y;
+      if (m > 12) { m = 1; y += 1; }
+      if (m < 1) { m = 12; y -= 1; }
+      return { y, m };
+    });
+  };
+
+  // เตือนก่อนปิด/รีเฟรชแท็บ ถ้ามีแก้ไขค้าง
+  useEffect(() => {
+    const anyDirty = Object.values(dirty).some(Boolean);
+    if (!anyDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dirty]);
 
   // โหลดตารางที่เคยบันทึกของเดือนนี้จาก DB → ศูนย์ที่ยังไม่มีข้อมูล:
   //   มิ.ย. 2026 = ใช้ seed roster-jun · เดือนอื่น = หมุนเวรต่อจาก "เดือนก่อนหน้า" ให้อัตโนมัติ + บันทึกให้เอง (ตอนล็อกอิน)
@@ -379,8 +393,10 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
         ]);
         if (res.status === 401) { if (!cancelled) setAuthMissing(true); return; }
         if (!res.ok || cancelled) return;
-        const savedRaw = ((await res.json()).data ?? {}) as Record<string, ZoneData>;
-        const prevRaw = prevRes.ok ? (((await prevRes.json()).data ?? {}) as Record<string, ZoneData>) : {};
+        const body = await res.json();
+        const savedRaw = (body.data?.schedules ?? {}) as Record<string, ZoneData>;
+        const updatedAtMap = (body.data?.updatedAt ?? {}) as Record<string, string>; // baseline สำหรับ optimistic-concurrency
+        const prevRaw = prevRes.ok ? (((await prevRes.json()).data?.schedules ?? {}) as Record<string, ZoneData>) : {};
         // normalize legacy shift keys (fix7/fix11/…) จาก DB ก่อนใช้ — กัน ShiftCell crash + count ถูก
         const saved: Record<string, ZoneData> = {};
         for (const k of Object.keys(savedRaw)) saved[k] = normalizeZone(savedRaw[k]);
@@ -405,7 +421,7 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
         setDirty({ ...draft });   // แสดงเป็นร่างก่อน แล้ว auto-save จะเคลียร์ทีละศูนย์
         setGenerated(draft);
         const sv: Record<string, string> = {};
-        for (const id of Object.keys(saved)) sv[id] = 'db';
+        for (const id of Object.keys(saved)) sv[id] = updatedAtMap[id] ?? 'db'; // เก็บ updated_at จริงไว้เทียบตอนบันทึก
         setSavedZones(sv);
 
         // auto-save ร่างที่หมุนใหม่ (เฉพาะตอนล็อกอิน) → ผู้ใช้ไม่ต้องกดบันทึกเอง (แก้ไขทีหลังได้)
@@ -439,12 +455,16 @@ export default function DutyRoster({ embedded = false }: { embedded?: boolean } 
     if (!token) { setAuthMissing(true); return; }
     setSaving(true);
     try {
+      // ส่ง baseline updated_at (ถ้ามีค่าจริง ไม่ใช่ 'db'/undefined) → backend 409 ถ้ามีคนแก้ระหว่างนั้น
+      const base = savedZones[zoneId];
+      const expected = base && base !== 'db' ? base : undefined;
       const res = await fetch(`${API_BASE}/api/duty/schedule`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ center_id: zoneId, year: view.y, month: view.m, data: dataByZone[zoneId] }),
+        body: JSON.stringify({ center_id: zoneId, year: view.y, month: view.m, data: dataByZone[zoneId], expected_updated_at: expected }),
       });
       if (res.status === 401) { setAuthMissing(true); return; }
+      if (res.status === 409) { setSaveError('ตารางถูกแก้ไขโดยผู้อื่นระหว่างนี้ — กรุณาโหลดหน้าใหม่แล้วบันทึกอีกครั้ง (กันเขียนทับงานคนอื่น)'); return; }
       if (!res.ok) {
         setSaveError(res.status === 403 ? 'สิทธิ์ไม่พอ (ต้องเป็น admin/callcenter)' : `บันทึกไม่สำเร็จ (${res.status}) — ลองใหม่`);
         return;

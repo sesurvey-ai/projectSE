@@ -99,22 +99,27 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const formRef = useRef<HTMLFormElement>(null);
   const d = !isEditing;
 
-  const handleSave = async () => {
-    if (!formRef.current) return;
+  const handleSave = async (): Promise<boolean> => {
+    if (!formRef.current) return false;
     setSaving(true); setSaveMsg('');
     try {
       const fd = new FormData(formRef.current);
       const data: Record<string, string> = {};
       fd.forEach((val, key) => { data[key] = val as string; });
-      // Handle checkbox group: acc_claim_opponent (multiple values → comma-separated)
-      const opponents = fd.getAll('acc_claim_opponent').map(v => String(v));
-      data['acc_claim_opponent'] = opponents.join(',');
-      // Handle checkbox: car_lost (unchecked = not in FormData)
-      data['car_lost'] = fd.has('car_lost') ? 'true' : 'false';
+      // acc_claim_opponent + car_lost อยู่ในส่วนที่ disabled ตอน read-only → ไม่อยู่ใน FormData
+      // เขียนเฉพาะตอนกดแก้ไขจริง ไม่งั้นบันทึก (หรืออนุมัติ) จะทับเป็น ''/false = ข้อมูลหายเงียบ
+      if (isEditing) {
+        const opponents = fd.getAll('acc_claim_opponent').map(v => String(v));
+        data['acc_claim_opponent'] = opponents.join(',');
+        data['car_lost'] = fd.has('car_lost') ? 'true' : 'false';
+      }
+      // ตัด comma ออกจากคอลัมน์ตัวเลข (เช่น mileage แสดงแบบ 12,345) กัน 500 invalid input for integer
+      const numericCols = ['mileage', 'estimated_cost', 'deductible', 'acc_claim_amount', 'acc_claim_total_amount', 'driver_age'];
+      for (const k of numericCols) if (typeof data[k] === 'string') data[k] = data[k].replace(/,/g, '');
       const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: data });
-      if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); }
-      else setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || ''));
-    } catch { setSaveMsg('เกิดข้อผิดพลาดในการบันทึก'); }
+      if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
+      setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || '')); return false;
+    } catch { setSaveMsg('เกิดข้อผิดพลาดในการบันทึก'); return false; }
     finally { setSaving(false); }
   };
 
@@ -1055,7 +1060,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               {saving ? 'กำลังบันทึก...' : 'บันทึก'}
             </button>
             {!review && (
-              <button type="button" onClick={async () => { await handleSave(); try { await api.post(`/api/cases/${caseData.id}/review`, {}); onReviewSubmitted(); } catch {} }} disabled={saving} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
+              <button type="button" onClick={async () => {
+                const ok = await handleSave();
+                if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
+                try {
+                  await api.post(`/api/cases/${caseData.id}/review`, {});
+                  setSaveMsg('อนุมัติสำเร็จ');
+                  onReviewSubmitted();
+                } catch (e) {
+                  const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                  setSaveMsg('อนุมัติไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+                }
+              }} disabled={saving} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
                 อนุมัติ
               </button>
             )}

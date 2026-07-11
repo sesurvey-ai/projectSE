@@ -46,12 +46,29 @@ export function visionClient(): ImageAnnotatorClient {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// timeout ต่อการเรียก external API (Gemini/Vision) — ให้ fail fast ไม่ค้าง request ยาว
+// (undici default ~300s, gRPC ~600s นานเกินไป; มือถือ abort ที่ 30s อยู่แล้ว)
+export const OCR_CALL_TIMEOUT_MS = 45000;
+export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
 // Vision OCR — คืนข้อความทั้งหน้า (ตัวตรวจอิสระ)
 export async function visionText(buf: Buffer): Promise<string> {
-  const [resp] = await visionClient().documentTextDetection({
-    image: { content: buf },
-    imageContext: { languageHints: ['th', 'en'] },
-  });
+  const [resp] = await withTimeout(
+    visionClient().documentTextDetection({
+      image: { content: buf },
+      imageContext: { languageHints: ['th', 'en'] },
+    }),
+    OCR_CALL_TIMEOUT_MS,
+    'Vision documentTextDetection'
+  );
   if (resp.error?.message) throw new Error(`Vision error: ${resp.error.message}`);
   return resp.fullTextAnnotation?.text ?? '';
 }
@@ -62,11 +79,15 @@ export async function geminiJson<T>(buf: Buffer, prompt: string, schema: object,
   let delay = 5000;
   for (let a = 1; a <= tries; a++) {
     try {
-      const resp = await genaiClient().models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }, { text: prompt }] }],
-        config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0 },
-      });
+      const resp = await withTimeout(
+        genaiClient().models.generateContent({
+          model: GEMINI_MODEL,
+          contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }, { text: prompt }] }],
+          config: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0 },
+        }),
+        OCR_CALL_TIMEOUT_MS,
+        'Gemini generateContent'
+      );
       return JSON.parse(resp.text ?? '{}') as T;
     } catch (e: unknown) {
       const err = e as { status?: number; code?: number; message?: string };

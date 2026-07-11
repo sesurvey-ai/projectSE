@@ -82,9 +82,11 @@ function pageList(cur: number, last: number): (number | '…')[] {
 }
 
 export default function AttendanceTable() {
-  const now = new Date();
+  const clientNow = new Date(); // fallback ก่อน server ตอบ (นาฬิกาเครื่อง — อาจเพี้ยน/คนละ TZ)
+  const [serverToday, setServerToday] = useState<string | null>(null); // 'YYYY-MM-DD' เวลาไทยจาก server
+  const [userPickedMonth, setUserPickedMonth] = useState(false);       // ผู้ใช้เปลี่ยนเดือนเอง → อย่า re-default ทับ
   const [todayOnly, setTodayOnly] = useState(true); // default = แสดงเฉพาะวันนี้
-  const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 }); // เดือนที่ดู (default = เดือนปัจจุบัน)
+  const [view, setView] = useState({ y: clientNow.getFullYear(), m: clientNow.getMonth() + 1 }); // เดือนที่ดู (default = เดือนปัจจุบัน)
   const [page, setPage] = useState(0); // 0-based
   const [employee, setEmployee] = useState(''); // user_id ('' = ทั้งหมด)
   const [q, setQ] = useState('');
@@ -99,9 +101,26 @@ export default function AttendanceTable() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
+  const todayStr = serverToday ?? `${clientNow.getFullYear()}-${p2(clientNow.getMonth() + 1)}-${p2(clientNow.getDate())}`;
   const from = todayOnly ? todayStr : `${view.y}-${p2(view.m)}-01`;
   const to = todayOnly ? todayStr : `${view.y}-${p2(view.m)}-${p2(daysInMonth(view.y, view.m))}`;
+
+  // ยึดเวลา server (เวลาไทย) กำหนด "วันนี้" + เดือน default — กันนาฬิกาเครื่อง/TZ เพี้ยน (เดิมใช้ new Date() ล้วน)
+  useEffect(() => {
+    let alive = true;
+    api.get('/api/attendance/now').then((r) => {
+      if (!alive) return;
+      const t = r.data?.data?.today;
+      if (typeof t === 'string' && /^\d{4}-\d{2}-\d{2}/.test(t)) {
+        setServerToday(t);
+        setUserPickedMonth((picked) => {
+          if (!picked) { const [yy, mm] = t.split('-').map(Number); setView({ y: yy, m: mm }); }
+          return picked;
+        });
+      }
+    }).catch(() => { /* ล้ม → ใช้นาฬิกาเครื่องเป็น fallback */ });
+    return () => { alive = false; };
+  }, []);
 
   // debounce ช่องค้นหา → q (แล้วรีเซ็ตไปหน้าแรก)
   useEffect(() => {
@@ -171,9 +190,11 @@ export default function AttendanceTable() {
       if (m > 12) { m = 1; y += 1; }
       return { y, m };
     });
+    setUserPickedMonth(true); // เปลี่ยนเดือนเอง → หยุด re-default จาก server
     setPage(0);
   };
-  const isCurrentMonth = view.y === now.getFullYear() && view.m === now.getMonth() + 1;
+  const [ty, tm] = todayStr.split('-').map(Number);
+  const isCurrentMonth = view.y === ty && view.m === tm;
 
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const showFrom = total === 0 ? 0 : page * PAGE_SIZE + 1;
@@ -236,7 +257,7 @@ export default function AttendanceTable() {
           <input
             type="checkbox"
             checked={todayOnly}
-            onChange={(e) => { const on = e.target.checked; setTodayOnly(on); setPage(0); if (on) setView({ y: now.getFullYear(), m: now.getMonth() + 1 }); }}
+            onChange={(e) => { const on = e.target.checked; setTodayOnly(on); setPage(0); if (on) setView({ y: ty, m: tm }); }}
             className="w-4 h-4 accent-blue-600"
           />
           วันนี้
@@ -249,7 +270,7 @@ export default function AttendanceTable() {
             <div className="min-w-[150px] text-center font-semibold text-gray-800">{TH_MONTHS[view.m - 1]} {view.y + 543}</div>
             <button onClick={() => gotoMonth(1)} disabled={isCurrentMonth} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="เดือนถัดไป">›</button>
             {!isCurrentMonth && (
-              <button onClick={() => { setView({ y: now.getFullYear(), m: now.getMonth() + 1 }); setPage(0); }} className="ml-1 px-3 h-9 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">เดือนนี้</button>
+              <button onClick={() => { setView({ y: ty, m: tm }); setPage(0); }} className="ml-1 px-3 h-9 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50">เดือนนี้</button>
             )}
           </div>
         )}

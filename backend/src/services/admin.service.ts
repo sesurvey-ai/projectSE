@@ -261,23 +261,35 @@ export const adminService = {
       [id]
     );
 
-    // Delete related records in correct order (foreign key dependencies)
-    await db.query(
-      `DELETE FROM survey_expenses WHERE report_id IN (SELECT id FROM survey_reports WHERE case_id = $1)`,
-      [id]
-    );
-    await db.query(
-      `DELETE FROM survey_photos WHERE report_id IN (SELECT id FROM survey_reports WHERE case_id = $1)`,
-      [id]
-    );
-    await db.query('DELETE FROM survey_reports WHERE case_id = $1', [id]);
-    await db.query('DELETE FROM reviews WHERE case_id = $1', [id]);
-    await db.query('DELETE FROM case_images WHERE case_id = $1', [id]);
+    // Delete related records in correct order (foreign key dependencies) — ห่อ transaction เดียว
+    // กัน pooler ตัดกลางคัน แล้วเหลือเคสครึ่งๆ (case ยังอยู่ แต่ report/photos/review หาย กู้ไม่ได้)
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `DELETE FROM survey_expenses WHERE report_id IN (SELECT id FROM survey_reports WHERE case_id = $1)`,
+        [id]
+      );
+      await client.query(
+        `DELETE FROM survey_photos WHERE report_id IN (SELECT id FROM survey_reports WHERE case_id = $1)`,
+        [id]
+      );
+      await client.query('DELETE FROM survey_reports WHERE case_id = $1', [id]);
+      await client.query('DELETE FROM reviews WHERE case_id = $1', [id]);
+      await client.query('DELETE FROM case_images WHERE case_id = $1', [id]);
 
-    const result = await db.query('DELETE FROM cases WHERE id = $1 RETURNING id', [id]);
-    if (result.rows.length === 0) throw new NotFoundError('Case not found');
+      const result = await client.query('DELETE FROM cases WHERE id = $1 RETURNING id', [id]);
+      if (result.rows.length === 0) throw new NotFoundError('Case not found');
 
-    // Delete photo files from disk + cleanup empty folders
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    // Delete photo files from disk + cleanup empty folders (หลัง COMMIT — ไฟล์หายกู้ไม่ได้ ทำหลังยืนยัน)
     const foldersToClean = new Set<string>();
     for (const photo of [...surveyPhotos.rows, ...caseImages.rows]) {
       const filePath = path.join(env.UPLOAD_DIR, photo.file_path);
@@ -340,6 +352,21 @@ export const adminService = {
       limit,
       totalPages: Math.ceil(countResult.rows[0].total / limit),
     };
+  },
+
+  // ดึงรีวิวเดี่ยวตาม id — หน้าแก้รีวิวเดิมดึงมา 100 อันล่าสุดแล้ว .find() → รีวิวเก่าแก้ไม่ได้
+  async getReviewById(id: number) {
+    const result = await db.query(
+      `SELECT r.*, c.customer_name, c.incident_location,
+              ch.first_name AS checker_first_name, ch.last_name AS checker_last_name
+       FROM reviews r
+       JOIN cases c ON r.case_id = c.id
+       LEFT JOIN users ch ON r.checker_id = ch.id
+       WHERE r.id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) throw new NotFoundError('Review not found');
+    return result.rows[0];
   },
 
   async updateReview(id: number, data: { comment?: string; proposed_fee?: number; approved_fee?: number; status?: string }) {

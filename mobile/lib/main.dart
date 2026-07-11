@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'config/app_router.dart';
 import 'services/api_service.dart';
@@ -48,6 +49,7 @@ class SeSurveyApp extends StatefulWidget {
 class _SeSurveyAppState extends State<SeSurveyApp> {
   late final AuthProvider _authProvider;
   late final CaseProvider _caseProvider;
+  late final GoRouter _router;
 
   @override
   void initState() {
@@ -57,6 +59,9 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
       fcmService: widget.fcmService,
     );
     _caseProvider = CaseProvider(apiService: widget.apiService);
+    // สร้าง router ครั้งเดียว — refreshListenable(authProvider) จัดการ redirect เมื่อ auth เปลี่ยนเอง
+    // (เดิมสร้างใหม่ทุก build จาก context.watch → FCM foreground notify → router ใหม่ → เด้งออกจากฟอร์มกลับ /home)
+    _router = createRouter(_authProvider);
 
     // token หมดอายุ (401) → เคลียร์ session แล้วให้ router เด้งกลับหน้า login
     widget.apiService.onUnauthorized = () => _authProvider.handleSessionExpired();
@@ -133,35 +138,28 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
         ChangeNotifierProvider.value(value: _authProvider),
         ChangeNotifierProvider.value(value: _caseProvider),
       ],
-      child: Builder(
-        builder: (context) {
-          final authProvider = context.watch<AuthProvider>();
-          final router = createRouter(authProvider);
-
-          return MaterialApp.router(
-            title: 'SE Survey',
-            debugShowCheckedModeBanner: false,
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: const [
-              Locale('th', 'TH'),
-              Locale('en', 'US'),
-            ],
-            locale: const Locale('th', 'TH'),
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-              useMaterial3: true,
-              appBarTheme: const AppBarTheme(
-                centerTitle: true,
-                elevation: 1,
-              ),
-            ),
-            routerConfig: router,
-          );
-        },
+      child: MaterialApp.router(
+        title: 'SE Survey',
+        debugShowCheckedModeBanner: false,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('th', 'TH'),
+          Locale('en', 'US'),
+        ],
+        locale: const Locale('th', 'TH'),
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
+          appBarTheme: const AppBarTheme(
+            centerTitle: true,
+            elevation: 1,
+          ),
+        ),
+        routerConfig: _router,
       ),
     );
   }

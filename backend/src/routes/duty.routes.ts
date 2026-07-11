@@ -17,6 +17,7 @@ const scheduleSchema = z.object({
     staff: z.array(z.object({ id: z.string(), code: z.string(), name: z.string() })),
     schedule: z.record(z.record(z.string())),
   }),
+  expected_updated_at: z.string().optional(),  // baseline สำหรับ optimistic-concurrency
 });
 router.get('/schedules', auth, requireRole('admin', 'callcenter'), dutyController.schedules);
 router.put('/schedule', auth, requireRole('admin', 'callcenter'), validate(scheduleSchema), dutyController.saveSchedule);

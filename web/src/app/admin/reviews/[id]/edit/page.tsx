@@ -22,21 +22,20 @@ export default function EditReviewPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.get(`/api/admin/reviews?limit=100`)
+    // ดึงรีวิวตาม id โดยตรง — เดิมดึงมา 100 อันล่าสุดแล้ว .find() ทำให้รีวิวเก่า (นอก 100 ล่าสุด) แก้ไม่ได้
+    api.get(`/api/admin/reviews/${reviewId}`)
       .then((res) => {
-        if (res.data.success) {
-          const review = res.data.data.reviews.find((r: { id: number }) => r.id === Number(reviewId));
-          if (review) {
-            setForm({
-              comment: review.comment || '',
-              proposed_fee: review.proposed_fee != null ? String(review.proposed_fee) : '',
-              approved_fee: review.approved_fee != null ? String(review.approved_fee) : '',
-              status: review.status,
-            });
-            setCaseInfo(`เคส #${review.case_id} - ${review.customer_name}`);
-          } else {
-            setError('ไม่พบรีวิว');
-          }
+        if (res.data.success && res.data.data) {
+          const review = res.data.data;
+          setForm({
+            comment: review.comment || '',
+            proposed_fee: review.proposed_fee != null ? String(review.proposed_fee) : '',
+            approved_fee: review.approved_fee != null ? String(review.approved_fee) : '',
+            status: review.status,
+          });
+          setCaseInfo(`เคส #${review.case_id} - ${review.customer_name}`);
+        } else {
+          setError('ไม่พบรีวิว');
         }
       })
       .catch(() => setError('ไม่พบรีวิว'))

@@ -44,7 +44,7 @@ router.delete('/users/:id', adminController.deleteUser);
 const updateCaseSchema = z.object({
   customer_name: z.string().min(1).optional(),
   incident_location: z.string().min(1).optional(),
-  status: z.enum(['pending', 'assigned', 'surveyed', 'reviewed']).optional(),
+  status: z.enum(['pending', 'assigned', 'surveyed', 'reviewed', 'declined']).optional(),
   assigned_to: z.number().int().positive().nullable().optional(),
 });
 
@@ -62,6 +62,7 @@ const updateReviewSchema = z.object({
 });
 
 router.get('/reviews', adminController.getReviews);
+router.get('/reviews/:id', adminController.getReviewById);
 router.put('/reviews/:id', validate(updateReviewSchema), adminController.updateReview);
 router.delete('/reviews/:id', adminController.deleteReview);
 

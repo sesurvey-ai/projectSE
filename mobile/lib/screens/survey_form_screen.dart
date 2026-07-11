@@ -497,6 +497,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       }
       _accFault = data['acc_fault'] ?? _accFault;
       _accFollowup = data['acc_followup'] ?? _accFollowup;
+      // กู้ car_lost จาก report — เดิมไม่กู้ ทำให้ submit ทับค่า car_lost=true ที่ callcenter ตั้งไว้ ให้กลายเป็น false
+      final cl = data['car_lost'];
+      if (cl != null) _carLost = cl == true || cl == 'true' || cl == 1 || cl == 't';
     });
 
     final mapping = <TextEditingController, String>{
@@ -1271,15 +1274,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   String get _draftKey => 'survey_draft_${widget.caseId}';
 
   Future<void> _loadDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_draftKey);
-    if (json == null) return;
-    final data = jsonDecode(json) as Map<String, dynamic>;
-    _populateForm(data);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_draftKey);
+      if (json == null) return;
+      final data = jsonDecode(json) as Map<String, dynamic>;
+      if (!mounted) return; // ผู้ใช้ back ออกก่อนโหลดเสร็จ → กัน setState หลัง dispose
+      _populateForm(data);
+    } catch (e) {
+      debugPrint('loadDraft failed: $e');
+      // draft เสีย/ฟอร์แมตเก่า → ลบทิ้ง กันพัง (throw) ทุกครั้งที่เปิดฟอร์ม
+      try { (await SharedPreferences.getInstance()).remove(_draftKey); } catch (_) {}
+    }
   }
 
   Map<String, dynamic> _collectFormData() {
-    final driverFullName = '$_driverTitle ${_driverNameCtl.text.trim()} ${_driverLastnameCtl.text.trim()}'.trim();
+    // '0' = sentinel "ยังไม่เลือกคำนำหน้า" → อย่าให้ติดไปเป็น prefix ของชื่อ (เดิมได้ '0 สมชาย ...')
+    final titlePrefix = _driverTitle == '0' ? '' : _driverTitle;
+    final driverFullName = '$titlePrefix ${_driverNameCtl.text.trim()} ${_driverLastnameCtl.text.trim()}'.trim();
     final data = <String, dynamic>{
       'survey_company': _surveyCompanyCtl.text.trim(),
       'survey_company_address': _surveyCompanyAddressCtl.text.trim(),
@@ -1379,12 +1391,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'acc_followup_date': _accFollowupDateCtl.text.trim(),
       'notes': _notesCtl.text.trim(),
     };
-    if (_mileageCtl.text.trim().isNotEmpty) data['mileage'] = int.tryParse(_mileageCtl.text.trim());
-    if (_driverAgeCtl.text.trim().isNotEmpty) data['driver_age'] = int.tryParse(_driverAgeCtl.text.trim());
-    if (_estimatedCostCtl.text.trim().isNotEmpty) data['estimated_cost'] = double.tryParse(_estimatedCostCtl.text.trim());
-    if (_deductibleCtl.text.trim().isNotEmpty) data['deductible'] = double.tryParse(_deductibleCtl.text.trim());
-    if (_accClaimAmountCtl.text.trim().isNotEmpty) data['acc_claim_amount'] = double.tryParse(_accClaimAmountCtl.text.trim());
-    if (_accClaimTotalAmountCtl.text.trim().isNotEmpty) data['acc_claim_total_amount'] = double.tryParse(_accClaimTotalAmountCtl.text.trim());
+    // ส่ง key ตัวเลข "เสมอ" (null เมื่อว่าง) — เดิม omit เมื่อว่าง ทำให้ล้างค่าไม่ได้ (ค่าเก่าฟื้นจาก draft/DB)
+    // ตัด comma ก่อน parse กัน '12,345' → null เงียบ ๆ
+    int? asInt(String t) { final s = t.trim().replaceAll(',', ''); return s.isEmpty ? null : int.tryParse(s); }
+    double? asNum(String t) { final s = t.trim().replaceAll(',', ''); return s.isEmpty ? null : double.tryParse(s); }
+    data['mileage'] = asInt(_mileageCtl.text);
+    data['driver_age'] = asInt(_driverAgeCtl.text);
+    data['estimated_cost'] = asNum(_estimatedCostCtl.text);
+    data['deductible'] = asNum(_deductibleCtl.text);
+    data['acc_claim_amount'] = asNum(_accClaimAmountCtl.text);
+    data['acc_claim_total_amount'] = asNum(_accClaimTotalAmountCtl.text);
     return data;
   }
 
@@ -1779,7 +1795,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     String crDate = _accCustomerReportDateCtl.text.trim();
     String crTime = _accCustomerReportTimeCtl.text.trim();
     if ((crDate.isEmpty || crTime.isEmpty) && _slaStart != null) {
-      final s = _slaStart!;
+      final s = _slaStart!.toLocal(); // customer_reported_at เป็น UTC instant → แปลงเป็นเวลาเครื่อง (ไทย) ก่อนแสดง
       String two(int v) => v.toString().padLeft(2, '0');
       if (crDate.isEmpty) crDate = '${two(s.day)}/${two(s.month)}/${s.year + 543}';
       if (crTime.isEmpty) crTime = '${two(s.hour)}:${two(s.minute)}';
@@ -3324,7 +3340,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               ),
               const SizedBox(height: 6),
               TextFormField(
-                key: ValueKey('damage_part_$i'),
+                // key ตาม "ตัวรายการ" ไม่ใช่ index — เดิมลบรายการแล้ว field ที่ index เดิมยังโชว์ข้อความเก่า (ไม่ตรงข้อมูล)
+                key: ObjectKey(_damageItems[i]),
                 initialValue: _damageItems[i]['part'],
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _ink),
                 decoration: InputDecoration(

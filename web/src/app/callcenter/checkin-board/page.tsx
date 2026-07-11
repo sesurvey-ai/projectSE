@@ -33,8 +33,11 @@ const CENTERS: { id: string; name: string; region: string }[] = [
 ];
 
 // จังหวัด (ต่างจังหวัด) ใช้ pipeline เดียวกับ กทม. — center_id = province id ใน duty_schedules
-// seed รวม roster-jun + province seed (จังหวัด grid ว่าง = ยังไม่จัดเวร จนกว่าจะจัดในหน้า DutyRoster)
-const ROSTER: Record<string, { people: { code: string; name: string }[]; grid: string[][] }> = { ...ROSTER_JUN, ...PROVINCE_SEED };
+const SEED_Y = 2026, SEED_M = 6; // ROSTER_JUN = ตารางเดือน มิ.ย. 2026 เท่านั้น
+// seed ของศูนย์ตามเดือนที่ดู: จังหวัด = static เสมอ (ยังไม่จัดเวรลง DB), กทม./ปริมณฑล = ใช้ ROSTER_JUN เฉพาะ มิ.ย. 2026
+// เดือนอื่นที่ DB ว่าง/ดึงตารางล้ม → ไม่ substitute แพตเทิร์นเดือน มิ.ย. หลอก (ให้ขึ้นว่าง/เตือนแทน)
+const seedFor = (cid: string, y: number, m: number): { people: { code: string; name: string }[]; grid: string[][] } | undefined =>
+  PROVINCE_SEED[cid] ?? (y === SEED_Y && m === SEED_M ? ROSTER_JUN[cid] : undefined);
 type Band = 'morning' | 'afternoon' | 'night' | 'fix8' | 'fix10' | 'fix14' | 'offday';
 const SHIFT_ORDER: Band[] = ['morning', 'afternoon', 'night', 'fix8', 'fix10', 'fix14', 'offday'];
 const SH_META: Record<Band, { label: string; short: string; range: string }> = {
@@ -286,10 +289,13 @@ function LadpraoCard({ name, people, onOpen, onToast, selected }: { name: string
   //   2 = อาสา (นอกช่วงเวรตัวเอง/วันหยุด) — ไม่สนลำดับเวร เรียงตามเวลาเช็คอินอย่างเดียว (ใครออนไลน์อยู่ก่อนได้คิวก่อน)
   //   เสมอกัน: คนงานน้อยกว่าอยู่บน (กระจายงาน)
   const tierOf = (p: Person) => (p.tags.includes('อาสา') ? 2 : 1);
+  // เวลา "ออนไลน์ตั้งแต่" — คนรอบค้างข้ามคืน (t = เวลาเมื่อวาน) ต้องอยู่ก่อนคนที่เพิ่งเข้าวันนี้เสมอ
+  // (เทียบ HH:MM ตรง ๆ ทำให้ '22:50' เมื่อวาน > '08:30' วันนี้ → คนออนไลน์นานสุดตกไปท้ายคิว)
+  const onlineKey = (p: Person) => (p.tags.includes('ข้ามคืน') ? '0' : '1') + (p.t || '');
   const byPriority = (a: Person, b: Person) =>
     (tierOf(a) - tierOf(b)) ||
     (tierOf(a) === 1 ? TIER1_ORDER.indexOf(a.sh) - TIER1_ORDER.indexOf(b.sh) : 0) ||
-    (a.t || '').localeCompare(b.t || '') ||
+    onlineKey(a).localeCompare(onlineKey(b)) ||
     (a.jobs - b.jobs);
   const inList = [...working].filter((p) => p.status === 'present').sort(byPriority); // ในระบบ = เช็คอินอยู่ (เรียงตามลำดับความสำคัญ)
   const outList = [...working].filter((p) => p.status !== 'present').sort(byShift);  // นอกระบบ = ออกแล้ว + ยังไม่มา
@@ -497,6 +503,8 @@ export default function CallcenterAttendancePage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((m: string) => { setToast(m); if (toastTimer.current) clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 1900); }, []);
   const [updatedAt, setUpdatedAt] = useState('');
+  const [schedError, setSchedError] = useState(false); // ดึงตารางเวรล้ม → เตือน + อย่า fallback seed เดือนอื่น
+  const loadSeq = useRef(0);                            // กัน response เก่าทับใหม่ (เปลี่ยนวันแล้ว batch เก่ามาช้า)
   // เวลา server (เวลาไทย) — ยึดเป็นหลักแทนนาฬิกาเครื่อง (กันเบราว์เซอร์ TZ อื่นคำนวณ "วันนี้"/อาสาเพี้ยน)
   const serverOffsetMs = useRef(0);              // = serverEpochMs - Date.now(); เป็น 0 จนกว่า /now จะตอบ (fallback = นาฬิกาเครื่อง)
   const [clockTick, setClockTick] = useState(0); // ticker บัมพ์ทุก 30 วิ → ดัน memo ที่อิง "ตอนนี้" ให้เดินต่อแม้บอร์ดเปิดค้างนาน
@@ -509,18 +517,22 @@ export default function CallcenterAttendancePage() {
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
+    const seq = ++loadSeq.current;   // token ของ batch นี้
     const prev = prevDateStr(date); // ดึงเผื่อเมื่อวาน — รอบเวรดึกที่ยังไม่เช็คเอาท์ (ข้ามคืน) ต้องโผล่บนบอร์ดวันนี้
     const [Y, M] = date.split('-').map(Number);
     const [PY, PM] = prev.split('-').map(Number);
+    let schedOk = true; // ตารางเวรของ "วันที่เลือก" ดึงสำเร็จไหม (แยกจาก endpoint อื่น)
     Promise.all([
-      api.get(`/api/duty/schedules?y=${Y}&m=${M}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
+      api.get(`/api/duty/schedules?y=${Y}&m=${M}`).then((r) => r.data?.data?.schedules ?? {}).catch(() => { schedOk = false; return {}; }),
       api.get(`/api/attendance/report?from=${prev}&to=${date}`).then((r) => r.data?.data?.rows ?? []).catch(() => []),
       api.get(`/api/cases/workload`).then((r) => r.data?.data ?? []).catch(() => []),
       PY === Y && PM === M
         ? Promise.resolve(null)
-        : api.get(`/api/duty/schedules?y=${PY}&m=${PM}`).then((r) => r.data?.data ?? {}).catch(() => ({})),
+        : api.get(`/api/duty/schedules?y=${PY}&m=${PM}`).then((r) => r.data?.data?.schedules ?? {}).catch(() => ({})),
       api.get(`/api/leave/active?date=${date}`).then((r) => r.data?.data?.requests ?? []).catch(() => []),
     ]).then(([sched, rows, workload, prevSched, leaveRows]) => {
+      if (seq !== loadSeq.current) return; // มี load ใหม่กว่า (เปลี่ยนวัน/refresh) → ทิ้งผลเก่า กันข้อมูลวันอื่นทับ
+      setSchedError(!schedOk);
       setDbByCenter(sched as Record<string, ZoneData>);
       setDbPrevByCenter((prevSched ?? sched) as Record<string, ZoneData>);
       setAtt(rows as AttRow[]);
@@ -528,8 +540,9 @@ export default function CallcenterAttendancePage() {
       const jmap: Record<string, number> = {};
       (workload as { code?: string | null; active?: number }[]).forEach((w) => { const k = onlyDigits(w.code || ''); if (k) jmap[k] = Number(w.active) || 0; });
       setJobsByCode(jmap);
-      setUpdatedAt(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
-    }).finally(() => setLoading(false));
+      // ดึงตารางเวรล้ม → อย่ารีเฟรช "อัปเดต HH:MM" (กันหลอกว่าข้อมูลสด ทั้งที่กำลังโชว์ของเก่า/ว่าง)
+      if (schedOk) setUpdatedAt(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+    }).finally(() => { if (seq === loadSeq.current) setLoading(false); });
   }, [date]);
 
   useEffect(() => { load(); }, [load]);
@@ -613,7 +626,7 @@ export default function CallcenterAttendancePage() {
           if (k && b) map[k] = b;
         });
       } else {
-        const seed = ROSTER[c.id];
+        const seed = seedFor(c.id, +prev.slice(0, 4), +prev.slice(5, 7));
         if (seed) seed.people.forEach((pp, i) => {
           const b = RAW_TO_BAND[seed.grid[Dy - 1]?.[i] ?? 'none'];
           const k = onlyDigits(pp.code);
@@ -642,7 +655,7 @@ export default function CallcenterAttendancePage() {
       if (db && db.staff?.length) {
         db.staff.forEach((s) => rows.push({ code: s.code, name: s.name, raw: db.schedule?.[s.id]?.[D] ?? 'none' }));
       } else {
-        const seed = ROSTER[c.id];
+        const seed = seedFor(c.id, +date.slice(0, 4), +date.slice(5, 7));
         if (seed) seed.people.forEach((pp, i) => rows.push({ code: pp.code, name: pp.name, raw: seed.grid[D - 1]?.[i] ?? 'none' }));
       }
       rows.forEach((r) => {
@@ -693,7 +706,7 @@ export default function CallcenterAttendancePage() {
       if (db && db.staff?.length) {
         db.staff.forEach((s) => { const k = onlyDigits(s.code); if (k) codes.add(k); const n = (s.name || '').trim(); if (n) names.add(n); });
       } else {
-        const seed = ROSTER[c.id];
+        const seed = seedFor(c.id, +date.slice(0, 4), +date.slice(5, 7));
         if (seed) seed.people.forEach((pp) => { const k = onlyDigits(pp.code); if (k) codes.add(k); const n = (pp.name || '').trim(); if (n) names.add(n); });
       }
     }
@@ -729,12 +742,12 @@ export default function CallcenterAttendancePage() {
         (occ[k] ||= []).push({ name: (name || '').trim(), center: c.name });
       };
       if (db && db.staff?.length) db.staff.forEach((s) => add(s.code, s.name));
-      else { const seed = ROSTER[c.id]; if (seed) seed.people.forEach((pp) => add(pp.code, pp.name)); }
+      else { const seed = seedFor(c.id, +date.slice(0, 4), +date.slice(5, 7)); if (seed) seed.people.forEach((pp) => add(pp.code, pp.name)); }
     }
     return Object.entries(occ)
       .filter(([, a]) => a.length > 1)
       .map(([digit, a]) => ({ digit, places: a.map((x) => `${x.name || '?'} · ${x.center}`) }));
-  }, [dbByCenter]);
+  }, [dbByCenter, date]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -804,6 +817,7 @@ export default function CallcenterAttendancePage() {
           <div className="tb-title">
             <h1>เวลาเข้างานพนักงาน · ประจำจุด</h1>
             <p>{fmtThaiDate(date)}{isToday && <span className="live"> · อัปเดตอัตโนมัติ{updatedAt && ` (${updatedAt})`}</span>}</p>
+            {schedError && <p style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 600 }}>⚠ ดึงตารางเวรไม่สำเร็จ — ข้อมูลเวร/สถานะอาจไม่ครบ กรุณารีเฟรช</p>}
           </div>
         </div>
         <div className="stats">

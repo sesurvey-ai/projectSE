@@ -80,6 +80,11 @@ export const adminController = {
     sendSuccess(res, result);
   }),
 
+  getReviewById: asyncHandler(async (req: Request, res: Response) => {
+    const review = await adminService.getReviewById(Number(req.params.id));
+    sendSuccess(res, review);
+  }),
+
   updateReview: asyncHandler(async (req: Request, res: Response) => {
     const review = await adminService.updateReview(Number(req.params.id), req.body);
     sendSuccess(res, review);

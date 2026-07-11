@@ -65,12 +65,11 @@ class ApiService {
   // Survey
   Future<Response> submitSurvey(
       int caseId, Map<String, dynamic> data, List<String> photoPaths) async {
-    // อัปโหลดทั้งโฟลเดอร์ขึ้น server (รวม arrival + survey + OCR)
+    // อัปโหลดทั้งโฟลเดอร์ขึ้น server (รวม arrival + survey + OCR) — ล้ม → throw ให้ผู้เรียกจัดการ
+    // (submitSurveyOffline: network → เข้าคิว retry, อื่นๆ → โชว์ error) ไม่กลืนเงียบเหมือนเดิม
     final claimNo = data['claim_no']?.toString() ?? '';
     final surveyJobNo = data['survey_job_no']?.toString() ?? '';
-    if (claimNo.isNotEmpty && surveyJobNo.isNotEmpty) {
-      await uploadCaseFolder(caseId, claimNo, surveyJobNo);
-    }
+    await uploadCaseFolder(caseId, claimNo, surveyJobNo);
 
     return _dio.post('/api/cases/$caseId/survey', data: {
       ...data,
@@ -79,26 +78,27 @@ class ApiService {
   }
 
   Future<void> uploadCaseFolder(int caseId, String claimNo, String surveyJobNo) async {
-    try {
-      final claimFolder = claimNo.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
-      final jobFolder = surveyJobNo.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
-      final folder = Directory('/storage/emulated/0/Download/SE_Survey/$claimFolder/$jobFolder');
-      if (!folder.existsSync()) return;
+    // ใช้ fallback folder เดียวกับที่ฝั่งฟอร์มเซฟรูป (case_<id>/job_<id>) เมื่อเลขเคลม/เซอร์เวย์ว่าง
+    // เดิม gate ด้วย "ต้องไม่ว่างทั้งคู่" → รูปไม่ถูกอัปเลยเมื่อ OCR อ่านเลขไม่ออก
+    final claimFolder = (claimNo.isNotEmpty ? claimNo : 'case_$caseId').replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+    final jobFolder = (surveyJobNo.isNotEmpty ? surveyJobNo : 'job_$caseId').replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+    final folder = Directory('/storage/emulated/0/Download/SE_Survey/$claimFolder/$jobFolder');
+    if (!folder.existsSync()) return; // ไม่มีโฟลเดอร์ = ไม่มีรูป (ไม่ใช่ error → ไม่ throw)
 
-      final files = folder.listSync().whereType<File>().toList();
-      if (files.isEmpty) return;
+    final files = folder.listSync().whereType<File>().toList();
+    if (files.isEmpty) return; // ไม่มีรูป (surveyor ไม่ถ่าย) → ปกติ
 
-      final formData = FormData();
-      formData.fields.add(MapEntry('folder', claimFolder));
-      for (final file in files) {
-        formData.files.add(MapEntry(
-          'photos',
-          await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
-        ));
-      }
+    final formData = FormData();
+    formData.fields.add(MapEntry('folder', claimFolder));
+    for (final file in files) {
+      formData.files.add(MapEntry(
+        'photos',
+        await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
+      ));
+    }
 
-      await _dio.post('/api/cases/$caseId/upload-folder', data: formData);
-    } catch (_) {}
+    // ไม่ห่อ try/catch — ให้ error (network/HTTP) เด้งขึ้นไปเป็นส่วนหนึ่งของการ submit
+    await _dio.post('/api/cases/$caseId/upload-folder', data: formData);
   }
 
   Future<Response> updateSurvey(int caseId, Map<String, dynamic> data) async {

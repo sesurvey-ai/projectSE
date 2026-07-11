@@ -18,6 +18,16 @@ const bindVal = (f: string, v: unknown): unknown => {
   return v ?? null;
 };
 
+export type CaseUser = { id: number; role: string };
+
+// surveyor เข้าถึงได้เฉพาะเคสที่มอบหมายให้ตัวเอง (กัน IDOR ไล่เลข id อ่าน/ทับเคสคนอื่น)
+// checker/admin/callcenter เข้าถึงได้ทุกเคส (ตรวจงาน/จัดการ)
+const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseUser): void => {
+  if (user?.role === 'surveyor' && caseData.assigned_to !== user.id) {
+    throw new ForbiddenError('Case is not assigned to you');
+  }
+};
+
 export const caseService = {
   async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
     const client = await db.getClient();
@@ -138,9 +148,6 @@ export const caseService = {
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
 
     const caseData = caseResult.rows[0];
-    if (caseData.status !== 'pending') {
-      throw new ForbiddenError('Case is already assigned');
-    }
 
     const surveyorResult = await db.query(
       "SELECT id, fcm_token, first_name, last_name FROM users WHERE id = $1 AND role = 'surveyor' AND is_active = true",
@@ -148,10 +155,16 @@ export const caseService = {
     );
     if (surveyorResult.rows.length === 0) throw new NotFoundError('Surveyor not found');
 
+    // มอบหมายแบบ atomic — กัน race (callcenter 2 คนกดพร้อมกัน จ่ายคนละคน) ด้วย guard status ใน UPDATE
+    // และรองรับ reassign เคสที่ถูกปฏิเสธ ('declined') ไม่ใช่แค่ 'pending'
     const updated = await db.query(
-      `UPDATE cases SET assigned_to = $1, status = 'assigned' WHERE id = $2 RETURNING *`,
+      `UPDATE cases SET assigned_to = $1, status = 'assigned'
+         WHERE id = $2 AND status IN ('pending','declined') RETURNING *`,
       [surveyorId, caseId]
     );
+    if (updated.rowCount === 0) {
+      throw new ForbiddenError('ไม่สามารถมอบหมายงานนี้ได้ (อาจถูกมอบหมายไปแล้ว)');
+    }
 
     // Send push notification via FCM
     const surveyor = surveyorResult.rows[0];
@@ -193,8 +206,9 @@ export const caseService = {
     const caseData = caseResult.rows[0];
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
 
+    // เคลียร์ assigned_to ด้วย — งานที่ถูกปฏิเสธจะได้ไม่ค้างในรายการของคนที่ปฏิเสธ (getMyCases กรองด้วย assigned_to)
     const result = await db.query(
-      "UPDATE cases SET status = 'declined' WHERE id = $1 RETURNING *",
+      "UPDATE cases SET status = 'declined', assigned_to = NULL WHERE id = $1 RETURNING *",
       [caseId]
     );
     return result.rows[0];
@@ -257,7 +271,12 @@ export const caseService = {
     return result.rows[0];
   },
 
-  async uploadCaseFolder(caseId: number, folderName: string, files: Express.Multer.File[]) {
+  async uploadCaseFolder(caseId: number, folderName: string, files: Express.Multer.File[], user?: CaseUser) {
+    // กัน IDOR: uploadCaseFolder ลบรูปเดิมของเคสก่อนเขียนใหม่ — surveyor ต้องเป็นเจ้าของเคสเท่านั้น
+    const own = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
+    if (own.rows.length === 0) throw new NotFoundError('Case not found');
+    assertCaseAccess(own.rows[0], user);
+
     // ดึงเลขเคลม + เลขเรื่องเซอร์เวย์
     const reportResult = await db.query('SELECT claim_no, survey_job_no FROM survey_reports WHERE case_id = $1', [caseId]);
     const claimNo = (reportResult.rows[0]?.claim_no || folderName || `case_${caseId}`).replace(/[/\\?%*:|"<>]/g, '_');
@@ -320,7 +339,11 @@ export const caseService = {
     return { folder: `${claimNo}/${surveyJobNo}`, files: movedFiles };
   },
 
-  async createCaseFolder(caseId: number) {
+  async createCaseFolder(caseId: number, user?: CaseUser) {
+    const own = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
+    if (own.rows.length === 0) throw new NotFoundError('Case not found');
+    assertCaseAccess(own.rows[0], user);
+
     const reportResult = await db.query('SELECT claim_no FROM survey_reports WHERE case_id = $1', [caseId]);
     const claimNo = reportResult.rows[0]?.claim_no || `case_${caseId}`;
     const folderName = claimNo.replace(/[/\\?%*:|"<>]/g, '_');
@@ -356,9 +379,13 @@ export const caseService = {
       );
     }
 
-    // บันทึกเวลาถึงที่เกิดเหตุใน survey_reports
-    const now = new Date();
-    const arrivalTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear() + 543}|${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // บันทึกเวลาถึงที่เกิดเหตุใน survey_reports — ต้องเป็นเวลาไทย (Asia/Bangkok) ไม่ใช่เวลา server (prod = UTC)
+    // รูปแบบ: D/M/พ.ศ.|HH:MM (วัน/เดือนไม่เติม 0 นำ, ปี พ.ศ. = ค.ศ.+543, เวลาเติม 0 นำ) — ตรงกับที่มือถืออ่าน (splitDT)
+    const tRes = await db.query(
+      `SELECT to_char(n, 'FMDD/FMMM/') || (EXTRACT(YEAR FROM n)::int + 543) || '|' || to_char(n, 'HH24:MI') AS ts
+         FROM (SELECT NOW() AT TIME ZONE 'Asia/Bangkok' AS n) s`
+    );
+    const arrivalTime = tRes.rows[0].ts as string;
     const existingReport = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
     if (existingReport.rows.length > 0) {
       await db.query('UPDATE survey_reports SET acc_survey_arrive_date = $1 WHERE case_id = $2', [arrivalTime, caseId]);
@@ -367,7 +394,12 @@ export const caseService = {
     return { success: true, arrival_time: arrivalTime };
   },
 
-  async getArrivalPhotos(caseId: number) {
+  async getArrivalPhotos(caseId: number, user?: CaseUser) {
+    if (user?.role === 'surveyor') {
+      const c = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
+      if (c.rows.length === 0) throw new NotFoundError('Case not found');
+      assertCaseAccess(c.rows[0], user);
+    }
     const result = await db.query(
       "SELECT * FROM case_images WHERE case_id = $1 AND image_type = 'arrival' ORDER BY uploaded_at",
       [caseId]
@@ -414,25 +446,31 @@ export const caseService = {
         'acc_followup','acc_followup_count','acc_followup_detail','acc_followup_date',
         'survey_result','review_comment','surveyor_comment',
       ];
-      const values = fields.map(f => bindVal(f, data[f]));
-      const placeholders = fields.map((_, i) => `$${i + 2}`).join(',');
+      // ส่งเฉพาะคอลัมน์ที่แอปส่งมาจริง (data[f] !== undefined) — กันการเขียนทับข้อมูล intake จาก callcenter
+      // (เดิม map ทุกฟิลด์ → คอลัมน์ที่แอปไม่ส่ง เช่น acc_subdistrict/reporter_phone ถูกทับเป็น NULL)
+      const provided = fields.filter(f => data[f] !== undefined);
+      const values = provided.map(f => bindVal(f, data[f]));
 
       // ตรวจสอบว่ามี report อยู่แล้วหรือไม่ (สร้างจาก callcenter)
       const existingReport = await client.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
       let report;
       if (existingReport.rows.length > 0) {
-        // UPDATE report ที่มีอยู่
-        const setClauses = fields.map((f, i) => `${f} = $${i + 1}`);
-        const updateResult = await client.query(
-          `UPDATE survey_reports SET ${setClauses.join(', ')} WHERE case_id = $${fields.length + 1} RETURNING *`,
-          [...values, caseId]
-        );
-        report = updateResult.rows[0];
+        if (provided.length > 0) {
+          const setClauses = provided.map((f, i) => `${f} = $${i + 1}`);
+          const updateResult = await client.query(
+            `UPDATE survey_reports SET ${setClauses.join(', ')} WHERE case_id = $${provided.length + 1} RETURNING *`,
+            [...values, caseId]
+          );
+          report = updateResult.rows[0];
+        } else {
+          report = existingReport.rows[0];
+        }
       } else {
-        // INSERT report ใหม่
+        // INSERT report ใหม่ (เฉพาะคอลัมน์ที่ส่งมา)
+        const placeholders = provided.map((_, i) => `$${i + 2}`).join(',');
         const insertResult = await client.query(
-          `INSERT INTO survey_reports (case_id, ${fields.join(',')})
-           VALUES ($1, ${placeholders}) RETURNING *`,
+          `INSERT INTO survey_reports (case_id${provided.length ? ', ' + provided.join(',') : ''})
+           VALUES ($1${placeholders ? ', ' + placeholders : ''}) RETURNING *`,
           [caseId, ...values]
         );
         report = insertResult.rows[0];
@@ -444,6 +482,10 @@ export const caseService = {
       const fs = await import('fs');
       const pathMod = await import('path');
       const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, claimNo, surveyJobNo);
+
+      // ลบ survey_photos เดิมของ report ก่อน re-insert — กันรูปซ้ำเมื่อ submit ซ้ำ (idempotent)
+      await client.query('DELETE FROM survey_photos WHERE report_id = $1', [report.id]);
+
       if (fs.default.existsSync(folderPath)) {
         // ดึงชื่อไฟล์ OCR เพื่อข้าม
         const ocrResult = await client.query(
@@ -451,21 +493,32 @@ export const caseService = {
         );
         const ocrFileNames = new Set(ocrResult.rows.map((r: any) => pathMod.default.basename(r.file_path)));
 
+        // หมวดของรูป — มือถือส่ง photo_categories (local-path → หมวด); จับคู่ด้วย basename
+        const catByName: Record<string, string> = {};
+        const rawCats = data.photo_categories;
+        if (rawCats && typeof rawCats === 'object') {
+          for (const [k, v] of Object.entries(rawCats as Record<string, unknown>)) {
+            if (typeof v === 'string' && v) catByName[pathMod.default.basename(k)] = v;
+          }
+        }
+
         const filesInFolder = fs.default.readdirSync(folderPath);
         for (const fileName of filesInFolder) {
           if (ocrFileNames.has(fileName)) continue; // ข้ามรูป OCR
           const photoPath = `${claimNo}/${surveyJobNo}/${fileName}`;
           await client.query(
-            'INSERT INTO survey_photos (report_id, file_path) VALUES ($1, $2)',
-            [report.id, photoPath]
+            'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
+            [report.id, photoPath, catByName[fileName] || null]
           );
         }
       }
 
-      await client.query(
-        `UPDATE cases SET status = 'surveyed' WHERE id = $1`,
+      // guard status ใน UPDATE (idempotent) — ถ้าถูก submit คู่ขนานจน status เปลี่ยนไปแล้ว → 0 rows → rollback
+      const st = await client.query(
+        `UPDATE cases SET status = 'surveyed' WHERE id = $1 AND status = 'assigned' RETURNING id`,
         [caseId]
       );
+      if (st.rowCount === 0) throw new ForbiddenError('Case is not in assigned status');
 
       await client.query('COMMIT');
       return report;
@@ -497,7 +550,7 @@ export const caseService = {
     return result.rows;
   },
 
-  async getDetail(caseId: number) {
+  async getDetail(caseId: number, user?: CaseUser) {
     const caseResult = await db.query(
       `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name
        FROM cases c
@@ -506,6 +559,7 @@ export const caseService = {
       [caseId]
     );
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+    assertCaseAccess(caseResult.rows[0], user);
 
     const reportResult = await db.query(
       'SELECT * FROM survey_reports WHERE case_id = $1',
@@ -617,33 +671,49 @@ export const caseService = {
         params.push(JSONB_FIELDS.has(key) ? (val === '' ? null : bindVal(key, val)) : (val === '' ? null : val));
       }
     }
-    let reportUpdated = 0;
-    if (fields.length > 0) {
-      params.push(reportId);
-      await db.query(`UPDATE survey_reports SET ${fields.join(', ')} WHERE id = $${idx}`, params);
-      reportUpdated = fields.length;
-    }
 
     // === 3. Update survey_expenses ===
     const expenseFields = ['service_fee_count','service_fee_price','travel_fee_count','travel_fee_price','photo_fee_count','photo_fee_price','phone_fee','bail_fee','claim_fee_percent','claim_fee_price','daily_record_fee','other_fee_detail','other_fee_price'];
     const hasExpense = expenseFields.some(f => rd[f] !== undefined && rd[f] !== '');
-    if (hasExpense) {
-      await db.query('DELETE FROM survey_expenses WHERE report_id = $1', [reportId]);
-      const eCols: string[] = ['report_id'];
-      const eVals: unknown[] = [reportId];
-      let eIdx = 2;
-      for (const f of expenseFields) {
-        if (rd[f] !== undefined) {
-          eCols.push(f);
-          eVals.push(rd[f] === '' ? null : rd[f]);
-          eIdx++;
-        }
-      }
-      const ePlaceholders = eVals.map((_, i) => `$${i + 1}`).join(', ');
-      await db.query(`INSERT INTO survey_expenses (${eCols.join(', ')}) VALUES (${ePlaceholders})`, eVals);
-    }
 
-    return { message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense };
+    // ห่อ UPDATE report + DELETE/INSERT expenses ไว้ใน transaction เดียว —
+    // เดิมถ้า INSERT expense พัง (เช่นพิมพ์ '1,200' มี comma ลงคอลัมน์ numeric) DELETE จะ commit ไปแล้ว = ข้อมูลค่าบริการหายถาวร
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+
+      let reportUpdated = 0;
+      if (fields.length > 0) {
+        params.push(reportId);
+        await client.query(`UPDATE survey_reports SET ${fields.join(', ')} WHERE id = $${idx}`, params);
+        reportUpdated = fields.length;
+      }
+
+      if (hasExpense) {
+        await client.query('DELETE FROM survey_expenses WHERE report_id = $1', [reportId]);
+        const eCols: string[] = ['report_id'];
+        const eVals: unknown[] = [reportId];
+        for (const f of expenseFields) {
+          if (rd[f] !== undefined) {
+            eCols.push(f);
+            // ตัด comma ออกจากคอลัมน์ตัวเลข (other_fee_detail เป็น text — เว้นไว้) กัน '1,200' ทำ INSERT พัง
+            const raw = rd[f];
+            const clean = raw === '' ? null : (f === 'other_fee_detail' ? raw : String(raw).replace(/,/g, ''));
+            eVals.push(clean);
+          }
+        }
+        const ePlaceholders = eVals.map((_, i) => `$${i + 1}`).join(', ');
+        await client.query(`INSERT INTO survey_expenses (${eCols.join(', ')}) VALUES (${ePlaceholders})`, eVals);
+      }
+
+      await client.query('COMMIT');
+      return { message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   // จำนวนงานที่ "ถืออยู่" ของแต่ละพนักงานสำรวจ (assigned/surveyed = ยังไม่ปิด) — ใช้เรียงคิวบอร์ดเข้างาน

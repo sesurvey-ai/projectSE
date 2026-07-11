@@ -87,6 +87,7 @@ const submitSurveySchema = z.object({
   license_plate: optStr,
   notes: optStr,
   photo_paths: z.array(z.string()).default([]),
+  photo_categories: z.record(z.string(), z.string()).nullish(),  // local-path → หมวดรูป
   // ข้อมูลบริษัทสำรวจ
   survey_company: optStr,
   survey_company_address: optStr,
@@ -217,7 +218,7 @@ router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.ge
 router.get('/:id/detail', auth, requireRole('checker', 'surveyor'), caseController.getDetail);
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
 router.post('/:id/folder', auth, requireRole('surveyor'), caseController.createCaseFolder);
-router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 50), caseController.uploadCaseFolder);
+router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 100), caseController.uploadCaseFolder);
 router.post('/:id/arrival', auth, requireRole('surveyor'), caseController.confirmArrival);
 router.post('/:id/decline', auth, requireRole('surveyor'), caseController.declineCase);
 router.get('/:id/arrival', auth, requireRole('surveyor', 'checker'), caseController.getArrivalPhotos);

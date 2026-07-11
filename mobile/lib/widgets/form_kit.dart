@@ -292,7 +292,25 @@ class EditorScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // กันปุ่ม back / ปัดกลับ ทิ้งข้อมูลที่กรอกเงียบ ๆ — ปุ่มบันทึกใช้ Navigator.pop โดยตรง (ไม่โดน PopScope กั้น)
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final leave = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('ออกโดยไม่บันทึก?'),
+            content: const Text('ข้อมูลที่กรอกในหน้านี้จะไม่ถูกบันทึก'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('กรอกต่อ')),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('ออก', style: TextStyle(color: kDanger))),
+            ],
+          ),
+        );
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: kBg,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -332,6 +350,7 @@ class EditorScaffold extends StatelessWidget {
             if (i < children.length - 1) const SizedBox(height: 10),
           ],
         ],
+      ),
       ),
     );
   }

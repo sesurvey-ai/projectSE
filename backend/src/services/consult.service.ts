@@ -76,13 +76,24 @@ export const consultService = {
   async report(groupByRaw: string, q: Record<string, unknown>) {
     const groupBy = GROUPS.includes(groupByRaw) ? groupByRaw : 'supervisor';
 
+    // started_at เก็บเป็น TIMESTAMP (naive) = เวลา UTC (Postgres session tz = UTC) →
+    // แปลงเป็นเวลาไทยก่อน filter/bucket ให้ตรงกับส่วนอื่นของระบบ (attendance/leave ใช้ Asia/Bangkok)
+    // เดิม date_trunc/filter ทำบนเวลา UTC → รายงานราย วัน/สัปดาห์ ตัดวันเพี้ยนไป 7 ชม.
+    const bkk = "(l.started_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok')";
+    const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
+
+    // from/to = วันที่แบบไทย (YYYY-MM-DD); รูปแบบผิด/ไม่ส่ง → ใช้ default (กัน 500 จาก Invalid Date เดิมที่ toISOString throw)
+    const dayMs = 86400000;
+    const bkkDate = (d: Date) =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const fromStr = isDate(q.from) ? String(q.from) : bkkDate(new Date(Date.now() - 30 * dayMs));
+    const toStr = isDate(q.to) ? String(q.to) : bkkDate(new Date(Date.now() + dayMs));
+
     const where: string[] = [];
     const params: unknown[] = [];
     let p = 1;
-    const from = q.from ? new Date(String(q.from)) : new Date(Date.now() - 30 * 24 * 3600 * 1000);
-    const to = q.to ? new Date(String(q.to)) : new Date();
-    where.push(`l.started_at >= $${p++}`); params.push(from.toISOString());
-    where.push(`l.started_at <  $${p++}`); params.push(to.toISOString());
+    where.push(`${bkk} >= $${p++}::timestamp`); params.push(fromStr);
+    where.push(`${bkk} <  $${p++}::timestamp`); params.push(toStr);
     if (q.supervisor_id && Number.isFinite(Number(q.supervisor_id))) {
       where.push(`l.supervisor_id = $${p++}`); params.push(Number(q.supervisor_id));
     }
@@ -142,7 +153,7 @@ export const consultService = {
     } else {
       const bucket = groupBy === 'day' ? 'day' : 'week';
       sql = `
-        SELECT date_trunc('${bucket}', l.started_at)                      AS bucket,
+        SELECT date_trunc('${bucket}', ${bkk})                            AS bucket,
                COUNT(*)::int                                              AS total,
                COUNT(*) FILTER (WHERE l.status = 'answered')::int         AS answered,
                COUNT(*) FILTER (WHERE l.status <> 'answered')::int        AS not_answered,
@@ -157,6 +168,6 @@ export const consultService = {
     }
 
     const { rows } = await db.query(sql, params);
-    return { range: { from: from.toISOString(), to: to.toISOString() }, group_by: groupBy, count: rows.length, rows };
+    return { range: { from: fromStr, to: toStr }, group_by: groupBy, count: rows.length, rows };
   },
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 
@@ -26,10 +26,19 @@ export default function AdminCasesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // ช่องพิมพ์ (debounce → search)
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const reqSeq = useRef(0); // กัน response เก่าทับใหม่ (พิมพ์เร็ว → คำขอเก่ามาช้า)
+
+  // debounce ช่องค้นหา → search
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput.trim()); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const fetchCases = useCallback(async () => {
+    const seq = ++reqSeq.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -39,6 +48,7 @@ export default function AdminCasesPage() {
       if (search) params.set('search', search);
 
       const res = await api.get(`/api/admin/cases?${params}`);
+      if (seq !== reqSeq.current) return; // มีคำขอใหม่กว่า → ทิ้งผลเก่า
       if (res.data.success) {
         setCases(res.data.data.cases);
         setTotal(res.data.data.total);
@@ -47,7 +57,7 @@ export default function AdminCasesPage() {
     } catch {
       // handled
     } finally {
-      setLoading(false);
+      if (seq === reqSeq.current) setLoading(false);
     }
   }, [page, statusFilter, search]);
 
@@ -79,8 +89,8 @@ export default function AdminCasesPage() {
         <input
           type="text"
           placeholder="ค้นหาชื่อลูกค้า, สถานที่..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none flex-1 min-w-[200px]"
         />
         <select

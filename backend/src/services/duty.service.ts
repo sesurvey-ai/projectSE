@@ -1,25 +1,43 @@
 import { db } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 
 export const dutyService = {
   // ── ตารางเวรราย เดือน/ศูนย์ (กริด JSONB จากหน้า duty-demo2) ──────────
-  // โหลดทุกศูนย์ของเดือนหนึ่งทีเดียว → { centerId: data } (ศูนย์ที่ยังไม่เคยเซฟจะไม่มี key)
+  // โหลดทุกศูนย์ของเดือนหนึ่งทีเดียว → { schedules: {centerId: data}, updatedAt: {centerId: ts} }
+  // updatedAt ใช้เป็น baseline สำหรับ optimistic-concurrency ตอนบันทึก (กันทับงานคนอื่น)
   // เดือนที่ยังไม่มีข้อมูลเลย → หมุนเวรต่อจากเดือนก่อนหน้าแล้วบันทึกให้อัตโนมัติ (updated_by = NULL = ระบบ)
   getSchedules: async (year: number, month: number) => {
     const fetchRows = async () =>
       (await db.query(
-        'SELECT center_id, data FROM duty_schedules WHERE year = $1 AND month = $2',
+        `SELECT center_id, data,
+                to_char(updated_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI') AS updated_at
+           FROM duty_schedules WHERE year = $1 AND month = $2`,
         [year, month]
       )).rows;
     let rows = await fetchRows();
     if (rows.length === 0 && (await autoRollMonth(year, month))) rows = await fetchRows();
-    const out: Record<string, unknown> = {};
-    for (const r of rows) out[r.center_id] = r.data;
-    return out;
+    const schedules: Record<string, unknown> = {};
+    const updatedAt: Record<string, string> = {};
+    for (const r of rows) { schedules[r.center_id] = r.data; updatedAt[r.center_id] = r.updated_at; }
+    return { schedules, updatedAt };
   },
 
   // บันทึก/ทับ กริดของ 1 ศูนย์ ต่อ 1 เดือน (upsert ด้วย unique center_id+year+month)
-  saveSchedule: async (centerId: string, year: number, month: number, data: unknown, userId: number) =>
-    (await db.query(
+  // expectedUpdatedAt (optional) = ค่า updated_at ที่ client เห็นตอนโหลด — ถ้าปัจจุบันไม่ตรง = มีคนแก้ระหว่างนั้น → 409
+  saveSchedule: async (
+    centerId: string, year: number, month: number, data: unknown, userId: number, expectedUpdatedAt?: string
+  ) => {
+    if (expectedUpdatedAt) {
+      const cur = await db.query(
+        `SELECT to_char(updated_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI') AS updated_at
+           FROM duty_schedules WHERE center_id = $1 AND year = $2 AND month = $3`,
+        [centerId, year, month]
+      );
+      if (cur.rows.length > 0 && cur.rows[0].updated_at !== expectedUpdatedAt) {
+        throw new AppError(409, 'ตารางเวรถูกแก้ไขโดยผู้อื่นระหว่างนี้ กรุณาโหลดใหม่แล้วบันทึกอีกครั้ง');
+      }
+    }
+    return (await db.query(
       `INSERT INTO duty_schedules (center_id, year, month, data, updated_by)
        VALUES ($1,$2,$3,$4::jsonb,$5)
        ON CONFLICT (center_id, year, month)
@@ -27,7 +45,8 @@ export const dutyService = {
        RETURNING center_id, year, month,
                  to_char(updated_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI') AS updated_at`,
       [centerId, year, month, JSON.stringify(data), userId]
-    )).rows[0],
+    )).rows[0];
+  },
 };
 
 // ── หมุนเวรอัตโนมัติข้ามเดือน (เรียกจาก getSchedules เมื่อเดือนนั้นยังว่าง) ──

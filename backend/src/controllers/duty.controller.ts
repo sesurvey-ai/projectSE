@@ -10,7 +10,7 @@ export const dutyController = {
   }),
 
   saveSchedule: asyncHandler(async (req: Request, res: Response) => {
-    const { center_id, year, month, data } = req.body;
-    sendSuccess(res, await dutyService.saveSchedule(center_id, year, month, data, req.user!.id));
+    const { center_id, year, month, data, expected_updated_at } = req.body;
+    sendSuccess(res, await dutyService.saveSchedule(center_id, year, month, data, req.user!.id, expected_updated_at));
   }),
 };

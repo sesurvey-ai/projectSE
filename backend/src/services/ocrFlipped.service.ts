@@ -14,6 +14,7 @@ import fs from 'fs';
 import { GoogleGenAI, Type } from '@google/genai';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { env } from '../config/env';
+import { withTimeout, OCR_CALL_TIMEOUT_MS } from './ocrClients';
 
 const GEMINI_MODEL = env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
@@ -113,10 +114,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── Vision OCR (ตัวตรวจ) ──
 async function visionText(buf: Buffer): Promise<string> {
-  const [resp] = await visionClient().documentTextDetection({
-    image: { content: buf },
-    imageContext: { languageHints: ['th', 'en'] },
-  });
+  const [resp] = await withTimeout(
+    visionClient().documentTextDetection({
+      image: { content: buf },
+      imageContext: { languageHints: ['th', 'en'] },
+    }),
+    OCR_CALL_TIMEOUT_MS,
+    'Vision documentTextDetection'
+  );
   if (resp.error?.message) throw new Error(`Vision error: ${resp.error.message}`);
   return resp.fullTextAnnotation?.text ?? '';
 }
@@ -129,11 +134,15 @@ async function geminiImageMap(buf: Buffer, tries = 6): Promise<GeminiMap> {
   let delay = 5000;
   for (let a = 1; a <= tries; a++) {
     try {
-      const resp = await genaiClient().models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }, { text: PROMPT }] }],
-        config: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
-      });
+      const resp = await withTimeout(
+        genaiClient().models.generateContent({
+          model: GEMINI_MODEL,
+          contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }, { text: PROMPT }] }],
+          config: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
+        }),
+        OCR_CALL_TIMEOUT_MS,
+        'Gemini generateContent'
+      );
       const text = resp.text ?? '{}';
       return JSON.parse(text) as GeminiMap;
     } catch (e: unknown) {
@@ -339,7 +348,7 @@ function flipText(rawIn: string | undefined, flat: string): OcrField {
 }
 
 export async function flippedExtract(imagePath: string): Promise<FlippedResult> {
-  const buf = fs.readFileSync(imagePath);
+  const buf = await fs.promises.readFile(imagePath);
   const [mapped, flatRaw] = await Promise.all([geminiImageMap(buf), visionText(buf)]);
   const flat = norm(flatRaw);
 
