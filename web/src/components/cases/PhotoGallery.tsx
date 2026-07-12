@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { getPhotoUrl } from '@/lib/api';
 
-interface Photo { id: number; file_path?: string; filename?: string; }
+interface Photo { id: number; file_path?: string; filename?: string; category?: string | null; }
 
 export default function PhotoGallery({ photos }: { photos: Photo[] }) {
   const [selected, setSelected] = useState<Photo | null>(null);
@@ -12,13 +12,31 @@ export default function PhotoGallery({ photos }: { photos: Photo[] }) {
   if (!photos || photos.length === 0) return <div className="text-gray-500 text-center py-8">ไม่มีรูปภาพ</div>;
 
   const getSrc = (p: Photo) => getPhotoUrl(p.file_path || p.filename || '');
+  const catLabel = (c?: string | null) => (c && c.trim()) ? c.trim() : 'ไม่ระบุหมวด';
+
+  // จัดกลุ่มตามหมวด (ภาษาไทย) เรียงตามลำดับที่พบ — checker ดูรูปเป็นหมวดๆ ได้
+  const groups: { category: string; items: Photo[] }[] = [];
+  for (const p of photos) {
+    const c = catLabel(p.category);
+    const g = groups.find((x) => x.category === c);
+    if (g) g.items.push(p); else groups.push({ category: c, items: [p] });
+  }
 
   return (
     <>
-      <div className="flex gap-4 overflow-x-auto pb-3">
-        {photos.map((p) => (
-          <div key={p.id} className="cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => setSelected(p)}>
-            <img src={getSrc(p)} alt={`รูปภาพ ${p.id}`} className="w-full h-48 object-cover" />
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={g.category}>
+            <div className="text-sm font-semibold text-gray-700 mb-2">
+              {g.category} <span className="text-gray-400 font-normal">({g.items.length})</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-3">
+              {g.items.map((p) => (
+                <div key={p.id} className="cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => setSelected(p)}>
+                  <img src={getSrc(p)} alt={catLabel(p.category)} className="w-full h-48 object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -45,7 +63,9 @@ export default function PhotoGallery({ photos }: { photos: Photo[] }) {
             <div className="relative max-w-4xl w-full px-16" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setSelected(null); setZoom(1); }} className="absolute -top-10 right-16 text-white text-3xl font-bold hover:text-gray-300">&times;</button>
               <img src={getSrc(selected)} alt={`รูปภาพ ${selected.id}`} className="w-full h-auto max-h-[65vh] object-contain rounded-lg transition-transform duration-200" style={{ transform: `scale(${zoom})` }} />
-              <div className="text-center text-white text-sm mt-2">{idx + 1} / {photos.length}</div>
+              <div className="text-center text-white text-sm mt-2">
+                <span className="font-semibold">{catLabel(selected.category)}</span> · {idx + 1} / {photos.length}
+              </div>
             </div>
             {hasNext && (
               <button onClick={(e) => { e.stopPropagation(); setSelected(photos[idx + 1]); setZoom(1); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-5xl font-bold hover:text-gray-300 z-10 bg-black bg-opacity-40 rounded-full w-12 h-12 flex items-center justify-center">&rsaquo;</button>

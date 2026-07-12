@@ -69,6 +69,22 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     'รูปทรัพย์สินอื่นๆของคู่กรณี',
   ];
   static const String _imgCatDefault = 'รูปประกอบ';
+  // slug ASCII ต่อหมวด — ใช้ตั้งชื่อไฟล์รูปหลังถ่าย (เลี่ยงอักขระไทยใน path/URL/multipart ที่อาจ encode พัง)
+  static const Map<String, String> _catSlug = {
+    'รูปประกอบ': 'photo',
+    'รูปแผนที่เกิดเหตุ': 'map',
+    'รูปรถประกัน': 'insured_car',
+    'รูปรถคู่กรณี': 'opponent_car',
+    'ใบรายงานความเสียหาย': 'damage_report',
+    'ใบแจ้งความเสียหาย': 'damage_notice',
+    'ใบรับเงินจากคู่กรณี': 'payment_receipt',
+    'ใบขับขี่รถประกัน': 'insured_license',
+    'ใบขับขี่รถคู่กรณี': 'opponent_license',
+    'ใบรายการแจ้งความ': 'police_report',
+    'รูปผู้บาดเจ็บรถประกัน': 'insured_injured',
+    'รูปผู้บาดเจ็บรถคู่กรณี': 'opponent_injured',
+    'รูปทรัพย์สินอื่นๆของคู่กรณี': 'opponent_property',
+  };
   Set<int>? _imgSel; // โหมดเลือกหลายรูป (null = ปิด)
   List<String> _provinceNames = [];
   Map<String, List<String>> _provincesData = {};
@@ -998,6 +1014,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return c;
   }
 
+  // slug ASCII ของหมวด (+ เลข "คันที่ N" ถ้ามี) สำหรับตั้งชื่อไฟล์รูป เช่น "รูปรถคู่กรณี คันที่ 2" → opponent_car_2
+  String _catSlugOf(String cat) {
+    var slug = _catSlug[_baseCat(cat)] ?? 'photo';
+    final m = RegExp(r'(\d+)\s*$').firstMatch(cat);
+    if (m != null) slug = '${slug}_${m.group(1)}';
+    return slug;
+  }
+
   // เลือกหมวดรูปที่ผูกกับ record list → เปิด toggle "มี" ของหมวดนั้นให้อัตโนมัติ (flow ถ่ายก่อนกรอกทีหลัง)
   // ผูกตามลิสต์จริง: รูป/เอกสารคู่กรณี→หมวด6, ผู้บาดเจ็บ→หมวด7, ทรัพย์สิน→หมวด8 (ไม่ปลุกหมวดอื่นเกินจำเป็น)
   void _autoEnableForCat(String c) {
@@ -1068,9 +1092,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: cat)));
       if (shots == null || shots.isEmpty || !mounted) { revertProvisional(); return; }
       final caseFolder = await _getCaseFolder();
+      final slug = _catSlugOf(cat); // ตั้งชื่อไฟล์ตามหมวดที่เลือก เช่น opponent_car_1752..._0.jpg
       final added = <String>[];
       for (final x in shots) {
-        final localPath = '$caseFolder/survey_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
+        final localPath = '$caseFolder/${slug}_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
         try { await File(x.path).copy(localPath); added.add(localPath); } catch (_) {}
       }
       if (added.isEmpty || !mounted) { revertProvisional(); return; } // คัดลอกรูปไม่สำเร็จ/ถูก unmount → คืนช่องที่เพิ่งเพิ่ม
@@ -1194,16 +1219,38 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _deletePhotoFile(path);
       });
 
+  // เปลี่ยนหมวดของรูป + เปลี่ยนชื่อไฟล์ให้ตรง slug ใหม่ด้วย — คืน path ใหม่ (path เดิมถ้า rename ไม่สำเร็จ)
+  Future<String> _applyPhotoCategory(String oldPath, String newCat) async {
+    var newPath = oldPath;
+    try {
+      final f = File(oldPath);
+      if (await f.exists()) {
+        final dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
+        newPath = '$dir/${_catSlugOf(newCat)}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await f.rename(newPath); // rename คงเวลาแก้ไขไฟล์ (mtime) → _photoStamp ยังถูก
+      }
+    } catch (_) { newPath = oldPath; } // ไฟล์หาย/สิทธิ์ไม่พอ → คงชื่อเดิม ยังใช้งานได้
+    final i = _photoPaths.indexOf(oldPath);
+    if (i >= 0) _photoPaths[i] = newPath;
+    _photoCat.remove(oldPath);
+    _photoCat[newPath] = newCat;
+    return newPath;
+  }
+
   // เปลี่ยนประเภทของรูป (แตะป้ายบนรูป) — ใช้ตัวเลือกประเภทเดียวกับตอนถ่าย
   Future<void> _changePhotoCat(int index) async {
     final path = _photoPaths[index];
     final chosen = await _pickImageCategory(current: _photoCat[path], title: 'เปลี่ยนประเภทรูป');
-    if (chosen != null && mounted) { setState(() => _photoCat[path] = chosen); _autosave(); }
+    if (chosen == null || !mounted || chosen == _photoCat[path]) return;
+    await _applyPhotoCategory(path, chosen); // เปลี่ยนชื่อไฟล์ตามหมวดใหม่
+    if (!mounted) return;
+    setState(() {});
+    _autosave();
   }
 
   // ชีทรายละเอียดรูป: พรีวิวใหญ่ + เปลี่ยนหมวด + เวลา + ลบ
   void _openPhotoSheet(int index) {
-    final path = _photoPaths[index];
+    var path = _photoPaths[index]; // mutable — เปลี่ยนได้เมื่อ rename ตอนเปลี่ยนหมวด
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1228,7 +1275,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               GestureDetector(
                 onTap: () async {
                   final picked = await _pickImageCategory(current: cat, title: 'เปลี่ยนประเภทรูป');
-                  if (picked != null) { setState(() => _photoCat[path] = picked); setSheet(() {}); _autosave(); }
+                  if (picked == null || picked == cat) return;
+                  path = await _applyPhotoCategory(path, picked); // rename ไฟล์ + อัปเดต path ในชีท
+                  if (mounted) setState(() {});
+                  setSheet(() {});
+                  _autosave();
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
