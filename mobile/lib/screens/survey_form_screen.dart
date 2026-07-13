@@ -52,6 +52,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<String> _photoPaths = [];
   final Map<String, String> _photoCat = {}; // path → หมวดรูป (Phase 5)
+  // OCR confidence ต่อ "ช่องในฟอร์ม" (formKey → medium/low) → โชว์ธงเตือนบนช่องที่ OCR ไม่มั่นใจ
+  final Map<String, String> _ocrConf = {};
+  Map<String, String> _lastOcrConf = {}; // confidence ต่อ "คีย์ OCR" จากการสแกนล่าสุด
   // ประเภทรูปตามระบบประกัน (จาก edit.txt) — เลือกหมวดก่อนเปิดกล้อง
   static const List<String> _imgCats = [
     'รูปประกอบ',
@@ -154,23 +157,36 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     } catch (_) {}
   }
 
-  // ── OCR core: ถ่าย 1 ครั้ง → เก็บรูปเข้าเคส (หมวดเอกสาร) + สกัดข้อมูล → คืน fields ──
-  // kind = 'claim' | 'idcard' | 'license'
-  Future<Map<String, dynamic>?> _captureRetainOcr(String kind) async {
+  // ── OCR core: ถ่ายด้วยกล้องในแอป (กล้องหลังเสมอ) → เก็บรูปเข้าเคส + สกัดข้อมูล → คืน fields ──
+  // kind = 'claim' | 'idcard' | 'license'; photoCategory = หมวด/ชื่อไฟล์ของรูปที่เก็บ (default 'เอกสาร')
+  Future<Map<String, dynamic>?> _captureRetainOcr(String kind, {String photoCategory = 'เอกสาร'}) async {
     try {
-      final XFile? shot = await _picker.pickImage(source: ImageSource.camera, imageQuality: 88, maxWidth: 2200);
-      if (shot == null) return null;
-      // เก็บรูปเข้าโฟลเดอร์เคส (retain, หมวดเอกสาร) — ถ่ายครั้งเดียวได้ทั้งรูป + OCR
-      final caseFolder = await _getCaseFolder();
-      final localPath = '$caseFolder/doc_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await File(shot.path).copy(localPath);
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
+        return null;
+      }
       if (!mounted) return null;
-      setState(() { _photoPaths.add(localPath); _photoCat[localPath] = 'เอกสาร'; _ocrBusy = true; });
+      // กล้องในแอป เริ่มจากกล้องหลังเสมอ + ชัตเตอร์ได้รูปทันที (ไม่ต้องกด "ตกลง")
+      final shots = await Navigator.of(context).push<List<XFile>>(
+          MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: photoCategory)));
+      if (shots == null || shots.isEmpty || !mounted) return null;
+      // เก็บทุกรูปที่ถ่าย (retain) ตามหมวด/ชื่อไฟล์ (slug) — ใช้รูปแรกสำหรับ OCR
+      final caseFolder = await _getCaseFolder();
+      final slug = photoCategory == 'เอกสาร' ? 'doc' : _catSlugOf(photoCategory);
+      final added = <String>[];
+      for (final x in shots) {
+        final p = '$caseFolder/${slug}_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
+        try { await File(x.path).copy(p); added.add(p); } catch (_) {}
+      }
+      if (added.isEmpty || !mounted) return null;
+      setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = photoCategory; } _ocrBusy = true; });
       final cp = context.read<CaseProvider>();
-      final res = kind == 'claim' ? await cp.ocrClaim(localPath) : await cp.ocrDocument(localPath, kind);
+      final res = kind == 'claim' ? await cp.ocrClaim(added.first) : await cp.ocrDocument(added.first, kind);
       if (!mounted) return null;
       setState(() => _ocrBusy = false);
       final fields = (res?['fields'] as Map?)?.cast<String, dynamic>() ?? {};
+      _lastOcrConf = ((res?['confidence'] as Map?)?.map((k, v) => MapEntry(k.toString(), (v ?? '').toString()))) ?? {};
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(fields.isEmpty ? 'บันทึกรูปแล้ว แต่อ่านข้อมูลไม่ได้ — ลองถ่ายใหม่ให้ชัด' : 'เก็บรูป + เติมข้อมูลแล้ว (${fields.length} ช่อง)'),
         backgroundColor: fields.isEmpty ? Colors.orange : Colors.green,
@@ -186,20 +202,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     }
   }
 
-  // สแกนบัตร ปชช./ใบขับขี่ ของผู้ขับ (s3)
+  // สแกนบัตร ปชช./ใบขับขี่ ของผู้ขับ (s3) — บัตร ปชช. → หมวด "รูปรถประกัน", ใบขับขี่ → "ใบขับขี่รถประกัน"
   Future<void> _scanDriverDoc(String kind) async {
-    final fields = await _captureRetainOcr(kind);
+    final fields = await _captureRetainOcr(kind, photoCategory: kind == 'idcard' ? 'รูปรถประกัน' : 'ใบขับขี่รถประกัน');
     if (fields == null || fields.isEmpty || !mounted) return;
     String f(String k) => (fields[k] ?? '').toString().trim();
-    void applyPrefix(String p) {
+    // ตั้งธงเตือนของช่อง formKey ตาม confidence ของ ocrKey (medium/low = ธง, high = ล้างธง)
+    void setConf(String formKey, String ocrKey) {
+      final c = _lastOcrConf[ocrKey] ?? '';
+      if (c == 'medium' || c == 'low') { _ocrConf[formKey] = c; } else { _ocrConf.remove(formKey); }
+    }
+    void applyPrefix(String p, String ocrKey) {
       if (const ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'].contains(p)) {
         _driverTitle = p;
         _driverGender = (p == 'นาย' || p == 'ด.ช.') ? 'M' : 'F';
+        setConf('driver_title', ocrKey);
       }
     }
-    void applyBirthdate(String b) {
+    void applyBirthdate(String b, String ocrKey) {
       if (b.isEmpty) return;
       _driverBirthdateCtl.text = b;
+      setConf('driver_birthdate', ocrKey);
       final age = _ageFromThaiDate(b);
       if (age.isNotEmpty) _driverAgeCtl.text = age; // คำนวณอายุจากวันเกิดให้เลย
     }
@@ -207,27 +230,30 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final prov = _matchProvince(provRaw);
       if (prov == null) return;
       _driverProvinceCtl.text = prov;
-      _driverDistrictCtl.text = _matchDistrict(prov, distRaw) ?? '';
+      setConf('driver_province', 'province');
+      final dist = _matchDistrict(prov, distRaw);
+      _driverDistrictCtl.text = dist ?? '';
+      if (dist != null) { setConf('driver_district', 'district'); } else { _ocrConf.remove('driver_district'); }
     }
     if (kind == 'idcard') {
-      if (f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
-      if (f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
-      if (f('cid').isNotEmpty) _driverIdCardCtl.text = f('cid');
-      applyBirthdate(f('birthdate'));
-      if (f('address').isNotEmpty) _driverAddressCtl.text = f('address');
+      if (f('first_name').isNotEmpty) { _driverNameCtl.text = f('first_name'); setConf('driver_name', 'first_name'); }
+      if (f('last_name').isNotEmpty) { _driverLastnameCtl.text = f('last_name'); setConf('driver_last', 'last_name'); }
+      if (f('cid').isNotEmpty) { _driverIdCardCtl.text = f('cid'); setConf('driver_id_card', 'cid'); }
+      applyBirthdate(f('birthdate'), 'birthdate');
+      if (f('address').isNotEmpty) { _driverAddressCtl.text = f('address'); setConf('driver_address', 'address'); }
       applyProvinceDistrict(f('province'), f('district')); // เลือกจังหวัด/อำเภอ จากที่อยู่บนบัตร
-      applyPrefix(f('prefix'));
+      applyPrefix(f('prefix'), 'prefix');
     } else {
-      if (f('license_no').isNotEmpty) _driverLicenseNoCtl.text = f('license_no');
+      if (f('license_no').isNotEmpty) { _driverLicenseNoCtl.text = f('license_no'); setConf('driver_license_no', 'license_no'); }
       final lt = _matchLicenseType(f('license_type')); // map ประเภท (ไทย/อังกฤษ) → ตัวเลือก dropdown
-      if (lt != null) _driverLicenseTypeCtl.text = lt;
-      if (f('issue_date').isNotEmpty) _driverLicenseStartCtl.text = f('issue_date');
-      if (f('expiry_date').isNotEmpty) _driverLicenseEndCtl.text = f('expiry_date');
-      if (_driverNameCtl.text.trim().isEmpty && f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
-      if (_driverLastnameCtl.text.trim().isEmpty && f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
+      if (lt != null) { _driverLicenseTypeCtl.text = lt; setConf('driver_license_type', 'license_type'); }
+      if (f('issue_date').isNotEmpty) { _driverLicenseStartCtl.text = f('issue_date'); setConf('driver_license_start', 'issue_date'); }
+      if (f('expiry_date').isNotEmpty) { _driverLicenseEndCtl.text = f('expiry_date'); setConf('driver_license_end', 'expiry_date'); }
+      if (_driverNameCtl.text.trim().isEmpty && f('first_name').isNotEmpty) { _driverNameCtl.text = f('first_name'); setConf('driver_name', 'first_name'); }
+      if (_driverLastnameCtl.text.trim().isEmpty && f('last_name').isNotEmpty) { _driverLastnameCtl.text = f('last_name'); setConf('driver_last', 'last_name'); }
       // เพศ/คำนำหน้า/วันเกิด จากใบขับขี่ — เติมเฉพาะที่ยังว่าง (ไม่ทับค่าจากบัตร ปชช.)
-      if (_driverTitle == '0' || _driverTitle.isEmpty) applyPrefix(f('prefix'));
-      if (_driverBirthdateCtl.text.trim().isEmpty) applyBirthdate(f('birthdate'));
+      if (_driverTitle == '0' || _driverTitle.isEmpty) applyPrefix(f('prefix'), 'prefix');
+      if (_driverBirthdateCtl.text.trim().isEmpty) applyBirthdate(f('birthdate'), 'birthdate');
     }
     setState(() {});
     _autosave(); // เซฟทันทีหลัง OCR เติมช่องสำคัญ (กล้อง/OCR กินแรม — เสี่ยงโดน kill)
@@ -350,6 +376,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       return 'ใบขับขี่รถยนต์ส่วนบุคคล';
     }
     return null;
+  }
+
+  // ── ธงเตือน OCR: ห่อ field ถ้า OCR ไม่มั่นใจช่องนี้ (medium/low) → โชว์คำเตือนใต้ช่อง ──
+  Widget _ocrField(String formKey, Widget field) {
+    final c = _ocrConf[formKey];
+    if (c != 'medium' && c != 'low') return field;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        field,
+        Padding(
+          padding: const EdgeInsets.only(top: 4, left: 6),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.flag_rounded, size: 13, color: _warn),
+            const SizedBox(width: 4),
+            Text(c == 'low' ? 'OCR อ่านไม่ชัด — โปรดตรวจสอบ' : 'OCR ไม่มั่นใจ — โปรดตรวจสอบ',
+                style: const TextStyle(fontSize: 11.5, color: _warn, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ],
+    );
   }
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
@@ -512,6 +560,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                             if (identical(target, _driverBirthdateCtl)) {
                               final a = _ageFromThaiDate(formatted); // เลือกวันเกิดเอง → คำนวณอายุให้
                               if (a.isNotEmpty) _driverAgeCtl.text = a;
+                              _ocrConf.remove('driver_birthdate');
+                            } else if (identical(target, _driverLicenseStartCtl)) {
+                              _ocrConf.remove('driver_license_start');
+                            } else if (identical(target, _driverLicenseEndCtl)) {
+                              _ocrConf.remove('driver_license_end');
                             }
                           });
                           Navigator.pop(ctx);
@@ -783,8 +836,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           _accPoliceBookNoCtl.text.trim().isNotEmpty;
     });
   }
-
-  final ImagePicker _picker = ImagePicker();
 
   // === บริษัทสำรวจ ===
   final _surveyCompanyCtl = TextEditingController();
@@ -2462,26 +2513,29 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(flex: 6, child: _genderChips()),
           const SizedBox(width: 12),
-          Expanded(flex: 5, child: _titleDropdown()),
+          Expanded(flex: 5, child: _ocrField('driver_title', _titleDropdown())),
         ]),
-        _row2(_txt(_driverNameCtl, 'ชื่อ', req: true), _txt(_driverLastnameCtl, 'นามสกุล', req: true)),
+        _row2(_ocrField('driver_name', _txt(_driverNameCtl, 'ชื่อ', req: true, ocrKey: 'driver_name')),
+            _ocrField('driver_last', _txt(_driverLastnameCtl, 'นามสกุล', req: true, ocrKey: 'driver_last'))),
         _relationDropdown(),
         // วันเกิด | อายุ
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(flex: 5, child: _birthdateField()),
+          Expanded(flex: 5, child: _ocrField('driver_birthdate', _birthdateField())),
           const SizedBox(width: 10),
           Expanded(flex: 3, child: _numField(_driverAgeCtl, 'อายุ', req: true)),
         ]),
         _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
-        _driverCidField(),
-        _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true),
-        _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
-            (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; }),
-            hint: 'เลือกจังหวัด', req: true, key: ValueKey('dp_${_driverProvinceCtl.text}')),
-        _districtDropdown(),
-        _row2(_txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true), _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
-        _licenseTypeDropdown(),
-        _row2(_dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0), _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10)),
+        _ocrField('driver_id_card', _driverCidField()),
+        _ocrField('driver_address', _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true, ocrKey: 'driver_address')),
+        _ocrField('driver_province', _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
+            (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; _ocrConf.remove('driver_province'); _ocrConf.remove('driver_district'); }),
+            hint: 'เลือกจังหวัด', req: true, key: ValueKey('dp_${_driverProvinceCtl.text}'))),
+        _ocrField('driver_district', _districtDropdown()),
+        _row2(_ocrField('driver_license_no', _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true, ocrKey: 'driver_license_no')),
+            _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
+        _ocrField('driver_license_type', _licenseTypeDropdown()),
+        _row2(_ocrField('driver_license_start', _dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0)),
+            _ocrField('driver_license_end', _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10))),
       ];
 
   List<Widget> _secDamage() => [
@@ -2877,7 +2931,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec('บัตรประชาชนเลขที่', req: true, suffixIcon: digits.length == 13 ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? _ok : _warn) : null),
       keyboardType: TextInputType.number,
-      onChanged: (_) => setState(() {}),
+      onChanged: (_) => setState(() { _ocrConf.remove('driver_id_card'); }),
     );
   }
 
@@ -3218,7 +3272,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
-  Widget _txt(TextEditingController ctl, String label, {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged, bool req = false}) {
+  Widget _txt(TextEditingController ctl, String label, {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged, bool req = false, String? ocrKey}) {
     return TextFormField(
       controller: ctl,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
@@ -3226,7 +3280,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       keyboardType: keyboardType,
       maxLines: maxLines,
       textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
-      onChanged: (v) { onChanged?.call(v); _scheduleAutosave(); },
+      // แก้ช่องเอง → ล้างธงเตือน OCR (setState เฉพาะครั้งแรกที่มีธงให้ล้าง)
+      onChanged: (v) { onChanged?.call(v); if (ocrKey != null && _ocrConf.remove(ocrKey) != null) setState(() {}); _scheduleAutosave(); },
     );
   }
 
@@ -3356,6 +3411,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           if (_driverTitle == '0' || _driverTitle.isEmpty) {
             _driverTitle = code == 'M' ? 'นาย' : 'นางสาว';
           }
+          _ocrConf.remove('driver_title');
         }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 130),
@@ -3403,7 +3459,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             selectedItemBuilder: (context) => items.map((e) => Align(alignment: Alignment.centerLeft, child: Text(labels[e]!, style: TextStyle(fontSize: 14.5, color: e == '0' ? _muted2 : _ink), overflow: TextOverflow.ellipsis))).toList(),
             items: items.map((e) => DropdownMenuItem(value: e, child: Text(labels[e]!, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))).toList(),
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-            onChanged: (v) => setState(() => _driverTitle = v ?? '0'),
+            onChanged: (v) => setState(() { _driverTitle = v ?? '0'; _ocrConf.remove('driver_title'); }),
           ),
         ),
       ],
@@ -3432,13 +3488,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ? _provincesData[_driverProvinceCtl.text]!
         : <String>[];
     return _dd('เขต/อำเภอ', _driverDistrictCtl.text, districts,
-        (v) => setState(() => _driverDistrictCtl.text = v ?? ''),
+        (v) => setState(() { _driverDistrictCtl.text = v ?? ''; _ocrConf.remove('driver_district'); }),
         hint: 'เลือกเขต/อำเภอ', key: ValueKey('dd_${_driverProvinceCtl.text}_${_driverDistrictCtl.text}'));
   }
 
   Widget _licenseTypeDropdown() {
     return _dd('ประเภท', _driverLicenseTypeCtl.text, _licenseTypeOptions,
-        (v) => setState(() => _driverLicenseTypeCtl.text = v ?? ''),
+        (v) => setState(() { _driverLicenseTypeCtl.text = v ?? ''; _ocrConf.remove('driver_license_type'); }),
         key: ValueKey('lt_${_driverLicenseTypeCtl.text}'));
   }
 
