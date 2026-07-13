@@ -12,7 +12,7 @@ import '../config/api_config.dart';
 import '../services/auth_token.dart';
 import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
-import '../data/survey_master.dart' show cidChecksum, kWounds;
+import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes;
 import 'package:permission_handler/permission_handler.dart';
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
@@ -326,30 +326,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     return null;
   }
 
-  // ตัวเลือกประเภทใบขับขี่ (ใช้ทั้ง dropdown + matcher OCR)
-  static const List<String> _licenseTypeOptions = [
-    'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ',
-    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ',
-    'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว',
-    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว',
-    'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ',
-    'ใบขับขี่รถยนต์สาธารณะ',
-    'ใบขับขี่สากล',
-    'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ',
-    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี',
-    'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ',
-    'ใบขับขี่รถยนต์ส่วนบุคคล',
-    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
-    'ใบขับขี่ขนส่งชนิดที่1',
-    'ใบขับขี่ขนส่งชนิดที่2',
-    'ใบขับขี่ขนส่งชนิดที่3',
-    'ใบอนุญาติขับขี่ชนิดที่4',
-    'ไม่มีใบขับขี่',
-    'ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ',
-    'ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว',
-    'ใบอนุญาตเป็นผู้ขับรถทุกประเภท',
-    'อื่นๆ',
-  ];
+  // ตัวเลือกประเภทใบขับขี่ (ใช้ทั้ง dropdown + matcher OCR) — แหล่งเดียวกับคู่กรณี
+  static const List<String> _licenseTypeOptions = kLicenseTypes;
 
   // จับคู่ "ประเภทใบขับขี่" ที่ OCR อ่านได้ (ไทย/อังกฤษ) → ตัวเลือกใน dropdown; null = ไม่มั่นใจ (เลือกเอง)
   String? _matchLicenseType(String raw) {

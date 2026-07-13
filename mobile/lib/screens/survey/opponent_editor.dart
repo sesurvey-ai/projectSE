@@ -211,7 +211,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
               }
             })),
         if (_hasLicense) ...[
-          kText(_ctl('license_no'), 'เลขที่ใบขับขี่', req: true),
+          kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
           kRow2(
             KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes.where((t) => t != 'ไม่มีใบขับขี่').toList(), onSelected: (v) => setState(() => _licenseType = v)),
             kText(_ctl('license_place'), 'ออกให้ที่'),
