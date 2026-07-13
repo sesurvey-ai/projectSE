@@ -129,7 +129,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
         Align(alignment: Alignment.centerLeft, child: SizedBox(width: 150, child: kNum(_ctl('age'), 'อายุ (ปี)'))),
         kText(_ctl('cid'), 'เลขบัตรประชาชน/ต่างด้าว/หนังสือเดินทาง', req: true),
         kRow2(kText(_ctl('occupation'), 'อาชีพ'), kText(_ctl('car_reg'), 'เลขทะเบียน', req: true)),
-        kText(_ctl('address'), 'ที่อยู่'),
+        kText(_ctl('address'), 'ที่อยู่', maxLines: 2),
         kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone),
         kText(_ctl('work_place'), 'ทำงานที่'),
         kText(_ctl('position'), 'ตำแหน่ง'),

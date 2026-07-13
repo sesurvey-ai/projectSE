@@ -144,7 +144,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
             style: OutlinedButton.styleFrom(foregroundColor: kPrimary, backgroundColor: kTint, side: BorderSide.none, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           ),
         );
-    return Row(children: [b(Icons.credit_card, 'สแกนบัตร', 'idcard'), const SizedBox(width: 8), b(Icons.badge_outlined, 'สแกนใบขับขี่', 'license')]);
+    return Row(children: [b(Icons.credit_card, 'สแกนบัตรประชาชน', 'idcard'), const SizedBox(width: 8), b(Icons.badge_outlined, 'สแกนใบขับขี่', 'license')]);
   }
 
   Widget _cidField() {
@@ -165,7 +165,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
       children: [
         kSubhead('เจ้าของ / รถ'),
         kText(_ctl('owner_name'), 'เจ้าของคู่กรณี', req: true),
-        kText(_ctl('owner_address'), 'ที่อยู่เจ้าของรถ'),
+        kText(_ctl('owner_address'), 'ที่อยู่เจ้าของรถ', maxLines: 2),
         kRow2(
           KPickerField(label: 'ประเภทรถ', value: _carType, options: kOpoCarTypes, req: true, onSelected: (v) => setState(() => _carType = v)),
           kText(_ctl('car_brand'), 'ยี่ห้อ'),
@@ -191,7 +191,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         kRow2(kText(_ctl('first_name'), 'ชื่อ', req: true), kText(_ctl('last_name'), 'นามสกุล', req: true)),
         kRow2(KDateField(_ctl('birthdate'), 'วันเกิด (พ.ศ.)', req: true, defaultYearsAgo: 25, yearsAhead: 0), kNum(_ctl('age'), 'อายุ', req: true)),
         kRow2(kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone, req: true), kText(_ctl('license_no'), 'เลขที่ใบขับขี่', req: true)),
-        kText(_ctl('address'), 'ที่อยู่ปัจจุบัน', req: true),
+        kText(_ctl('address'), 'ที่อยู่ปัจจุบัน', req: true, maxLines: 2),
         _cidField(),
         kRow2(
           KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),

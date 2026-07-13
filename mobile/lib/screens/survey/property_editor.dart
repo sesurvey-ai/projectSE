@@ -55,7 +55,7 @@ class _PropertyEditorState extends State<PropertyEditor> {
         kNum(_ctl('estimated_cost'), 'ค่าความเสียหายประมาณ (บาท)', decimal: true),
         kSubhead('เจ้าของทรัพย์สิน'),
         kText(_ctl('owner_name'), 'ชื่อเจ้าของทรัพย์สิน', req: true),
-        kText(_ctl('owner_address'), 'ที่อยู่ปัจจุบัน'),
+        kText(_ctl('owner_address'), 'ที่อยู่ปัจจุบัน', maxLines: 2),
         kText(_ctl('owner_phone'), 'โทรศัพท์ที่ติดต่อได้', keyboardType: TextInputType.phone),
       ],
     );

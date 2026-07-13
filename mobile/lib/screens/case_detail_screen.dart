@@ -699,10 +699,11 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     );
   }
 
-  Widget _inputField(String label, String value, {String? fieldKey}) {
+  Widget _inputField(String label, String value, {String? fieldKey, int maxLines = 1}) {
     return TextFormField(
       initialValue: value == '-' ? '' : value,
       readOnly: fieldKey == null,
+      maxLines: maxLines,
       style: const TextStyle(fontSize: 13, color: Colors.black87),
       decoration: InputDecoration(
         labelText: label,
@@ -938,7 +939,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           // แถว 4: ที่อยู่
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _inputField('ที่อยู่ปัจจุบัน', _val('driver_address'), fieldKey: 'driver_address'),
+            child: _inputField('ที่อยู่ปัจจุบัน', _val('driver_address'), fieldKey: 'driver_address', maxLines: 2),
           ),
           // แถว 5: จังหวัด
           Padding(

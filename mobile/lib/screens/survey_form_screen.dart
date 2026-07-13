@@ -2551,7 +2551,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         ]),
         _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
         _ocrField('driver_id_card', _driverCidField()),
-        _ocrField('driver_address', _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true, ocrKey: 'driver_address')),
+        _ocrField('driver_address', _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true, ocrKey: 'driver_address', maxLines: 2)),
         _ocrField('driver_province', _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
             (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; _ocrConf.remove('driver_province'); _ocrConf.remove('driver_district'); }),
             hint: 'เลือกจังหวัด', req: true, key: ValueKey('dp_${_driverProvinceCtl.text}'))),
