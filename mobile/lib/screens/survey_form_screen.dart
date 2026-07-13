@@ -55,6 +55,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // OCR confidence ต่อ "ช่องในฟอร์ม" (formKey → medium/low) → โชว์ธงเตือนบนช่องที่ OCR ไม่มั่นใจ
   final Map<String, String> _ocrConf = {};
   Map<String, String> _lastOcrConf = {}; // confidence ต่อ "คีย์ OCR" จากการสแกนล่าสุด
+  final Map<String, String> _scanDocPaths = {}; // overwriteKey → path รูปสแกนล่าสุด (บันทึกทับ ไม่สะสมบัตร/ใบขับขี่)
   // ประเภทรูปตามระบบประกัน (จาก edit.txt) — เลือกหมวดก่อนเปิดกล้อง
   static const List<String> _imgCats = [
     'รูปประกอบ',
@@ -159,7 +160,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // ── OCR core: ถ่ายด้วยกล้องในแอป (กล้องหลังเสมอ) → เก็บรูปเข้าเคส + สกัดข้อมูล → คืน fields ──
   // kind = 'claim' | 'idcard' | 'license'; photoCategory = หมวด/ชื่อไฟล์ของรูปที่เก็บ (default 'เอกสาร')
-  Future<Map<String, dynamic>?> _captureRetainOcr(String kind, {String photoCategory = 'เอกสาร'}) async {
+  Future<Map<String, dynamic>?> _captureRetainOcr(String kind, {String photoCategory = 'เอกสาร', String? overwriteKey}) async {
     try {
       final status = await Permission.camera.request();
       if (!status.isGranted) {
@@ -171,15 +172,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       final shots = await Navigator.of(context).push<List<XFile>>(
           MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: photoCategory)));
       if (shots == null || shots.isEmpty || !mounted) return null;
-      // เก็บทุกรูปที่ถ่าย (retain) ตามหมวด/ชื่อไฟล์ (slug) — ใช้รูปแรกสำหรับ OCR
       final caseFolder = await _getCaseFolder();
       final slug = photoCategory == 'เอกสาร' ? 'doc' : _catSlugOf(photoCategory);
+      // overwriteKey (สแกนบัตร/ใบขับขี่): ลบ "รูปสแกนเดิม" ของคีย์นี้ทิ้งก่อน (บันทึกทับ ไม่สะสมซ้ำ)
+      // — ลบเฉพาะรูปที่บันทึก path ไว้ ไม่แตะรูปหมวดเดียวกันที่ผู้ใช้ถ่ายเอง (เช่น รูปรถประกันจริง)
+      if (overwriteKey != null) {
+        final old = _scanDocPaths.remove(overwriteKey);
+        if (old != null) {
+          _photoPaths.remove(old);
+          _photoCat.remove(old);
+          try { final f = File(old); if (f.existsSync()) f.deleteSync(); } catch (_) {}
+        }
+      }
+      // สแกนเอกสาร (overwriteKey) = เก็บรูปเดียวพอ; อื่นๆ = เก็บทุกรูปที่ถ่าย
+      final take = overwriteKey != null ? shots.take(1) : shots;
       final added = <String>[];
-      for (final x in shots) {
+      for (final x in take) {
         final p = '$caseFolder/${slug}_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
         try { await File(x.path).copy(p); added.add(p); } catch (_) {}
       }
       if (added.isEmpty || !mounted) return null;
+      if (overwriteKey != null) _scanDocPaths[overwriteKey] = added.first; // จำ path ไว้ทับรอบหน้า
       setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = photoCategory; } _ocrBusy = true; });
       final cp = context.read<CaseProvider>();
       final res = kind == 'claim' ? await cp.ocrClaim(added.first) : await cp.ocrDocument(added.first, kind);
@@ -204,7 +217,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // สแกนบัตร ปชช./ใบขับขี่ ของผู้ขับ (s3) — บัตร ปชช. → หมวด "รูปรถประกัน", ใบขับขี่ → "ใบขับขี่รถประกัน"
   Future<void> _scanDriverDoc(String kind) async {
-    final fields = await _captureRetainOcr(kind, photoCategory: kind == 'idcard' ? 'รูปรถประกัน' : 'ใบขับขี่รถประกัน');
+    final fields = await _captureRetainOcr(kind,
+        photoCategory: kind == 'idcard' ? 'รูปรถประกัน' : 'ใบขับขี่รถประกัน',
+        overwriteKey: kind == 'idcard' ? 'driver_idcard' : 'driver_license'); // บันทึกทับรูปสแกนเดิม
     if (fields == null || fields.isEmpty || !mounted) return;
     String f(String k) => (fields[k] ?? '').toString().trim();
     // ตั้งธงเตือนของช่อง formKey ตาม confidence ของ ocrKey (medium/low = ธง, high = ล้างธง)
@@ -392,8 +407,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.flag_rounded, size: 13, color: _warn),
             const SizedBox(width: 4),
-            Text(c == 'low' ? 'OCR อ่านไม่ชัด — โปรดตรวจสอบ' : 'OCR ไม่มั่นใจ — โปรดตรวจสอบ',
-                style: const TextStyle(fontSize: 11.5, color: _warn, fontWeight: FontWeight.w600)),
+            Flexible(child: Text(c == 'low' ? 'OCR อ่านไม่ชัด' : 'OCR ไม่มั่นใจ',
+                style: const TextStyle(fontSize: 11.5, color: _warn, fontWeight: FontWeight.w600),
+                maxLines: 1, overflow: TextOverflow.ellipsis)),
           ]),
         ),
       ],
@@ -793,6 +809,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         _photoCat.clear();
         pc.forEach((k, v) {
           if (File(k.toString()).existsSync()) _photoCat[k.toString()] = v.toString();
+        });
+      }
+      // กู้ path รูปสแกนล่าสุด (กรองเฉพาะไฟล์ที่ยังอยู่) → รีสแกนบัตร/ใบขับขี่แล้วทับรูปเดิมได้แม้แอปเคยถูกปิด
+      final sdp = data['scan_doc_paths'];
+      if (sdp is Map) {
+        _scanDocPaths.clear();
+        sdp.forEach((k, v) {
+          if (File(v.toString()).existsSync()) _scanDocPaths[k.toString()] = v.toString();
         });
       }
       // มีข้อมูลอยู่แล้ว → เปิดสวิตช์ "มี" (กันข้อมูลถูกซ่อน); ว่าง → "ไม่มี"
@@ -1597,6 +1621,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       // รูป + หมวดรูป — เก็บลง draft เพื่อ restore ตอนเปิดใหม่ (server strip คีย์ที่ไม่รู้จักทิ้งเอง)
       'photo_paths_local': _photoPaths,
       'photo_categories': _photoCat,
+      'scan_doc_paths': _scanDocPaths, // path รูปสแกนบัตร/ใบขับขี่ล่าสุด (ไว้บันทึกทับข้ามครั้ง)
       // ข้อมูลหลายรายการ → JSONB
       'opposing_parties': _opponents,
       'injured_persons': _injured,
