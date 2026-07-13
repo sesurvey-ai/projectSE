@@ -28,7 +28,9 @@ const IDCARD_PROMPT =
   '- "last_name": นามสกุล (Thai surname only)\n' +
   '- "cid": the 13-digit เลขประจำตัวประชาชน (digits, spaces ok)\n' +
   '- "birthdate": วันเดือนปีเกิด as dd/mm/yyyy EXACTLY as printed (Buddhist year, e.g. 15/03/2530); "" if absent\n' +
-  '- "address": ที่อยู่ (full Thai address text on the card); "" if absent\n\n' +
+  '- "address": ที่อยู่ (full Thai address text on the card); "" if absent\n' +
+  '- "province": ชื่อจังหวัด from the address, name ONLY without the word "จังหวัด"/"จ." (for Bangkok return "กรุงเทพมหานคร"); "" if absent\n' +
+  '- "district": ชื่ออำเภอ/เขต from the address, name ONLY without the word "อำเภอ"/"เขต"/"อ." (e.g. "คลองหลวง", "บางรัก"); "" if absent\n\n' +
   'Read ONLY characters that are clearly and unambiguously printed. If any part is blurry/covered/uncertain, leave that field "" — do NOT guess or reconstruct.';
 
 const IDCARD_SCHEMA = {
@@ -40,19 +42,23 @@ const IDCARD_SCHEMA = {
     cid: { type: Type.STRING },
     birthdate: { type: Type.STRING },
     address: { type: Type.STRING },
+    province: { type: Type.STRING },
+    district: { type: Type.STRING },
   },
-  required: ['prefix', 'first_name', 'last_name', 'cid', 'birthdate', 'address'],
+  required: ['prefix', 'first_name', 'last_name', 'cid', 'birthdate', 'address', 'province', 'district'],
 };
 
 // ── ใบขับขี่ ──
 const LICENSE_PROMPT =
   'This is an IMAGE of a Thai driver license (ใบอนุญาตขับขี่รถยนต์). Extract:\n' +
   '- "license_no": เลขที่ใบอนุญาต (the license number)\n' +
-  '- "license_type": ชนิด/ประเภทใบขับขี่ (e.g. ส่วนบุคคลชั่วคราว, ส่วนบุคคล 5 ปี, ตลอดชีพ); "" if unclear\n' +
+  '- "license_type": ชนิด/ประเภทใบขับขี่ IN THAI as printed — รวมชนิดรถ (รถยนต์/รถจักรยานยนต์) + ประเภทย่อยถ้ามี (ส่วนบุคคลชั่วคราว, ส่วนบุคคล, ส่วนบุคคล 5 ปี, ตลอดชีพ, สาธารณะ); prefer Thai text over English (e.g. "Private Car Driving Licence" → "รถยนต์ส่วนบุคคล"); "" if unclear\n' +
   '- "issue_date": วันออกบัตร/วันเริ่มต้น as dd/mm/yyyy EXACTLY as printed; "" if absent\n' +
   '- "expiry_date": วันสิ้นอายุ as dd/mm/yyyy EXACTLY as printed; "" if absent\n' +
   '- "first_name": ชื่อ (Thai given name, no prefix, no surname)\n' +
-  '- "last_name": นามสกุล (Thai surname)\n\n' +
+  '- "last_name": นามสกุล (Thai surname)\n' +
+  '- "prefix": คำนำหน้า from the Thai name (one of นาย/นาง/นางสาว/ด.ช./ด.ญ.); "" if absent\n' +
+  '- "birthdate": วันเกิด/เกิดวันที่ as dd/mm/yyyy (Buddhist year, e.g. 15/03/2530); "" if absent\n\n' +
   'Read ONLY characters clearly printed. If uncertain, leave "". Do NOT guess.';
 
 const LICENSE_SCHEMA = {
@@ -64,8 +70,10 @@ const LICENSE_SCHEMA = {
     expiry_date: { type: Type.STRING },
     first_name: { type: Type.STRING },
     last_name: { type: Type.STRING },
+    prefix: { type: Type.STRING },
+    birthdate: { type: Type.STRING },
   },
-  required: ['license_no', 'license_type', 'issue_date', 'expiry_date', 'first_name', 'last_name'],
+  required: ['license_no', 'license_type', 'issue_date', 'expiry_date', 'first_name', 'last_name', 'prefix', 'birthdate'],
 };
 
 type Conf = 'high' | 'medium' | 'low' | '';

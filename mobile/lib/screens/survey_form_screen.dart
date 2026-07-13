@@ -191,27 +191,165 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     final fields = await _captureRetainOcr(kind);
     if (fields == null || fields.isEmpty || !mounted) return;
     String f(String k) => (fields[k] ?? '').toString().trim();
-    if (kind == 'idcard') {
-      if (f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
-      if (f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
-      if (f('cid').isNotEmpty) _driverIdCardCtl.text = f('cid');
-      if (f('birthdate').isNotEmpty) _driverBirthdateCtl.text = f('birthdate');
-      if (f('address').isNotEmpty) _driverAddressCtl.text = f('address');
-      final p = f('prefix');
+    void applyPrefix(String p) {
       if (const ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'].contains(p)) {
         _driverTitle = p;
         _driverGender = (p == 'นาย' || p == 'ด.ช.') ? 'M' : 'F';
       }
+    }
+    void applyBirthdate(String b) {
+      if (b.isEmpty) return;
+      _driverBirthdateCtl.text = b;
+      final age = _ageFromThaiDate(b);
+      if (age.isNotEmpty) _driverAgeCtl.text = age; // คำนวณอายุจากวันเกิดให้เลย
+    }
+    void applyProvinceDistrict(String provRaw, String distRaw) {
+      final prov = _matchProvince(provRaw);
+      if (prov == null) return;
+      _driverProvinceCtl.text = prov;
+      _driverDistrictCtl.text = _matchDistrict(prov, distRaw) ?? '';
+    }
+    if (kind == 'idcard') {
+      if (f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
+      if (f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
+      if (f('cid').isNotEmpty) _driverIdCardCtl.text = f('cid');
+      applyBirthdate(f('birthdate'));
+      if (f('address').isNotEmpty) _driverAddressCtl.text = f('address');
+      applyProvinceDistrict(f('province'), f('district')); // เลือกจังหวัด/อำเภอ จากที่อยู่บนบัตร
+      applyPrefix(f('prefix'));
     } else {
       if (f('license_no').isNotEmpty) _driverLicenseNoCtl.text = f('license_no');
-      if (f('license_type').isNotEmpty) _driverLicenseTypeCtl.text = f('license_type');
+      final lt = _matchLicenseType(f('license_type')); // map ประเภท (ไทย/อังกฤษ) → ตัวเลือก dropdown
+      if (lt != null) _driverLicenseTypeCtl.text = lt;
       if (f('issue_date').isNotEmpty) _driverLicenseStartCtl.text = f('issue_date');
       if (f('expiry_date').isNotEmpty) _driverLicenseEndCtl.text = f('expiry_date');
       if (_driverNameCtl.text.trim().isEmpty && f('first_name').isNotEmpty) _driverNameCtl.text = f('first_name');
       if (_driverLastnameCtl.text.trim().isEmpty && f('last_name').isNotEmpty) _driverLastnameCtl.text = f('last_name');
+      // เพศ/คำนำหน้า/วันเกิด จากใบขับขี่ — เติมเฉพาะที่ยังว่าง (ไม่ทับค่าจากบัตร ปชช.)
+      if (_driverTitle == '0' || _driverTitle.isEmpty) applyPrefix(f('prefix'));
+      if (_driverBirthdateCtl.text.trim().isEmpty) applyBirthdate(f('birthdate'));
     }
     setState(() {});
     _autosave(); // เซฟทันทีหลัง OCR เติมช่องสำคัญ (กล้อง/OCR กินแรม — เสี่ยงโดน kill)
+  }
+
+  // ── อายุจากวันเกิด "d/m/พ.ศ." → คืนเป็นสตริงจำนวนปี ('' ถ้าอ่านไม่ได้) ──
+  String _ageFromThaiDate(String s) {
+    final parts = s.split('/');
+    if (parts.length != 3) return '';
+    final d = int.tryParse(parts[0].trim());
+    final m = int.tryParse(parts[1].trim());
+    final by = int.tryParse(parts[2].trim());
+    if (d == null || m == null || by == null) return '';
+    if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+    final ceYear = by > 2400 ? by - 543 : by; // เผื่อกรอกเป็น ค.ศ.
+    final now = DateTime.now();
+    var age = now.year - ceYear;
+    if (now.month < m || (now.month == m && now.day < d)) age -= 1; // ยังไม่ถึงวันเกิดปีนี้
+    if (age < 0 || age > 120) return '';
+    return age.toString();
+  }
+
+  // ── จับคู่ชื่อจังหวัด/อำเภอ ที่ OCR อ่านได้ กับตัวเลือกใน dropdown (normalize prefix/ช่องว่าง/ฯ) ──
+  String _normTh(String s) => s.replaceAll(RegExp(r'\s+'), '').replaceAll('ฯ', '');
+
+  String? _matchProvince(String raw) {
+    if (raw.trim().isEmpty || _provinceNames.isEmpty) return null;
+    final n = _normTh(raw).replaceAll('จังหวัด', '').replaceAll('จ.', '');
+    if (n.contains('กรุงเทพ') || n == 'กทม' || n == 'กทม.') {
+      for (final p in _provinceNames) { if (p.contains('กรุงเทพ')) return p; }
+    }
+    for (final p in _provinceNames) { if (_normTh(p) == n) return p; } // ตรงเป๊ะก่อน
+    if (n.length >= 3) {
+      for (final p in _provinceNames) {
+        final pn = _normTh(p);
+        if (pn.contains(n) || n.contains(pn)) return p;
+      }
+    }
+    return null;
+  }
+
+  String? _matchDistrict(String province, String raw) {
+    final ds = _provincesData[province];
+    if (ds == null || ds.isEmpty || raw.trim().isEmpty) return null;
+    String strip(String s) => _normTh(s)
+        .replaceAll('กิ่งอำเภอ', '').replaceAll('อำเภอ', '').replaceAll('เขต', '')
+        .replaceAll('กิ่ง', '').replaceAll('อ.', '').replaceAll('ข.', '').replaceAll('ต.', '');
+    final n = strip(raw);
+    if (n.isEmpty) return null;
+    for (final d in ds) {
+      final dn = strip(d);
+      if (dn == n || dn.startsWith(n) || n.startsWith(dn)) return d;
+    }
+    return null;
+  }
+
+  // ตัวเลือกประเภทใบขับขี่ (ใช้ทั้ง dropdown + matcher OCR)
+  static const List<String> _licenseTypeOptions = [
+    'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ',
+    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ',
+    'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว',
+    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว',
+    'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ',
+    'ใบขับขี่รถยนต์สาธารณะ',
+    'ใบขับขี่สากล',
+    'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ',
+    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี',
+    'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ',
+    'ใบขับขี่รถยนต์ส่วนบุคคล',
+    'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
+    'ใบขับขี่ขนส่งชนิดที่1',
+    'ใบขับขี่ขนส่งชนิดที่2',
+    'ใบขับขี่ขนส่งชนิดที่3',
+    'ใบอนุญาติขับขี่ชนิดที่4',
+    'ไม่มีใบขับขี่',
+    'ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ',
+    'ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว',
+    'ใบอนุญาตเป็นผู้ขับรถทุกประเภท',
+    'อื่นๆ',
+  ];
+
+  // จับคู่ "ประเภทใบขับขี่" ที่ OCR อ่านได้ (ไทย/อังกฤษ) → ตัวเลือกใน dropdown; null = ไม่มั่นใจ (เลือกเอง)
+  String? _matchLicenseType(String raw) {
+    if (raw.trim().isEmpty) return null;
+    final s = raw.toLowerCase();
+    final th = _normTh(raw);
+    for (final t in _licenseTypeOptions) { if (_normTh(t) == th) return t; } // ตรงเป๊ะก่อน
+
+    final intl = s.contains('international') || th.contains('สากล') || th.contains('ระหว่างประเทศ');
+    if (intl) return 'ใบขับขี่สากล';
+    if (th.contains('ทุกประเภท')) return 'ใบอนุญาตเป็นผู้ขับรถทุกประเภท';
+
+    final motor = s.contains('motorcycle') || s.contains('motorbike') || th.contains('จักรยานยนต์');
+    final car = s.contains('car') || s.contains('private') || th.contains('รถยนต์') || th.contains('ส่วนบุคคล');
+    final public = s.contains('public') || th.contains('สาธารณะ');
+
+    String durOf() {
+      if (th.contains('ตลอดชีพ') || s.contains('lifetime') || s.contains('permanent')) return 'life';
+      if (th.contains('ชั่วคราว') || s.contains('temporary')) return 'temp';
+      if (th.contains('5ปี') || s.contains('5year') || s.contains('5-year')) return '5y';
+      if (th.contains('7ปี') || s.contains('7year') || s.contains('7-year')) return '7y';
+      if (th.contains('หนึ่งปี') || th.contains('1ปี') || s.contains('1year')) return '1y';
+      return '';
+    }
+    final dur = durOf();
+
+    if (motor) {
+      if (dur == 'life') return 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ';
+      if (dur == 'temp') return 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว';
+      if (dur == '1y') return 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี';
+      return 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล';
+    }
+    if (public) return 'ใบขับขี่รถยนต์สาธารณะ'; // สาธารณะ (แท็กซี่) → รถยนต์สาธารณะ
+    if (car) {
+      if (dur == 'life') return 'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ';
+      if (dur == 'temp') return 'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว';
+      if (dur == '5y') return 'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ';
+      if (dur == '7y') return 'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ';
+      if (dur == '1y') return 'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ';
+      return 'ใบขับขี่รถยนต์ส่วนบุคคล';
+    }
+    return null;
   }
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
@@ -369,7 +507,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
                       TextButton(
                         onPressed: () {
                           final formatted = '${selDay.toString().padLeft(2, '0')}/${selMonth.toString().padLeft(2, '0')}/$selYear';
-                          setState(() { target.text = formatted; });
+                          setState(() {
+                            target.text = formatted;
+                            if (identical(target, _driverBirthdateCtl)) {
+                              final a = _ageFromThaiDate(formatted); // เลือกวันเกิดเอง → คำนวณอายุให้
+                              if (a.isNotEmpty) _driverAgeCtl.text = a;
+                            }
+                          });
                           Navigator.pop(ctx);
                         },
                         child: const Text('ตกลง', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -3293,30 +3437,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   Widget _licenseTypeDropdown() {
-    const types = [
-      'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ',
-      'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ',
-      'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว',
-      'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว',
-      'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ',
-      'ใบขับขี่รถยนต์สาธารณะ',
-      'ใบขับขี่สากล',
-      'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ',
-      'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี',
-      'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ',
-      'ใบขับขี่รถยนต์ส่วนบุคคล',
-      'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
-      'ใบขับขี่ขนส่งชนิดที่1',
-      'ใบขับขี่ขนส่งชนิดที่2',
-      'ใบขับขี่ขนส่งชนิดที่3',
-      'ใบอนุญาติขับขี่ชนิดที่4',
-      'ไม่มีใบขับขี่',
-      'ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ',
-      'ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว',
-      'ใบอนุญาตเป็นผู้ขับรถทุกประเภท',
-      'อื่นๆ',
-    ];
-    return _dd('ประเภท', _driverLicenseTypeCtl.text, types,
+    return _dd('ประเภท', _driverLicenseTypeCtl.text, _licenseTypeOptions,
         (v) => setState(() => _driverLicenseTypeCtl.text = v ?? ''),
         key: ValueKey('lt_${_driverLicenseTypeCtl.text}'));
   }

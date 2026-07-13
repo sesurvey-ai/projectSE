@@ -24,7 +24,12 @@ class ApiConfig {
     }
   }
 
+  // dev override: ชี้ backend เอง (เช่น ทดสอบมือถือจริงกับ backend local ผ่าน adb reverse)
+  // build: flutter run --dart-define=LOCAL_API=http://127.0.0.1:3001  (default '' = ปิด ไม่กระทบ prod)
+  static const String _localApi = String.fromEnvironment('LOCAL_API', defaultValue: '');
+
   static String get baseUrl {
+    if (_localApi.isNotEmpty) return _localApi;
     if (_forceProd) return _prodUrl;
     if (!Platform.isAndroid) return _prodUrl;
     // emulator = backend dev บนเครื่อง; มือถือจริง = production
