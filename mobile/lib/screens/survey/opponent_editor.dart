@@ -211,9 +211,9 @@ class _OpponentEditorState extends State<OpponentEditor> {
               }
             })),
         if (_hasLicense) ...[
-          kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
+          KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes.where((t) => t != 'ไม่มีใบขับขี่').toList(), onSelected: (v) => setState(() => _licenseType = v)),
           kRow2(
-            KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes.where((t) => t != 'ไม่มีใบขับขี่').toList(), onSelected: (v) => setState(() => _licenseType = v)),
+            kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
             kText(_ctl('license_place'), 'ออกให้ที่'),
           ),
           kRow2(KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0), KDateField(_ctl('license_end'), 'วันหมดอายุ', yearsAhead: 10)),
