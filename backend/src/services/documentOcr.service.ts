@@ -84,6 +84,38 @@ function ground(value: string, visionNorm: string): Conf {
   return visionNorm.includes(norm(value)) ? 'high' : 'medium';
 }
 
+// ── grounding สำหรับวันที่ ──
+// Gemini คืน dd/mm/yyyy (พ.ศ.) แต่บัตรพิมพ์เป็น "5 ม.ค. 2515" / "5 Jan. 1972" → substring ตรงๆ ไม่เจอ
+// (เลยติด medium ทั้งที่ค่าถูก). แก้: เทียบ วัน+เดือน+ปี ต่อกัน โดย map เดือนไทย/อังกฤษ + ตัดตัวคั่น + รับทั้ง พ.ศ./ค.ศ.
+// ต้องเจอทั้ง 3 ส่วนต่อเนื่องกัน จึงเจาะจงพอ — วันที่ผิดจะไม่ผ่าน (ตกเป็น medium ตามเดิม)
+const _thMonthsFull = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const _thMonthsAbbr = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const _enMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const _enMonthsFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+// ตัดช่องว่าง/จุด/ทับ/ขีด + เป็นตัวเล็ก (ไม่กระทบตัวอักษรไทย)
+const normD = (s: string) => (s || '').replace(/[\s.\/-]/g, '').toLowerCase();
+
+function groundDate(value: string, vTextRaw: string): Conf {
+  if (!value.trim()) return '';
+  const parts = value.split('/');
+  if (parts.length !== 3) return ground(value, norm(vTextRaw)); // ไม่ใช่รูปแบบวันที่ → fallback
+  const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10);
+  if (!d || !m || !y || m < 1 || m > 12 || d < 1 || d > 31) return ground(value, norm(vTextRaw));
+  const V = normD(vTextRaw);
+  const days = [String(d), String(d).padStart(2, '0')];
+  const yBE = y > 2400 ? y : y + 543;
+  const yCE = y > 2400 ? y - 543 : y;
+  const years = [String(yBE), String(yCE)];
+  const months = [
+    String(m), String(m).padStart(2, '0'),
+    normD(_thMonthsFull[m - 1]), normD(_thMonthsAbbr[m - 1]), _enMonths[m - 1], _enMonthsFull[m - 1],
+  ];
+  for (const dd of days) for (const mm of months) for (const yy of years) {
+    if (V.includes(dd + mm + yy)) return 'high';
+  }
+  return 'medium';
+}
+
 export type DocResult = {
   fields: Record<string, string>;
   confidence: Record<string, Conf>;
@@ -112,6 +144,8 @@ export async function extractDocument(imagePath: string, kind: DocKind): Promise
     // cid: ต้องผ่าน checksum ด้วย ไม่งั้น flag medium (แม้ Vision จะ ground ได้)
     if (k === 'cid') {
       confidence[k] = cidChecksum(v) ? ground(v, vNorm) : 'medium';
+    } else if (k === 'birthdate' || k === 'issue_date' || k === 'expiry_date') {
+      confidence[k] = groundDate(v, vText); // วันที่: Gemini แปลงรูปแบบ → ต้องเทียบแบบรู้จักวันที่ (ไม่งั้นติด medium เสมอ)
     } else {
       confidence[k] = ground(v, vNorm);
     }
