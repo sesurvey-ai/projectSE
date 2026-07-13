@@ -2557,9 +2557,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               _autosave();
             })),
         if (_driverHasLicense) ...[
+          _ocrField('driver_license_type', _licenseTypeDropdown()),
           _row2(_ocrField('driver_license_no', _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true, ocrKey: 'driver_license_no')),
               _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
-          _ocrField('driver_license_type', _licenseTypeDropdown()),
           _row2(_ocrField('driver_license_start', _dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0)),
               _ocrField('driver_license_end', _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10))),
         ],
@@ -3521,7 +3521,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   Widget _licenseTypeDropdown() {
     // ตัด "ไม่มีใบขับขี่" ออก — สวิตช์ "มีใบขับขี่" คุมสถานะนี้แทนแล้ว (กันขัดกันเอง)
-    return _dd('ประเภท', _driverLicenseTypeCtl.text, _licenseTypeOptions.where((t) => t != 'ไม่มีใบขับขี่').toList(),
+    return _dd('ประเภทใบขับขี่', _driverLicenseTypeCtl.text, _licenseTypeOptions.where((t) => t != 'ไม่มีใบขับขี่').toList(),
         (v) => setState(() { _driverLicenseTypeCtl.text = v ?? ''; _ocrConf.remove('driver_license_type'); }),
         key: ValueKey('lt_${_driverLicenseTypeCtl.text}'));
   }
