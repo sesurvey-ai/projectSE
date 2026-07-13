@@ -166,6 +166,16 @@ Widget kSubhead(String t) => Padding(
 Widget kRow2(Widget a, Widget b) =>
     Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
 
+// แถวสวิตช์ (progressive disclosure — เปิดแล้วโผล่ช่องเพิ่ม)
+Widget kSwitch(String label, bool value, ValueChanged<bool> onChanged) => Container(
+      padding: const EdgeInsets.fromLTRB(13, 2, 8, 2),
+      decoration: BoxDecoration(color: kFill, borderRadius: BorderRadius.circular(13), border: Border.all(color: kLine)),
+      child: Row(children: [
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: kInk))),
+        Switch(value: value, activeThumbColor: kPrimary, onChanged: onChanged),
+      ]),
+    );
+
 Widget kChip(String label, bool selected, VoidCallback onTap, {Color? color, bool grow = false}) {
   final c = color ?? kPrimary;
   final chip = GestureDetector(

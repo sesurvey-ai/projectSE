@@ -259,6 +259,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       applyProvinceDistrict(f('province'), f('district')); // เลือกจังหวัด/อำเภอ จากที่อยู่บนบัตร
       applyPrefix(f('prefix'), 'prefix');
     } else {
+      _driverHasLicense = true; // สแกนใบขับขี่ = มีใบขับขี่ (กันช่องยังซ่อนอยู่)
       if (f('license_no').isNotEmpty) { _driverLicenseNoCtl.text = f('license_no'); setConf('driver_license_no', 'license_no'); }
       final lt = _matchLicenseType(f('license_type')); // map ประเภท (ไทย/อังกฤษ) → ตัวเลือก dropdown
       if (lt != null) { _driverLicenseTypeCtl.text = lt; setConf('driver_license_type', 'license_type'); }
@@ -823,6 +824,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _hasOpponents = _opponents.isNotEmpty || data['has_opponents'] == true;
       _hasInjured = _injured.isNotEmpty || data['has_injured'] == true;
       _hasProperty = _property.isNotEmpty || data['has_property'] == true;
+      _driverHasLicense = data['has_driver_license'] != false; // default true (draft เก่าที่ไม่มีคีย์นี้ = มีใบขับขี่)
       final idmg = data['insured_damage'];
       if (idmg is List) {
         _damageItems
@@ -872,6 +874,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _carLost = false;
   bool _hasPrb = false;    // สวิตช์ "มี พรบ." — เปิดแล้วโผล่ช่องเลข พรบ.
   bool _hasPolice = false; // สวิตช์ "มีการแจ้งความ/ลงประจำวัน" — เปิดแล้วโผล่ส่วนตำรวจ
+  bool _driverHasLicense = true; // สวิตช์ "มีใบขับขี่" (s3) — ปิด = ซ่อน+เคลียร์ช่องใบขับขี่ + ไม่นับว่าขาด
   final _insuranceCompanyCtl = TextEditingController();
   final _insuranceBranchCtl = TextEditingController();
   final _surveyJobNoCtl = TextEditingController();
@@ -1632,6 +1635,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'has_opponents': _hasOpponents,
       'has_injured': _hasInjured,
       'has_property': _hasProperty,
+      'has_driver_license': _driverHasLicense,
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
       'acc_place': _accPlaceCtl.text.trim(),
@@ -2173,12 +2177,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           ['ประเภทรถ', _carType != '0'],
         ]);
       case _SView.s3:
-        return miss([
+        final s3 = miss([
           ['ชื่อ-นามสกุลผู้ขับ', has(_driverNameCtl) && has(_driverLastnameCtl)],
           ['โทรศัพท์', has(_driverPhoneCtl)],
           ['เลขบัตรประชาชน (ถูกต้อง)', _driverCidValid()],
-          ['เลขใบขับขี่', has(_driverLicenseNoCtl)],
         ]);
+        // เลขใบขับขี่บังคับเฉพาะเมื่อ "มีใบขับขี่" (ปิดสวิตช์ = ไม่มี ไม่นับว่าขาด)
+        if (_driverHasLicense) s3.addAll(miss([['เลขใบขับขี่', has(_driverLicenseNoCtl)]]));
+        return s3;
       case _SView.s4:
         return miss([
           ['รายการความเสียหาย ≥1', _filledDamageItems().isNotEmpty],
@@ -2534,6 +2540,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   List<Widget> _secDriver() => [
         _scanRow(),
+        _subhead('บัตรประชาชน'),
         // เพศ (ปุ่ม) | คำนำหน้า — แถวเดียวกัน, dropdown แคบลง
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(flex: 6, child: _genderChips()),
@@ -2556,11 +2563,28 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             (v) => setState(() { _driverProvinceCtl.text = v ?? ''; _driverDistrictCtl.text = ''; _ocrConf.remove('driver_province'); _ocrConf.remove('driver_district'); }),
             hint: 'เลือกจังหวัด', req: true, key: ValueKey('dp_${_driverProvinceCtl.text}'))),
         _ocrField('driver_district', _districtDropdown()),
-        _row2(_ocrField('driver_license_no', _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true, ocrKey: 'driver_license_no')),
-            _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
-        _ocrField('driver_license_type', _licenseTypeDropdown()),
-        _row2(_ocrField('driver_license_start', _dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0)),
-            _ocrField('driver_license_end', _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10))),
+        // ── ใบขับขี่ (เปิด/ปิด — บางเคสไม่มีใบขับขี่) ──
+        _switchRow('มีใบขับขี่', _driverHasLicense, (v) => setState(() {
+              _driverHasLicense = v;
+              if (!v) {
+                _driverLicenseNoCtl.clear();
+                _driverLicensePlaceCtl.clear();
+                _driverLicenseStartCtl.clear();
+                _driverLicenseEndCtl.clear();
+                _driverLicenseTypeCtl.text = 'ไม่มีใบขับขี่';
+                _ocrConf.removeWhere((k, _) => k.startsWith('driver_license'));
+              } else if (_driverLicenseTypeCtl.text == 'ไม่มีใบขับขี่') {
+                _driverLicenseTypeCtl.clear();
+              }
+              _autosave();
+            })),
+        if (_driverHasLicense) ...[
+          _row2(_ocrField('driver_license_no', _txt(_driverLicenseNoCtl, 'ใบอนุญาตขับขี่เลขที่', req: true, ocrKey: 'driver_license_no')),
+              _txt(_driverLicensePlaceCtl, 'ออกให้ที่')),
+          _ocrField('driver_license_type', _licenseTypeDropdown()),
+          _row2(_ocrField('driver_license_start', _dateField(_driverLicenseStartCtl, 'ออกให้วันที่', yearsAhead: 0)),
+              _ocrField('driver_license_end', _dateField(_driverLicenseEndCtl, 'หมดอายุวันที่', yearsAhead: 10))),
+        ],
       ];
 
   List<Widget> _secDamage() => [

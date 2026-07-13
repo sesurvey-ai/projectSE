@@ -24,6 +24,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   final _damage = <Map<String, String>>[];
   String _carType = '', _province = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
+  bool _hasLicense = true; // สวิตช์ "มีใบขับขี่" — ปิด = ซ่อน+เคลียร์ช่องใบขับขี่
 
   TextEditingController _ctl(String k) => _c[k] ??= TextEditingController(text: (widget.data[k] ?? '').toString());
 
@@ -45,6 +46,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _licenseType = (widget.data['license_type'] ?? '').toString();
     _policyType = (widget.data['policy_type'] ?? '').toString();
     _kfk = widget.data['kfk'] == true;
+    _hasLicense = (widget.data['has_license'] as bool?) ?? (_licenseType != 'ไม่มีใบขับขี่');
     final dmg = widget.data['damage'];
     if (dmg is List) {
       for (final d in dmg) {
@@ -88,6 +90,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'license_place': _ctl('license_place').text.trim(),
         'license_start': _ctl('license_start').text.trim(),
         'license_end': _ctl('license_end').text.trim(),
+        'has_license': _hasLicense,
         'insurer': _insurer,
         'policy_no': _ctl('policy_no').text.trim(),
         'claim_no': _ctl('claim_no').text.trim(),
@@ -123,6 +126,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
           _gender = (p == 'นาย' || p == 'ด.ช.') ? 'ชาย' : 'หญิง';
         }
       } else {
+        _hasLicense = true; // สแกนใบขับขี่ = มีใบขับขี่ (กันช่องยังซ่อนอยู่)
         if (f('license_no').isNotEmpty) _ctl('license_no').text = f('license_no');
         if (f('license_type').isNotEmpty) _licenseType = f('license_type');
         if (f('issue_date').isNotEmpty) _ctl('license_start').text = f('issue_date');
@@ -190,14 +194,30 @@ class _OpponentEditorState extends State<OpponentEditor> {
         ),
         kRow2(kText(_ctl('first_name'), 'ชื่อ', req: true), kText(_ctl('last_name'), 'นามสกุล', req: true)),
         kRow2(KDateField(_ctl('birthdate'), 'วันเกิด (พ.ศ.)', req: true, defaultYearsAgo: 25, yearsAhead: 0), kNum(_ctl('age'), 'อายุ', req: true)),
-        kRow2(kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone, req: true), kText(_ctl('license_no'), 'เลขที่ใบขับขี่', req: true)),
+        kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
         kText(_ctl('address'), 'ที่อยู่ปัจจุบัน', req: true, maxLines: 2),
         _cidField(),
-        kRow2(
-          KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),
-          kText(_ctl('license_place'), 'ออกให้ที่'),
-        ),
-        kRow2(KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0), KDateField(_ctl('license_end'), 'วันหมดอายุ', yearsAhead: 10)),
+        // ── ใบขับขี่ (เปิด/ปิด — บางเคสไม่มีใบขับขี่) ──
+        kSwitch('มีใบขับขี่', _hasLicense, (v) => setState(() {
+              _hasLicense = v;
+              if (!v) {
+                _ctl('license_no').clear();
+                _ctl('license_place').clear();
+                _ctl('license_start').clear();
+                _ctl('license_end').clear();
+                _licenseType = 'ไม่มีใบขับขี่';
+              } else if (_licenseType == 'ไม่มีใบขับขี่') {
+                _licenseType = '';
+              }
+            })),
+        if (_hasLicense) ...[
+          kText(_ctl('license_no'), 'เลขที่ใบขับขี่', req: true),
+          kRow2(
+            KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),
+            kText(_ctl('license_place'), 'ออกให้ที่'),
+          ),
+          kRow2(KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0), KDateField(_ctl('license_end'), 'วันหมดอายุ', yearsAhead: 10)),
+        ],
         kSubhead('ประกันภัยคู่กรณี'),
         KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, req: true, onSelected: (v) => setState(() {
               _insurer = v;
