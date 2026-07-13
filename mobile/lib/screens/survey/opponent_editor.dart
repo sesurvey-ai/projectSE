@@ -24,7 +24,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   final _damage = <Map<String, String>>[];
   String _carType = '', _province = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
-  bool _hasLicense = true; // สวิตช์ "มีใบขับขี่" — ปิด = ซ่อน+เคลียร์ช่องใบขับขี่
+  bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
 
   TextEditingController _ctl(String k) => _c[k] ??= TextEditingController(text: (widget.data[k] ?? '').toString());
 
@@ -46,7 +46,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _licenseType = (widget.data['license_type'] ?? '').toString();
     _policyType = (widget.data['policy_type'] ?? '').toString();
     _kfk = widget.data['kfk'] == true;
-    _hasLicense = (widget.data['has_license'] as bool?) ?? (_licenseType != 'ไม่มีใบขับขี่');
+    // มีใบขับขี่ = ประเภทเป็นชนิดจริง หรือมีเลขใบขับขี่อยู่แล้ว; ว่าง/ยังไม่กรอก = ไม่มี (สแกนแล้วจะเปิดเอง)
+    _hasLicense = (_licenseType.isNotEmpty && _licenseType != 'ไม่มีใบขับขี่') || (widget.data['license_no'] ?? '').toString().trim().isNotEmpty;
     final dmg = widget.data['damage'];
     if (dmg is List) {
       for (final d in dmg) {
@@ -86,11 +87,10 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'address': _ctl('address').text.trim(),
         'cid': _ctl('cid').text.trim(),
         'license_no': _ctl('license_no').text.trim(),
-        'license_type': _licenseType,
+        'license_type': _hasLicense ? _licenseType : 'ไม่มีใบขับขี่', // สวิตช์ปิด = เก็บ "ไม่มีใบขับขี่"
         'license_place': _ctl('license_place').text.trim(),
         'license_start': _ctl('license_start').text.trim(),
         'license_end': _ctl('license_end').text.trim(),
-        'has_license': _hasLicense,
         'insurer': _insurer,
         'policy_no': _ctl('policy_no').text.trim(),
         'claim_no': _ctl('claim_no').text.trim(),
@@ -213,7 +213,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         if (_hasLicense) ...[
           kText(_ctl('license_no'), 'เลขที่ใบขับขี่', req: true),
           kRow2(
-            KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes, onSelected: (v) => setState(() => _licenseType = v)),
+            KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes.where((t) => t != 'ไม่มีใบขับขี่').toList(), onSelected: (v) => setState(() => _licenseType = v)),
             kText(_ctl('license_place'), 'ออกให้ที่'),
           ),
           kRow2(KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0), KDateField(_ctl('license_end'), 'วันหมดอายุ', yearsAhead: 10)),

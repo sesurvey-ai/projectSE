@@ -824,7 +824,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _hasOpponents = _opponents.isNotEmpty || data['has_opponents'] == true;
       _hasInjured = _injured.isNotEmpty || data['has_injured'] == true;
       _hasProperty = _property.isNotEmpty || data['has_property'] == true;
-      _driverHasLicense = data['has_driver_license'] != false; // default true (draft เก่าที่ไม่มีคีย์นี้ = มีใบขับขี่)
+      // มีใบขับขี่ = ประเภทเป็นชนิดจริง (ไม่ว่าง/ไม่ใช่ "ไม่มีใบขับขี่") หรือมีเลขใบขับขี่อยู่แล้ว; ว่าง/ยังไม่กรอก = ไม่มี (สแกนแล้วจะเปิดเอง)
+      _driverHasLicense = (_driverLicenseTypeCtl.text.trim().isNotEmpty && _driverLicenseTypeCtl.text.trim() != 'ไม่มีใบขับขี่') || _driverLicenseNoCtl.text.trim().isNotEmpty;
       final idmg = data['insured_damage'];
       if (idmg is List) {
         _damageItems
@@ -874,7 +875,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _carLost = false;
   bool _hasPrb = false;    // สวิตช์ "มี พรบ." — เปิดแล้วโผล่ช่องเลข พรบ.
   bool _hasPolice = false; // สวิตช์ "มีการแจ้งความ/ลงประจำวัน" — เปิดแล้วโผล่ส่วนตำรวจ
-  bool _driverHasLicense = true; // สวิตช์ "มีใบขับขี่" (s3) — ปิด = ซ่อน+เคลียร์ช่องใบขับขี่ + ไม่นับว่าขาด
+  bool _driverHasLicense = false; // สวิตช์ "มีใบขับขี่" (s3) — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์+ไม่นับว่าขาด
   final _insuranceCompanyCtl = TextEditingController();
   final _insuranceBranchCtl = TextEditingController();
   final _surveyJobNoCtl = TextEditingController();
@@ -1611,7 +1612,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'driver_address': _driverAddressCtl.text.trim(),
       'driver_id_card': _driverIdCardCtl.text.trim(),
       'driver_license_no': _driverLicenseNoCtl.text.trim(),
-      'driver_license_type': _driverLicenseTypeCtl.text.trim(),
+      'driver_license_type': _driverHasLicense ? _driverLicenseTypeCtl.text.trim() : 'ไม่มีใบขับขี่', // สวิตช์ปิด = เก็บ "ไม่มีใบขับขี่"
       'driver_license_place': _driverLicensePlaceCtl.text.trim(),
       'driver_license_start': _driverLicenseStartCtl.text.trim(),
       'driver_license_end': _driverLicenseEndCtl.text.trim(),
@@ -1635,7 +1636,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       'has_opponents': _hasOpponents,
       'has_injured': _hasInjured,
       'has_property': _hasProperty,
-      'has_driver_license': _driverHasLicense,
       'acc_date': _accDateCtl.text.trim(),
       'acc_time': _accTimeCtl.text.trim(),
       'acc_place': _accPlaceCtl.text.trim(),
@@ -3542,7 +3542,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   }
 
   Widget _licenseTypeDropdown() {
-    return _dd('ประเภท', _driverLicenseTypeCtl.text, _licenseTypeOptions,
+    // ตัด "ไม่มีใบขับขี่" ออก — สวิตช์ "มีใบขับขี่" คุมสถานะนี้แทนแล้ว (กันขัดกันเอง)
+    return _dd('ประเภท', _driverLicenseTypeCtl.text, _licenseTypeOptions.where((t) => t != 'ไม่มีใบขับขี่').toList(),
         (v) => setState(() { _driverLicenseTypeCtl.text = v ?? ''; _ocrConf.remove('driver_license_type'); }),
         key: ValueKey('lt_${_driverLicenseTypeCtl.text}'));
   }
