@@ -96,6 +96,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'claim_no': _ctl('claim_no').text.trim(),
         'policy_type': _policyType,
         'damage': _damage,
+        'damage_description': _ctl('damage_description').text.trim(),
         'estimated_cost': _ctl('estimated_cost').text.trim(),
         'kfk': _kfk,
       };
@@ -237,6 +238,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
         ],
         kSubhead('ความเสียหาย'),
         DamageDiagramField(items: _damage, onChanged: () => setState(() {})),
+        DamagePartList(items: _damage, onChanged: () => setState(() {})),
+        kText(_ctl('damage_description'), 'รายละเอียดความเสียหาย', maxLines: 3),
         kNum(_ctl('estimated_cost'), 'ค่าเสียหายประมาณ (บาท)', decimal: true),
       ],
     );

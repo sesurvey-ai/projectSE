@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'form_kit.dart';
 
 /// แผนภาพความเสียหาย + จัดการเลือกข้าง/ระดับในตัว (ใช้ใน editor คู่กรณี ฯลฯ)
 /// items = list ของ {part, pos, level}; เรียก onChanged เมื่อแก้ไข
@@ -84,30 +85,135 @@ class _DamageDiagramFieldState extends State<DamageDiagramField> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      CarDamageDiagram(items: widget.items, onTapPart: _tap),
-      if (widget.items.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (int i = 0; i < widget.items.length; i++)
+    // แตะแผนภาพ → เพิ่ม/แก้ตำแหน่ง-ระดับ (รายการที่เพิ่มโชว์ใน DamagePartList ด้านล่างแทน chips)
+    return CarDamageDiagram(items: widget.items, onTapPart: _tap);
+  }
+}
+
+/// รายการชิ้นส่วนเสียหาย (พิมพ์ชื่อ + เลือกตำแหน่ง/ระดับ) — reusable (ใช้หน้า 4 ผ่าน _damageList เทียบเท่า + คู่กรณี)
+/// items = [{part, pos, level}] โครงเดียวกับ CarDamageDiagram/DamageDiagramField
+class DamagePartList extends StatefulWidget {
+  final List<Map<String, String>> items;
+  final VoidCallback onChanged;
+  const DamagePartList({super.key, required this.items, required this.onChanged});
+
+  @override
+  State<DamagePartList> createState() => _DamagePartListState();
+}
+
+class _DamagePartListState extends State<DamagePartList> {
+  bool _expanded = false;
+  int get _filled => widget.items.where((it) => (it['part'] ?? '').trim().isNotEmpty).length;
+
+  void _add() {
+    widget.items.add({'part': '', 'pos': '', 'level': ''});
+    _expanded = true;
+    widget.onChanged();
+    setState(() {});
+  }
+
+  void _remove(int i) {
+    widget.items.removeAt(i);
+    widget.onChanged();
+    setState(() {});
+  }
+
+  void _update(int i, String k, String v) {
+    widget.items[i][k] = v;
+    widget.onChanged();
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(color: kFill, borderRadius: BorderRadius.circular(13), border: Border.all(color: kLine)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: ValueKey('dpl_$_expanded'),
+          initiallyExpanded: _expanded || widget.items.isNotEmpty,
+          onExpansionChanged: (v) => _expanded = v,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 13),
+          childrenPadding: const EdgeInsets.fromLTRB(13, 0, 13, 13),
+          leading: const Icon(Icons.build_circle_outlined, color: kPrimary, size: 20),
+          title: Text('รายการชิ้นส่วนเสียหาย ($_filled)', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: kPrimary)),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
             GestureDetector(
-              onTap: () => _sheet(i),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: (_lvlColor[widget.items[i]['level']] ?? const Color(0xFF9AA3B4)).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: _lvlColor[widget.items[i]['level']] ?? const Color(0xFFDDE1E9)),
-                ),
-                child: Text(
-                  '${widget.items[i]['part']}${(widget.items[i]['level'] ?? '').isNotEmpty ? ' · ${widget.items[i]['level']}' : ''}',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _lvlColor[widget.items[i]['level']] ?? const Color(0xFF737D90)),
-                ),
-              ),
+              onTap: _add,
+              child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: kTint, borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.add, size: 20, color: kPrimary)),
             ),
-        ]),
-      ],
-    ]);
+            const SizedBox(width: 4),
+            const Icon(Icons.expand_more, color: kMuted),
+          ]),
+          children: [
+            if (widget.items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Text('กด + เพื่อเพิ่มรายการชิ้นส่วนที่เสียหาย', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              ),
+            for (int i = 0; i < widget.items.length; i++) ...[
+              if (i > 0) const Divider(color: kLine, height: 18),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('ชิ้นส่วนที่ ${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kPrimary)),
+                GestureDetector(
+                  onTap: () => _remove(i),
+                  child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle), child: Icon(Icons.close, size: 14, color: Colors.red.shade700)),
+                ),
+              ]),
+              const SizedBox(height: 6),
+              TextFormField(
+                key: ObjectKey(widget.items[i]),
+                initialValue: widget.items[i]['part'],
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: kInk),
+                decoration: InputDecoration(
+                  hintText: 'ชิ้นส่วน เช่น กันชนหน้า, ประตูหน้า',
+                  hintStyle: const TextStyle(fontSize: 13, color: kMuted2),
+                  filled: true, fillColor: Colors.white, isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kLine)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kLine)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kPrimary, width: 1.5)),
+                ),
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                onChanged: (v) => _update(i, 'part', v),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Text('ตำแหน่ง ', style: TextStyle(fontSize: 11, color: kMuted)),
+                ...['L', 'R', 'A'].map((pos) {
+                  const labels = {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'};
+                  final selected = widget.items[i]['pos'] == pos;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: GestureDetector(
+                      onTap: () => _update(i, 'pos', selected ? '' : pos),
+                      child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: selected ? kPrimary : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? kPrimary : kLineStrong)), child: Text(labels[pos]!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: selected ? Colors.white : kMuted))),
+                    ),
+                  );
+                }),
+              ]),
+              const SizedBox(height: 6),
+              Row(children: [
+                const Text('ระดับ ', style: TextStyle(fontSize: 11, color: kMuted)),
+                ...['L', 'M', 'H', 'X'].map((lv) {
+                  const labels = {'L': 'ต่ำ', 'M': 'กลาง', 'H': 'สูง', 'X': 'สูงมาก'};
+                  const colors = {'L': Colors.lightGreen, 'M': Colors.orange, 'H': Colors.red, 'X': Colors.purple};
+                  final selected = widget.items[i]['level'] == lv;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: GestureDetector(
+                      onTap: () => _update(i, 'level', selected ? '' : lv),
+                      child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: selected ? colors[lv] : Colors.white, borderRadius: BorderRadius.circular(11), border: Border.all(color: selected ? colors[lv]! : kLineStrong)), child: Text(labels[lv]!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: selected ? Colors.white : colors[lv]))),
+                    ),
+                  );
+                }),
+              ]),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
