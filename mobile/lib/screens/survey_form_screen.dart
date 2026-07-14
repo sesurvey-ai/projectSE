@@ -148,6 +148,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // บันทึกร่างอัตโนมัติแบบเงียบ (ไม่มี snackbar) + อัปเดตป้ายเวลา
   Future<void> _autosave() async {
+    if (!_loaded) return; // ยังโหลดฟอร์มไม่เสร็จ → อย่าเพิ่งเขียน draft (กัน draft ว่างทับข้อมูล server)
     try {
       final data = _collectFormData();
       final prefs = await SharedPreferences.getInstance();
@@ -403,6 +404,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _damageItems.add({'part': part, 'pos': defPos, 'level': ''});
       idx = _damageItems.length - 1;
       _syncDamageDesc();
+      _autosave();
     }
     _showDamagePartSheet(idx);
   }
@@ -443,7 +445,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
               Row(children: [
                 Expanded(child: Text(item['part'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink))),
                 GestureDetector(
-                  onTap: () { setState(() { _damageItems.removeAt(idx); _syncDamageDesc(); }); Navigator.pop(ctx); },
+                  onTap: () { setState(() { _damageItems.removeAt(idx); _syncDamageDesc(); }); _autosave(); Navigator.pop(ctx); },
                   child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle), child: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade700)),
                 ),
               ]),
@@ -474,6 +476,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   // debounce autosave ระหว่างพิมพ์ (กันข้อมูลหายถ้าแอปโดน kill/กด Back ระบบ ก่อนเปลี่ยนหน้า)
   Timer? _autosaveTimer;
+  // ฟอร์มโหลดเสร็จ (server + draft) แล้วหรือยัง — กัน autosave/dispose เขียน draft "ว่าง" ระหว่างโหลด
+  // (draft ว่างจะทับข้อมูล server ตอนเปิดใหม่ → รายการหาย). หลัง _loaded=true แล้ว draft ว่าง = ผู้ใช้ตั้งใจลบจริง
+  bool _loaded = false;
   // ตั้ง true ตอนส่งสำเร็จ (ลบ draft แล้ว) → กัน dispose เขียน draft กลับมาหลอน
   bool _skipDraftFlush = false;
   // ค่าสรุปความเสียหายอัตโนมัติล่าสุด — ใช้กัน _syncDamageDesc เขียนทับ note ที่ช่างพิมพ์เอง
@@ -674,6 +679,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     } catch (_) {}
     // โหลด draft ทับ (ถ้ามี) เพื่อให้ข้อมูลที่ช่างแก้ไขในเครื่องมีความสำคัญกว่า
     await _loadDraft();
+    _loaded = true; // โหลดเสร็จ → เปิดให้ autosave/dispose ทำงาน (draft ว่างหลังจากนี้ = ผู้ใช้ตั้งใจลบจริง)
   }
 
   void _populateForm(Map<String, dynamic> data) {
@@ -924,6 +930,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _damageItems.add({'part': '', 'pos': '', 'level': ''});
       _damageExpanded = true;
     });
+    _autosave(); // เพิ่ม/ลบ/แก้รายการต้อง autosave ด้วย ไม่งั้นปิด-เปิดแอปแล้ว draft เก่าทับ (ลบแล้วกลับมา)
   }
 
   void _removeDamageItem(int index) {
@@ -931,6 +938,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _damageItems.removeAt(index);
       _syncDamageDesc();
     });
+    _autosave();
   }
 
   void _updateDamageItem(int index, String key, String value) {
@@ -938,6 +946,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       _damageItems[index][key] = value;
       _syncDamageDesc();
     });
+    _autosave();
   }
 
   void _syncDamageDesc() {
@@ -1007,7 +1016,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     _autosaveTimer?.cancel();
     // best-effort เซฟร่างล่าสุดก่อน controllers ถูก dispose (กัน back/kill ระหว่างกรอก)
     // อ่าน controllers แบบ sync ก่อน await → ปลอดภัยแม้ dispose ต่อทันที
-    if (!_skipDraftFlush) {
+    if (!_skipDraftFlush && _loaded) {
       try {
         final data = _collectFormData();
         SharedPreferences.getInstance()
