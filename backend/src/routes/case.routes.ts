@@ -55,6 +55,7 @@ const createCaseSchema = z.object({
   acc_fault: z.string().optional(),
   acc_reporter: z.string().optional(),
   reporter_phone: z.string().optional(),
+  acc_customer_report_date: z.string().optional(),   // "ลูกค้าแจ้ง" — วันที่รับแจ้งจาก OCR หน้าการ์ด (dd/mm/พ.ศ.|HH:mm)
   acc_insurance_notify_date: z.string().optional(),
   acc_insurance_notify_time: z.string().optional(),
   receiver_name: z.string().optional(),

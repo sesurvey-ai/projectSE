@@ -54,7 +54,7 @@ export const caseService = {
         'driver_first_name','driver_last_name','driver_phone',
         'acc_date','acc_time','acc_place','acc_subdistrict','acc_province','acc_district',
         'acc_cause','acc_damage_type','acc_detail','acc_fault',
-        'acc_reporter','reporter_phone','acc_insurance_notify_date',
+        'acc_reporter','reporter_phone','acc_customer_report_date','acc_insurance_notify_date',
         'acc_insurance_notify_time','receiver_name','surveyor_name','surveyor_phone',
         'counterparty_plate','counterparty_brand','counterparty_insurance','counterparty_detail',
         'notes',
@@ -164,6 +164,25 @@ export const caseService = {
     );
     if (updated.rowCount === 0) {
       throw new ForbiddenError('ไม่สามารถมอบหมายงานนี้ได้ (อาจถูกมอบหมายไปแล้ว)');
+    }
+
+    // "แจ้งเซอร์เวย์" (ไทม์ไลน์งานบนมือถือ) = เวลาที่ callcenter กดมอบหมายงาน → บันทึกลง acc_insurance_notify_date
+    // ต้องเป็นเวลาไทย (Asia/Bangkok) ไม่ใช่เวลา server (prod = UTC); รูปแบบ D/M/พ.ศ.|HH:MM ตรงกับที่มือถืออ่าน (splitDT)
+    // reassign หลัง 'declined' จะเขียนทับเป็นเวลาแจ้งครั้งล่าสุด (= เวลาที่ surveyor คนใหม่ถูกแจ้งจริง)
+    try {
+      const tRes = await db.query(
+        `SELECT to_char(n, 'FMDD/FMMM/') || (EXTRACT(YEAR FROM n)::int + 543) || '|' || to_char(n, 'HH24:MI') AS ts
+           FROM (SELECT NOW() AT TIME ZONE 'Asia/Bangkok' AS n) s`
+      );
+      const notifyTime = tRes.rows[0].ts as string;
+      const existingReport = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+      if (existingReport.rows.length > 0) {
+        await db.query('UPDATE survey_reports SET acc_insurance_notify_date = $1 WHERE case_id = $2', [notifyTime, caseId]);
+      } else {
+        await db.query('INSERT INTO survey_reports (case_id, acc_insurance_notify_date) VALUES ($1, $2)', [caseId, notifyTime]);
+      }
+    } catch (err) {
+      console.error('[assign] เขียน acc_insurance_notify_date ไม่สำเร็จ (ไม่บล็อกการมอบหมาย):', err);
     }
 
     // Send push notification via FCM

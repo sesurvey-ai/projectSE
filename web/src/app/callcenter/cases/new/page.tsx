@@ -9,7 +9,7 @@ import AssignSurveyor from '@/components/cases/AssignSurveyor';
 
 // ป้ายภาษาไทยของ 5 ฟิลด์จาก OCR (flipped) — ใช้ในแบนเนอร์ "ให้ตรวจสอบ"
 const OCR_FIELD_LABELS: Record<string, string> = {
-  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2', policy_no: 'เลขกรมธรรม์', incident_location: 'สถานที่เกิดเหตุ',
+  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2', policy_no: 'เลขกรมธรรม์', incident_location: 'สถานที่เกิดเหตุ', acc_customer_report_date: 'ลูกค้าแจ้ง (วันที่รับแจ้ง)',
 };
 
 // บริษัทประกันที่รองรับ (เพิ่มบริษัทใหม่ = เพิ่ม entry) — value ต้องตรงกับที่ใช้เช็คเงื่อนไขฟอร์มด้านล่าง
@@ -564,6 +564,10 @@ export default function NewCasePage() {
                   <input value={f('survey_job_no_2')} onChange={e => s('survey_job_no_2', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="เลขเซอร์เวย์ งาน 2" />
                 </div>
               )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">ลูกค้าแจ้ง <span className="text-gray-400 font-normal">(วันที่รับแจ้ง · ไทม์ไลน์งาน)</span></label>
+                <input value={f('acc_customer_report_date').replace('|', ' ')} onChange={e => s('acc_customer_report_date', e.target.value.trim().replace(/\s+/, '|'))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="วว/ดด/พพพพ ชช:นน" />
+              </div>
               <div className="col-span-3">
                 <label className="block text-xs font-medium text-gray-500 mb-1">สถานที่เกิดเหตุ <span className="text-gray-400 font-normal">(อ่านจากรูป · แสดงบนการ์ดงานของช่างสำรวจ)</span></label>
                 <input value={incidentLocation} onChange={e => setIncidentLocation(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="อ่านจากรูป หรือกรอกเอง" />

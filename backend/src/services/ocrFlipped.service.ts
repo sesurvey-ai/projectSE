@@ -33,7 +33,9 @@ const PROMPT =
   '- "claim_codes": array of every claim code (like 21BR10AVD-6906-000098; the 3 letters are AVD or ACD)\n' +
   '- "survey_codes": array of every survey number (starts SETP-). If the survey field shows only a placeholder "-" or "รอแจ้ง", return ["-"] or ["รอแจ้ง"].\n' +
   '- "policy_no": the เลขกรมธรรม์ (policy number, e.g. VM3-3100352649-26N10); "" if absent\n' +
-  '- "incident_location": the สถานที่เกิดเหตุ (accident/incident location as free Thai text, e.g. ถนน/แยก/ตำบล/จังหวัด); "" if absent\n\n' +
+  '- "incident_location": the สถานที่เกิดเหตุ (accident/incident location as free Thai text, e.g. ถนน/แยก/ตำบล/จังหวัด); "" if absent\n' +
+  '- "report_date": the วันที่รับแจ้ง (claim-received date) exactly as printed, Thai Buddhist year (e.g. 02/06/2569); "" if absent\n' +
+  '- "report_time": the เวลา (time of the วันที่รับแจ้ง) in 24-hour HH:mm (e.g. 13:21); "" if absent\n\n' +
   'CRITICAL: Read ONLY characters that are clearly and unambiguously printed. If ANY character in a code is blurry, faded, hidden, cut off, or you are not fully certain of it, OMIT that code entirely (do not include it). Do NOT guess, complete, or reconstruct missing characters. Returning fewer/blank is better than returning a wrong code.';
 
 const SCHEMA = {
@@ -44,8 +46,10 @@ const SCHEMA = {
     survey_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
     policy_no: { type: Type.STRING },
     incident_location: { type: Type.STRING },
+    report_date: { type: Type.STRING },
+    report_time: { type: Type.STRING },
   },
-  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'incident_location'],
+  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'incident_location', 'report_date', 'report_time'],
 };
 
 export type OcrField = {
@@ -67,6 +71,7 @@ export type FlippedResult = {
     survey_no_2: OcrField;
     policy_no: OcrField;
     incident_location: OcrField;
+    customer_report: OcrField; // "ลูกค้าแจ้ง" — วันที่+เวลารับแจ้ง รวมเป็น "dd/mm/พ.ศ.|HH:mm"
   };
 };
 
@@ -126,7 +131,7 @@ async function visionText(buf: Buffer): Promise<string> {
   return resp.fullTextAnnotation?.text ?? '';
 }
 
-type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; policy_no?: string; incident_location?: string };
+type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; policy_no?: string; incident_location?: string; report_date?: string; report_time?: string };
 
 // ── Gemini อ่านรูป (หลัก) + retry 429/5xx ──
 async function geminiImageMap(buf: Buffer, tries = 6): Promise<GeminiMap> {
@@ -347,6 +352,27 @@ function flipText(rawIn: string | undefined, flat: string): OcrField {
   return { value: raw, raw, auto_corrected: false, grounded, format_ok: true, confidence: grounded ? 'high' : 'medium' };
 }
 
+// "วันที่รับแจ้ง" (+เวลา) → "dd/mm/พ.ศ.|HH:mm" ตรงกับที่มือถืออ่าน (splitDT/_combineDT)
+// - ปี: 2 หลัก → +2500 (พ.ศ. ย่อ), ค.ศ. (<2500) → +543; วัน/เดือนเติม 0 นำ
+// - เวลา: รับ 13:21, 13.21, 13:21:00, "13:21 น." → HH:mm; ไม่มีเวลา = ส่งวันที่อย่างเดียว
+// วันที่มักอ่านพลาดง่าย → confidence medium/low ให้ callcenter ตรวจก่อนสร้างเคสเสมอ
+function flipReportDate(dateRaw: string | undefined, timeRaw: string | undefined, flat: string): OcrField {
+  const draw = (dateRaw || '').trim();
+  if (!draw) return blankField(false);
+  const dm = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(draw);
+  if (!dm) return { value: '', raw: draw, auto_corrected: false, grounded: false, format_ok: false, confidence: 'low' };
+  let yr = parseInt(dm[3], 10);
+  if (yr < 100) yr += 2500;        // พ.ศ. ย่อ 2 หลัก (69 → 2569)
+  else if (yr < 2500) yr += 543;   // ค.ศ. → พ.ศ. (2026 → 2569)
+  const date = `${dm[1].padStart(2, '0')}/${dm[2].padStart(2, '0')}/${yr}`;
+  let time = '';
+  const tm = /(\d{1,2})[:.](\d{2})/.exec((timeRaw || '').trim());
+  if (tm) time = `${tm[1].padStart(2, '0')}:${tm[2]}`;
+  const value = time ? `${date}|${time}` : date;
+  const grounded = flat.includes(norm(`${dm[1].padStart(2, '0')}${dm[2].padStart(2, '0')}`)) || flat.includes(norm(draw));
+  return { value, raw: (timeRaw || '').trim() ? `${draw} ${(timeRaw || '').trim()}` : draw, auto_corrected: value.split('|')[0] !== draw, grounded, format_ok: true, confidence: grounded ? 'medium' : 'low' };
+}
+
 export async function flippedExtract(imagePath: string): Promise<FlippedResult> {
   const buf = await fs.promises.readFile(imagePath);
   const [mapped, flatRaw] = await Promise.all([geminiImageMap(buf), visionText(buf)]);
@@ -357,6 +383,7 @@ export async function flippedExtract(imagePath: string): Promise<FlippedResult> 
   const [survey_no, survey_no_2] = flipSurvey(mapped.survey_codes, flat);
   const policy_no = flipPolicy(mapped.policy_no, flat);
   const incident_location = flipText(mapped.incident_location, flat);
+  const customer_report = flipReportDate(mapped.report_date, mapped.report_time, flat);
 
   const review_needed =
     claim_no.confidence === 'medium' || claim_no.confidence === 'low' ||
@@ -365,6 +392,6 @@ export async function flippedExtract(imagePath: string): Promise<FlippedResult> 
   return {
     image: imagePath.split(/[\\/]/).pop() || imagePath,
     review_needed,
-    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, incident_location },
+    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, incident_location, customer_report },
   };
 }
