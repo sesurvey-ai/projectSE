@@ -1,10 +1,10 @@
 import 'dart:async';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
@@ -165,6 +165,23 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     } catch (_) {}
   }
 
+  // บีบอัด/ย่อรูปตอน copy เข้าโฟลเดอร์เคส — เดิมเก็บ raw จากกล้อง (เลือกได้ถึง ResolutionPreset.max)
+  // เปลืองเนื้อที่/แรมตอนแสดง/เวลาอัปโหลดโดยไม่จำเป็น; จำกัดด้านสั้น ~1920 คุณภาพ 82 พอสำหรับงานเคลม
+  // บีบไม่สำเร็จ → copy ตรง ๆ (รูปต้องถึงโฟลเดอร์เคสเสมอ); สำเร็จแล้วลบไฟล์ temp ของกล้อง (กัน cache โต)
+  Future<bool> _copyPhotoCompressed(String src, String dest) async {
+    var ok = false;
+    try {
+      // keepExif: รูปหลักฐานเคลม — เวลา/กล้องใน EXIF มีค่าในข้อพิพาท (orientation ถูก bake ลง pixel แล้ว ไม่หมุนซ้ำ)
+      final r = await FlutterImageCompress.compressAndGetFile(src, dest, minWidth: 1920, minHeight: 1920, quality: 82, keepExif: true);
+      ok = r != null;
+    } catch (_) {}
+    if (!ok) {
+      try { await File(src).copy(dest); ok = true; } catch (_) {}
+    }
+    if (ok) { try { File(src).deleteSync(); } catch (_) {} }
+    return ok;
+  }
+
   // ── OCR core: ถ่ายด้วยกล้องในแอป (กล้องหลังเสมอ) → เก็บรูปเข้าเคส + สกัดข้อมูล → คืน fields ──
   // kind = 'claim' | 'idcard' | 'license'; photoCategory = หมวด/ชื่อไฟล์ของรูปที่เก็บ (default 'เอกสาร')
   Future<Map<String, dynamic>?> _captureRetainOcr(String kind, {String photoCategory = 'เอกสาร', String? overwriteKey}) async {
@@ -196,11 +213,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       final added = <String>[];
       for (final x in take) {
         final p = '$caseFolder/${slug}_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
-        try { await File(x.path).copy(p); added.add(p); } catch (_) {}
+        if (await _copyPhotoCompressed(x.path, p)) added.add(p);
       }
       if (added.isEmpty || !mounted) return null;
       if (overwriteKey != null) _scanDocPaths[overwriteKey] = added.first; // จำ path ไว้ทับรอบหน้า
       setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = photoCategory; } _ocrBusy = true; });
+      // เซฟทันที (ไม่รอ debounce): เพิ่งลบรูปสแกนเก่า + เพิ่มรูปใหม่ แล้วกำลังจะรอ OCR ผ่าน network
+      // — โดน kill ระหว่างรอ (จุดเสี่ยงแรมสูงสุด) draft บนดิสก์ต้องรู้จักรูปใหม่แล้ว ไม่งั้น orphan
+      _autosave();
       final cp = context.read<CaseProvider>();
       final res = kind == 'claim' ? await cp.ocrClaim(added.first) : await cp.ocrDocument(added.first, kind);
       if (!mounted) return null;
@@ -243,6 +263,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     }
     void applyBirthdate(String b, String ocrKey) {
       if (b.isEmpty) return;
+      b = _normThaiDateEra(b); // OCR อาจอ่านฝั่งอังกฤษได้ปี ค.ศ.
       _driverBirthdateCtl.text = b;
       setConf('driver_birthdate', ocrKey);
       final age = _ageFromThaiDate(b);
@@ -270,8 +291,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       if (f('license_no').isNotEmpty) { _driverLicenseNoCtl.text = f('license_no'); setConf('driver_license_no', 'license_no'); }
       final lt = _matchLicenseType(f('license_type')); // map ประเภท (ไทย/อังกฤษ) → ตัวเลือก dropdown
       if (lt != null) { _driverLicenseTypeCtl.text = lt; setConf('driver_license_type', 'license_type'); }
-      if (f('issue_date').isNotEmpty) { _driverLicenseStartCtl.text = f('issue_date'); setConf('driver_license_start', 'issue_date'); }
-      if (f('expiry_date').isNotEmpty) { _driverLicenseEndCtl.text = f('expiry_date'); setConf('driver_license_end', 'expiry_date'); }
+      if (f('issue_date').isNotEmpty) { _driverLicenseStartCtl.text = _normThaiDateEra(f('issue_date')); setConf('driver_license_start', 'issue_date'); }
+      if (f('expiry_date').isNotEmpty) { _driverLicenseEndCtl.text = _normThaiDateEra(f('expiry_date')); setConf('driver_license_end', 'expiry_date'); }
       if (_driverNameCtl.text.trim().isEmpty && f('first_name').isNotEmpty) { _driverNameCtl.text = f('first_name'); setConf('driver_name', 'first_name'); }
       if (_driverLastnameCtl.text.trim().isEmpty && f('last_name').isNotEmpty) { _driverLastnameCtl.text = f('last_name'); setConf('driver_last', 'last_name'); }
       // เพศ/คำนำหน้า/วันเกิด จากใบขับขี่ — เติมเฉพาะที่ยังว่าง (ไม่ทับค่าจากบัตร ปชช.)
@@ -280,6 +301,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     }
     setState(() {});
     _autosave(); // เซฟทันทีหลัง OCR เติมช่องสำคัญ (กล้อง/OCR กินแรม — เสี่ยงโดน kill)
+  }
+
+  // ── normalize ปีของวันที่ "d/m/y" เป็น พ.ศ. — OCR อ่านฝั่งอังกฤษของใบขับขี่/บัตรได้ปี ค.ศ.
+  // ปี ค.ศ. หลุดเข้าระบบแล้วทำ wheel ปี พ.ศ. เพี้ยน (initialItem ติดลบ) + era ปนกันใน DB ──
+  String _normThaiDateEra(String s) {
+    final parts = s.trim().split('/');
+    if (parts.length != 3) return s.trim();
+    final y = int.tryParse(parts[2].trim());
+    if (y == null || y < 1900 || y >= 2100) return s.trim(); // ไม่ใช่ ค.ศ. ชัดเจน → คงเดิม
+    return '${parts[0].trim()}/${parts[1].trim()}/${y + 543}';
   }
 
   // ── อายุจากวันเกิด "d/m/พ.ศ." → คืนเป็นสตริงจำนวนปี ('' ถ้าอ่านไม่ได้) ──
@@ -560,8 +591,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         selDay = int.tryParse(parts[0]) ?? selDay;
         selMonth = int.tryParse(parts[1]) ?? selMonth;
         selYear = int.tryParse(parts[2]) ?? selYear;
+        // ค่าเก่าอาจเป็นปี ค.ศ. (OCR อ่านฝั่งอังกฤษของเอกสาร) → แปลงเป็น พ.ศ.
+        if (selYear >= 1900 && selYear < 2100) selYear += 543;
       }
     }
+    // clamp เข้าช่วงของ wheel — ปีนอกช่วงทำ initialItem ติดลบ/เกิน childCount (ล้อว่าง +
+    // ค่าที่โชว์ไม่ตรงค่าที่คืน)
+    final wheelMinYear = now.year + 543 - 100;
+    final wheelMaxYear = wheelMinYear + 100 + yearsAhead;
+    if (selYear < wheelMinYear) selYear = wheelMinYear;
+    if (selYear > wheelMaxYear) selYear = wheelMaxYear;
 
     showModalBottomSheet(
       context: context,
@@ -690,8 +729,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   }
 
   Future<void> _loadExistingReport() async {
+    // โหลด draft ในเครื่อง "ก่อน" (เร็วกว่า network มาก) — เดิมรอ fetch server เสร็จก่อนค่อยโหลด draft
+    // → เน็ตช้า ฟอร์มเปิดว่างทั้งที่มี draft, user เริ่มพิมพ์, server มาถึงทีหลังทับสิ่งที่พิมพ์หาย
+    // draft เป็น snapshot สมบูรณ์ของทั้งฟอร์ม (รวมค่าจาก server ณ ตอนสร้าง) → มี draft = ไม่ต้อง
+    // populate จาก server ซ้ำ (เอาเฉพาะข้อมูลนอกฟอร์ม: รูป OCR, เวลาตั้งต้น SLA)
+    final caseProvider = context.read<CaseProvider>(); // จับก่อน await — กันใช้ context ข้าม async gap
+    final hadDraft = await _loadDraft();
+    if (hadDraft && mounted) {
+      _loaded = true; // เปิด autosave ทันที — สิ่งที่ user พิมพ์ระหว่างรอ server ถูกเซฟ ไม่ถูกทับ
+    }
     try {
-      final caseProvider = context.read<CaseProvider>();
       final report = await caseProvider.fetchCaseDetail(widget.caseId);
       if (report != null && mounted) {
         final images = report['case_images'];
@@ -702,21 +749,35 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             );
           });
         }
-        _populateForm(report);
+        if (!hadDraft) {
+          _populateForm(report);
+        } else {
+          // มี draft → ห้ามทับฟอร์ม; เก็บเฉพาะเวลาตั้งต้น SLA ที่ไม่ได้อยู่ใน draft
+          final cr = report['customer_reported_at'];
+          if (cr is String && cr.isNotEmpty) {
+            setState(() => _slaStart = DateTime.tryParse(cr));
+          }
+        }
       }
     } catch (_) {}
-    // โหลด draft ทับ (ถ้ามี) เพื่อให้ข้อมูลที่ช่างแก้ไขในเครื่องมีความสำคัญกว่า
-    await _loadDraft();
     _loaded = true; // โหลดเสร็จ → เปิดให้ autosave/dispose ทำงาน (draft ว่างหลังจากนี้ = ผู้ใช้ตั้งใจลบจริง)
   }
 
-  void _populateForm(Map<String, dynamic> data) {
+  // fromDraft: การตีความ null ต่างกัน — draft เก็บ null = "ผู้ใช้ล้างค่า" (ต้องล้างตาม)
+  // แต่ report จาก server มี null = "คอลัมน์ว่าง" (ห้ามล้าง — ฟอร์มเปิดให้พิมพ์ได้ระหว่างรอ fetch
+  // ถ้าล้างตาม server ที่มาช้า ค่าที่ user เพิ่งพิมพ์ในช่องพวกนี้จะหายทั้งที่ยังไม่ทันเข้า draft)
+  void _populateForm(Map<String, dynamic> data, {bool fromDraft = false}) {
     setState(() {
       _claimType = data['claim_type'] ?? _claimType;
       _damageLevel = data['damage_level'] ?? _damageLevel;
       final ct = data['car_type'];
       _carType = (ct != null && const ['0','A','E','M','T','V','W','O'].contains(ct)) ? ct : _carType;
-      _evType = data['ev_type'] ?? _evType;
+      // ev_type: null ใน draft = ผู้ใช้ล้างค่า (เดิมข้าม null → ค่าเก่าคืนชีพหลังรีสตาร์ท)
+      if (fromDraft && data.containsKey('ev_type')) {
+        _evType = (data['ev_type'] ?? '').toString();
+      } else {
+        _evType = data['ev_type'] ?? _evType;
+      }
       final dg = data['driver_gender'];
       _driverGender = (dg != null && const ['M','F'].contains(dg)) ? dg : _driverGender;
       final dt = data['driver_title'];
@@ -757,6 +818,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _carBrandCtl: 'car_brand', _carModelCtl: 'car_model', _carColorCtl: 'car_color',
       _carRegYearCtl: 'car_reg_year', _chassisNoCtl: 'chassis_no', _engineNoCtl: 'engine_no',
       _modelNoCtl: 'model_no', _mileageCtl: 'mileage',
+      // EV: _collectFormData เซฟ 3 ช่องนี้ลง draft แต่เดิมไม่เคย restore → ปิด-เปิดแอปแล้วหายเงียบ
+      _evBatteryNoCtl: 'ev_battery_no', _evBatteryStartCtl: 'ev_battery_start', _evChargerNoCtl: 'ev_charger_no',
       _driverNameCtl: 'driver_first_name', _driverLastnameCtl: 'driver_last_name',
       _driverAgeCtl: 'driver_age', _driverBirthdateCtl: 'driver_birthdate',
       _driverPhoneCtl: 'driver_phone', _driverAddressCtl: 'driver_address',
@@ -779,9 +842,20 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _accFollowupCountCtl: 'acc_followup_count', _accFollowupDetailCtl: 'acc_followup_detail',
       _accFollowupDateCtl: 'acc_followup_date', _notesCtl: 'notes',
     };
+    // ช่องตัวเลขที่ _collectFormData เขียน null เมื่อว่าง (null ใน draft = ผู้ใช้ตั้งใจล้างค่า)
+    // — restore จาก draft ต้องล้างตาม ไม่ใช่ข้าม (เดิมข้าม null → ค่าเก่าจาก server คืนชีพ
+    // หลังรีสตาร์ทแล้วถูก submit กลับไปทั้งที่ลบไปแล้ว); จาก server (fromDraft=false) ข้ามตามเดิม
+    const nullableNumeric = {
+      'mileage', 'driver_age', 'estimated_cost', 'deductible',
+      'acc_claim_amount', 'acc_claim_total_amount',
+    };
     for (final entry in mapping.entries) {
       final val = data[entry.value];
-      if (val != null) entry.key.text = val.toString();
+      if (val != null) {
+        entry.key.text = val.toString();
+      } else if (fromDraft && data.containsKey(entry.value) && nullableNumeric.contains(entry.value)) {
+        entry.key.text = '';
+      }
     }
 
     // restore ข้อมูลหลายรายการ + แผนภาพความเสียหาย (จาก server report หรือ draft)
@@ -953,12 +1027,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   List<Map<String, String>> _filledDamageItems() =>
       _damageItems.where((it) => (it['part'] ?? '').trim().isNotEmpty).toList();
 
+  // เพิ่ม/ลบ/แก้รายการต้อง autosave — setState override เข้าคิว (debounced) ให้อัตโนมัติแล้ว
+  // เดิมเรียก _autosave() ตรง ๆ ทุกครั้ง = jsonEncode ทั้งฟอร์ม + เขียนดิสก์ "ทุก keystroke"
+  // ของช่องชิ้นส่วน (_updateDamageItem) — กระตุกบนเครื่องกลาง-ล่าง; debounce 1.2s +
+  // เซฟตอนแอปลง background ครอบความเสี่ยงโดน kill ไว้แล้ว
   void _addDamageItem() {
     setState(() {
       _damageItems.add({'part': '', 'pos': '', 'level': ''});
       _damageExpanded = true;
     });
-    _autosave(); // เพิ่ม/ลบ/แก้รายการต้อง autosave ด้วย ไม่งั้นปิด-เปิดแอปแล้ว draft เก่าทับ (ลบแล้วกลับมา)
   }
 
   void _removeDamageItem(int index) {
@@ -966,7 +1043,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _damageItems.removeAt(index);
       _syncDamageDesc();
     });
-    _autosave();
   }
 
   void _updateDamageItem(int index, String key, String value) {
@@ -974,7 +1050,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _damageItems[index][key] = value;
       _syncDamageDesc();
     });
-    _autosave();
   }
 
   void _syncDamageDesc() {
@@ -1337,7 +1412,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       final added = <String>[];
       for (final x in shots) {
         final localPath = '$caseFolder/${slug}_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
-        try { await File(x.path).copy(localPath); added.add(localPath); } catch (_) {}
+        if (await _copyPhotoCompressed(x.path, localPath)) added.add(localPath);
       }
       if (added.isEmpty || !mounted) { revertProvisional(); return; } // คัดลอกรูปไม่สำเร็จ/ถูก unmount → คืนช่องที่เพิ่งเพิ่ม
       setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = cat; } });
@@ -1509,7 +1584,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 12),
-              ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(File(path), width: double.infinity, height: 220, fit: BoxFit.cover)),
+              ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(File(path), width: double.infinity, height: 220, fit: BoxFit.cover, cacheWidth: 1080)),
               const SizedBox(height: 14),
               const Text('ประเภทรูป', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
               const SizedBox(height: 8),
@@ -1565,19 +1640,22 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   String get _draftKey => 'survey_draft_${widget.caseId}';
 
-  Future<void> _loadDraft() async {
+  /// คืน true ถ้ามี draft และ populate สำเร็จ
+  Future<bool> _loadDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString(_draftKey);
-      if (json == null) return;
+      if (json == null) return false;
       final data = jsonDecode(json) as Map<String, dynamic>;
-      if (!mounted) return; // ผู้ใช้ back ออกก่อนโหลดเสร็จ → กัน setState หลัง dispose
+      if (!mounted) return false; // ผู้ใช้ back ออกก่อนโหลดเสร็จ → กัน setState หลัง dispose
       _migrateLegacyPhotos(data); // ย้ายรูปจากโฟลเดอร์ระบบเก่า (ตามเลขเคลม) เข้าโฟลเดอร์ประจำเคส
-      _populateForm(data);
+      _populateForm(data, fromDraft: true);
+      return true;
     } catch (e) {
       debugPrint('loadDraft failed: $e');
       // draft เสีย/ฟอร์แมตเก่า → ลบทิ้ง กันพัง (throw) ทุกครั้งที่เปิดฟอร์ม
       try { (await SharedPreferences.getInstance()).remove(_draftKey); } catch (_) {}
+      return false;
     }
   }
 
@@ -1589,7 +1667,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       String san(String s) => s.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
       const root = '/storage/emulated/0/Download/SE_Survey';
       final canonical = Directory(_caseFolderPath);
-      // โฟลเดอร์เก่าที่เป็นไปได้: จากเลขใน draft และจากเลขของ server (เติมใน controller แล้ว ณ จุดนี้)
+      // โฟลเดอร์เก่าที่เป็นไปได้: จากเลขใน draft (+ controller เผื่อกรณีถูกเติมก่อนหน้า —
+      // draft โหลดก่อน server แล้ว ดังนั้นปกติ controller ยังว่าง; โฟลเดอร์ตามเลขของ server
+      // ที่หาไม่เจอถูกกวาดชั้นสองโดย uploadCaseFolder ผ่าน photo_paths_local อยู่แล้ว)
       final candidates = <String>{};
       void addCand(String? cn, String? sj) {
         final c = (cn ?? '').trim(), j = (sj ?? '').trim();
@@ -3824,7 +3904,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: Stack(children: [
-                Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(13), child: Image.file(File(path), fit: BoxFit.cover))),
+                // cacheWidth: thumbnail ในกริด — เดิม decode เต็ม resolution กล้องทุกใบ (แรมพุ่ง/กระตุก)
+                Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(13), child: Image.file(File(path), fit: BoxFit.cover, cacheWidth: 360))),
                 if (selMode && selected)
                   Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(13), child: Container(color: _primary.withValues(alpha: 0.20)))),
                 if (selMode)
@@ -3916,6 +3997,7 @@ class _TimeField extends StatefulWidget {
 class _TimeFieldState extends State<_TimeField> {
   late final TextEditingController _hh;
   late final TextEditingController _mm;
+  bool _selfWrite = false; // กัน listener สะท้อนค่าที่ตัวเองเพิ่งเขียน (loop)
 
   @override
   void initState() {
@@ -3923,10 +4005,23 @@ class _TimeFieldState extends State<_TimeField> {
     final p = widget.target.text.split(':');
     _hh = TextEditingController(text: p.isNotEmpty && p[0].trim().isNotEmpty ? p[0].trim() : '');
     _mm = TextEditingController(text: p.length > 1 && p[1].trim().isNotEmpty ? p[1].trim() : '');
+    // resync เมื่อ target ถูกเขียนจากภายนอก (server prefill/draft มาช้ากว่าเปิดหน้า)
+    // — เดิม copy ครั้งเดียวใน initState: ค่าที่ prefill ทีหลังไม่โชว์ ผู้ใช้ไม่รู้ว่ามีค่าซ่อนอยู่
+    widget.target.addListener(_onTargetChanged);
+  }
+
+  void _onTargetChanged() {
+    if (_selfWrite || !mounted) return;
+    final p = widget.target.text.split(':');
+    final h = p.isNotEmpty ? p[0].trim() : '';
+    final m = p.length > 1 ? p[1].trim() : '';
+    if (h == _hh.text.trim() && m == _mm.text.trim()) return;
+    setState(() { _hh.text = h; _mm.text = m; });
   }
 
   @override
   void dispose() {
+    widget.target.removeListener(_onTargetChanged);
     _hh.dispose();
     _mm.dispose();
     super.dispose();
@@ -3935,7 +4030,12 @@ class _TimeFieldState extends State<_TimeField> {
   void _sync() {
     final h = _hh.text.trim();
     final m = _mm.text.trim();
-    widget.target.text = (h.isEmpty && m.isEmpty) ? '' : '$h:$m';
+    _selfWrite = true;
+    try {
+      widget.target.text = (h.isEmpty && m.isEmpty) ? '' : '$h:$m';
+    } finally {
+      _selfWrite = false;
+    }
     widget.onChanged?.call();
   }
 

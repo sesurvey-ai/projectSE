@@ -94,6 +94,16 @@ class KDateField extends StatelessWidget {
   }
 }
 
+// normalize ปีของวันที่ "d/m/y" เป็น พ.ศ. — OCR อ่านฝั่งอังกฤษของใบขับขี่/บัตรได้ปี ค.ศ.
+// (ปี ค.ศ. หลุดเข้า wheel พ.ศ. แล้ว initialItem ติดลบ/ล้อว่าง + era ปนกันในข้อมูล)
+String kNormThaiDateEra(String s) {
+  final parts = s.trim().split('/');
+  if (parts.length != 3) return s.trim();
+  final y = int.tryParse(parts[2].trim());
+  if (y == null || y < 1900 || y >= 2100) return s.trim(); // ไม่ใช่ ค.ศ. ชัดเจน → คงเดิม
+  return '${parts[0].trim()}/${parts[1].trim()}/${y + 543}';
+}
+
 // date picker พ.ศ. (wheel) → คืน "dd/mm/yyyy" หรือ null
 Future<String?> showKDate(BuildContext context, {String title = 'เลือกวันที่', String? current, int defaultYearsAgo = 0, int yearsAhead = 5}) {
   FocusManager.instance.primaryFocus?.unfocus();
@@ -107,9 +117,16 @@ Future<String?> showKDate(BuildContext context, {String title = 'เลือก
       selDay = int.tryParse(p[0]) ?? selDay;
       selMonth = int.tryParse(p[1]) ?? selMonth;
       selYear = int.tryParse(p[2]) ?? selYear;
+      // ค่าเก่าอาจเป็นปี ค.ศ. (OCR อ่านฝั่งอังกฤษของเอกสาร) → แปลงเป็น พ.ศ.
+      if (selYear >= 1900 && selYear < 2100) selYear += 543;
     }
   }
   final minYear = now.year + 543 - 100;
+  // clamp เข้าช่วงของ wheel — ปีนอกช่วงทำ initialItem ติดลบ/เกิน childCount
+  // (ล้อว่าง + ค่าที่โชว์ไม่ตรงค่าที่คืน)
+  final maxYear = minYear + 100 + yearsAhead;
+  if (selYear < minYear) selYear = minYear;
+  if (selYear > maxYear) selYear = maxYear;
   return showModalBottomSheet<String>(
     context: context,
     builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) {

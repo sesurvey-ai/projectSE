@@ -63,6 +63,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   }
 
   bool get _hasInsurance => _insurer.isNotEmpty && _insurer != 'ไม่มีบริษัทประกันภัย' && _insurer != 'อื่นๆ';
+  bool get _noInsurance => _insurer == 'ไม่มีบริษัทประกันภัย'; // "อื่นๆ" = มีประกัน (บริษัทนอกลิสต์) ห้ามล้างค่า
 
   Map<String, dynamic> _collect() => {
         'owner_name': _ctl('owner_name').text.trim(),
@@ -92,13 +93,16 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'license_start': _ctl('license_start').text.trim(),
         'license_end': _ctl('license_end').text.trim(),
         'insurer': _insurer,
-        'policy_no': _ctl('policy_no').text.trim(),
-        'claim_no': _ctl('claim_no').text.trim(),
-        'policy_type': _policyType,
+        // "ไม่มีบริษัทประกันภัย" → ห้ามเก็บค่าประกันค้าง (ช่องแค่ถูกซ่อน controller ยังถือค่าเดิม
+        // เคยทำ record "ไม่มีประกัน" พ่วงเลขกรมธรรม์เก่า + XML เพี้ยน)
+        // แต่ "อื่นๆ" = มีประกันกับบริษัทนอกลิสต์ (backend นับ HAVE_INSURANCE=1) — คงค่าที่พิมพ์ไว้
+        'policy_no': _noInsurance ? '' : _ctl('policy_no').text.trim(),
+        'claim_no': _noInsurance ? '' : _ctl('claim_no').text.trim(),
+        'policy_type': _noInsurance ? '' : _policyType,
         'damage': _damage,
         'damage_description': _ctl('damage_description').text.trim(),
         'estimated_cost': _ctl('estimated_cost').text.trim(),
-        'kfk': _kfk,
+        'kfk': !_noInsurance && _kfk,
       };
 
   void _save() {
@@ -119,7 +123,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         if (f('first_name').isNotEmpty) _ctl('first_name').text = f('first_name');
         if (f('last_name').isNotEmpty) _ctl('last_name').text = f('last_name');
         if (f('cid').isNotEmpty) _ctl('cid').text = f('cid');
-        if (f('birthdate').isNotEmpty) _ctl('birthdate').text = f('birthdate');
+        if (f('birthdate').isNotEmpty) _ctl('birthdate').text = kNormThaiDateEra(f('birthdate'));
         if (f('address').isNotEmpty) _ctl('address').text = f('address');
         final p = f('prefix');
         if (const ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.'].contains(p)) {
@@ -130,8 +134,9 @@ class _OpponentEditorState extends State<OpponentEditor> {
         _hasLicense = true; // สแกนใบขับขี่ = มีใบขับขี่ (กันช่องยังซ่อนอยู่)
         if (f('license_no').isNotEmpty) _ctl('license_no').text = f('license_no');
         if (f('license_type').isNotEmpty) _licenseType = f('license_type');
-        if (f('issue_date').isNotEmpty) _ctl('license_start').text = f('issue_date');
-        if (f('expiry_date').isNotEmpty) _ctl('license_end').text = f('expiry_date');
+        // OCR อาจอ่านฝั่งอังกฤษของใบขับขี่ได้ปี ค.ศ. → normalize เป็น พ.ศ.
+        if (f('issue_date').isNotEmpty) _ctl('license_start').text = kNormThaiDateEra(f('issue_date'));
+        if (f('expiry_date').isNotEmpty) _ctl('license_end').text = kNormThaiDateEra(f('expiry_date'));
         if (_ctl('first_name').text.trim().isEmpty && f('first_name').isNotEmpty) _ctl('first_name').text = f('first_name');
         if (_ctl('last_name').text.trim().isEmpty && f('last_name').isNotEmpty) _ctl('last_name').text = f('last_name');
       }

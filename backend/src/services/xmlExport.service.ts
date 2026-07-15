@@ -192,7 +192,8 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('DRI_ORDER', '') +
     el('DRI_BIRTHDAY', toXmlCE(insured ? c.driver_birthdate : c.birthdate)) +
     el('DRI_GENDER', String(g('driver_gender', 'gender') ?? '').trim().toUpperCase()) +
-    el('HAVE_INSURANCE', insured ? '' : (c.insurer ? '1' : '')) +
+    // insurer เก็บเป็นข้อความไทย — "ไม่มีบริษัทประกันภัย" ต้องนับว่า "ไม่มีประกัน" ไม่ใช่ truthy = 1
+    el('HAVE_INSURANCE', insured ? '' : (c.insurer && c.insurer !== 'ไม่มีบริษัทประกันภัย' ? '1' : '')) +
     el('POLICYNO', insured ? '' : c.policy_no) +
     el('CLAIMNO', insured ? '' : c.claim_no) +
     el('POLICY_TYPE', insured ? '' : policyTypeCode(c.policy_type)) +
