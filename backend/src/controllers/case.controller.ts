@@ -50,6 +50,15 @@ export const caseController = {
     sendSuccess(res, detail);
   }),
 
+  // ดาวน์โหลด INSERT_SURV_REPORT_XML (สำหรับ import เข้าพอร์ทัลประกัน)
+  exportXml: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const xml = await caseService.getSurveyXml(caseId, req.user);
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="survey_${caseId}.xml"`);
+    res.send(xml);
+  }),
+
   updateReport: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const result = await caseService.updateReport(caseId, req.body);

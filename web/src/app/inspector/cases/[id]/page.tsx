@@ -37,6 +37,22 @@ export default function CaseDetailPage() {
 
   useEffect(() => { if (caseId) fetchDetail(); }, [caseId, fetchDetail]);
 
+  // ดาวน์โหลด INSERT_SURV_REPORT_XML เพื่อ import เข้าพอร์ทัลประกัน
+  const [xmlBusy, setXmlBusy] = useState(false);
+  const downloadXml = async () => {
+    try {
+      setXmlBusy(true);
+      const res = await api.get(`/api/cases/${caseId}/export-xml`, { responseType: 'blob' });
+      const claim = (report as { claim_no?: string } | null)?.claim_no || caseId;
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `survey_${claim}.xml`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { setError('สร้างไฟล์ XML ไม่สำเร็จ (เคสนี้อาจยังไม่มีข้อมูลรายงาน)'); }
+    finally { setXmlBusy(false); }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-500">กำลังโหลดข้อมูลเคส...</div></div>;
   if (error || !caseData) return (
     <div>
@@ -50,6 +66,13 @@ export default function CaseDetailPage() {
       <div className="mb-6 flex items-center gap-4">
         <button onClick={() => router.push('/inspector')} className="text-gray-500 hover:text-gray-700">&larr; กลับ</button>
         <h2 className="text-2xl font-bold text-gray-800">รายละเอียดเคส #{(caseData as { id: number }).id}</h2>
+        {report && (
+          <button onClick={downloadXml} disabled={xmlBusy}
+            className="ml-auto inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            title="สร้างไฟล์ XML สำหรับ import เข้าพอร์ทัลประกัน">
+            {xmlBusy ? 'กำลังสร้าง...' : '⬇ ดาวน์โหลด XML (นำเข้าประกัน)'}
+          </button>
+        )}
       </div>
       <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} expenses={expenses} onReviewSubmitted={fetchDetail} />
     </div>

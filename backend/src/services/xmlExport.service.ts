@@ -1,0 +1,272 @@
+/**
+ * xmlExport.service — สร้าง INSERT_SURV_REPORT_XML (สัญญาข้อมูลพอร์ทัลประกัน e-Survey)
+ * จาก survey_reports ของ se-survey เพื่อให้ surveyor นำไป import เข้าระบบประกันแทนการคีย์มือ
+ *
+ * โครงสร้าง 3 บล็อก: TXN_SURV_REPORT (1) · TXN_SURV_CAR (รถประกัน + คู่กรณีซ้ำได้) · TXN_SURV_BILL (1)
+ * โค้ด/ตาราง lookup สกัดจาก dropdown ของหน้า frmSurvey.aspx (กรอกรายละเอียดอุบัติเหตุ.html) ตรงเป๊ะ
+ *
+ * ⚠️ gotcha วันที่: POLICY_START/END เก็บ "พ.ศ." ดิบ ส่วนกลุ่ม ACC_ กับ DRI_ เป็น "ค.ศ." (ลบ 543) — ดู toXmlBE/toXmlCE
+ * ⚠️ เขต/อำเภอ (ACC_DISTRICTID/DRI_DISTRICTID): พอร์ทัลใช้รหัส 4 หลัก cascade รายจังหวัด — ตารางเต็มไม่มีในไฟล์
+ *    ที่บันทึกไว้ → v1 ปล่อยว่าง (เหมือน ACC_DISTRICTID ในตัวอย่าง) จนกว่าจะได้ตารางอำเภอครบจากประกัน
+ */
+
+// ── SE Survey identity ในพอร์ทัล (คงที่ต่อบริษัท; override ได้ผ่าน env) ──
+const SURVEY_ID = process.env.PORTAL_SURVEY_ID || '5684';
+const SURVEY_BR_ID = process.env.PORTAL_SURVEY_BR_ID || '1602';
+
+// ── ตาราง lookup ชื่อ(se) → รหัส(พอร์ทัล) ──
+const PROVINCE: Record<string, string> = {
+  'กระบี่': '1', 'กรุงเทพ ฯ': '2', 'กรุงเทพฯ': '2', 'กรุงเทพมหานคร': '2', 'กาญจนบุรี': '3', 'กาฬสินธุ์': '4',
+  'กำแพงเพชร': '5', 'ขอนแก่น': '6', 'จันทบุรี': '7', 'ฉะเชิงเทรา': '8', 'ชลบุรี': '9', 'ชัยนาท': '10',
+  'ชัยภูมิ': '11', 'ชุมพร': '12', 'เชียงราย': '13', 'เชียงใหม่': '14', 'ตรัง': '15', 'ตราด': '16', 'ตาก': '17',
+  'นครนายก': '18', 'นครปฐม': '19', 'นครพนม': '20', 'นครราชสีมา': '21', 'นครศรีธรรมราช': '22', 'นครสวรรค์': '23',
+  'นนทบุรี': '24', 'นราธิวาส': '25', 'น่าน': '26', 'บุรีรัมย์': '27', 'ปทุมธานี': '28', 'ประจวบคีรีขันธ์': '29',
+  'ปราจีนบุรี': '30', 'ปัตตานี': '31', 'พะเยา': '32', 'พังงา': '33', 'พัทลุง': '34', 'พิจิตร': '35', 'พิษณุโลก': '36',
+  'เพชรบุรี': '37', 'เพชรบูรณ์': '38', 'แพร่': '39', 'ภูเก็ต': '40', 'มหาสารคาม': '41', 'มุกดาหาร': '42',
+  'แม่ฮ่องสอน': '43', 'ยโสธร': '44', 'ยะลา': '45', 'ร้อยเอ็ด': '46', 'ระนอง': '47', 'ระยอง': '48', 'ราชบุรี': '49',
+  'ลพบุรี': '50', 'ลำปาง': '51', 'ลำพูน': '52', 'เลย': '53', 'ศรีสะเกษ': '54', 'สกลนคร': '55', 'สงขลา': '56',
+  'สตูล': '57', 'สมุทรปราการ': '58', 'สมุทรสงคราม': '59', 'สมุทรสาคร': '60', 'สระแก้ว': '61', 'สระบุรี': '62',
+  'สิงห์บุรี': '63', 'สุโขทัย': '64', 'สุพรรณบุรี': '65', 'สุราษฎร์ธานี': '66', 'สุรินทร์': '67', 'หนองคาย': '68',
+  'หนองบัวลำภู': '69', 'พระนครศรีอยุธยา': '70', 'อยุธยา': '70', 'อ่างทอง': '71', 'อำนาจเจริญ': '72', 'อุดรธานี': '73',
+  'อุตรดิตถ์': '74', 'อุทัยธานี': '75', 'อุบลราชธานี': '76', 'เบตง': '77', 'บึงกาฬ': '78',
+};
+
+const COLOR: Record<string, string> = {
+  'ขาว': '1', 'เทา': '2', 'เงิน': '3', 'ทอง': '4', 'เหลือง': '5', 'เขียว': '6', 'ฟ้า': '7', 'น้ำเงิน': '8',
+  'ม่วง': '9', 'แดง': '10', 'ส้ม': '11', 'เลือดหมู': '12', 'ดำ': '13', 'น้ำตาล': '22', 'ชมพู': '24',
+  'ขาวมุก': '27', 'บรอน': '30', 'บรอนซ์': '30', 'บรอนทอง': '36', 'บรอนซ์ทอง': '36', 'ครีม': '39',
+};
+
+const RELATION: Record<string, string> = {
+  'สามี': '1', 'ภรรยา': '2', 'บุตร': '3', 'บิดา': '4', 'มารดา': '5', 'นายจ้าง': '6', 'ลูกจ้าง': '7', 'ผู้เช่า': '8',
+  'พี่ชาย': '9', 'พี่สาว': '10', 'น้องชาย': '11', 'น้องสาว': '12', 'เจ้าของรถ': '13', 'หลาน': '14', 'อา': '15',
+  'น้า': '16', 'ลุง': '17', 'ป้า': '18', 'ญาติ': '19', 'เพื่อน': '20', 'แฟน': '21', 'พนักงาน': '22',
+  'พี่เขย': '23', 'น้องเขย': '24', 'พี่สะใภ้': '25', 'น้องสะใภ้': '26', 'หุ้นส่วน': '33', 'เจ้าของบริษัท': '35',
+};
+
+const TITLE: Record<string, string> = {
+  'นาย': '1', 'นาง': '2', 'นางสาว': '3', 'ด.ช.': '4', 'ด.ญ.': '5', 'เด็กชาย': '4', 'เด็กหญิง': '5', 'คุณ': '6',
+};
+
+// ประเภทใบขับขี่ (ddlEmcs_License_Type) — se เก็บชื่อ, พอร์ทัลใช้รหัส
+const LICENSE_TYPE: Record<string, string> = {
+  'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ': '1', 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ': '2',
+  'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว': '4', 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว': '6',
+  'ใบขับขี่รถยนต์สาธารณะ': '10', 'ใบขับขี่สากล': '15',
+  'ใบขับขี่รถยนต์ส่วนบุคคล': '19', 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล': '20',
+  'ไม่มีใบขับขี่': '26', 'อื่นๆ': '99',
+};
+
+// ฝ่ายประมาท (rdoAcc_Cause 1-7) — รับได้ทั้ง key สั้นของแอป และข้อความเต็ม
+const FAULT: Record<string, string> = {
+  'ฝ่ายผิด': '1', 'รถประกันฝ่ายผิด': '1', 'รถประกันเป็นฝ่ายผิด': '1', 'รถประกันเป็นฝ่ายผิด ': '1',
+  'คู่กรณีผิด': '2', 'รถคู่กรณีเป็นฝ่ายผิด': '2',
+  'ประมาทร่วม': '3',
+  'รอสรุปผลคดี': '4', 'รอผลคดี': '4',
+  'ฝ่ายถูกและผิด': '5', 'รถประกันเป็นฝ่ายถูกและผิด': '5', 'ถูกและผิด': '5',
+  'ยกเลิกการเคลม': '6',
+  'ไปถึงแล้วไม่พบ': '7',
+};
+
+// ลักษณะการเกิดเหตุ (ddlClm_Cause) → CAUSE_CODE 9xxx (ชุดที่ใช้บ่อย)
+const CAUSE: Record<string, string> = {
+  'ชนท้ายคู่กรณี': '9101', 'ชนทรัพย์สินคู่กรณี': '9105', 'เฉี่ยว/เบียดคู่กรณี': '9109', 'เฉี่ยวชนวัสดุ': '9114',
+  'ชนวัสดุ/สิ่งของ เช่น เสา,กำแพง,ประตู ฯลฯ': '9114', 'ชนฟุตบาท': '9115', 'ชนสัตว์': '9117', 'เสียหลักล้ม': '9121',
+  'ยางระเบิด': '9123', 'ตกหลุม': '9124', 'ประมาทร่วม': '9191', 'คู่กรณีชนท้าย': '9201', 'คู่กรณีชนแล้วหลบหนี': '9202',
+  'คู่กรณีเฉี่ยวชน': '9203', 'ถูกก้อนหิน': '9301', 'ถูกขูดขีด/กลั่นแกล้ง': '9302', 'วัตถุหล่นใส่': '9303',
+  'รถหายโดยการโจรกรรม': '9305', 'ไฟไหม้โดยระบบของตัวรถยนต์': '9306', 'น้ำท่วม': '9308', 'ภัยธรรมชาติอื่น ๆ': '9309',
+  'ภัยอื่น ๆ': '9311', 'เสียหายขณะจอดอยู่': '9992', 'กระจกบังลมหน้าแตก': '9993', 'กระจกอื่นๆ แตก': '9994',
+  'สูญเสียการควบคุม': '9996',
+};
+
+// ยี่ห้อรถ (ไทย → code พอร์ทัล, ใช้ต่อกับ CTYPECODE เป็น CMFG เช่น T+ISUZU=TISUZU)
+const BRAND: Record<string, string> = {
+  'อีซูซุ': 'ISUZU', 'โตโยต้า': 'TOYOTA', 'ฮอนด้า': 'HONDA', 'นิสสัน': 'NISSAN', 'มิตซูบิชิ': 'MITSUBISHI',
+  'มาสด้า': 'MAZDA', 'ฟอร์ด': 'FORD', 'เชฟโรเลต': 'CHEVROLET', 'ซูซูกิ': 'SUZUKI', 'เมอร์เซเดส-เบนซ์': 'BENZ',
+  'เบนซ์': 'BENZ', 'บีเอ็มดับเบิลยู': 'BMW', 'เกีย': 'KIA', 'ฮุนได': 'HYUNDAI', 'เอ็มจี': 'MG', 'MG': 'MG',
+};
+
+// ── helpers ──
+const esc = (s: unknown): string =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+// element: ค่าว่าง → " " (พอร์ทัลคาดว่า element มีอยู่เสมอ เหมือนตัวอย่าง)
+const el = (tag: string, v: unknown): string => {
+  const s = String(v ?? '').trim();
+  return `<${tag}>${s === '' ? ' ' : esc(s)}</${tag}>`;
+};
+
+const lookup = (table: Record<string, string>, v: unknown): string => {
+  const k = String(v ?? '').trim();
+  return k && table[k] ? table[k] : '';
+};
+
+const provinceCode = (v: unknown) => lookup(PROVINCE, v);
+
+// se date "dd/mm/yyyy(พ.ศ.)" หรือ "dd/mm/yyyy|HH:mm" หรือแยก date+time → {d,m,yBE,hh,mi}
+function parseSe(dateStr: unknown, timeStr?: unknown): { d: string; m: string; yBE: number; hh: string; mi: string } | null {
+  let ds = String(dateStr ?? '').trim();
+  let ts = String(timeStr ?? '').trim();
+  if (!ds) return null;
+  if (ds.includes('|')) { const p = ds.split('|'); ds = p[0].trim(); if (!ts && p[1]) ts = p[1].trim(); }
+  const dm = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(ds);
+  if (!dm) return null;
+  let yBE = parseInt(dm[3], 10);
+  if (yBE < 100) yBE += 2500;          // พ.ศ. ย่อ
+  else if (yBE < 2400) yBE += 543;     // เผื่อ input เป็น ค.ศ. → ทำให้เป็น พ.ศ. ฐานเดียว
+  const tm = /^(\d{1,2}):(\d{2})/.exec(ts);
+  return { d: dm[1].padStart(2, '0'), m: dm[2].padStart(2, '0'), yBE, hh: tm ? tm[1].padStart(2, '0') : '00', mi: tm ? tm[2] : '00' };
+}
+// POLICY_* : คงปี พ.ศ.
+const toXmlBE = (dateStr: unknown, timeStr?: unknown): string => {
+  const p = parseSe(dateStr, timeStr); if (!p) return '';
+  return `${p.yBE}-${p.m}-${p.d} ${p.hh}:${p.mi}:00`;
+};
+// ACC_*/DRI_* : แปลงเป็น ค.ศ. (ลบ 543)
+const toXmlCE = (dateStr: unknown, timeStr?: unknown): string => {
+  const p = parseSe(dateStr, timeStr); if (!p) return '';
+  return `${p.yBE - 543}-${p.m}-${p.d} ${p.hh}:${p.mi}:00`;
+};
+
+// "ชั้น 1" | "1" | "ประเภท 1" → "01"
+const policyTypeCode = (v: unknown): string => {
+  const m = /(\d+\+?)/.exec(String(v ?? ''));
+  if (!m) return '';
+  return m[1].includes('+') ? m[1] : m[1].padStart(2, '0');
+};
+
+type Row = Record<string, any>;
+
+// รถ 1 คัน (รถประกัน type=0 หรือ คู่กรณี) — insured อ่านจาก report, คู่กรณีอ่านจาก opposing_parties element
+function buildCar(c: Row, type: number, insured: boolean): string {
+  const ctype = insured ? String(c.car_type ?? '').trim().toUpperCase() : String(c.car_type ?? '').trim().toUpperCase();
+  const brandRaw = insured ? c.car_brand : c.car_brand;
+  const brandCode = lookup(BRAND, brandRaw) || String(brandRaw ?? '').trim();
+  const cmfg = ctype && brandCode ? `${ctype}${brandCode}` : brandCode;
+  const driName = insured
+    ? (String(c.driver_name ?? '').trim() || `${c.driver_first_name ?? ''} ${c.driver_last_name ?? ''}`.trim())
+    : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim();
+
+  const g = (k: string, ok: string) => (insured ? c[k] : c[ok]);
+
+  return '<TXN_SURV_CAR>' +
+    el('TYPE', type) +
+    el('OPO_NAME', insured ? '' : c.owner_name) +
+    el('OPO_ADDRESS', insured ? '' : c.owner_address) +
+    el('OPO_TYPE', insured ? 'รถประกัน' : 'คู่กรณี') +
+    el('CAR_REGNO', insured ? c.license_plate : c.plate) +
+    el('CAR_PROVINCE', provinceCode(insured ? c.car_province : c.province)) +
+    el('CHASSISNO', insured ? c.chassis_no : c.vin) +
+    el('ENGINENO', insured ? c.engine_no : '') +
+    el('KM_NO', insured ? '' : c.mileage) +
+    el('CMFG', cmfg) +
+    el('CMODEL', c.car_model) +
+    el('CAR_REGNO_YEAR', insured ? c.car_reg_year : c.reg_year) +
+    el('CCL_ID', lookup(COLOR, c.car_color)) +
+    el('DRI_TITLE_ID', lookup(TITLE, insured ? c.driver_title : c.title)) +
+    el('DRI_NAME', driName) +
+    el('DRI_AGE', insured ? c.driver_age : c.age) +
+    el('DRI_RELATION', lookup(RELATION, insured ? c.driver_relation : c.relation)) +
+    el('DRI_ADDRESS', insured ? c.driver_address : c.address) +
+    el('DRI_DISTRICTID', '') + // ⚠️ ต้องการตารางอำเภอครบจากประกัน
+    el('DRI_PROVINCEID', provinceCode(insured ? c.driver_province : c.province)) +
+    el('DRI_TELNO', insured ? c.driver_phone : c.phone) +
+    el('DRI_CARDID', insured ? c.driver_id_card : c.cid) +
+    el('DRI_DRVID', insured ? c.driver_license_no : c.license_no) +
+    el('DRI_DRVTYPE', lookup(LICENSE_TYPE, insured ? c.driver_license_type : c.license_type)) +
+    el('DRI_DRVPLACE', insured ? c.driver_license_place : c.license_place) +
+    el('DRI_DRVDATE_START', toXmlCE(insured ? c.driver_license_start : c.license_start)) +
+    el('DRI_DRVDATE_END', toXmlCE(insured ? c.driver_license_end : c.license_end)) +
+    el('DRI_ORDER', '') +
+    el('DRI_BIRTHDAY', toXmlCE(insured ? c.driver_birthdate : c.birthdate)) +
+    el('DRI_GENDER', String(g('driver_gender', 'gender') ?? '').trim().toUpperCase()) +
+    el('HAVE_INSURANCE', insured ? '' : (c.insurer ? '1' : '')) +
+    el('POLICYNO', insured ? '' : c.policy_no) +
+    el('CLAIMNO', insured ? '' : c.claim_no) +
+    el('POLICY_TYPE', insured ? '' : policyTypeCode(c.policy_type)) +
+    el('CTYPECODE', ctype) +
+    el('MODELNO', '') +
+    el('COST_DAMAGE', insured ? c.estimated_cost : c.estimated_cost) +
+    el('REPAIRER_NAME', '') +
+    el('REPAIRER_TYPE', '') +
+    el('DAMAGE_LIST', '') +
+    el('HAS_KFK', insured ? '' : (c.kfk === true ? '1' : '')) +
+    '</TXN_SURV_CAR>';
+}
+
+/**
+ * สร้าง INSERT_SURV_REPORT_XML จาก survey_reports row (+ opposing_parties ที่ parse แล้ว)
+ */
+export function generateSurveyXml(r: Row): string {
+  const opponents: Row[] = Array.isArray(r.opposing_parties)
+    ? r.opposing_parties
+    : (typeof r.opposing_parties === 'string' && r.opposing_parties.trim().startsWith('[')
+        ? (() => { try { return JSON.parse(r.opposing_parties); } catch { return []; } })()
+        : []);
+
+  const report = '<TXN_SURV_REPORT>' +
+    el('SURV_JOBNO', r.survey_job_no) +
+    el('REF_CLAIM_NO', r.claim_no) +
+    el('INSURERBRID', r.insurance_branch) +
+    el('SURVEYID', SURVEY_ID) +
+    el('SURVEYBRID', SURVEY_BR_ID) +
+    el('ACC_CLAIMREF_NO', r.claim_ref_no) +
+    el('ACC_POLICY_NO', r.policy_no) +
+    el('ASSURED_NAME', r.assured_name) +
+    el('POLICY_TYPE', policyTypeCode(r.policy_type)) +
+    el('POLICY_START', toXmlBE(r.policy_start)) +
+    el('POLICY_END', toXmlBE(r.policy_end)) +
+    el('ACC_DATE', toXmlCE(r.acc_date, r.acc_time)) +
+    el('ACC_PLACE', r.acc_place) +
+    el('ACC_DISTRICTID', '') + // ⚠️ ต้องการตารางอำเภอครบ
+    el('ACC_PROVINCEID', provinceCode(r.acc_province)) +
+    el('ACC_DETAIL', r.acc_detail) +
+    el('ACC_CAUSE', lookup(FAULT, r.acc_fault)) +
+    el('ACC_CALL', r.acc_reporter) +
+    el('ACC_SURV', r.acc_surveyor) +
+    el('ACC_CALL_DATE', toXmlCE(r.acc_customer_report_date)) +
+    el('ACC_REACH', toXmlCE(r.acc_survey_arrive_date)) +
+    el('ACC_FINISH', toXmlCE(r.acc_survey_complete_date)) +
+    el('OPO_RESULT', '') +
+    el('OPO_PAY', '0') +
+    el('OPO_RECOVERY_AMOUNT', '') +
+    el('OPO_AMOUNT_TYPE', '') +
+    el('POLICE_NAME', r.acc_police_name) +
+    el('POLICE_STATION', r.acc_police_station) +
+    el('POLICE_COMMENT', r.acc_police_comment) +
+    el('POLICE_DATE', toXmlCE(r.acc_police_date)) +
+    el('BOOK_NUMBER', r.acc_police_book_no) +
+    el('PRB_NUMBER', r.prb_number) +
+    el('SURV_COMMENT', r.surveyor_comment || r.notes) +
+    el('ACC_CAUSE_NO', r.acc_fault_opponent_no) +
+    el('ALC_CHK', '') +
+    el('ALC_RESULT', r.acc_alcohol_result || r.acc_alcohol_test) +
+    el('FLU_TYPE', '') + el('FLU_NO', '') + el('FLU_DETAIL', '') + el('FLU_DATE', '') +
+    el('HEV_CAR', '') +
+    el('ACC_CRASH_REAR', '') +
+    el('HAS_PRB', r.prb_number ? '1' : '') +
+    el('RISK_CODE', '') +
+    el('LOST_CAR', r.car_lost === true ? '1' : '') +
+    el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date, r.acc_insurance_notify_time)) +
+    el('SURV_CLAIM_TYPE', String(r.claim_type ?? '').trim().toUpperCase()) +
+    el('DRIVER_BY_POLICY', r.driver_by_policy) +
+    el('DEDUCTIBLE', r.deductible) +
+    el('CAUSE_CODE', lookup(CAUSE, r.acc_cause)) +
+    el('LOSS_ID', '') +
+    '</TXN_SURV_REPORT>';
+
+  const cars = buildCar(r, 0, true) + opponents.map((o, i) => buildCar(o, i + 1, false)).join('');
+
+  const bill = '<TXN_SURV_BILL>' +
+    el('SUR_INVEST', r.claim_fee_price ?? '0.00') +
+    el('FUL_INVEST', '0.00') + el('SUR_TRANS', '0.00') + el('FUL_TRANS', '0.00') +
+    el('INVEST_NUM', '0') + el('TRANS_NUM', '0') + el('PHOTO_NUM', '0') +
+    el('SUR_PHOTO', '0.00') + el('FUL_PHOTO', '0.00') + el('SUR_OTHER', '0.00') +
+    el('OTHER_DESC', '') + el('BILL_NO', '') + el('BILL_DATE', '') + el('CREDIT_TERM', '') + el('DUE_DATE', '') +
+    el('SUR_TEL', '0.00') + el('SUR_INSURE', '0.00') + el('SUR_CLAIM', '0.00') + el('SUR_DAILY', '0.00') +
+    el('ACC_RESULT', '') + el('ACC_COMMENT', '') + el('SURV_COMMENT', '') + el('INC_VAT', '') +
+    el('SUR_PERCENT_CLAIM', r.claim_fee_percent ?? '0.00') +
+    '</TXN_SURV_BILL>';
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<INSERT_SURV_REPORT_XML>${report}${cars}${bill}</INSERT_SURV_REPORT_XML>`;
+}

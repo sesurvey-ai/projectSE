@@ -217,6 +217,7 @@ router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
 router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.getCase);
 router.get('/:id/detail', auth, requireRole('checker', 'surveyor'), caseController.getDetail);
+router.get('/:id/export-xml', auth, requireRole('surveyor', 'checker', 'admin', 'callcenter'), caseController.exportXml);
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
 router.post('/:id/folder', auth, requireRole('surveyor'), caseController.createCaseFolder);
 router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 100), caseController.uploadCaseFolder);

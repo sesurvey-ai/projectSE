@@ -2,6 +2,7 @@ import { db } from '../config/database';
 import { env } from '../config/env';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
+import { generateSurveyXml } from './xmlExport.service';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -637,6 +638,16 @@ export const caseService = {
       visit_count: visitCount,
       expenses,
     };
+  },
+
+  // สร้าง INSERT_SURV_REPORT_XML (สัญญาข้อมูลพอร์ทัลประกัน) จาก survey_report ของเคส
+  async getSurveyXml(caseId: number, user?: CaseUser): Promise<string> {
+    const caseResult = await db.query('SELECT id, assigned_to FROM cases WHERE id = $1', [caseId]);
+    if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+    assertCaseAccess(caseResult.rows[0], user);
+    const reportResult = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (reportResult.rows.length === 0) throw new NotFoundError('ยังไม่มีข้อมูลรายงานสำรวจของเคสนี้');
+    return generateSurveyXml(reportResult.rows[0]);
   },
 
   async updateReport(caseId: number, data: Record<string, unknown>) {
