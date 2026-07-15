@@ -48,7 +48,7 @@ class SurveyFormScreen extends StatefulWidget {
   State<SurveyFormScreen> createState() => _SurveyFormScreenState();
 }
 
-class _SurveyFormScreenState extends State<SurveyFormScreen> {
+class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final List<String> _photoPaths = [];
   final Map<String, String> _photoCat = {}; // path → หมวดรูป (Phase 5)
@@ -149,13 +149,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   // บันทึกร่างอัตโนมัติแบบเงียบ (ไม่มี snackbar) + อัปเดตป้ายเวลา
   Future<void> _autosave() async {
     if (!_loaded) return; // ยังโหลดฟอร์มไม่เสร็จ → อย่าเพิ่งเขียน draft (กัน draft ว่างทับข้อมูล server)
+    // ส่งสำเร็จ + ลบ draft แล้ว → ห้ามเขียนคืน (lifecycle-save/debounce ที่ค้างท่อจะ resurrect draft
+    // ให้กลับมาทับข้อมูล server ตลอดไป — เช่นผู้ใช้กดส่งแล้วล็อกจอทันที)
+    if (_skipDraftFlush) return;
     try {
       final data = _collectFormData();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_draftKey, jsonEncode(data));
       final now = DateTime.now();
       final t = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-      if (mounted) setState(() => _savedAt = t);
+      if (mounted) {
+        _autosaveLabelTick = true;
+        try { setState(() => _savedAt = t); } finally { _autosaveLabelTick = false; }
+      }
     } catch (_) {}
   }
 
@@ -491,9 +497,31 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     _autosaveTimer = Timer(const Duration(milliseconds: 1200), _autosave);
   }
 
+  // กัน setState ของป้ายเวลา "บันทึกแล้ว" (ใน _autosave เอง) วนกลับมา schedule autosave ไม่รู้จบ
+  bool _autosaveLabelTick = false;
+
+  // ทุก mutation ของฟอร์มผ่าน setState → เข้าคิว autosave (debounced) เสมอ
+  // ครอบคลุม chips/dropdown/สวิตช์/date picker/checkbox ที่เดิมไม่เรียกเซฟเอง — โดน kill แล้วตัวเลือกหาย
+  // (setState ที่เป็น UI ล้วน เช่น โหมดเลือกรูป ก็เข้าคิวด้วย — เซฟเกินดีกว่าเซฟขาด, debounce กันถี่ให้แล้ว)
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (!_autosaveLabelTick) _scheduleAutosave();
+  }
+
+  // แอพลง background (สลับแอพ/จอดับ) = จุดเสี่ยงโดน OS kill → flush ร่างทันที ไม่รอ debounce
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _autosaveTimer?.cancel();
+      _autosave();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _completionListenable = Listenable.merge([
       _policyNoCtl, _policyTypeCtl, _assuredNameCtl, _claimNoCtl,
       _licensePlateCtl, _carProvinceCtl, _carBrandCtl,
@@ -1013,6 +1041,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autosaveTimer?.cancel();
     // best-effort เซฟร่างล่าสุดก่อน controllers ถูก dispose (กัน back/kill ระหว่างกรอก)
     // อ่าน controllers แบบ sync ก่อน await → ปลอดภัยแม้ dispose ต่อทันที
@@ -1097,12 +1126,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     );
   }
 
+  // โฟลเดอร์รูปประจำเคส — ผูกกับ case id (immutable) เท่านั้น
+  // เดิมตั้งชื่อตามเลขเคลม/เลขเซอร์เวย์ที่แก้ไขได้ → เลขเปลี่ยนระหว่างทาง (เปิดฟอร์มออฟไลน์/แก้เลขที่
+  // OCR อ่านผิด) แล้วรูปที่ถ่ายไว้ก่อนหน้าหลุดจากโฟลเดอร์ที่ถูกอัปโหลดตอน submit แบบเงียบ
+  String get _caseFolderPath =>
+      '/storage/emulated/0/Download/SE_Survey/case_${widget.caseId}/job_${widget.caseId}';
+
   Future<String> _getCaseFolder() async {
-    final cn = _claimNoCtl.text.trim();
-    final sj = _surveyJobNoCtl.text.trim();
-    final claimFolder = cn.isNotEmpty ? cn.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'case_${widget.caseId}';
-    final jobFolder = sj.isNotEmpty ? sj.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'job_${widget.caseId}';
-    final folder = Directory('/storage/emulated/0/Download/SE_Survey/$claimFolder/$jobFolder');
+    final folder = Directory(_caseFolderPath);
     if (!folder.existsSync()) folder.createSync(recursive: true);
     return folder.path;
   }
@@ -1541,12 +1572,73 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       if (json == null) return;
       final data = jsonDecode(json) as Map<String, dynamic>;
       if (!mounted) return; // ผู้ใช้ back ออกก่อนโหลดเสร็จ → กัน setState หลัง dispose
+      _migrateLegacyPhotos(data); // ย้ายรูปจากโฟลเดอร์ระบบเก่า (ตามเลขเคลม) เข้าโฟลเดอร์ประจำเคส
       _populateForm(data);
     } catch (e) {
       debugPrint('loadDraft failed: $e');
       // draft เสีย/ฟอร์แมตเก่า → ลบทิ้ง กันพัง (throw) ทุกครั้งที่เปิดฟอร์ม
       try { (await SharedPreferences.getInstance()).remove(_draftKey); } catch (_) {}
     }
+  }
+
+  // ย้ายรูปจากโฟลเดอร์ระบบเก่า (ตั้งชื่อตามเลขเคลม/เลขเซอร์เวย์) เข้าโฟลเดอร์ประจำเคส case_<id>/job_<id>
+  // แล้วแก้ path ใน draft ให้ชี้ที่ใหม่ — รันก่อน _populateForm เพื่อให้ตัวกรอง "ไฟล์ยังอยู่จริง" เห็น path ใหม่
+  // (โฟลเดอร์เก่าที่หาไม่เจอไม่เป็นไร: path เดิมยังใช้ได้ และ uploadCaseFolder กวาด photo_paths_local ให้ด้วย)
+  void _migrateLegacyPhotos(Map<String, dynamic> draft) {
+    try {
+      String san(String s) => s.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+      const root = '/storage/emulated/0/Download/SE_Survey';
+      final canonical = Directory(_caseFolderPath);
+      // โฟลเดอร์เก่าที่เป็นไปได้: จากเลขใน draft และจากเลขของ server (เติมใน controller แล้ว ณ จุดนี้)
+      final candidates = <String>{};
+      void addCand(String? cn, String? sj) {
+        final c = (cn ?? '').trim(), j = (sj ?? '').trim();
+        candidates.add(
+            '$root/${c.isNotEmpty ? san(c) : 'case_${widget.caseId}'}/${j.isNotEmpty ? san(j) : 'job_${widget.caseId}'}');
+      }
+      addCand(draft['claim_no']?.toString(), draft['survey_job_no']?.toString());
+      addCand(_claimNoCtl.text, _surveyJobNoCtl.text);
+      candidates.remove(canonical.path);
+
+      for (final c in candidates) {
+        final legacy = Directory(c);
+        if (!legacy.existsSync()) continue;
+        if (!canonical.existsSync()) canonical.createSync(recursive: true);
+        for (final f in legacy.listSync().whereType<File>()) {
+          final dest = File('${canonical.path}/${f.path.split('/').last}');
+          try {
+            if (!dest.existsSync()) f.renameSync(dest.path);
+          } catch (_) {}
+        }
+        // เก็บกวาดโฟลเดอร์เก่าที่ว่างแล้ว (best-effort)
+        try { if (legacy.listSync().isEmpty) legacy.deleteSync(); } catch (_) {}
+        try {
+          final p = legacy.parent;
+          if (p.path != root && p.existsSync() && p.listSync().isEmpty) p.deleteSync();
+        } catch (_) {}
+      }
+      // remap รันเสมอ (ไม่ gate ด้วย "รอบนี้ย้ายไหม"): ถ้าย้ายไฟล์รอบก่อนแล้วแอปถูก kill ก่อน
+      // draft ถูกเขียนกลับ path ใน draft ยังเป็นของเก่า — remap ซ่อมให้ (self-guarding:
+      // แก้เฉพาะ path ที่ไฟล์เดิมหาย + มีไฟล์ชื่อเดียวกันในโฟลเดอร์ประจำเคส)
+      if (!canonical.existsSync()) return;
+
+      // แก้ path ใน draft ให้ชี้โฟลเดอร์ประจำเคส (ที่เดิมหาย + ที่ใหม่มี)
+      String remap(String p) {
+        if (File(p).existsSync()) return p;
+        final np = '${canonical.path}/${p.split('/').last}';
+        return File(np).existsSync() ? np : p;
+      }
+      final pp = draft['photo_paths_local'];
+      if (pp is List) draft['photo_paths_local'] = pp.map((e) => remap(e.toString())).toList();
+      final pc = draft['photo_categories'];
+      if (pc is Map) {
+        draft['photo_categories'] = pc.map((k, v) => MapEntry(remap(k.toString()), v));
+      }
+      final sdp = draft['scan_doc_paths'];
+      if (sdp is Map) {
+        draft['scan_doc_paths'] = sdp.map((k, v) => MapEntry(k, remap(v.toString())));
+      }
+    } catch (_) {}
   }
 
   Map<String, dynamic> _collectFormData() {
@@ -1673,9 +1765,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
     if (!mounted) return;
     if (r == 'busy') return; // กันกดส่งซ้ำ (double-tap) — provider กำลังส่งอยู่
     if (r == 'ok') {
+      _skipDraftFlush = true; // ตั้งก่อนลบ — กัน _autosave ที่ interleave ระหว่าง await เขียน draft คืนหลัง remove
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_draftKey);
-      _skipDraftFlush = true; // ส่งสำเร็จ + ลบ draft แล้ว → อย่าให้ dispose เขียน draft กลับ
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ส่งข้อมูลสำรวจสำเร็จ'), backgroundColor: Colors.green));
       context.go('/cases');
@@ -2993,7 +3085,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(child: _dateField(d, label, req: req, yearsAhead: 1, showLabel: false)),
           const SizedBox(width: 8),
-          _TimeField(t, key: ValueKey('tm_${identityHashCode(t)}'), showLabel: false),
+          _TimeField(t, key: ValueKey('tm_${identityHashCode(t)}'), showLabel: false, onChanged: _scheduleAutosave),
         ]),
       ]),
     );
@@ -3815,7 +3907,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
 class _TimeField extends StatefulWidget {
   final TextEditingController target;
   final bool showLabel;
-  const _TimeField(this.target, {super.key, this.showLabel = true});
+  final VoidCallback? onChanged; // target เขียนแบบ programmatic — ฟอร์มต้องรับสัญญาณไป autosave เอง
+  const _TimeField(this.target, {super.key, this.showLabel = true, this.onChanged});
   @override
   State<_TimeField> createState() => _TimeFieldState();
 }
@@ -3843,6 +3936,7 @@ class _TimeFieldState extends State<_TimeField> {
     final h = _hh.text.trim();
     final m = _mm.text.trim();
     widget.target.text = (h.isEmpty && m.isEmpty) ? '' : '$h:$m';
+    widget.onChanged?.call();
   }
 
   Widget _box(TextEditingController c, String hint) {
