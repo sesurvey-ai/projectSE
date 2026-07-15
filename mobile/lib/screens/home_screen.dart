@@ -51,7 +51,27 @@ class HomeScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      await context.read<AuthProvider>().logout();
+      // แสดง progress ระหว่างเคลียร์ session — logout มี network calls (check-out/ลบหมุด/flush คิว)
+      // เดิมจอนิ่งเฉยไม่มีอะไรบอก บนเน็ตห่วยค้างเป็นนาที ผู้ใช้กดซ้ำ/นึกว่าแอปค้าง
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const AlertDialog(
+          content: Row(children: [
+            SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
+            SizedBox(width: 16),
+            Text('กำลังออกจากระบบ…'),
+          ]),
+        ),
+      );
+      try {
+        await context.read<AuthProvider>().logout();
+      } finally {
+        // ปิด dialog ถ้า route ยังอยู่ (ปกติ router เด้งไป /login ให้เองเมื่อ token หาย)
+        if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
     }
   }
 

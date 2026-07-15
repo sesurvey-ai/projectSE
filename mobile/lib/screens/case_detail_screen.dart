@@ -23,9 +23,13 @@ class CaseDetailScreen extends StatefulWidget {
 class _CaseDetailScreenState extends State<CaseDetailScreen> {
   Map<String, dynamic>? _report;
   bool _loadingDetail = true;
+  bool _detailLoadFailed = false; // โหลดรายละเอียดไม่สำเร็จ (เน็ตล่ม) — โชว์ error+retry แทนจอว่างเงียบ
   Map<String, List<String>> _provincesData = {};
   bool _arrivalConfirmed = false;
   bool _checkingArrival = true; // กำลังเช็คว่าเคยถ่ายรูปยืนยันถึงที่เกิดเหตุไว้แล้วหรือยัง (กันปุ่มกระพริบ arrival→survey)
+  // เช็คสถานะ arrival ไม่สำเร็จ — ห้ามเดาว่า "ยังไม่ยืนยัน" แล้วโชว์ prompt ถ่ายรูปซ้ำ
+  // (คนที่ยืนยันแล้วจะถูกหลอกให้ถ่าย/ยืนยันใหม่ + เวลาถึงที่เกิดเหตุใน report ถูกเขียนทับ)
+  bool _arrivalCheckFailed = false;
   String? _arrivalPhotoPath;
   bool _uploadingArrival = false;
   final _picker = ImagePicker();
@@ -50,20 +54,30 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   }
 
   Future<void> _fetchDetail() async {
+    setState(() {
+      _loadingDetail = true;
+      _detailLoadFailed = false;
+    });
     try {
       final caseProvider = context.read<CaseProvider>();
       final report = await caseProvider.fetchCaseDetail(widget.caseId);
+      if (!mounted) return;
       setState(() {
         _report = report;
         _loadingDetail = false;
+        // fetchCaseDetail throw เมื่อโหลดพลาด → มาถึงตรงนี้ = สำเร็จ (report null = เคสยังไม่มีรายงาน
+        // ซึ่งไม่ใช่ error — การ์ดรถแค่ไม่แสดง เหมือนพฤติกรรมเดิม)
+        _detailLoadFailed = false;
       });
       // Check if arrival photo already exists
       _checkArrivalPhotos();
       // Download OCR images to local folder
       _downloadCaseImages();
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _loadingDetail = false;
+        _detailLoadFailed = true;
         _checkingArrival = false;
       });
     }
@@ -80,6 +94,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         if (filePath.isEmpty) continue;
         final fileName = filePath.split('/').last;
         final localFile = File('$caseFolder/$fileName');
+        // เก็บกวาด .part ตกค้างจากรอบที่โดน kill กลางดาวน์โหลด
+        try { final p = File('${localFile.path}.part'); if (p.existsSync()) p.deleteSync(); } catch (_) {}
         if (localFile.existsSync()) continue; // skip if already downloaded
         try {
           final url = '${ApiConfig.baseUrl}/uploads/$filePath';
@@ -87,8 +103,22 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           AuthToken.imageHeaders.forEach(request.headers.set); // /uploads ต้องผ่าน auth
           final response = await request.close();
           if (response.statusCode == 200) {
-            final bytes = await response.fold<List<int>>([], (prev, chunk) => prev..addAll(chunk));
-            await localFile.writeAsBytes(bytes);
+            // stream ลงไฟล์ .part แล้วค่อย rename — เดิม fold ใส่ List<int> (copy ซ้ำ ~8 เท่า
+            // ของขนาดรูปบน UI isolate); เขียนตรงลงชื่อจริงก็ไม่ได้: โดน kill กลางทางจะเหลือไฟล์ครึ่งเดียว
+            // ที่ skip-check (existsSync) มองว่าโหลดแล้วตลอดกาล + ถูกกวาดขึ้น server ตอนส่งงาน
+            final tmpFile = File('${localFile.path}.part');
+            final sink = tmpFile.openWrite();
+            try {
+              await response.pipe(sink);
+              tmpFile.renameSync(localFile.path);
+            } catch (_) {
+              // close() คืน done ของ sink = throw error เดิมซ้ำ — ต้องกลืน ไม่งั้น delete ข้างล่างไม่รัน
+              try { await sink.close(); } catch (_) {}
+              try { if (tmpFile.existsSync()) tmpFile.deleteSync(); } catch (_) {}
+              rethrow;
+            }
+          } else {
+            await response.drain<void>();
           }
         } catch (_) {}
       }
@@ -97,6 +127,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
   }
 
   Future<void> _checkArrivalPhotos() async {
+    if (mounted && !_checkingArrival) setState(() => _checkingArrival = true);
+    var failed = false;
     try {
       final apiService = ApiService();
       final res = await apiService.getArrivalPhotos(widget.caseId);
@@ -107,10 +139,18 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         if (photos.isNotEmpty && mounted) {
           setState(() => _arrivalConfirmed = true);
         }
+      } else {
+        failed = true;
       }
     } catch (_) {
+      failed = true; // เช็คไม่ได้ (เน็ตล่ม) ≠ ยังไม่ยืนยัน — โชว์ปุ่มลองใหม่แทน prompt ถ่ายรูป
     } finally {
-      if (mounted) setState(() => _checkingArrival = false);
+      if (mounted) {
+        setState(() {
+          _checkingArrival = false;
+          _arrivalCheckFailed = failed;
+        });
+      }
     }
   }
 
@@ -184,8 +224,14 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         selDay = int.tryParse(parts[0]) ?? selDay;
         selMonth = int.tryParse(parts[1]) ?? selMonth;
         selYear = int.tryParse(parts[2]) ?? selYear;
+        // ค่าเก่าอาจเป็นปี ค.ศ. (OCR จาก APK เก่าอ่านฝั่งอังกฤษของเอกสาร) → แปลงเป็น พ.ศ.
+        if (selYear >= 1900 && selYear < 2100) selYear += 543;
       }
     }
+    // clamp เข้าช่วงของ wheel (childCount=101) — ปีนอกช่วงทำ initialItem ติดลบ/เกิน = ล้อว่าง
+    final wheelMinYear = DateTime.now().year + 543 - 100;
+    if (selYear < wheelMinYear) selYear = wheelMinYear;
+    if (selYear > wheelMinYear + 100) selYear = wheelMinYear + 100;
 
     showModalBottomSheet(
       context: context,
@@ -349,7 +395,31 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                     ),
                   )
                 else if (_report != null)
-                  _buildVehicleCard(),
+                  _buildVehicleCard()
+                else if (_detailLoadFailed)
+                  // เดิม: โหลดพลาด = จอว่างเงียบ ไม่มีทางรู้/ไม่มีทางลองใหม่
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(children: [
+                      Icon(Icons.wifi_off, size: 40, color: Colors.red.shade300),
+                      const SizedBox(height: 8),
+                      const Text('โหลดรายละเอียดงานไม่สำเร็จ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red)),
+                      const SizedBox(height: 4),
+                      Text('ตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองใหม่', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () { _fetchDetail(); },
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('ลองใหม่'),
+                      ),
+                    ]),
+                  ),
 
                 const SizedBox(height: 24),
 
@@ -358,6 +428,26 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                   // ระหว่างเช็คสถานะรูปยืนยัน แสดง loader กันปุ่มกระพริบ (ถ่ายรูปยืนยัน → เริ่มสำรวจ)
                   if (_checkingArrival)
                     const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+                  // เช็คสถานะไม่สำเร็จ — ห้ามเดาว่ายังไม่ยืนยันแล้วชวนถ่ายซ้ำ (เขียนทับเวลาถึงที่เกิดเหตุ)
+                  else if (!_arrivalConfirmed && _arrivalCheckFailed)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(children: [
+                        Text('เช็คสถานะการยืนยันถึงที่เกิดเหตุไม่สำเร็จ', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _checkArrivalPhotos,
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('ลองใหม่'),
+                        ),
+                      ]),
+                    )
                   // ถ่ายรูปยืนยันถึงที่เกิดเหตุ
                   else if (!_arrivalConfirmed) ...[
                     if (_arrivalPhotoPath != null && _uploadingArrival)

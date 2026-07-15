@@ -45,7 +45,17 @@ Future<int> runConsultSync() async {
   if (supMap.isEmpty) return 0;
 
   // อ่าน call log -> กรองเฉพาะเบอร์หัวหน้า
-  final since = DateTime.now().subtract(const Duration(days: 365)).millisecondsSinceEpoch;
+  // incremental watermark: จำ timestamp ล่าสุดที่ sync สำเร็จ → รอบถัดไปอ่าน/ส่งเฉพาะของใหม่
+  // (เดิมอ่าน+อัปโหลด 365 วันซ้ำทุก 15 นาที — เปลือง network/แบตโดย server ก็แค่ upsert ทับ)
+  // เผื่อ overlap 1 วันกันขอบตกหล่น (นาฬิกาเครื่อง/entry ที่เพิ่งปิดสาย duration มาช้า)
+  const wmKey = 'consult_sync_watermark';
+  final wm = prefs.getInt(wmKey) ?? 0;
+  final fallback = DateTime.now().subtract(const Duration(days: 365)).millisecondsSinceEpoch;
+  final since = wm > 0 ? wm - const Duration(days: 1).inMilliseconds : fallback;
+  // จับเวลาก่อน query — watermark ใหม่ = ช่วงที่ query ครอบพิสูจน์ได้ (since..nowMs)
+  // ห้ามใช้ timestamp ของสายล่าสุดแทน: ถ้าสายหัวหน้าล่าสุดเก่า 3 เดือน watermark จะปักอยู่ตรงนั้น
+  // ตลอด (overlap 1 วันดึงสายเดิมกลับเข้า payload ทุกรอบ) = ไม่ converge
+  final nowMs = DateTime.now().millisecondsSinceEpoch;
   final entries = await CallLog.query(dateFrom: since);
   final payload = <Map<String, dynamic>>[];
   for (final e in entries) {
@@ -63,8 +73,15 @@ Future<int> runConsultSync() async {
       'status': st,
     });
   }
-  if (payload.isEmpty) return 0;
+  if (payload.isEmpty) {
+    // เลื่อน watermark เฉพาะเมื่อ "อ่าน call log ได้จริง" (entries ไม่ว่าง) — Android 10+
+    // permission แบบ app-ops restricted (APK sideload) query คืน cursor ว่างเงียบ ๆ ทั้งที่
+    // checkSelfPermission ผ่าน ถ้าเลื่อนไป now ประวัติช่วงนั้นจะหายถาวรเมื่อ permission กลับมา
+    if (entries.isNotEmpty) await prefs.setInt(wmKey, nowMs);
+    return 0;
+  }
 
   final res = await api.syncConsult(payload);
+  await prefs.setInt(wmKey, nowMs); // เลื่อนเฉพาะเมื่อ sync สำเร็จ — fail แล้วรอบหน้าส่งซ้ำเอง
   return (res['upserted'] as num?)?.toInt() ?? 0;
 }

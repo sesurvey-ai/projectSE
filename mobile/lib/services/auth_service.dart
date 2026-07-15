@@ -31,6 +31,9 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('user');
+    // watermark ของ consult sync เป็นค่าระดับเครื่อง — user ใหม่บนเครื่องเดิมต้องสแกน
+    // ย้อนหลังเต็มช่วง ไม่งั้นสายหัวหน้าของเขาที่เกิดก่อน watermark ของ user เก่าหายถาวร
+    await prefs.remove('consult_sync_watermark');
     AuthToken.set(null);
   }
 

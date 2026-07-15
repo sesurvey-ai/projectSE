@@ -139,20 +139,24 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     // best-effort (ต้องเรียกก่อน _authService.logout() เพราะยังต้องใช้ token):
-    // 1) ปิดรอบเข้างานที่ค้างอยู่ → สถานะเข้างาน = ไม่ (check-out ลบหมุดให้ฝั่ง server ด้วย)
+    // ทุกขั้นเป็น network call ที่พลาดได้ — ครอบเพดานเวลารวม ไม่งั้นเน็ตห่วย (timeout 30s ต่อ call
+    // ต่อกัน 4 calls) ทำ logout ค้างเป็นนาที; เกินเพดานแล้วเดินหน้าเคลียร์ session ในเครื่องต่อเลย
     try {
-      await _apiService.checkOutAttendance();
-    } catch (_) {}
-    // 2) เผื่อไม่มีรอบเปิดค้างแต่ยังมีหมุดค้าง → ลบหมุดอีกชั้น
-    try {
-      await _apiService.clearMyLocation();
-    } catch (_) {}
-    // 3) พยายามส่งงานสำรวจที่ค้างคิว "ตอนยังมี token ของ user นี้" — ไม่ล้างคิวทิ้ง
-    //    (ออฟไลน์แล้วล้าง = งานที่ส่งไม่ได้หายถาวร) งานที่ยังส่งไม่ได้จะคงในคิว:
-    //    user เดิมกลับมา login → ส่งต่อได้; ถ้าเป็นคนอื่น flush จะโดน 403 (ไม่ใช่เคสตน) แล้วถูกทิ้งเอง — ไม่ mis-submit ข้าม user
-    try { await flushSurveyQueue(); } catch (_) {}
-    // 4) ล้าง FCM token ของเครื่อง — หยุด noti งานของ user นี้ยิงเข้าเครื่องหลัง logout
-    try { await _fcmService.clearToken(); } catch (_) {}
+      await () async {
+        // 1) ปิดรอบเข้างานที่ค้างอยู่ → สถานะเข้างาน = ไม่ (check-out ลบหมุดให้ฝั่ง server ด้วย)
+        try { await _apiService.checkOutAttendance(); } catch (_) {}
+        // 2) เผื่อไม่มีรอบเปิดค้างแต่ยังมีหมุดค้าง → ลบหมุดอีกชั้น
+        try { await _apiService.clearMyLocation(); } catch (_) {}
+        // 3) พยายามส่งงานสำรวจที่ค้างคิว "ตอนยังมี token ของ user นี้" — ไม่ล้างคิวทิ้ง
+        //    (ออฟไลน์แล้วล้าง = งานที่ส่งไม่ได้หายถาวร) งานที่ยังส่งไม่ได้จะคงในคิว:
+        //    user เดิมกลับมา login → ส่งต่อได้; ถ้าเป็นคนอื่น flush จะโดน 403 (ไม่ใช่เคสตน) แล้วถูกทิ้งเอง — ไม่ mis-submit ข้าม user
+        try { await flushSurveyQueue(); } catch (_) {}
+        // 4) ล้าง FCM token ของเครื่อง — หยุด noti งานของ user นี้ยิงเข้าเครื่องหลัง logout
+        try { await _fcmService.clearToken(); } catch (_) {}
+      }().timeout(const Duration(seconds: 15));
+    } catch (_) {
+      // timeout/พลาด → ยอมทิ้งงาน best-effort (คิวยังอยู่ ส่งรอบหน้าได้) แล้ว logout ต่อ
+    }
     await ConsultBackground.cancel();
     await _authService.logout();
     _user = null;

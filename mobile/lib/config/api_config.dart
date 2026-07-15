@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConfig {
@@ -39,8 +40,11 @@ class ApiConfig {
   static String get baseUrl {
     if (_localApi.isNotEmpty) return _localApi;
     if (_forceProd) return _prodUrl;
+    // release build = production เสมอ ไม่พึ่งการตรวจ emulator/บังคับใส่ FORCE_PROD ตอน build
+    // (เดิม release ที่ลืม --dart-define บนเครื่องที่ isPhysicalDevice รายงานผิด → ชี้ 10.0.2.2)
+    if (kReleaseMode) return _prodUrl;
     if (!Platform.isAndroid) return _prodUrl;
-    // emulator = backend dev บนเครื่อง; มือถือจริง = production
+    // debug/profile บน emulator = backend dev บนเครื่อง; มือถือจริง = production
     return _isEmulator ? 'http://10.0.2.2:3001' : _prodUrl;
   }
 

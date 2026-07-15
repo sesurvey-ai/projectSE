@@ -47,6 +47,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Map<String, dynamic>? _today; // { sessions: [...], open: {...}|null }
   List<dynamic> _history = [];
   bool _loading = true;
+  // โหลดสถานะวันนี้ไม่สำเร็จ — สถานะเข้า/ออกที่โชว์เชื่อไม่ได้ ต้องบล็อกปุ่มลงเวลา + ให้ลองใหม่
+  // (เดิมพลาดเงียบ: จอโชว์ "ยังไม่เข้างาน" ทั้งที่แค่เน็ตล่ม — คนเข้างานแล้วกดเข้าซ้ำ/สับสน)
+  bool _loadFailed = false;
   bool _busy = false;
   String _gpsNote = '';
 
@@ -61,9 +64,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final today = await _api.getTodayAttendance();
       final hist = await _api.getMyAttendance();
-      if (mounted) setState(() { _today = today; _history = hist; });
+      if (mounted) setState(() { _today = today; _history = hist; _loadFailed = false; });
     } catch (_) {
-      // เงียบ
+      if (mounted) setState(() => _loadFailed = true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -133,6 +136,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           width: size,
           height: size,
           fit: BoxFit.cover,
+          // decode แค่ขนาด thumbnail (x3 สำหรับจอ hi-dpi) — เดิม decode เต็ม resolution ที่อัปโหลด
+          cacheWidth: (size * 3).round(),
           errorBuilder: (_, _, _) => Container(width: size, height: size, color: _fill, child: const Icon(Icons.image_not_supported_outlined, size: 18, color: _muted)),
           loadingBuilder: (c, child, p) => p == null ? child : Container(width: size, height: size, color: _fill, child: const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))),
         ),
@@ -297,6 +302,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: [
+                  if (_loadFailed) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(children: [
+                        Icon(Icons.wifi_off, size: 18, color: Colors.red.shade400),
+                        const SizedBox(width: 8),
+                        const Expanded(child: Text('โหลดสถานะลงเวลาไม่สำเร็จ — สถานะที่แสดงอาจไม่ตรงจริง', style: TextStyle(fontSize: 12.5, color: _ink))),
+                        TextButton(onPressed: _load, child: const Text('ลองใหม่')),
+                      ]),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _todayCard(),
                   const SizedBox(height: 16),
                   _actionButton(),
@@ -469,7 +491,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _busy ? null : () => isCheckIn ? _showCheckInOptions() : _punch(false),
+        // โหลดสถานะพลาด → ปุ่มอิงสถานะที่เชื่อไม่ได้ (เช่นโชว์ "เข้างาน" ทั้งที่มีรอบเปิดค้าง) — บล็อกจนกดลองใหม่
+        onPressed: (_busy || _loadFailed) ? null : () => isCheckIn ? _showCheckInOptions() : _punch(false),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,

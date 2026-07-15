@@ -47,20 +47,21 @@ class CaseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // throw เมื่อโหลดไม่สำเร็จ (network/รูปแบบ response ผิด) — คืน null เฉพาะ "server ยืนยันว่าเคสนี้
+  // ยังไม่มี report" (เดิมกลืน error แล้วคืน null เหมือนกันทั้งสองเคส → จอ error หลอกทั้งที่แค่
+  // ไม่มีข้อมูล และ retry ไม่มีวันหาย)
   Future<Map<String, dynamic>?> fetchCaseDetail(int caseId) async {
-    try {
-      final response = await _apiService.getCaseDetail(caseId);
-      final data = response.data;
-      if (data['success'] == true && data['data'] != null) {
-        final report = data['data']['report'] as Map<String, dynamic>?;
-        // แนบ case_images เข้ากับ report
-        if (report != null && data['data']['case_images'] != null) {
-          report['case_images'] = data['data']['case_images'];
-        }
-        return report;
+    final response = await _apiService.getCaseDetail(caseId);
+    final data = response.data;
+    if (data['success'] == true && data['data'] != null) {
+      final report = data['data']['report'] as Map<String, dynamic>?;
+      // แนบ case_images เข้ากับ report
+      if (report != null && data['data']['case_images'] != null) {
+        report['case_images'] = data['data']['case_images'];
       }
-    } catch (_) {}
-    return null;
+      return report;
+    }
+    throw Exception('unexpected case-detail response');
   }
 
   Future<bool> submitSurvey(

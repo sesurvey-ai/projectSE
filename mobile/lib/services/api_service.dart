@@ -102,7 +102,9 @@ class ApiService {
     final byName = <String, File>{};
     void collect(Iterable<File> files) {
       for (final f in files) {
-        byName.putIfAbsent(f.path.split('/').last, () => f);
+        final name = f.path.split('/').last;
+        if (name.endsWith('.part')) continue; // ไฟล์ดาวน์โหลดครึ่งทาง — ห้ามอัปโหลด
+        byName.putIfAbsent(name, () => f);
       }
     }
     if (canonical.existsSync()) collect(canonical.listSync().whereType<File>());
