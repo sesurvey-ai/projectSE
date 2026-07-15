@@ -60,6 +60,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM-Native", "New token: $token")
+        Log.d("FCM-Native", "New token: ${token.take(12)}…") // อย่า log token เต็ม (credential)
+        // token หมุนได้ตอนแอปถูก kill (Play Services อัปเดต/restore) — ฝั่ง Dart ไม่มีโอกาสเห็น
+        // ถ้าไม่ส่งจาก native เลย server จะ push ไปที่ token ตายจนกว่าผู้ใช้จะเปิดแอปอีกครั้ง
+        LocationHelper.postFcmTokenToServer(this, token)
     }
 }

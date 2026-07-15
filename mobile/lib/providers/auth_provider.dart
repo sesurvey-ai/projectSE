@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../models/user.dart';
@@ -114,7 +115,22 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+      // แยกสาเหตุ — เดิมทุก error ขึ้น "รหัสผ่านไม่ถูกต้อง" ทั้งที่เป็นแค่เน็ตล่ม/server มีปัญหา
+      // → ผู้ใช้ในสนามพิมพ์รหัสใหม่ ยิงซ้ำ จนโดน rate-limit login ทั้งที่รหัสถูก
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        if (e.response == null) {
+          _error = 'เชื่อมต่อไม่ได้ กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองใหม่';
+        } else if (status == 401 || status == 400) {
+          _error = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+        } else if (status == 429) {
+          _error = 'ลองเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่';
+        } else {
+          _error = 'ระบบขัดข้อง (${status ?? '-'}) กรุณาลองใหม่อีกครั้ง';
+        }
+      } else {
+        _error = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+      }
       _isLoading = false;
       notifyListeners();
       return false;

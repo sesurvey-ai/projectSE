@@ -72,7 +72,13 @@ object NotificationHelper {
             // ไม่เด้งหน้าเต็มจอทับงานที่ทำค้างอยู่
             showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
         } else {
-            // จอปิด/ล็อก/หน้า Home/แอปอื่น → หน้าเต็มจอ (bar จะโผล่เองตอนหน้าเต็มจอหลุดไปพื้นหลัง onStop)
+            // จอปิด/ล็อก/หน้า Home/แอปอื่น:
+            // โพสต์ notification (พ่วง fullScreenIntent) "ก่อนเสมอ" — จอปิด/ล็อก: ระบบเปิดหน้าเต็มจอจาก FSI
+            // ให้เอง, จอเปิด: heads-up + ปุ่มรับงานค้างเป็นหลักประกัน แล้วค่อยลองเปิดหน้าเต็มจอตรง (UX เดิม)
+            // Android 10+ บล็อก startActivity จาก background service ถ้าไม่มี SYSTEM_ALERT_WINDOW —
+            // เดิมทางนี้เป็นทางเดียว: ผู้ใช้ปิด permission = ไม่มีอะไรบนจอเลย เหลือแต่เสียง alarm วน
+            // (bar ถูกซ่อนเองเมื่อหน้าเต็มจอแสดงสำเร็จ — IncomingCallActivity.onResume → cancelBarOnly)
+            showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
             showFullscreen(context, id, caseId, incidentLocation, claimNo, insuranceCompany)
         }
 
@@ -103,8 +109,14 @@ object NotificationHelper {
             putExtra("claim_no", claimNo)
             putExtra("insurance_company", insuranceCompany)
         }
-        context.startActivity(intent)
-        Log.d("NotifHelper", "Fullscreen launched: caseId=$caseId")
+        // best-effort: Android 10+ อาจบล็อก background start (ทิ้งเงียบหรือ throw บางรุ่น)
+        // — notification + fullScreenIntent ที่โพสต์ไว้ก่อนหน้าเป็นหลักประกันแล้ว
+        try {
+            context.startActivity(intent)
+            Log.d("NotifHelper", "Fullscreen launched: caseId=$caseId")
+        } catch (e: Exception) {
+            Log.w("NotifHelper", "Fullscreen launch blocked: $e (notification fallback already posted)")
+        }
     }
 
     // ── Notification Bar ──────────────────────────────────────────
@@ -126,13 +138,17 @@ object NotificationHelper {
         val compactView = RemoteViews(context.packageName, R.layout.notification_incoming_compact)
         compactView.setTextViewText(R.id.notification_title, title)
 
-        // Accept button
-        val acceptIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = NotificationActionReceiver.ACTION_ACCEPT
-            putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, id)
-            putExtra(NotificationActionReceiver.EXTRA_CASE_ID, caseId)
+        // Accept button — ต้องเป็น activity PendingIntent ตรง ๆ ห้ามผ่าน BroadcastReceiver
+        // (Android 12+ บล็อก "notification trampoline": receiver → startActivity ถูกทิ้งเงียบ
+        // = ผู้ใช้กดรับงานแล้วเสียงหยุด/noti หาย แต่แอปไม่เปิดและงานไม่ถูกรับจริง)
+        // MainActivity.handleNotificationAction อ่าน notification_id แล้ว cancel noti + หยุดเสียงเอง
+        val acceptIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("notification_action", "accept")
+            putExtra("case_id", caseId)
+            putExtra("notification_id", id)
         }
-        val acceptPi = PendingIntent.getBroadcast(
+        val acceptPi = PendingIntent.getActivity(
             context, id * 2 + 1, acceptIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

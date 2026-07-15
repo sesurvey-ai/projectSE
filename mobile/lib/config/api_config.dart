@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConfig {
   // backend production (มือถือพนักงานจริงชี้ที่นี่)
@@ -22,6 +23,13 @@ class ApiConfig {
     } catch (_) {
       _isEmulator = false;
     }
+    // persist base URL ให้ฝั่ง native อ่าน (LocationHelper.kt อ่าน 'flutter.api_base_url'
+    // ตอนตอบ request_location จาก FCM) — เดิมไม่มีใครเขียนคีย์นี้ → native fallback ไป IP dev
+    // ที่ hardcode ไว้ ทำให้แผนที่สดของ admin ไม่ทำงานบน production เลย
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('api_base_url', baseUrl);
+    } catch (_) {}
   }
 
   // dev override: ชี้ backend เอง (เช่น ทดสอบมือถือจริงกับ backend local ผ่าน adb reverse)

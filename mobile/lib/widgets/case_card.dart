@@ -43,8 +43,10 @@ class CaseCard extends StatelessWidget {
 
   String _formatDate(String dateStr) {
     try {
-      final date = DateTime.parse(dateStr);
-      return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      // backend ส่ง ISO string เป็น UTC (ลงท้าย Z) — ต้อง .toLocal() ก่อน ไม่งั้นเวลาช้ากว่าไทย 7 ชม.
+      final date = DateTime.parse(dateStr).toLocal();
+      // ปีแสดงเป็น พ.ศ. ให้ตรงกับส่วนอื่นของแอป
+      return '${date.day}/${date.month}/${date.year + 543} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return dateStr;
     }

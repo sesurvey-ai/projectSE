@@ -24,6 +24,10 @@ class FcmService {
 
   bool _listenersAttached = false; // subscribe stream ครั้งเดียว (initialize ถูกเรียกซ้ำทุก re-login)
 
+  // generation ของ session — เพิ่มทุกครั้งที่ logout/re-init เพื่อยกเลิก retry ที่ค้างท่อ
+  // (เครื่องแชร์: retry ของ user เก่าตื่นมาหลัง user ใหม่ login แล้ว PUT token ตายทับของใหม่)
+  int _sessionEpoch = 0;
+
   FcmService(this._apiService);
 
   Future<void> initialize() async {
@@ -56,6 +60,7 @@ class FcmService {
 
   Future<void> _initializeFirebase() async {
     try {
+      _sessionEpoch++; // เริ่ม session ใหม่ → retry เก่าที่ยังค้างท่อหมดสิทธิ์ส่ง
       final messaging = FirebaseMessaging.instance;
 
       // subscribe listeners ครั้งเดียวตลอดอายุแอป — กัน listener ซ้อนเมื่อ initialize() ถูกเรียกซ้ำ (re-login/session-expiry)
@@ -108,7 +113,8 @@ class FcmService {
       final String? token = await messaging.getToken();
       if (token != null) {
         debugPrint('FCM token obtained');
-        await _sendTokenToServer(token);
+        // ไม่ await — _sendTokenToServer มี retry ในตัว (สูงสุด ~26s) อย่าบล็อก flow login/เปิดแอป
+        _sendTokenToServer(token);
       }
 
       // Check if app was opened from a terminated state via notification
@@ -126,6 +132,7 @@ class FcmService {
 
   // ล้าง FCM token ของเครื่อง (logout) → server ที่เก็บ token เดิมไว้จะส่ง noti ไม่ถึงอีก (กัน noti ข้าม user บนเครื่องแชร์)
   Future<void> clearToken() async {
+    _sessionEpoch++; // ยกเลิก retry ส่ง token ที่ค้างอยู่ — token กำลังจะถูก invalidate
     try {
       await FirebaseMessaging.instance.deleteToken();
     } catch (e) {
@@ -133,11 +140,22 @@ class FcmService {
     }
   }
 
-  Future<void> _sendTokenToServer(String token) async {
-    try {
-      await _apiService.updateFcmToken(token);
-    } catch (e) {
-      debugPrint('Failed to send FCM token to server: $e');
+  // ส่ง token แบบ retry + backoff — เดิมล้มครั้งเดียว (login บนเน็ตห่วย) = กลืนเงียบ
+  // → server เก็บ token เก่า/ว่าง ทั้ง session ไม่ได้รับงานใหม่เลยจนกว่าจะเปิดแอปใหม่
+  Future<void> _sendTokenToServer(String token, {int attempts = 4}) async {
+    final epoch = _sessionEpoch; // ผูก retry กับ session ตอนเริ่ม — logout/re-login แล้วหยุดทันที
+    var delay = const Duration(seconds: 2);
+    for (var i = 0; i < attempts; i++) {
+      if (epoch != _sessionEpoch) return; // session เปลี่ยน (logout/user ใหม่) → token นี้ตายแล้ว
+      try {
+        await _apiService.updateFcmToken(token);
+        return;
+      } catch (e) {
+        debugPrint('Failed to send FCM token (attempt ${i + 1}/$attempts): $e');
+        if (i == attempts - 1) return; // หมดโควตา — เปิดแอป/checkAuth ครั้งหน้าจะส่งใหม่เอง
+        await Future.delayed(delay);
+        delay *= 3; // 2s → 6s → 18s
+      }
     }
   }
 

@@ -80,6 +80,13 @@ class MainActivity : FlutterActivity() {
         val action = intent?.getStringExtra("notification_action") ?: return
         val caseId = intent.getIntExtra("case_id", 0)
 
+        // ปุ่มรับงานบน notification bar เข้ามาทางนี้ตรง ๆ (ไม่ผ่าน receiver — Android 12+ บล็อก
+        // trampoline) → ต้องปิด notification + หยุดเสียง alarm เองที่นี่
+        if (intent.hasExtra("notification_id")) {
+            NotificationHelper.cancelNotification(this, intent.getIntExtra("notification_id", 0))
+            intent.removeExtra("notification_id")
+        }
+
         intent.removeExtra("notification_action")
         intent.removeExtra("case_id")
 

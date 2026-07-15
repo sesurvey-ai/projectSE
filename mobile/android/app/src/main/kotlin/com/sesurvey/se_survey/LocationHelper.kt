@@ -140,20 +140,61 @@ object LocationHelper {
         }.start()
     }
 
+    // ส่ง FCM token ใหม่ขึ้น server — เรียกจาก onNewToken (token หมุนตอนแอปถูก kill ฝั่ง Dart ไม่ทันเห็น)
+    // ต้องมี JWT ค้างอยู่ (= ยังล็อกอิน) ไม่งั้นข้าม — Dart จะส่งเองตอน login ครั้งถัดไป
+    fun postFcmTokenToServer(context: Context, fcmToken: String) {
+        Thread {
+            try {
+                val baseUrl = getBaseUrl(context)
+                val token = getAuthToken(context)
+                if (token == null) {
+                    Log.w(TAG, "No auth token, skip posting FCM token")
+                    return@Thread
+                }
+
+                val url = URL("$baseUrl/api/users/me/fcm-token")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "PUT"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("Authorization", "Bearer $token")
+                conn.doOutput = true
+                conn.connectTimeout = 10000
+                conn.readTimeout = 10000
+
+                val json = JSONObject().apply {
+                    put("fcm_token", fcmToken)
+                }
+
+                val writer = OutputStreamWriter(conn.outputStream)
+                writer.write(json.toString())
+                writer.flush()
+                writer.close()
+
+                val code = conn.responseCode
+                Log.d(TAG, "PUT fcm-token response: $code")
+                conn.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "PUT fcm-token error: $e")
+            }
+        }.start()
+    }
+
     private fun getBaseUrl(context: Context): String {
-        // อ่าน base URL จาก SharedPreferences (Flutter เซ็ตไว้) หรือใช้ค่า default
+        // อ่าน base URL จาก SharedPreferences — ApiConfig.init() ฝั่ง Flutter เขียน 'api_base_url' ไว้ทุกครั้งที่เปิดแอป
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val url = prefs.getString("flutter.api_base_url", null)
         if (url != null) return url
 
-        // Fallback: ลองเชื่อม emulator ก่อน ถ้าไม่ได้ใช้ IP จริง
+        // Fallback (คีย์ยังไม่ถูกเขียน เช่น อัปเดตแอปแล้วยังไม่ได้เปิดสักครั้ง):
+        // ลอง emulator ก่อน ไม่ได้ → production (เดิม fallback เป็น IP LAN ของเครื่อง dev
+        // ที่ hardcode ไว้ → เครื่องจริงส่งตำแหน่ง + token ไปผิดที่และล้มเหลวเงียบทุกครั้ง)
         return try {
             val socket = java.net.Socket()
             socket.connect(java.net.InetSocketAddress("10.0.2.2", 3001), 500)
             socket.close()
             "http://10.0.2.2:3001"
         } catch (_: Exception) {
-            "http://192.168.1.135:3001"
+            "https://api.sesurvey.cloud"
         }
     }
 
