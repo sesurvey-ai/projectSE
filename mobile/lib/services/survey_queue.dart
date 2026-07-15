@@ -60,7 +60,10 @@ Future<int> flushSurveyQueue() async {
       // สำคัญ: อย่าเหมา 4xx ทั้งหมด — 401 (token หมดอายุใน background), 408/429 (timeout/rate-limit), 413 = กู้ได้ ต้องคงไว้ retry
       // ไม่งั้น background flush จะทิ้งงานสำรวจที่ส่งเสร็จแล้วทิ้งเงียบ ๆ (ข้อมูลหายกู้ไม่ได้)
       const permanent = [400, 403, 404, 409, 410, 422];
-      if (code != null && permanent.contains(code)) done.add(entry.key);
+      // ยกเว้น: 404 จาก endpoint อัปโหลด (/upload-folder*) = backend ยังไม่มี route v2
+      // (rollback/deploy ไม่ทัน) — กู้ได้เมื่อ backend อัปเดต ห้ามทิ้งงานถาวร
+      final uploadRouteMissing = code == 404 && e.requestOptions.path.contains('/upload-folder');
+      if (code != null && permanent.contains(code) && !uploadRouteMissing) done.add(entry.key);
       // 401/408/413/429 / 5xx / network (response == null) → คงไว้ลองใหม่รอบหน้า
     } catch (_) {
       // error อื่น → คงไว้ลองใหม่

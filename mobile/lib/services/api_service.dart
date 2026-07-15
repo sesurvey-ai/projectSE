@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +15,10 @@ class ApiService {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
       connectTimeout: ApiConfig.timeout,
+      // sendTimeout จำเป็นสำหรับอัปโหลด: receiveTimeout เริ่มนับ "หลัง" ส่ง body เสร็จ
+      // ถ้า socket ค้างระหว่างส่งรูป (เน็ตมือถือสะดุด) โดยไม่มี sendTimeout = จอหมุนค้างไม่มีกำหนด
+      // และ branch DioExceptionType.sendTimeout ที่ดักไว้เข้าคิวออฟไลน์ไม่มีวันทำงาน
+      sendTimeout: ApiConfig.timeout,
       receiveTimeout: ApiConfig.timeout,
       headers: {
         'Content-Type': 'application/json',
@@ -69,7 +74,11 @@ class ApiService {
     // (submitSurveyOffline: network → เข้าคิว retry, อื่นๆ → โชว์ error) ไม่กลืนเงียบเหมือนเดิม
     final claimNo = data['claim_no']?.toString() ?? '';
     final surveyJobNo = data['survey_job_no']?.toString() ?? '';
-    await uploadCaseFolder(caseId, claimNo, surveyJobNo);
+    // path รูปจาก draft (photo_paths_local) — กวาดรูปที่ตกค้างนอกโฟลเดอร์ประจำเคสด้วย
+    final localPaths = data['photo_paths_local'] is List
+        ? (data['photo_paths_local'] as List).map((e) => e.toString()).toList()
+        : const <String>[];
+    await uploadCaseFolder(caseId, claimNo, surveyJobNo, extraPaths: localPaths);
 
     return _dio.post('/api/cases/$caseId/survey', data: {
       ...data,
@@ -77,28 +86,78 @@ class ApiService {
     });
   }
 
-  Future<void> uploadCaseFolder(int caseId, String claimNo, String surveyJobNo) async {
-    // ใช้ fallback folder เดียวกับที่ฝั่งฟอร์มเซฟรูป (case_<id>/job_<id>) เมื่อเลขเคลม/เซอร์เวย์ว่าง
-    // เดิม gate ด้วย "ต้องไม่ว่างทั้งคู่" → รูปไม่ถูกอัปเลยเมื่อ OCR อ่านเลขไม่ออก
-    final claimFolder = (claimNo.isNotEmpty ? claimNo : 'case_$caseId').replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
-    final jobFolder = (surveyJobNo.isNotEmpty ? surveyJobNo : 'job_$caseId').replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
-    final folder = Directory('/storage/emulated/0/Download/SE_Survey/$claimFolder/$jobFolder');
-    if (!folder.existsSync()) return; // ไม่มีโฟลเดอร์ = ไม่มีรูป (ไม่ใช่ error → ไม่ throw)
+  Future<void> uploadCaseFolder(int caseId, String claimNo, String surveyJobNo,
+      {List<String> extraPaths = const []}) async {
+    // โฟลเดอร์หลักผูกกับ case id (immutable) — เลขเคลม/เลขเซอร์เวย์แก้ไขได้ระหว่างทาง
+    // (เปิดฟอร์มออฟไลน์/แก้เลขที่ OCR อ่านผิด) เคยทำให้รูปที่ถ่ายไว้หลุดจากการอัปโหลดทั้งชุดแบบเงียบ
+    // ยังกวาดโฟลเดอร์ระบบเก่า (ตั้งชื่อตามเลขเคลม) + path รูปใน draft เผื่อรูปตกค้าง
+    String san(String s) => s.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+    const root = '/storage/emulated/0/Download/SE_Survey';
+    final canonical = Directory('$root/case_$caseId/job_$caseId');
+    final legacyClaim = claimNo.isNotEmpty ? san(claimNo) : 'case_$caseId';
+    final legacyJob = surveyJobNo.isNotEmpty ? san(surveyJobNo) : 'job_$caseId';
+    final legacy = Directory('$root/$legacyClaim/$legacyJob');
 
-    final files = folder.listSync().whereType<File>().toList();
-    if (files.isEmpty) return; // ไม่มีรูป (surveyor ไม่ถ่าย) → ปกติ
-
-    final formData = FormData();
-    formData.fields.add(MapEntry('folder', claimFolder));
-    for (final file in files) {
-      formData.files.add(MapEntry(
-        'photos',
-        await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
-      ));
+    // รวมไฟล์ (dedup ตามชื่อ — canonical ชนะ): canonical → legacy → path จาก draft
+    final byName = <String, File>{};
+    void collect(Iterable<File> files) {
+      for (final f in files) {
+        byName.putIfAbsent(f.path.split('/').last, () => f);
+      }
+    }
+    if (canonical.existsSync()) collect(canonical.listSync().whereType<File>());
+    if (legacy.path != canonical.path && legacy.existsSync()) {
+      collect(legacy.listSync().whereType<File>());
+    }
+    collect(extraPaths.map(File.new).where((f) => f.existsSync()));
+    if (byName.isEmpty) {
+      // ไม่มีไฟล์ในเครื่อง — อาจเป็น "ผู้ใช้ลบรูปทั้งหมด" → ยังต้องส่ง keep ว่างให้ server
+      // prune ไฟล์เก่าทิ้ง (ไม่งั้น submit จะ re-link รูปที่ลบแล้วกลับเข้ารายงาน)
+      final syncForm = FormData();
+      syncForm.fields.add(MapEntry('folder', 'case_$caseId'));
+      syncForm.fields.add(MapEntry('keep', '[]'));
+      try {
+        await _dio.post('/api/cases/$caseId/upload-folder-v2', data: syncForm);
+      } on DioException catch (e) {
+        // backend เก่าไม่มี v2 → 404: ไม่มีรูปจะส่งอยู่แล้ว ไม่ต้อง fail submit
+        if (e.response?.statusCode != 404) rethrow;
+      }
+      return;
     }
 
-    // ไม่ห่อ try/catch — ให้ error (network/HTTP) เด้งขึ้นไปเป็นส่วนหนึ่งของการ submit
-    await _dio.post('/api/cases/$caseId/upload-folder', data: formData);
+    // ถาม server ว่ามีไฟล์ไหนแล้ว → ข้าม (เน็ตหลุดกลาง upload แล้ว retry ไม่ต้องเริ่มจากศูนย์)
+    // ถามไม่ได้ (server เก่า/เน็ตสะดุด) → อัปโหลดทั้งหมด (server เขียนทับชื่อเดิม ไม่เกิดไฟล์ซ้ำ)
+    var existing = const <String>{};
+    try {
+      final r = await _dio.get('/api/cases/$caseId/upload-folder');
+      existing = ((r.data['data']?['files'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toSet();
+    } catch (_) {}
+
+    // ส่งทีละไฟล์ — เดิมยัดทุกรูปใน POST เดียว: เน็ตสะดุดที่ 95% = ทิ้งทุก byte แล้วเริ่มใหม่หมด
+    // keep = ชื่อไฟล์ทั้งชุดปัจจุบัน แนบทุกคำขอ → server ลบไฟล์ที่ผู้ใช้ลบออกจากแอปแล้ว (prune)
+    final keep = jsonEncode(byName.keys.toList());
+    for (final entry in byName.entries) {
+      // arrival.jpg ชื่อคงที่ (ถ่ายใหม่เนื้อไฟล์เปลี่ยน) → ส่งซ้ำเสมอ ไม่ skip
+      if (existing.contains(entry.key) && entry.key != 'arrival.jpg') continue;
+      final formData = FormData();
+      formData.fields.add(MapEntry('folder', 'case_$caseId'));
+      formData.fields.add(MapEntry('keep', keep));
+      formData.files.add(MapEntry(
+        'photos',
+        await MultipartFile.fromFile(entry.value.path, filename: entry.key),
+      ));
+      // ไม่ห่อ try/catch — ให้ error (network/HTTP) เด้งขึ้นไปเป็นส่วนหนึ่งของการ submit
+      // (ไฟล์ที่ส่งสำเร็จแล้วอยู่บน server → รอบหน้า skip เอง)
+      // ใช้ v2 (per-file + keep) — เจอ backend เก่า (ไม่มี v2) = 404 ดัง ๆ ปลอดภัยกว่าโดน v1 wipe เงียบ
+      await _dio.post('/api/cases/$caseId/upload-folder-v2', data: formData);
+    }
+    // คำขอปิดท้าย (keep อย่างเดียว ไม่มีไฟล์) — ครอบเคส "ข้ามทุกไฟล์" ให้ prune รูปที่ถูกลบเสมอ
+    final syncForm = FormData();
+    syncForm.fields.add(MapEntry('folder', 'case_$caseId'));
+    syncForm.fields.add(MapEntry('keep', keep));
+    await _dio.post('/api/cases/$caseId/upload-folder-v2', data: syncForm);
   }
 
   Future<Response> updateSurvey(int caseId, Map<String, dynamic> data) async {

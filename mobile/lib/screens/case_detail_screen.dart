@@ -114,16 +114,6 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     }
   }
 
-  String get _claimNo {
-    final cn = _report?['claim_no']?.toString() ?? '';
-    return cn.isNotEmpty ? cn.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'case_${widget.caseId}';
-  }
-
-  String get _surveyJobNo {
-    final sj = _report?['survey_job_no']?.toString() ?? '';
-    return sj.isNotEmpty ? sj.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_') : 'job_${widget.caseId}';
-  }
-
   Future<String> _getCaseFolder() async {
     // ขอ storage permission บน Android
     if (Platform.isAndroid) {
@@ -132,7 +122,10 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         debugPrint('Storage permission denied');
       }
     }
-    final downloadDir = Directory('/storage/emulated/0/Download/SE_Survey/$_claimNo/$_surveyJobNo');
+    // โฟลเดอร์รูปประจำเคสผูกกับ case id (immutable) — สอดคล้องกับหน้าฟอร์มสำรวจ/การอัปโหลด
+    // (เดิมตั้งชื่อตามเลขเคลมที่แก้ไขได้ → รูป arrival/OCR หลุดจากโฟลเดอร์ที่ถูกอัปโหลด)
+    final downloadDir = Directory(
+        '/storage/emulated/0/Download/SE_Survey/case_${widget.caseId}/job_${widget.caseId}');
     if (!downloadDir.existsSync()) downloadDir.createSync(recursive: true);
     return downloadDir.path;
   }

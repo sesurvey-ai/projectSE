@@ -220,7 +220,14 @@ router.get('/:id/detail', auth, requireRole('checker', 'surveyor'), caseControll
 router.get('/:id/export-xml', auth, requireRole('surveyor', 'checker', 'admin', 'callcenter'), caseController.exportXml);
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
 router.post('/:id/folder', auth, requireRole('surveyor'), caseController.createCaseFolder);
-router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 100), caseController.uploadCaseFolder);
+// เพดาน 500 ต่อคำขอ (เดิม 100 — เคสรูปเยอะจากแอปเก่าที่ส่งทีเดียวทั้งชุดชนเพดานแล้วส่งงานไม่ได้เลย)
+router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 500), caseController.uploadCaseFolder);
+// v2: แอปใหม่ส่งทีละไฟล์ + field keep (ชุดชื่อไฟล์ปัจจุบัน — server prune ไฟล์ที่ผู้ใช้ลบ)
+// แยก route จาก v1 โดยตั้งใจ: ถ้าแอปใหม่เจอ backend เก่า (ไม่มี v2) จะ 404 ดัง ๆ แทนที่จะโดน
+// พฤติกรรม v1 (wipe ทั้งโฟลเดอร์ต่อคำขอ) ลบรูปที่เพิ่งอัปโหลดไปเงียบ ๆ
+router.post('/:id/upload-folder-v2', auth, requireRole('surveyor'), upload.array('photos', 500), caseController.uploadCaseFolder);
+// รายชื่อไฟล์ที่มีแล้ว — แอปใหม่ใช้ skip ไฟล์ที่อัปโหลดสำเร็จก่อนหน้า (resume เมื่อเน็ตหลุดกลางทาง)
+router.get('/:id/upload-folder', auth, requireRole('surveyor'), caseController.listCaseFolder);
 router.post('/:id/arrival', auth, requireRole('surveyor'), caseController.confirmArrival);
 router.post('/:id/decline', auth, requireRole('surveyor'), caseController.declineCase);
 router.get('/:id/arrival', auth, requireRole('surveyor', 'checker'), caseController.getArrivalPhotos);

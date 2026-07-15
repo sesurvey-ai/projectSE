@@ -69,7 +69,13 @@ export const caseController = {
     const caseId = parseInt(req.params.id as string);
     const folder = req.body?.folder || '';
     const files = req.files as Express.Multer.File[];
-    const result = await caseService.uploadCaseFolder(caseId, folder, files || [], req.user);
+    const result = await caseService.uploadCaseFolder(caseId, folder, files || [], req.user, req.body?.keep);
+    sendSuccess(res, result);
+  }),
+
+  listCaseFolder: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.listCaseFolder(caseId, req.user);
     sendSuccess(res, result);
   }),
 

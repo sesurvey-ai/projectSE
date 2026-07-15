@@ -78,12 +78,11 @@ export const caseService = {
         );
       }
 
-      // ย้ายรูป OCR เข้าโฟลเดอร์ {เลขเคลม}/{เลขเรื่องเซอร์เวย์}/
+      // ย้ายรูป OCR เข้าโฟลเดอร์ประจำเคส — ผูกกับ case id (immutable) เท่านั้น
+      // (เดิมตั้งชื่อตามเลขเคลมที่แก้ไขได้ → เลขเปลี่ยนแล้วโฟลเดอร์ upload/submit ไม่ตรงกัน รูปหลุดเงียบ)
       const ocrImagePaths = data.ocr_image_paths as string[] | undefined;
-      const claimNo = (data.claim_no as string || '').trim();
-      const surveyJobNo = (data.survey_job_no as string || '').trim();
-      const claimFolder = claimNo ? claimNo.replace(/[/\\?%*:|"<>]/g, '_') : `case_${newCase.id}`;
-      const jobFolder = surveyJobNo ? surveyJobNo.replace(/[/\\?%*:|"<>]/g, '_') : `job_${newCase.id}`;
+      const claimFolder = `case_${newCase.id}`;
+      const jobFolder = `job_${newCase.id}`;
 
       if (ocrImagePaths && Array.isArray(ocrImagePaths) && ocrImagePaths.length > 0) {
         const fs = await import('fs');
@@ -291,16 +290,18 @@ export const caseService = {
     return result.rows[0];
   },
 
-  async uploadCaseFolder(caseId: number, folderName: string, files: Express.Multer.File[], user?: CaseUser) {
+  // keepRaw = JSON array ของชื่อไฟล์ทั้งชุดที่ client ตั้งใจให้เหลืออยู่ (แอปใหม่ส่งทีละไฟล์ + keep ทุกคำขอ)
+  // ไม่ส่ง keep = แอปเก่าส่งทุกไฟล์ในคำขอเดียว → ใช้พฤติกรรมเดิม (ล้าง non-OCR ทั้งหมดก่อนเขียนใหม่)
+  async uploadCaseFolder(caseId: number, _folderName: string, files: Express.Multer.File[], user?: CaseUser, keepRaw?: unknown) {
     // กัน IDOR: uploadCaseFolder ลบรูปเดิมของเคสก่อนเขียนใหม่ — surveyor ต้องเป็นเจ้าของเคสเท่านั้น
     const own = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
     if (own.rows.length === 0) throw new NotFoundError('Case not found');
     assertCaseAccess(own.rows[0], user);
 
-    // ดึงเลขเคลม + เลขเรื่องเซอร์เวย์
-    const reportResult = await db.query('SELECT claim_no, survey_job_no FROM survey_reports WHERE case_id = $1', [caseId]);
-    const claimNo = (reportResult.rows[0]?.claim_no || folderName || `case_${caseId}`).replace(/[/\\?%*:|"<>]/g, '_');
-    const surveyJobNo = (reportResult.rows[0]?.survey_job_no || `job_${caseId}`).replace(/[/\\?%*:|"<>]/g, '_');
+    // โฟลเดอร์เก็บรูปผูกกับ case id (immutable) เท่านั้น — เดิมใช้เลขเคลมจาก DB ซึ่งแก้ไขได้
+    // → เลขเปลี่ยนระหว่าง upload กับ submit แล้วรูปหลุดจากรายงานทั้งชุดแบบเงียบ (folderName จาก client ไม่ใช้แล้ว)
+    const claimNo = `case_${caseId}`;
+    const surveyJobNo = `job_${caseId}`;
 
     const fs = await import('fs');
     const pathMod = await import('path');
@@ -336,11 +337,23 @@ export const caseService = {
       ocrFiles.add(pathMod.default.basename(fp));
     }
 
+    // keep set (ชื่อไฟล์ base เท่านั้น — กัน path traversal)
+    let keep: Set<string> | null = null;
+    if (typeof keepRaw === 'string' && keepRaw) {
+      try {
+        const arr = JSON.parse(keepRaw);
+        if (Array.isArray(arr)) keep = new Set(arr.map((x) => pathMod.default.basename(String(x))));
+      } catch { /* keep พัง → ปฏิบัติเหมือนไม่ส่ง */ }
+    }
+
     // ลบรูปเก่าในโฟลเดอร์ย่อย ยกเว้นรูป OCR
+    // มี keep → ลบเฉพาะไฟล์ที่หลุดจากชุดปัจจุบันของ client (ผู้ใช้ลบรูปในแอป) — ไฟล์ที่อัปโหลดไว้แล้ว
+    // จากคำขอก่อนหน้า (per-file + retry) ต้องคงอยู่; ไม่มี keep → ล้าง non-OCR ทั้งหมด (แอปเก่า)
     try {
       const existing = fs.default.readdirSync(subFolderPath);
       for (const f of existing) {
         if (ocrFiles.has(f)) continue; // ข้ามรูป OCR
+        if (keep !== null && keep.has(f)) continue; // ยังอยู่ในชุดของ client → เก็บไว้
         try { fs.default.unlinkSync(pathMod.default.join(subFolderPath, f)); } catch { /* skip */ }
       }
     } catch { /* folder may not exist */ }
@@ -359,14 +372,28 @@ export const caseService = {
     return { folder: `${claimNo}/${surveyJobNo}`, files: movedFiles };
   },
 
+  // รายชื่อไฟล์ที่อยู่ในโฟลเดอร์เคสบน server แล้ว — แอปใช้ข้ามไฟล์ที่อัปโหลดสำเร็จไปก่อนหน้า
+  // (per-file upload: เน็ตหลุดกลางทางแล้ว retry ไม่ต้องเริ่มจากศูนย์)
+  async listCaseFolder(caseId: number, user?: CaseUser) {
+    const own = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
+    if (own.rows.length === 0) throw new NotFoundError('Case not found');
+    assertCaseAccess(own.rows[0], user);
+
+    const fs = await import('fs');
+    const pathMod = await import('path');
+    const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, `case_${caseId}`, `job_${caseId}`);
+    let files: string[] = [];
+    try { files = fs.default.readdirSync(folderPath); } catch { /* ยังไม่มีโฟลเดอร์ = ยังไม่มีไฟล์ */ }
+    return { files };
+  },
+
   async createCaseFolder(caseId: number, user?: CaseUser) {
     const own = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
     if (own.rows.length === 0) throw new NotFoundError('Case not found');
     assertCaseAccess(own.rows[0], user);
 
-    const reportResult = await db.query('SELECT claim_no FROM survey_reports WHERE case_id = $1', [caseId]);
-    const claimNo = reportResult.rows[0]?.claim_no || `case_${caseId}`;
-    const folderName = claimNo.replace(/[/\\?%*:|"<>]/g, '_');
+    // โฟลเดอร์ผูกกับ case id (immutable) — สอดคล้องกับ uploadCaseFolder/submitSurvey
+    const folderName = `case_${caseId}`;
 
     const fs = await import('fs');
     const path = await import('path');
@@ -472,7 +499,12 @@ export const caseService = {
       const values = provided.map(f => bindVal(f, data[f]));
 
       // ตรวจสอบว่ามี report อยู่แล้วหรือไม่ (สร้างจาก callcenter)
-      const existingReport = await client.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+      // เก็บเลขเคลม/เลขเซอร์เวย์ "ก่อน UPDATE" ไว้ด้วย — ใช้ตามหาโฟลเดอร์รูประบบเก่า (legacy) ตอน re-link
+      const existingReport = await client.query(
+        'SELECT id, claim_no, survey_job_no FROM survey_reports WHERE case_id = $1', [caseId]
+      );
+      const oldClaimNo = existingReport.rows[0]?.claim_no as string | undefined;
+      const oldSurveyJobNo = existingReport.rows[0]?.survey_job_no as string | undefined;
       let report;
       if (existingReport.rows.length > 0) {
         if (provided.length > 0) {
@@ -497,40 +529,57 @@ export const caseService = {
       }
 
       // บันทึก survey_photos จากโฟลเดอร์ที่อัปโหลดมาจากมือถือ (ข้ามรูป OCR)
-      const claimNo = (data.claim_no as string || '').replace(/[/\\?%*:|"<>]/g, '_') || `case_${caseId}`;
-      const surveyJobNo = (data.survey_job_no as string || '').replace(/[/\\?%*:|"<>]/g, '_') || `job_${caseId}`;
+      // โฟลเดอร์หลักผูกกับ case id (immutable) — เดิมใช้เลขเคลมจาก payload ซึ่งอาจไม่ตรงกับโฟลเดอร์
+      // ที่ upload เขียนไว้ (เลขถูกแก้ระหว่างทาง) → รูปหลุดจากรายงานทั้งชุดแบบเงียบ
+      // ยังกวาดโฟลเดอร์ระบบเก่า (ตามเลขเคลม payload/DB ก่อน UPDATE) เผื่อไฟล์จากแอป/การอัปโหลดรุ่นเก่า
+      const san = (s: unknown) => {
+        const v = String(s ?? '').replace(/[/\\?%*:|"<>]/g, '_');
+        return (v === '.' || v === '..') ? '_' : v; // กัน path traversal ('..' หลุด resolve ออกนอก uploads)
+      };
+      const candidateFolders = [...new Set([
+        `case_${caseId}/job_${caseId}`,
+        `${san(data.claim_no) || `case_${caseId}`}/${san(data.survey_job_no) || `job_${caseId}`}`,
+        `${san(oldClaimNo) || `case_${caseId}`}/${san(oldSurveyJobNo) || `job_${caseId}`}`,
+      ])];
       const fs = await import('fs');
       const pathMod = await import('path');
-      const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, claimNo, surveyJobNo);
 
       // ลบ survey_photos เดิมของ report ก่อน re-insert — กันรูปซ้ำเมื่อ submit ซ้ำ (idempotent)
       await client.query('DELETE FROM survey_photos WHERE report_id = $1', [report.id]);
 
-      if (fs.default.existsSync(folderPath)) {
-        // ดึงชื่อไฟล์ OCR เพื่อข้าม
-        const ocrResult = await client.query(
-          "SELECT file_path FROM case_images WHERE case_id = $1 AND image_type = 'ocr'", [caseId]
-        );
-        const ocrFileNames = new Set(ocrResult.rows.map((r: any) => pathMod.default.basename(r.file_path)));
+      // ดึงชื่อไฟล์ OCR เพื่อข้าม
+      const ocrResult = await client.query(
+        "SELECT file_path FROM case_images WHERE case_id = $1 AND image_type = 'ocr'", [caseId]
+      );
+      const ocrFileNames = new Set(ocrResult.rows.map((r: any) => pathMod.default.basename(r.file_path)));
 
-        // หมวดของรูป — มือถือส่ง photo_categories (local-path → หมวด); จับคู่ด้วย basename
-        const catByName: Record<string, string> = {};
-        const rawCats = data.photo_categories;
-        if (rawCats && typeof rawCats === 'object') {
-          for (const [k, v] of Object.entries(rawCats as Record<string, unknown>)) {
-            if (typeof v === 'string' && v) catByName[pathMod.default.basename(k)] = v;
-          }
+      // หมวดของรูป — มือถือส่ง photo_categories (local-path → หมวด); จับคู่ด้วย basename
+      const catByName: Record<string, string> = {};
+      const rawCats = data.photo_categories;
+      if (rawCats && typeof rawCats === 'object') {
+        for (const [k, v] of Object.entries(rawCats as Record<string, unknown>)) {
+          if (typeof v === 'string' && v) catByName[pathMod.default.basename(k)] = v;
         }
+      }
 
-        const filesInFolder = fs.default.readdirSync(folderPath);
-        for (const fileName of filesInFolder) {
-          if (ocrFileNames.has(fileName)) continue; // ข้ามรูป OCR
-          const photoPath = `${claimNo}/${surveyJobNo}/${fileName}`;
+      // ใช้ "โฟลเดอร์แรกที่มีอยู่จริง" เพียงโฟลเดอร์เดียว — ห้าม merge ข้ามโฟลเดอร์ และห้าม
+      // fall-through เมื่อโฟลเดอร์มีอยู่แต่ว่าง: โฟลเดอร์ที่มีอยู่ = upload ระบบใหม่เขียน/prune แล้ว
+      // เนื้อในคือชุดปัจจุบันของผู้ใช้ (0 รูป = ตั้งใจลบทั้งหมด) — ถ้าไปสแกนโฟลเดอร์เก่าต่อ
+      // รูป stale ก่อน migrate จะฟื้นคืนเข้ารายงาน
+      const uploadRoot = pathMod.default.resolve(env.UPLOAD_DIR);
+      for (const rel of candidateFolders) {
+        const folderPath = pathMod.default.resolve(env.UPLOAD_DIR, rel);
+        // containment: เลขเคลมมาจาก payload/DB — ห้ามชี้ออกนอก uploads
+        if (folderPath !== uploadRoot && !folderPath.startsWith(uploadRoot + pathMod.default.sep)) continue;
+        if (!fs.default.existsSync(folderPath)) continue; // ไม่เคยสร้าง → ลองโฟลเดอร์ระบบเก่า
+        const photoFiles = fs.default.readdirSync(folderPath).filter((f) => !ocrFileNames.has(f));
+        for (const fileName of photoFiles) {
           await client.query(
             'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
-            [report.id, photoPath, catByName[fileName] || null]
+            [report.id, `${rel}/${fileName}`, catByName[fileName] || null]
           );
         }
+        break; // โฟลเดอร์แรกที่มีอยู่จริง = แหล่งความจริง แม้ว่าง
       }
 
       // guard status ใน UPDATE (idempotent) — ถ้าถูก submit คู่ขนานจน status เปลี่ยนไปแล้ว → 0 rows → rollback
