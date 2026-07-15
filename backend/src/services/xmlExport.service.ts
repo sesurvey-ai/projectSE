@@ -79,6 +79,18 @@ const CAUSE: Record<string, string> = {
   'สูญเสียการควบคุม': '9996',
 };
 
+// ประเภทผู้บาดเจ็บ (ddlPerson_Type) — se kPersonTypes → รหัส 2 หลัก (02/04 คู่กรณี = inferred)
+const PERSON_TYPE: Record<string, string> = {
+  'ผู้ขับขี่รถประกัน': '01', 'ผู้โดยสารรถประกัน': '03',
+  'ผู้ขับขี่คู่กรณี': '02', 'ผู้โดยสารคู่กรณี': '04', 'บุคคลภายนอก': '05',
+};
+
+// ระดับการบาดเจ็บ (ddlWounded_Type) — se kWounds ตรง 1:1 ตามลำดับ
+const WOUND: Record<string, string> = {
+  'เล็กน้อย': '01', 'ปานกลาง': '02', 'สาหัส': '03', 'ทุพพลภาพ': '04',
+  'เสียชีวิตก่อนรักษา': '05', 'เสียชีวิตหลังรักษา': '06',
+};
+
 // ยี่ห้อรถ (ไทย → code พอร์ทัล, ใช้ต่อกับ CTYPECODE เป็น CMFG เช่น T+ISUZU=TISUZU)
 const BRAND: Record<string, string> = {
   'อีซูซุ': 'ISUZU', 'โตโยต้า': 'TOYOTA', 'ฮอนด้า': 'HONDA', 'นิสสัน': 'NISSAN', 'มิตซูบิชิ': 'MITSUBISHI',
@@ -194,15 +206,57 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     '</TXN_SURV_CAR>';
 }
 
+// ทรัพย์สินเสียหาย 1 ชิ้น (จาก damaged_property JSONB)
+// ⚠️ tag ของ TXN_SURV_ASSET เป็น inferred (ยังไม่มี sample XML ที่มีทรัพย์สินยืนยันชื่อ tag จริง)
+//    — การเทียบ/กรอกฟอร์มจริงใช้ element id ของ ทรัพย์สิน.html (ดู fill-form tool) ซึ่งแม่นแน่นอน
+function buildAsset(a: Row): string {
+  return '<TXN_SURV_ASSET>' +
+    el('OWNER', a.owner_name) +
+    el('OWNER_TEL', a.owner_phone) +
+    el('OWNER_ADDRESS', a.owner_address) +
+    el('ASSET_DESC', a.item) +          // txtAsset_Desc — ชื่อทรัพย์สิน
+    el('ASSET_DAMAGE', a.detail) +      // txtAsset_Damage — รายละเอียดความเสียหาย
+    el('ASSET_DAMAGE_CAUSE', a.cause) + // txtAsset_Damage_Cause
+    el('COST_DAMAGE', a.estimated_cost) +
+    '</TXN_SURV_ASSET>';
+}
+
+// ผู้บาดเจ็บ 1 คน (จาก injured_persons JSONB) — tag inferred เช่นเดียวกับ ASSET
+function buildInjure(p: Row): string {
+  return '<TXN_SURV_INJURE>' +
+    el('INJ_NAME', p.name) +
+    el('INJ_GENDER', String(p.gender ?? '').trim().toUpperCase()) +
+    el('INJ_CARDID', p.cid) +
+    el('INJ_AGE', p.age) +
+    el('PERSON_TYPE', lookup(PERSON_TYPE, p.person_type)) +
+    el('WOUNDED_TYPE', lookup(WOUND, p.wound_level)) +
+    el('DRI_RELATION', lookup(RELATION, p.relation)) +
+    el('INJ_ADDRESS', p.address) +
+    el('INJ_TELNO', p.phone) +
+    el('CAR_REGNO', p.car_reg) +
+    el('INJ_JOB', p.occupation) +
+    el('INJ_WORK_PLACE', p.work_place) +
+    el('INJ_POSITION', p.position) +
+    el('INJ_INCOME', p.income) +
+    el('INJ_HOS_NAME', p.hospital) +
+    el('INJ_INJURE', p.symptom) +       // txtInj_Injure — อาการบาดเจ็บ
+    el('INJ_FROM_DATE', toXmlCE(p.treat_from)) +
+    el('INJ_TO_DATE', toXmlCE(p.treat_to)) +
+    el('INJ_COST', p.treat_cost) +
+    '</TXN_SURV_INJURE>';
+}
+
+const parseJsonArr = (v: unknown): Row[] =>
+  Array.isArray(v) ? v
+    : (typeof v === 'string' && v.trim().startsWith('[') ? (() => { try { return JSON.parse(v); } catch { return []; } })() : []);
+
 /**
- * สร้าง INSERT_SURV_REPORT_XML จาก survey_reports row (+ opposing_parties ที่ parse แล้ว)
+ * สร้าง INSERT_SURV_REPORT_XML จาก survey_reports row (+ opposing_parties/damaged_property/injured_persons ที่ parse แล้ว)
  */
 export function generateSurveyXml(r: Row): string {
-  const opponents: Row[] = Array.isArray(r.opposing_parties)
-    ? r.opposing_parties
-    : (typeof r.opposing_parties === 'string' && r.opposing_parties.trim().startsWith('[')
-        ? (() => { try { return JSON.parse(r.opposing_parties); } catch { return []; } })()
-        : []);
+  const opponents = parseJsonArr(r.opposing_parties);
+  const assets = parseJsonArr(r.damaged_property);
+  const injured = parseJsonArr(r.injured_persons);
 
   const report = '<TXN_SURV_REPORT>' +
     el('SURV_JOBNO', r.survey_job_no) +
@@ -256,6 +310,8 @@ export function generateSurveyXml(r: Row): string {
     '</TXN_SURV_REPORT>';
 
   const cars = buildCar(r, 0, true) + opponents.map((o, i) => buildCar(o, i + 1, false)).join('');
+  const assetBlocks = assets.map(buildAsset).join('');   // ทรัพย์สินเสียหาย (0..n)
+  const injureBlocks = injured.map(buildInjure).join(''); // ผู้บาดเจ็บ (0..n)
 
   const bill = '<TXN_SURV_BILL>' +
     el('SUR_INVEST', r.claim_fee_price ?? '0.00') +
@@ -268,5 +324,5 @@ export function generateSurveyXml(r: Row): string {
     el('SUR_PERCENT_CLAIM', r.claim_fee_percent ?? '0.00') +
     '</TXN_SURV_BILL>';
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<INSERT_SURV_REPORT_XML>${report}${cars}${bill}</INSERT_SURV_REPORT_XML>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<INSERT_SURV_REPORT_XML>${report}${cars}${assetBlocks}${injureBlocks}${bill}</INSERT_SURV_REPORT_XML>`;
 }

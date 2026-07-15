@@ -1,0 +1,12 @@
+{
+  "name": "insurer-forms-fill",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QA tool: fill real insurer e-Survey HTML forms with se-survey data for 1:1 comparison",
+  "scripts": {
+    "fill": "node fill-forms.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  }
+}
