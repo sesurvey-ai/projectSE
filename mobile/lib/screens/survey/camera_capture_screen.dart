@@ -32,7 +32,16 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsB
     _setup();
   }
 
-  Future<void> _setup() async {
+  // serialize การเปิดกล้อง — _setup ซ้อนกันได้ (เปลี่ยนความละเอียด + lifecycle resume พร้อมกัน)
+  // สอง CameraController initialize คู่ ตัวที่ setState ทีหลังทับตัวแรกโดยไม่ dispose = กล้องค้าง lock
+  Future<void>? _setupQueue;
+  Future<void> _setup() {
+    final next = (_setupQueue ?? Future.value()).then((_) => _doSetup());
+    _setupQueue = next;
+    return next;
+  }
+
+  Future<void> _doSetup() async {
     try {
       if (_cams.isEmpty) _cams = await availableCameras();
       if (_cams.isEmpty) { setState(() => _error = 'ไม่พบกล้องบนอุปกรณ์'); return; }
@@ -41,7 +50,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> with WidgetsB
       await ctrl.initialize();
       try { await ctrl.setFlashMode(_flashOn ? FlashMode.torch : FlashMode.off); } catch (_) {}
       if (!mounted) { await ctrl.dispose(); return; }
+      final replaced = _controller; // กันหลุด: ถ้ามีตัวเก่าค้าง ต้อง dispose ก่อนทับ
       setState(() { _controller = ctrl; _error = null; });
+      if (replaced != null) { try { await replaced.dispose(); } catch (_) {} }
     } catch (e) {
       if (mounted) setState(() => _error = 'เปิดกล้องไม่ได้');
     }

@@ -79,6 +79,13 @@ class IncomingCallActivity : Activity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // งานใหม่ (คนละเคส) เข้ามาทับหน้าเต็มจอของงานแรกที่ยังไม่ได้กดรับ — ถ้าไม่ทำอะไร
+        // งานแรกจะหายเงียบ (ไม่มีทั้งจอและ bar เพราะ onResume ของมันเคย cancel bar ไปแล้ว)
+        // → โพสต์ notification bar ของงานแรกคืนก่อนสลับข้อมูลเป็นงานใหม่
+        val newCaseId = intent.getIntExtra("case_id", caseId)
+        if (newCaseId != caseId && caseId != 0 && !actionTaken) {
+            NotificationHelper.showFallbackNotification(this, notificationId, "งานสำรวจใหม่", caseId, incidentLocation, claimNo, insuranceCompany)
+        }
         setIntent(intent)
         bindData(intent)
     }

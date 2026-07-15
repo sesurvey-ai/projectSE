@@ -86,11 +86,13 @@ object NotificationHelper {
         startAlarm(context)
     }
 
-    // โพสต์ notification bar (fallback) — เรียกจาก IncomingCallActivity.onStop เมื่อหน้าเต็มจอหลุดไปพื้นหลัง
+    // โพสต์ notification bar (fallback) — เรียกจาก IncomingCallActivity (onStop/onNewIntent)
+    // withFullScreen=false: ทางนี้ต้องการแค่ bar — ถ้าพ่วง FSI ตอนจอยังดับ ระบบจะยิงหน้าเต็มจอ
+    // ของ "งานเก่า" กลับมาทับงานใหม่ที่เพิ่งเด้ง (ping-pong ระหว่างสองเคส)
     fun showFallbackNotification(context: Context, id: Int, title: String, caseId: Int,
                                  incidentLocation: String, claimNo: String, insuranceCompany: String) {
         ensureChannel(context)
-        showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany)
+        showNotificationBar(context, id, title, caseId, incidentLocation, claimNo, insuranceCompany, withFullScreen = false)
     }
 
     // ยกเลิกเฉพาะ notification bar (ไม่หยุดเสียง alarm) — ใช้ตอนหน้าเต็มจอกลับมาแสดง (onResume)
@@ -121,7 +123,8 @@ object NotificationHelper {
 
     // ── Notification Bar ──────────────────────────────────────────
     private fun showNotificationBar(context: Context, id: Int, title: String,
-                                     caseId: Int, incidentLocation: String, claimNo: String, insuranceCompany: String) {
+                                     caseId: Int, incidentLocation: String, claimNo: String, insuranceCompany: String,
+                                     withFullScreen: Boolean = true) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Custom layout
@@ -182,7 +185,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setCustomContentView(compactView)
             .setCustomBigContentView(customView)
@@ -194,8 +197,8 @@ object NotificationHelper {
             .setOngoing(true)
             .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500))
             .setContentIntent(tapPi)
-            .setFullScreenIntent(tapPi, true)
-            .build()
+        if (withFullScreen) builder.setFullScreenIntent(tapPi, true)
+        val notification = builder.build()
 
         nm.notify(id, notification)
         Log.d("NotifHelper", "Notification bar shown: caseId=$caseId")

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,10 @@ import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ล็อกแนวตั้งทั้งแอป — UI ทุกหน้าออกแบบเป็น portrait และพรีวิวกล้อง hardcode สลับ
+  // width/height แบบ portrait (จอหมุนแล้วพรีวิวเพี้ยน); ล็อกทิศเดียวตัดปัญหาทั้งชุด
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // เฉพาะที่ "จำเป็นจริง ๆ ก่อน UI": ตรวจ emulator/มือถือจริง (เร็ว ~ms, ใช้ตั้ง baseUrl)
   await ApiConfig.init();

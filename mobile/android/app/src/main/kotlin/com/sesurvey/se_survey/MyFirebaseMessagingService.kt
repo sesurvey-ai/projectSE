@@ -1,5 +1,7 @@
 package com.sesurvey.se_survey
 
+import android.content.Context
+import android.os.PowerManager
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -41,6 +43,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun handleRequestLocation(data: Map<String, String>) {
         val requestId = data["request_id"] ?: ""
         Log.d("FCM-Native", "Location request received: request_id=$requestId")
+
+        // ถือ partial wakelock คร่อม GPS (สูงสุด 8s) + POST (fire-and-forget อีก ~20s) —
+        // ใน Doze หน้าต่างประมวลผลจาก high-priority FCM สั้น: onMessageReceived คืนแล้ว
+        // process โดน freeze ก่อน POST เสร็จ = พิกัดหายเงียบ; acquire แบบมี timeout ปล่อยเองกันค้าง
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "se_survey:location_request")
+                .acquire(35_000L)
+        } catch (e: Exception) {
+            Log.w("FCM-Native", "wakelock acquire failed: $e")
+        }
 
         // จับ GPS สด (ให้แม่นเท่าตอนลงเวลา) — getFreshLocation จะ fallback เป็น last known ให้เองถ้าจับไม่ทัน
         val location = LocationHelper.getFreshLocation(this)
