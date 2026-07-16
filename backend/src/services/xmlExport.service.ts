@@ -10,6 +10,8 @@
  *    ที่บันทึกไว้ → v1 ปล่อยว่าง (เหมือน ACC_DISTRICTID ในตัวอย่าง) จนกว่าจะได้ตารางอำเภอครบจากประกัน
  */
 
+import { EMCS_DISTRICTS } from '../data/emcsDistricts';
+
 // ── SE Survey identity ในพอร์ทัล (คงที่ต่อบริษัท; override ได้ผ่าน env) ──
 const SURVEY_ID = process.env.PORTAL_SURVEY_ID || '5684';
 const SURVEY_BR_ID = process.env.PORTAL_SURVEY_BR_ID || '1602';
@@ -115,6 +117,29 @@ const lookup = (table: Record<string, string>, v: unknown): string => {
 
 const provinceCode = (v: unknown) => lookup(PROVINCE, v);
 
+// รหัสอำเภอ/เขต 4 หลักของพอร์ทัล (cascade รายจังหวัด) — ชื่อใน dropdown แอปมาจาก source เดียว
+// กับพอร์ทัล → เคสปกติ match แบบ exact; fallback normalize ไว้รับข้อมูลเก่า/ที่ OCR พิมพ์เอง
+const districtId = (provinceRaw: unknown, districtRaw: unknown): string => {
+  const prov = provinceCode(provinceRaw);
+  const table = prov ? EMCS_DISTRICTS[prov] : undefined;
+  const raw = String(districtRaw ?? '').trim();
+  if (!table || !raw) return '';
+  if (table[raw]) return table[raw];
+  const norm = (s: string) => s.replace(/\s+/g, '').replace(/^กิ่งอำเภอ|^อำเภอ|^เขต/, '');
+  const n = norm(raw);
+  for (const [name, code] of Object.entries(table)) {
+    if (norm(name) === n) return code;
+  }
+  // "เมือง<ชื่อจังหวัด>" (ชุดข้อมูลราชการ/OCR) → พอร์ทัลใช้ชื่อสั้น "อำเภอเมือง" ไม่มีจังหวัดต่อท้าย
+  const provName = String(provinceRaw ?? '').replace(/\s+|ฯ/g, '');
+  if (n === `เมือง${provName}`) {
+    for (const [name, code] of Object.entries(table)) {
+      if (norm(name) === 'เมือง') return code;
+    }
+  }
+  return ''; // หาไม่เจอ = ปล่อยว่าง (เหมือนเดิม) ดีกว่าใส่รหัสผิด
+};
+
 // se date "dd/mm/yyyy(พ.ศ.)" หรือ "dd/mm/yyyy|HH:mm" หรือแยก date+time → {d,m,yBE,hh,mi}
 function parseSe(dateStr: unknown, timeStr?: unknown): { d: string; m: string; yBE: number; hh: string; mi: string } | null {
   let ds = String(dateStr ?? '').trim();
@@ -180,7 +205,8 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('DRI_AGE', insured ? c.driver_age : c.age) +
     el('DRI_RELATION', lookup(RELATION, insured ? c.driver_relation : c.relation)) +
     el('DRI_ADDRESS', insured ? c.driver_address : c.address) +
-    el('DRI_DISTRICTID', '') + // ⚠️ ต้องการตารางอำเภอครบจากประกัน
+    // คู่กรณีไม่มีช่องอำเภอในแอป (มีแต่ที่อยู่) → ปล่อยว่างเฉพาะคู่กรณี
+    el('DRI_DISTRICTID', insured ? districtId(c.driver_province, c.driver_district) : '') +
     el('DRI_PROVINCEID', provinceCode(insured ? c.driver_province : c.province)) +
     el('DRI_TELNO', insured ? c.driver_phone : c.phone) +
     el('DRI_CARDID', insured ? c.driver_id_card : c.cid) +
@@ -273,7 +299,7 @@ export function generateSurveyXml(r: Row): string {
     el('POLICY_END', toXmlBE(r.policy_end)) +
     el('ACC_DATE', toXmlCE(r.acc_date, r.acc_time)) +
     el('ACC_PLACE', r.acc_place) +
-    el('ACC_DISTRICTID', '') + // ⚠️ ต้องการตารางอำเภอครบ
+    el('ACC_DISTRICTID', districtId(r.acc_province, r.acc_district)) +
     el('ACC_PROVINCEID', provinceCode(r.acc_province)) +
     el('ACC_DETAIL', r.acc_detail) +
     el('ACC_CAUSE', lookup(FAULT, r.acc_fault)) +
