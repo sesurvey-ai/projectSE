@@ -5,7 +5,9 @@
  * โครงสร้าง 3 บล็อก: TXN_SURV_REPORT (1) · TXN_SURV_CAR (รถประกัน + คู่กรณีซ้ำได้) · TXN_SURV_BILL (1)
  * โค้ด/ตาราง lookup สกัดจาก dropdown ของหน้า frmSurvey.aspx (กรอกรายละเอียดอุบัติเหตุ.html) ตรงเป๊ะ
  *
- * ⚠️ gotcha วันที่: POLICY_START/END เก็บ "พ.ศ." ดิบ ส่วนกลุ่ม ACC_ กับ DRI_ เป็น "ค.ศ." (ลบ 543) — ดู toXmlBE/toXmlCE
+ * วันที่ทุกกลุ่ม (POLICY_/ACC_/DRI_) เป็น "ค.ศ." — ยืนยันจาก export จริงของ EMCS 2 ไฟล์
+ * (se-autokey/runs/xml/*.txt: POLICY_START=2025-11-03 ฯลฯ); ความเชื่อเดิมว่า POLICY_* เป็น พ.ศ.
+ * มาจาก sample แรกที่หาไม่เจอแล้ว และขัดกับไฟล์จริงทั้งคู่ → ใช้ ค.ศ. ทั้งหมด
  * ⚠️ เขต/อำเภอ (ACC_DISTRICTID/DRI_DISTRICTID): พอร์ทัลใช้รหัส 4 หลัก cascade รายจังหวัด — ตารางเต็มไม่มีในไฟล์
  *    ที่บันทึกไว้ → v1 ปล่อยว่าง (เหมือน ACC_DISTRICTID ในตัวอย่าง) จนกว่าจะได้ตารางอำเภอครบจากประกัน
  */
@@ -81,13 +83,17 @@ const CAUSE: Record<string, string> = {
   'สูญเสียการควบคุม': '9996',
 };
 
-// ประเภทผู้บาดเจ็บ (ddlPerson_Type) — se kPersonTypes → รหัส 2 หลัก (02/04 คู่กรณี = inferred)
+// ประเภทผู้บาดเจ็บใน XML — รหัสจริงจากไฟล์ export ของ EMCS (ยืนยันโดย parser se-autokey
+// surv_xml.py:90 จากเคลมจริง): DV = ผู้ขับขี่รถประกัน, ON = คู่กรณี/บุคคลอื่นทั้งหมด
+// (ระวัง: dropdown บนฟอร์ม ddlPerson_Type ใช้รหัส 01-05 คนละชุดกับ XML — ห้ามสลับ)
 const PERSON_TYPE: Record<string, string> = {
-  'ผู้ขับขี่รถประกัน': '01', 'ผู้โดยสารรถประกัน': '03',
-  'ผู้ขับขี่คู่กรณี': '02', 'ผู้โดยสารคู่กรณี': '04', 'บุคคลภายนอก': '05',
+  'ผู้ขับขี่รถประกัน': 'DV', 'ผู้โดยสารรถประกัน': 'ON',
+  'ผู้ขับขี่คู่กรณี': 'ON', 'ผู้โดยสารคู่กรณี': 'ON', 'บุคคลภายนอก': 'ON',
 };
 
 // ระดับการบาดเจ็บ (ddlWounded_Type) — se kWounds ตรง 1:1 ตามลำดับ
+// ⚠️ รหัส 01-06 มาจาก dropdown ฟอร์ม — ยังไม่มีไฟล์ export จริงที่มีผู้บาดเจ็บมายืนยันว่า
+// XML ใช้ชุดเดียวกัน (PERSON_TYPE พิสูจน์แล้วว่า XML อาจใช้คนละชุดกับฟอร์ม)
 const WOUND: Record<string, string> = {
   'เล็กน้อย': '01', 'ปานกลาง': '02', 'สาหัส': '03', 'ทุพพลภาพ': '04',
   'เสียชีวิตก่อนรักษา': '05', 'เสียชีวิตหลังรักษา': '06',
@@ -124,17 +130,19 @@ const districtId = (provinceRaw: unknown, districtRaw: unknown): string => {
   const table = prov ? EMCS_DISTRICTS[prov] : undefined;
   const raw = String(districtRaw ?? '').trim();
   if (!table || !raw) return '';
-  if (table[raw]) return table[raw];
+  // export จริงของ EMCS ใช้เลขไม่มีศูนย์นำ ("0407" ใน dropdown → "407" ในไฟล์) — ทำให้ตรงกัน
+  const fmt = (code: string) => String(parseInt(code, 10));
+  if (table[raw]) return fmt(table[raw]);
   const norm = (s: string) => s.replace(/\s+/g, '').replace(/^กิ่งอำเภอ|^อำเภอ|^เขต/, '');
   const n = norm(raw);
   for (const [name, code] of Object.entries(table)) {
-    if (norm(name) === n) return code;
+    if (norm(name) === n) return fmt(code);
   }
   // "เมือง<ชื่อจังหวัด>" (ชุดข้อมูลราชการ/OCR) → พอร์ทัลใช้ชื่อสั้น "อำเภอเมือง" ไม่มีจังหวัดต่อท้าย
   const provName = String(provinceRaw ?? '').replace(/\s+|ฯ/g, '');
   if (n === `เมือง${provName}`) {
     for (const [name, code] of Object.entries(table)) {
-      if (norm(name) === 'เมือง') return code;
+      if (norm(name) === 'เมือง') return fmt(code);
     }
   }
   return ''; // หาไม่เจอ = ปล่อยว่าง (เหมือนเดิม) ดีกว่าใส่รหัสผิด
@@ -154,12 +162,7 @@ function parseSe(dateStr: unknown, timeStr?: unknown): { d: string; m: string; y
   const tm = /^(\d{1,2}):(\d{2})/.exec(ts);
   return { d: dm[1].padStart(2, '0'), m: dm[2].padStart(2, '0'), yBE, hh: tm ? tm[1].padStart(2, '0') : '00', mi: tm ? tm[2] : '00' };
 }
-// POLICY_* : คงปี พ.ศ.
-const toXmlBE = (dateStr: unknown, timeStr?: unknown): string => {
-  const p = parseSe(dateStr, timeStr); if (!p) return '';
-  return `${p.yBE}-${p.m}-${p.d} ${p.hh}:${p.mi}:00`;
-};
-// ACC_*/DRI_* : แปลงเป็น ค.ศ. (ลบ 543)
+// วันที่ใน XML ทุก field : แปลงเป็น ค.ศ. (ลบ 543) — ยืนยันจาก export จริง (ดู header)
 const toXmlCE = (dateStr: unknown, timeStr?: unknown): string => {
   const p = parseSe(dateStr, timeStr); if (!p) return '';
   return `${p.yBE - 543}-${p.m}-${p.d} ${p.hh}:${p.mi}:00`;
@@ -234,43 +237,43 @@ function buildCar(c: Row, type: number, insured: boolean): string {
 }
 
 // ทรัพย์สินเสียหาย 1 ชิ้น (จาก damaged_property JSONB)
-// ⚠️ tag ของ TXN_SURV_ASSET เป็น inferred (ยังไม่มี sample XML ที่มีทรัพย์สินยืนยันชื่อ tag จริง)
-//    — การเทียบ/กรอกฟอร์มจริงใช้ element id ของ ทรัพย์สิน.html (ดู fill-form tool) ซึ่งแม่นแน่นอน
-function buildAsset(a: Row): string {
+// ชื่อ tag ตาม parser ของ se-autokey (autokey/surv_xml.py) ที่ map จากไฟล์ export จริง
+function buildAsset(a: Row, seq: number): string {
   return '<TXN_SURV_ASSET>' +
-    el('OWNER', a.owner_name) +
-    el('OWNER_TEL', a.owner_phone) +
-    el('OWNER_ADDRESS', a.owner_address) +
-    el('ASSET_DESC', a.item) +          // txtAsset_Desc — ชื่อทรัพย์สิน
-    el('ASSET_DAMAGE', a.detail) +      // txtAsset_Damage — รายละเอียดความเสียหาย
-    el('ASSET_DAMAGE_CAUSE', a.cause) + // txtAsset_Damage_Cause
+    el('ASSET_SEQ', seq) +
+    el('ASSET_DESC', a.item) +          // ชื่อทรัพย์สิน
+    el('ASSET_DAMAGE', a.detail) +      // รายละเอียดความเสียหาย
+    el('ASSET_DAMAGE_CAUSE', a.cause) +
     el('COST_DAMAGE', a.estimated_cost) +
+    el('OWNER', a.owner_name) +
+    el('ADDRESS', a.owner_address) +
+    el('TEL_NO', a.owner_phone) +
     '</TXN_SURV_ASSET>';
 }
 
-// ผู้บาดเจ็บ 1 คน (จาก injured_persons JSONB) — tag inferred เช่นเดียวกับ ASSET
-function buildInjure(p: Row): string {
-  return '<TXN_SURV_INJURE>' +
-    el('INJ_NAME', p.name) +
-    el('INJ_GENDER', String(p.gender ?? '').trim().toUpperCase()) +
-    el('INJ_CARDID', p.cid) +
-    el('INJ_AGE', p.age) +
-    el('PERSON_TYPE', lookup(PERSON_TYPE, p.person_type)) +
-    el('WOUNDED_TYPE', lookup(WOUND, p.wound_level)) +
-    el('DRI_RELATION', lookup(RELATION, p.relation)) +
-    el('INJ_ADDRESS', p.address) +
-    el('INJ_TELNO', p.phone) +
+// ผู้บาดเจ็บ 1 คน (จาก injured_persons JSONB)
+// tag จริงคือ TXN_SURV_INJ + ชื่อ field สั้น (NAME/AGE/CITIZEN_ID/...) — ยืนยันจาก parser
+// ของ se-autokey (surv_xml.py:91 อ้างเคลมจริง 2026013144960); ชุดเดิม TXN_SURV_INJURE/INJ_*
+// เป็น inferred ที่ผิด → importer จะมองไม่เห็นผู้บาดเจ็บทั้ง section
+// (work_place/position/income/from-to/relation ไม่มีใน field ที่ยืนยันแล้ว — ตัดออก
+//  จนกว่าจะมีไฟล์จริงที่มี tag พวกนี้)
+function buildInjure(p: Row, seq: number): string {
+  return '<TXN_SURV_INJ>' +
+    el('INJ_SEQ', seq) +
+    el('NAME', p.name) +
+    el('AGE', p.age) +
+    el('CITIZEN_ID', p.cid) +
+    el('JOB', p.occupation) +
     el('CAR_REGNO', p.car_reg) +
-    el('INJ_JOB', p.occupation) +
-    el('INJ_WORK_PLACE', p.work_place) +
-    el('INJ_POSITION', p.position) +
-    el('INJ_INCOME', p.income) +
-    el('INJ_HOS_NAME', p.hospital) +
-    el('INJ_INJURE', p.symptom) +       // txtInj_Injure — อาการบาดเจ็บ
-    el('INJ_FROM_DATE', toXmlCE(p.treat_from)) +
-    el('INJ_TO_DATE', toXmlCE(p.treat_to)) +
-    el('INJ_COST', p.treat_cost) +
-    '</TXN_SURV_INJURE>';
+    el('ADDRESS', p.address) +
+    el('TEL_NO', p.phone) +
+    el('HOS_NAME', p.hospital) +
+    el('COST', p.treat_cost) +
+    el('INJURE', p.symptom) +           // อาการบาดเจ็บ
+    el('GENDER', String(p.gender ?? '').trim().toUpperCase()) +
+    el('PERSON_TYPE', lookup(PERSON_TYPE, p.person_type)) + // DV=ผู้ขับรถประกัน, ON=บุคคลอื่น
+    el('WOUNDED_TYPE', lookup(WOUND, p.wound_level)) +
+    '</TXN_SURV_INJ>';
 }
 
 const parseJsonArr = (v: unknown): Row[] =>
@@ -295,8 +298,8 @@ export function generateSurveyXml(r: Row): string {
     el('ACC_POLICY_NO', r.policy_no) +
     el('ASSURED_NAME', r.assured_name) +
     el('POLICY_TYPE', policyTypeCode(r.policy_type)) +
-    el('POLICY_START', toXmlBE(r.policy_start)) +
-    el('POLICY_END', toXmlBE(r.policy_end)) +
+    el('POLICY_START', toXmlCE(r.policy_start)) +
+    el('POLICY_END', toXmlCE(r.policy_end)) +
     el('ACC_DATE', toXmlCE(r.acc_date, r.acc_time)) +
     el('ACC_PLACE', r.acc_place) +
     el('ACC_DISTRICTID', districtId(r.acc_province, r.acc_district)) +
@@ -337,8 +340,8 @@ export function generateSurveyXml(r: Row): string {
     '</TXN_SURV_REPORT>';
 
   const cars = buildCar(r, 0, true) + opponents.map((o, i) => buildCar(o, i + 1, false)).join('');
-  const assetBlocks = assets.map(buildAsset).join('');   // ทรัพย์สินเสียหาย (0..n)
-  const injureBlocks = injured.map(buildInjure).join(''); // ผู้บาดเจ็บ (0..n)
+  const assetBlocks = assets.map((a, i) => buildAsset(a, i + 1)).join('');   // ทรัพย์สินเสียหาย (0..n)
+  const injureBlocks = injured.map((p, i) => buildInjure(p, i + 1)).join(''); // ผู้บาดเจ็บ (0..n)
 
   const bill = '<TXN_SURV_BILL>' +
     el('SUR_INVEST', r.claim_fee_price ?? '0.00') +
