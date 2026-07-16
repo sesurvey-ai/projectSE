@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { downloadCaseXml } from '@/lib/downloadXml';
 
 interface CaseRow {
   id: number;
@@ -31,6 +32,20 @@ export default function CallcenterDashboard() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [recent, setRecent] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [xmlBusyId, setXmlBusyId] = useState<number | null>(null);
+
+  // ดาวน์โหลดไฟล์ XML สำหรับ import เข้า EMCS — โชว์เฉพาะเคสที่สำรวจแล้ว
+  const handleXml = async (c: CaseRow) => {
+    if (xmlBusyId !== null) return;
+    setXmlBusyId(c.id);
+    try {
+      await downloadCaseXml(c.id, c.claim_no);
+    } catch {
+      alert('สร้างไฟล์ XML ไม่สำเร็จ (เคสนี้อาจยังไม่มีข้อมูลรายงาน)');
+    } finally {
+      setXmlBusyId(null);
+    }
+  };
 
   useEffect(() => {
     api.get('/api/cases/stats')
@@ -107,6 +122,7 @@ export default function CallcenterDashboard() {
                     <th className="px-5 py-3 font-semibold text-gray-600">เลขรับแจ้ง</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">ช่างสำรวจ</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">ครั้งที่</th>
+                    <th className="px-5 py-3 font-semibold text-gray-600">ไฟล์</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -126,11 +142,25 @@ export default function CallcenterDashboard() {
                           {c.surveyor_first_name ? `${c.surveyor_first_name} ${c.surveyor_last_name || ''}` : '-'}
                         </td>
                         <td className="px-5 py-3 text-gray-500">{c.visit_count || 1}</td>
+                        <td className="px-5 py-3">
+                          {(c.status === 'surveyed' || c.status === 'reviewed') ? (
+                            <button
+                              onClick={() => handleXml(c)}
+                              disabled={xmlBusyId !== null}
+                              title="ดาวน์โหลดไฟล์ XML สำหรับ import เข้าพอร์ทัลประกัน (EMCS)"
+                              className="px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                              {xmlBusyId === c.id ? 'กำลังสร้าง...' : '⬇ XML'}
+                            </button>
+                          ) : (
+                            <span className="text-gray-300 text-xs">-</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                   {recent.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-400">ยังไม่มีเคส</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-8 text-center text-gray-400">ยังไม่มีเคส</td></tr>
                   )}
                 </tbody>
               </table>

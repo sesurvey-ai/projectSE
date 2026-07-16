@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import { downloadCaseXml } from '@/lib/downloadXml';
 
 interface Case {
   id: number;
@@ -29,7 +30,21 @@ export default function AdminCasesPage() {
   const [searchInput, setSearchInput] = useState(''); // ช่องพิมพ์ (debounce → search)
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [xmlBusyId, setXmlBusyId] = useState<number | null>(null);
   const reqSeq = useRef(0); // กัน response เก่าทับใหม่ (พิมพ์เร็ว → คำขอเก่ามาช้า)
+
+  // ดาวน์โหลดไฟล์ XML สำหรับ import เข้า EMCS — โชว์เฉพาะเคสที่สำรวจแล้ว
+  const handleXml = async (id: number) => {
+    if (xmlBusyId !== null) return;
+    setXmlBusyId(id);
+    try {
+      await downloadCaseXml(id);
+    } catch {
+      alert('สร้างไฟล์ XML ไม่สำเร็จ (เคสนี้อาจยังไม่มีข้อมูลรายงาน)');
+    } finally {
+      setXmlBusyId(null);
+    }
+  };
 
   // debounce ช่องค้นหา → search
   useEffect(() => {
@@ -143,6 +158,16 @@ export default function AdminCasesPage() {
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(c.created_at)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {(c.status === 'surveyed' || c.status === 'reviewed') && (
+                        <button
+                          onClick={() => handleXml(c.id)}
+                          disabled={xmlBusyId !== null}
+                          title="ดาวน์โหลดไฟล์ XML สำหรับ import เข้าพอร์ทัลประกัน (EMCS)"
+                          className="px-3 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                        >
+                          {xmlBusyId === c.id ? 'กำลังสร้าง...' : 'XML'}
+                        </button>
+                      )}
                       <Link href={`/admin/cases/${c.id}/edit`} className="px-3 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors">
                         แก้ไข
                       </Link>
