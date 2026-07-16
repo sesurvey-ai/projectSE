@@ -27,6 +27,22 @@ class AuthService {
     return user;
   }
 
+  /// ดึงข้อมูล user ล่าสุดจาก server แล้วอัปเดต cache — ข้อมูลใน prefs ค้างตั้งแต่ตอน login
+  /// (เช่น admin เพิ่งเติมรหัสพนักงานใน DB จะไม่โชว์จนกว่า re-login) คืน null เมื่อออฟไลน์/พลาด
+  Future<User?> refreshUser() async {
+    try {
+      final res = await _apiService.getMe();
+      final data = res.data['data'];
+      if (data is! Map<String, dynamic>) return null;
+      final user = User.fromJson(data);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', jsonEncode(user.toJson()));
+      return user;
+    } catch (_) {
+      return null; // เน็ตล่ม → ใช้ cache เดิมต่อ
+    }
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');

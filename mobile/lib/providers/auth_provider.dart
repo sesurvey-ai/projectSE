@@ -52,6 +52,11 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
 
       if (_token != null) {
+        // refresh ข้อมูล user จาก server แบบไม่บล็อก — cache ใน prefs ค้างตั้งแต่ login
+        // (เช่นรหัสพนักงานที่เพิ่งถูกเติมใน DB จะโชว์เมื่อเปิดแอปครั้งถัดไป ไม่ต้อง re-login)
+        _authService.refreshUser().then((u) {
+          if (u != null && _token != null) { _user = u; notifyListeners(); }
+        });
         await _ensureServicesInited(); // Firebase/Notification/Consult ต้องพร้อมก่อน FCM (ทำหลัง UI ขึ้น)
         await _initializeFcm();
         _initConsultSync();

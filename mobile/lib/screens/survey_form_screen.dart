@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
+import '../providers/auth_provider.dart';
 import '../config/api_config.dart';
 import '../services/auth_token.dart';
 import '../app_icons.dart';
@@ -761,6 +762,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       }
     } catch (_) {}
     _loaded = true; // โหลดเสร็จ → เปิดให้ autosave/dispose ทำงาน (draft ว่างหลังจากนี้ = ผู้ใช้ตั้งใจลบจริง)
+
+    // เติม "ผู้สำรวจภัย" อัตโนมัติ = "รหัสพนักงาน ชื่อ นามสกุล" ของคนที่ล็อกอิน (เมื่อช่องยังว่าง)
+    // รูปแบบนี้คือ reference ผู้สำรวจที่ใช้อ้างอิงในพอร์ทัลประกัน — ไหลเข้า ACC_SURV ใน XML ตอน export
+    if (mounted && _accSurveyorCtl.text.trim().isEmpty) {
+      final u = context.read<AuthProvider>().user;
+      if (u != null) {
+        final full = '${u.code.isNotEmpty ? '${u.code} ' : ''}${u.firstName} ${u.lastName}'.trim();
+        if (full.isNotEmpty) {
+          _accSurveyorCtl.text = full;
+          _scheduleAutosave();
+        }
+      }
+    }
   }
 
   // fromDraft: การตีความ null ต่างกัน — draft เก็บ null = "ผู้ใช้ล้างค่า" (ต้องล้างตาม)

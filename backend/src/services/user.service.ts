@@ -4,7 +4,7 @@ import { NotFoundError } from '../middleware/errorHandler';
 export const userService = {
   async getProfile(userId: number) {
     const result = await db.query(
-      'SELECT id, username, first_name, last_name, role, supervisor_id, is_active, created_at FROM users WHERE id = $1',
+      'SELECT id, username, first_name, last_name, role, code, supervisor_id, is_active, created_at FROM users WHERE id = $1',
       [userId]
     );
 
