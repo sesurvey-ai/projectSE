@@ -18,6 +18,8 @@ const envSchema = z.object({
   GEMINI_LOCATION: z.string().optional(),      // region ของ Vertex (default us-central1)
   GEMINI_MODEL: z.string().optional(),         // ชื่อโมเดล (default gemini-3.1-flash-lite)
   PORT: z.coerce.number().default(3001),
+  // service token สำหรับเครื่องมือภายใน (se-autokey ดึง XML/รูป) — ไม่ตั้ง = ปิด integration routes
+  INTEGRATION_TOKEN: z.string().min(24).optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./src/uploads'),
