@@ -40,6 +40,7 @@ router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Re
   const r = await db.query(
     `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company,
             (u.first_name || ' ' || u.last_name) AS surveyor_name,
+            to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at,
             c.created_at
        FROM cases c
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
@@ -51,17 +52,40 @@ router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Re
   res.json({ success: true, data: { cases: r.rows } });
 }));
 
-// meta ของเคสเดียว (บริษัทประกัน/เลขต่าง ๆ) — SE-AutoKey ใช้ resolve รหัสบริษัทตอน import
+// meta ของเคสเดียว (บริษัทประกัน/เลขต่าง ๆ + สถานะนำเข้า) — SE-AutoKey ใช้ resolve รหัสบริษัท
+// และ "เช็คกันซ้ำก่อนเริ่ม" (emcs_imported_at ไม่ null = ห้าม import อีก — EMCS สร้างเรื่องซ้ำ)
 router.get('/cases/:id', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
   const { db } = await import('../config/database');
   const r = await db.query(
-    `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company, sr.insurance_branch
+    `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company, sr.insurance_branch,
+            to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at, c.emcs_esurvey_no
        FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id
       WHERE c.id = $1`, [caseId]
   );
   if (r.rows.length === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
   res.json({ success: true, data: r.rows[0] });
+}));
+
+// SE-AutoKey แจ้งว่า import เข้า EMCS สำเร็จแล้ว → mark ถาวร (กันกดซ้ำทุกช่องทาง)
+// atomic: WHERE emcs_imported_at IS NULL — สองงานแข่งกัน คนที่สองได้ already=true
+router.post('/cases/:id/emcs-imported', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const caseId = parseInt(req.params.id as string);
+  const esurveyNo = String((req.body?.esurvey_no ?? '')).slice(0, 50) || null;
+  const { db } = await import('../config/database');
+  const r = await db.query(
+    `UPDATE cases SET emcs_imported_at = NOW() AT TIME ZONE 'Asia/Bangkok', emcs_esurvey_no = COALESCE($2, emcs_esurvey_no)
+      WHERE id = $1 AND emcs_imported_at IS NULL
+      RETURNING id`, [caseId, esurveyNo]
+  );
+  if (r.rowCount === 0) {
+    const cur = await db.query(
+      `SELECT to_char(emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS at, emcs_esurvey_no FROM cases WHERE id = $1`, [caseId]);
+    if (cur.rows.length === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
+    res.json({ success: true, data: { already: true, ...cur.rows[0] } });
+    return;
+  }
+  res.json({ success: true, data: { already: false } });
 }));
 
 // รายการรูปของเคส (survey_photos ที่ผูกกับ report) — SE-AutoKey ใช้โหลดไปอัปเข้า EMCS

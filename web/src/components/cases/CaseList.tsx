@@ -14,6 +14,7 @@ interface Case {
   surveyor_last_name?: string;
   visit_count?: number;
   created_at: string;
+  emcs_imported_at?: string | null; // นำเข้า EMCS แล้วเมื่อ (null = ยัง) — กันกดซ้ำถาวรข้ามเครื่อง
 }
 interface CaseListProps { cases: Case[]; basePath?: string; }
 
@@ -91,7 +92,10 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
               <td className="px-5 py-4 text-sm text-gray-500">{c.visit_count || 1}</td>
               <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                 {(c.status === 'surveyed' || c.status === 'reviewed') ? (
-                  sentIds.has(c.id) ? (
+                  c.emcs_imported_at ? (
+                    // นำเข้า EMCS สำเร็จแล้ว (mark ถาวรใน DB) — ห้าม import ซ้ำ: EMCS จะสร้างเรื่องซ้ำที่เลขเคลมเดิม
+                    <span className="text-xs font-medium text-green-700" title={`นำเข้าเมื่อ ${c.emcs_imported_at}`}>✓ นำเข้า EMCS แล้ว</span>
+                  ) : sentIds.has(c.id) ? (
                     <span className="text-xs font-medium text-emerald-700">✓ ส่งเข้า AutoKey แล้ว</span>
                   ) : (
                     <button
