@@ -51,6 +51,19 @@ router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Re
   res.json({ success: true, data: { cases: r.rows } });
 }));
 
+// meta ของเคสเดียว (บริษัทประกัน/เลขต่าง ๆ) — SE-AutoKey ใช้ resolve รหัสบริษัทตอน import
+router.get('/cases/:id', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const caseId = parseInt(req.params.id as string);
+  const { db } = await import('../config/database');
+  const r = await db.query(
+    `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company, sr.insurance_branch
+       FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id
+      WHERE c.id = $1`, [caseId]
+  );
+  if (r.rows.length === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
+  res.json({ success: true, data: r.rows[0] });
+}));
+
 // รายการรูปของเคส (survey_photos ที่ผูกกับ report) — SE-AutoKey ใช้โหลดไปอัปเข้า EMCS
 router.get('/cases/:id/photos', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
