@@ -81,6 +81,14 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
       _showIncomingSurveyPage(data);
     };
 
+    // แตะ notification ทั่วไป (ไม่ใช่การ์ดงานเต็มจอ) → เปิดหน้ารายละเอียดเคสนั้น
+    // เดิม callback นี้ไม่เคยถูก set → แตะแล้วไม่ไปไหน (dead code ใน fcm_service)
+    widget.fcmService.onNotificationTapWithCaseId = (caseId) {
+      if (caseId > 0 && _authProvider.isLoggedIn) {
+        _router.go('/cases/$caseId');
+      }
+    };
+
     // ตั้ง callbacks สำหรับปุ่มรับ/ปฏิเสธบน notification bar
     NotificationService().setCallbacks(
       onAccept: (caseId) {

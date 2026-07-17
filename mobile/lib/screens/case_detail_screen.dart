@@ -45,6 +45,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     try {
       final raw = await DefaultAssetBundle.of(context).loadString('assets/thai_provinces.json');
       final Map<String, dynamic> parsed = jsonDecode(raw);
+      if (!mounted) return; // back ออกก่อนโหลดเสร็จ → กัน setState หลัง dispose
       setState(() {
         _provincesData = parsed.map((k, v) => MapEntry(k, List<String>.from(v)));
       });

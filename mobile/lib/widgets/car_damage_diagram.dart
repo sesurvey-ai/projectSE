@@ -15,21 +15,32 @@ class DamageDiagramField extends StatefulWidget {
 class _DamageDiagramFieldState extends State<DamageDiagramField> {
   static const _lvlColor = {'L': Color(0xFF16A34A), 'M': Color(0xFFEAB308), 'H': Color(0xFFEA8600), 'X': Color(0xFFDC2626)};
 
-  void _tap(String part) {
+  Future<void> _tap(String part) async {
     int idx = widget.items.indexWhere((it) => it['part'] == part);
+    Map<String, String>? justAdded;
     if (idx < 0) {
       final defPos = part.contains('ซ้าย') ? 'L' : (part.contains('ขวา') ? 'R' : 'A');
-      widget.items.add({'part': part, 'pos': defPos, 'level': ''});
+      final item = {'part': part, 'pos': defPos, 'level': ''};
+      widget.items.add(item);
+      justAdded = item;
       idx = widget.items.length - 1;
       widget.onChanged();
       setState(() {});
     }
-    _sheet(idx);
+    await _sheet(idx);
+    if (!mounted) return; // editor ถูกปิดระหว่าง sheet เปิด (เช่น 401 เด้ง login) — onChanged จะ setState บน parent ที่ dispose แล้ว
+    // เพิ่งแตะชิ้นส่วนใหม่แล้วปิด sheet โดยไม่เลือกระดับ → ลบ entry ผี (ในแผนภาพไม่มีสีเลยดูเหมือน
+    // ไม่ได้เลือก แต่ DamagePartList นับ + ถูกเซฟไปด้วย); remove ตาม identity ของ map
+    if (justAdded != null && (justAdded['level'] ?? '').isEmpty) {
+      widget.items.remove(justAdded);
+      widget.onChanged();
+      setState(() {});
+    }
   }
 
-  void _sheet(int idx) {
+  Future<void> _sheet(int idx) {
     FocusManager.instance.primaryFocus?.unfocus();
-    showModalBottomSheet(
+    return showModalBottomSheet(
       context: context,
       useSafeArea: true, // กันปุ่ม "เสร็จ" โดน nav bar บัง
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
@@ -102,14 +113,20 @@ class DamagePartList extends StatefulWidget {
 }
 
 class _DamagePartListState extends State<DamagePartList> {
-  bool _expanded = false;
+  // ควบคุมการยุบ/ขยายด้วย controller แทนการเปลี่ยน key ตาม _expanded — เดิม key = ValueKey('dpl_$_expanded')
+  // ทำให้ทุก parent rebuild (แตะ chip/picker/แผนภาพ = setState) สร้าง ExpansionTile ใหม่แล้วเด้งกลับเป็น
+  // ขยายเสมอ (ยุบไม่อยู่); controller ให้สั่งขยายตอนกด + ได้โดยไม่ยุ่งกับ key
+  final _expController = ExpansionTileController();
   int get _filled => widget.items.where((it) => (it['part'] ?? '').trim().isNotEmpty).length;
 
   void _add() {
     widget.items.add({'part': '', 'pos': '', 'level': ''});
-    _expanded = true;
     widget.onChanged();
     setState(() {});
+    // ขยายให้เห็นรายการที่เพิ่ง + (ถ้าถูกยุบอยู่) — หลัง build เฟรมถัดไป
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_expController.isExpanded) _expController.expand();
+    });
   }
 
   void _remove(int i) {
@@ -131,9 +148,8 @@ class _DamagePartListState extends State<DamagePartList> {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          key: ValueKey('dpl_$_expanded'),
-          initiallyExpanded: _expanded || widget.items.isNotEmpty,
-          onExpansionChanged: (v) => _expanded = v,
+          controller: _expController,
+          initiallyExpanded: widget.items.isNotEmpty, // อ่านครั้งแรกตอน mount เท่านั้น
           tilePadding: const EdgeInsets.symmetric(horizontal: 13),
           childrenPadding: const EdgeInsets.fromLTRB(13, 0, 13, 13),
           leading: const Icon(Icons.build_circle_outlined, color: kPrimary, size: 20),

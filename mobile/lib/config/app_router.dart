@@ -18,6 +18,10 @@ GoRouter createRouter(AuthProvider authProvider) {
     initialLocation: '/home',
     refreshListenable: authProvider,
     redirect: (BuildContext context, GoRouterState state) {
+      // ยังอ่าน token จาก storage ไม่เสร็จ → อย่าเพิ่ง redirect (กัน cold start เด้ง /login แวบ
+      // แล้วเด้งกลับ + ทิ้ง destination ที่ตั้งใจไป); redirect รันซ้ำเมื่อ checkAuth notify
+      if (!authProvider.authResolved) return null;
+
       final isLoggedIn = authProvider.isLoggedIn;
       final isLoggingIn = state.matchedLocation == '/login';
 

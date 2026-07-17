@@ -21,6 +21,10 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   String? _token;
   bool _isLoading = false;
+  // อ่าน token จาก storage ตอนเปิดแอปเสร็จหรือยัง — router ใช้กัน redirect ก่อนรู้สถานะจริง
+  // (เดิม cold start เด้ง /login แวบก่อน checkAuth เสร็จ แล้วเด้งกลับ /home + ทิ้ง deep-link)
+  bool _authResolved = false;
+  bool get authResolved => _authResolved;
   String? _error;
 
   AuthProvider({
@@ -47,6 +51,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _token = await _authService.getToken();
       _user = await _authService.getUser();
+      _authResolved = true; // รู้สถานะจริงแล้ว → router redirect ได้ถูกต้อง
       // แจ้ง router ทันทีที่ได้ session (ไป /home หรือ /login เร็ว ไม่ต้องรอ Firebase/FCM
       // → logged-in user ไม่เห็นหน้า login แวบก่อนเข้า home)
       notifyListeners();
@@ -64,6 +69,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _token = null;
       _user = null;
+      _authResolved = true; // getToken ล้มก็ถือว่ารู้แล้ว (= ไม่ล็อกอิน) → ไป /login ได้
     }
 
     _isLoading = false;
@@ -177,6 +183,10 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     _error = 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง';
     notifyListeners();
+    // เคลียร์เท่ากับ logout — เดิมข้าม 2 อย่างนี้: server ยังถือ FCM token ของเครื่อง (ยิง noti
+    // ข้าม session ต่อ) + WorkManager consult ยังรันด้วย token ที่ตายแล้ว (สแปม 401 เบื้องหลัง)
+    try { await _fcmService.clearToken(); } catch (_) {}
+    await ConsultBackground.cancel();
     await _authService.logout(); // ล้าง token ในเครื่อง
   }
 }

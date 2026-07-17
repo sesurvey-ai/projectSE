@@ -276,8 +276,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _driverProvinceCtl.text = prov;
       setConf('driver_province', 'province');
       final dist = _matchDistrict(prov, distRaw);
-      _driverDistrictCtl.text = dist ?? '';
-      if (dist != null) { setConf('driver_district', 'district'); } else { _ocrConf.remove('driver_district'); }
+      if (dist != null) {
+        _driverDistrictCtl.text = dist;
+        setConf('driver_district', 'district');
+      } else {
+        // อ่านอำเภอไม่ตรง dropdown (ที่อยู่บนบัตรมักย่อ): คงค่าที่ผู้ใช้เลือกไว้ "เฉพาะเมื่อยังอยู่ใน
+        // จังหวัดใหม่" — OCR เปลี่ยนจังหวัดแล้วอำเภอเดิมข้ามจังหวัด ต้องล้าง (dropdown โชว์ว่าง
+        // แต่ controller ค้างค่าเก่า → submit จังหวัด/อำเภอไม่คู่กัน)
+        final ds = _provincesData[prov];
+        if (ds == null || !ds.contains(_driverDistrictCtl.text)) {
+          _driverDistrictCtl.text = '';
+          _ocrConf.remove('driver_district');
+        }
+      }
     }
     if (kind == 'idcard') {
       if (f('first_name').isNotEmpty) { _driverNameCtl.text = f('first_name'); setConf('driver_name', 'first_name'); }
@@ -569,6 +580,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     try {
       final raw = await DefaultAssetBundle.of(context).loadString('assets/thai_provinces.json');
       final parsed = Map<String, dynamic>.from(jsonDecode(raw));
+      if (!mounted) return; // back ออกก่อนโหลด asset เสร็จ → กัน setState หลัง dispose
       setState(() {
         _provincesData = parsed.map((k, v) => MapEntry(k, List<String>.from(v)));
         _provinceNames = _provincesData.keys.toList()..sort();
@@ -1533,8 +1545,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     try { final f = File(path); if (f.existsSync()) f.deleteSync(); } catch (_) {}
   }
 
+  // cache mtime ต่อ path — เดิม statSync() ทุก tile ทุก rebuild (กริด shrinkWrap + แตะเลือก
+  // = setState) ยิง disk stat N ครั้งต่อเฟรมบน UI thread; mtime ของไฟล์ไม่เปลี่ยนหลังถ่าย
+  final Map<String, DateTime?> _photoStampCache = {};
   DateTime? _photoStamp(String path) {
-    try { return File(path).statSync().modified; } catch (_) { return null; }
+    return _photoStampCache.putIfAbsent(path, () {
+      try { return File(path).statSync().modified; } catch (_) { return null; }
+    });
   }
 
   String _photoTimeLabel(String path) {
@@ -2198,7 +2215,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         ],
       ),
     );
-    if (ok == true) {
+    if (ok == true && mounted) {
       setState(() {
         if (identical(list, _opponents)) {
           _demoteRecordPhotoTags('คันที่');
@@ -2370,9 +2387,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           ['รายละเอียดการเกิดเหตุ', has(_accDetailCtl)],
           ['ผู้สำรวจภัย', has(_accSurveyorCtl)],
         ]);
-        if (_policeRequired()) {
+        // บังคับช่องตำรวจเมื่อ "รอสรุปผลคดี" หรือเปิดสวิตช์ "มีการแจ้งความ" (ช่องขึ้น req: true อยู่แล้ว
+        // — เดิม gate เช็คเฉพาะ รอสรุปผลคดี ทำให้เปิดสวิตช์แล้วเว้นว่างได้ ทั้งที่จุดแดงบอกว่าต้องกรอก)
+        if (_policeRequired() || _hasPolice) {
           base.addAll(miss([
-            ['ชื่อพนักงานสอบสวน (รอสรุปผลคดี)', has(_accPoliceNameCtl)],
+            ['ชื่อพนักงานสอบสวน', has(_accPoliceNameCtl)],
             ['สถานีตำรวจ', has(_accPoliceStationCtl)],
           ]));
         }
@@ -2941,7 +2960,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         ],
       ),
     );
-    if (ok == true) { onYes(); _autosave(); }
+    if (ok == true && mounted) { onYes(); _autosave(); }
   }
 
   // ── คู่กรณี ──

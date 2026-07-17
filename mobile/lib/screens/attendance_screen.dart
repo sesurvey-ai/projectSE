@@ -354,7 +354,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _todayCard() {
-    final now = DateTime.now();
+    // ใช้เวลาไทย (Asia/Bangkok = UTC+7) ไม่อิง timezone เครื่อง — รอบเข้างานที่ลิสต์ด้านล่างมาจาก
+    // server ที่จัดกลุ่มตามวันไทยแล้ว; เครื่องที่ตั้ง tz ผิด (UTC หลังรีเซ็ต) ช่วง 00:00-07:00
+    // จะโชว์วันของเมื่อวานไม่ตรงกับรอบ
+    final now = DateTime.now().toUtc().add(const Duration(hours: 7));
     final dow = _thaiDows[now.weekday];
     final sessions = _sessions;
     final open = _open;

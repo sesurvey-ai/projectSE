@@ -16,16 +16,11 @@ class _CaseListScreenState extends State<CaseListScreen> {
   @override
   void initState() {
     super.initState();
+    // fetch ครั้งเดียวตอนเปิดหน้า — เดิมมีทั้ง postFrameCallback (initState) และ
+    // didChangeDependencies (รันทันทีหลัง initState เสมอ) → ยิง GET /cases/my ซ้ำ 2 รอบทุกครั้ง
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CaseProvider>().fetchMyCases();
+      if (mounted) context.read<CaseProvider>().fetchMyCases();
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // fetch ทุกครั้งที่หน้าแสดง
-    context.read<CaseProvider>().fetchMyCases();
   }
 
   Future<void> _onRefresh() async {
