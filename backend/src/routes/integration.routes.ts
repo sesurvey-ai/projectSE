@@ -34,6 +34,23 @@ router.get('/cases/:id/export-xml', integrationAuth, asyncHandler(async (req: Re
   res.send(xml);
 }));
 
+// รายการเคสที่พร้อมนำเข้า EMCS (สำรวจแล้ว/ตรวจสอบแล้ว) — webui ของ SE-AutoKey ใช้โชว์ลิสต์ให้เลือก
+router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Response) => {
+  const { db } = await import('../config/database');
+  const r = await db.query(
+    `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company,
+            (u.first_name || ' ' || u.last_name) AS surveyor_name,
+            c.created_at
+       FROM cases c
+       LEFT JOIN survey_reports sr ON sr.case_id = c.id
+       LEFT JOIN users u ON u.id = c.assigned_to
+      WHERE c.status IN ('surveyed', 'reviewed')
+      ORDER BY c.created_at DESC
+      LIMIT 100`
+  );
+  res.json({ success: true, data: { cases: r.rows } });
+}));
+
 // รายการรูปของเคส (survey_photos ที่ผูกกับ report) — SE-AutoKey ใช้โหลดไปอัปเข้า EMCS
 router.get('/cases/:id/photos', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
