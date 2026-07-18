@@ -103,39 +103,55 @@ object LocationHelper {
 
     fun postLocationToServer(context: Context, latitude: Double, longitude: Double, requestId: String) {
         Thread {
-            try {
-                val baseUrl = getBaseUrl(context)
-                val token = getAuthToken(context)
-                if (token == null) {
-                    Log.w(TAG, "No auth token, skip posting location")
-                    return@Thread
-                }
+            val baseUrl = getBaseUrl(context)
+            val token = getAuthToken(context)
+            if (token == null) {
+                Log.w(TAG, "No auth token, skip posting location")
+                return@Thread
+            }
 
-                val url = URL("$baseUrl/api/users/me/location")
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json")
-                conn.setRequestProperty("Authorization", "Bearer $token")
-                conn.doOutput = true
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
-
-                val json = JSONObject().apply {
+            // JSONObject.put โยน JSONException ได้ (เช่น lat/lng เป็น NaN จาก mock provider) —
+            // exception หลุดใน raw Thread = ฆ่าทั้ง process ต้องกันไว้
+            val json = try {
+                JSONObject().apply {
                     put("latitude", latitude)
                     put("longitude", longitude)
                     put("request_id", requestId)
                 }
-
-                val writer = OutputStreamWriter(conn.outputStream)
-                writer.write(json.toString())
-                writer.flush()
-                writer.close()
-
-                val code = conn.responseCode
-                Log.d(TAG, "POST location response: $code")
-                conn.disconnect()
             } catch (e: Exception) {
-                Log.e(TAG, "POST location error: $e")
+                Log.e(TAG, "POST location build error: $e")
+                return@Thread
+            }
+
+            // ยิงครั้งเดียวไม่พอใน Doze: หน้าต่าง network จาก high-priority FCM อาจยังไม่พร้อม
+            // หลังรอ GPS มา 8s — retry สั้น ๆ ใน thread เดิม (backoff 2s/4s; ครั้งแรกมักจบใน
+            // กรอบ wakelock 35s ของ service, ครั้งท้าย ๆ อาจเลยกรอบ = best effort ถ้า CPU หลับ
+            // จะไปต่อใน maintenance window)
+            for (attempt in 1..3) {
+                try {
+                    val url = URL("$baseUrl/api/users/me/location")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.setRequestProperty("Authorization", "Bearer $token")
+                    conn.doOutput = true
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
+
+                    val writer = OutputStreamWriter(conn.outputStream)
+                    writer.write(json.toString())
+                    writer.flush()
+                    writer.close()
+
+                    val code = conn.responseCode
+                    Log.d(TAG, "POST location response: $code (attempt $attempt)")
+                    conn.disconnect()
+                    // 2xx = สำเร็จ; 4xx = ข้อมูล/สิทธิ์ผิด retry ไปก็ไม่หาย — หยุดทั้งคู่, 5xx ค่อยลองใหม่
+                    if (code < 500) return@Thread
+                } catch (e: Exception) {
+                    Log.e(TAG, "POST location error (attempt $attempt): $e")
+                }
+                if (attempt < 3) try { Thread.sleep(attempt * 2000L) } catch (_: InterruptedException) { return@Thread }
             }
         }.start()
     }

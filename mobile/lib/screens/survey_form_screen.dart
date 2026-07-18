@@ -183,6 +183,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     return ok;
   }
 
+  // ลบไฟล์ temp ของกล้อง (XFile ใน cache) ที่ไม่ถูก consume — ไม่งั้นค้างใน cache ถาวร
+  void _deleteCameraTemps(Iterable<XFile> xs) {
+    for (final x in xs) {
+      try { File(x.path).deleteSync(); } catch (_) {}
+    }
+  }
+
   // ── OCR core: ถ่ายด้วยกล้องในแอป (กล้องหลังเสมอ) → เก็บรูปเข้าเคส + สกัดข้อมูล → คืน fields ──
   // kind = 'claim' | 'idcard' | 'license'; photoCategory = หมวด/ชื่อไฟล์ของรูปที่เก็บ (default 'เอกสาร')
   Future<Map<String, dynamic>?> _captureRetainOcr(String kind, {String photoCategory = 'เอกสาร', String? overwriteKey}) async {
@@ -196,7 +203,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       // กล้องในแอป เริ่มจากกล้องหลังเสมอ + ชัตเตอร์ได้รูปทันที (ไม่ต้องกด "ตกลง")
       final shots = await Navigator.of(context).push<List<XFile>>(
           MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: photoCategory)));
-      if (shots == null || shots.isEmpty || !mounted) return null;
+      if (shots == null || shots.isEmpty) return null;
+      if (!mounted) { _deleteCameraTemps(shots); return null; }
       final caseFolder = await _getCaseFolder();
       final slug = photoCategory == 'เอกสาร' ? 'doc' : _catSlugOf(photoCategory);
       // overwriteKey (สแกนบัตร/ใบขับขี่): ลบ "รูปสแกนเดิม" ของคีย์นี้ทิ้งก่อน (บันทึกทับ ไม่สะสมซ้ำ)
@@ -216,6 +224,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         final p = '$caseFolder/${slug}_${DateTime.now().millisecondsSinceEpoch}_${added.length}.jpg';
         if (await _copyPhotoCompressed(x.path, p)) added.add(p);
       }
+      // โหมดสแกนใช้รูปเดียว — รูปที่เหลือจากการกดชัตเตอร์รัวไม่ถูก copy ต้องลบทิ้งจาก cache
+      if (overwriteKey != null && shots.length > 1) _deleteCameraTemps(shots.skip(1));
       if (added.isEmpty || !mounted) return null;
       if (overwriteKey != null) _scanDocPaths[overwriteKey] = added.first; // จำ path ไว้ทับรอบหน้า
       setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = photoCategory; } _ocrBusy = true; });
@@ -446,21 +456,34 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   }
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
-  void _onTapDiagramPart(String part) {
+  Future<void> _onTapDiagramPart(String part) async {
     int idx = _damageItems.indexWhere((it) => it['part'] == part);
+    Map<String, String>? justAdded;
     if (idx < 0) {
       final defPos = part.contains('ซ้าย') ? 'L' : (part.contains('ขวา') ? 'R' : 'A');
-      _damageItems.add({'part': part, 'pos': defPos, 'level': ''});
+      justAdded = {'part': part, 'pos': defPos, 'level': ''};
+      _damageItems.add(justAdded);
       idx = _damageItems.length - 1;
       _syncDamageDesc();
       _autosave();
     }
-    _showDamagePartSheet(idx);
+    await _showDamagePartSheet(idx);
+    if (!mounted) return;
+    // เพิ่งแตะชิ้นส่วนใหม่แล้วปิด sheet โดยไม่เลือกระดับ → ถอน entry ผี (level ว่างแต่ part มีชื่อ
+    // เลยหลุดตัวกรอง _filledDamageItems เข้า insured_damage ตอนเซฟ) — remove ตาม identity ของ map
+    // เหมือน fix เดียวกันใน car_damage_diagram.dart
+    if (justAdded != null && (justAdded['level'] ?? '').isEmpty) {
+      setState(() {
+        _damageItems.remove(justAdded);
+        _syncDamageDesc();
+      });
+      _autosave();
+    }
   }
 
-  void _showDamagePartSheet(int idx) {
+  Future<void> _showDamagePartSheet(int idx) {
     FocusManager.instance.primaryFocus?.unfocus();
-    showModalBottomSheet(
+    return showModalBottomSheet(
       context: context,
       useSafeArea: true, // กันปุ่ม "เสร็จ" โดน nav bar บัง (route-level SafeArea)
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
@@ -1047,7 +1070,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   final _estimatedCostCtl = TextEditingController();
   // รายการความเสียหาย: {part: ชื่อชิ้นส่วน, pos: L/R/A, level: O/L/M/H/X}
   final List<Map<String, String>> _damageItems = [];
-  bool _damageExpanded = false;
+  // ยุบ/ขยายด้วย controller แทน key ผูก state — เดิม key: ValueKey('damage_expanded_$_damageExpanded')
+  // ทำให้ทุก setState (ทุก keystroke ในฟอร์ม) remount tile กลับเป็น expanded = ยุบไม่อยู่
+  // (fix เดียวกับ DamagePartList ใน car_damage_diagram.dart)
+  final _damageExpCtl = ExpansionTileController();
 
   // เฉพาะแถวที่กรอกชิ้นส่วนจริง (ตัดแถวเปล่าจากการกด "+" ที่ยังไม่กรอก ออกจากการนับ/complete)
   List<Map<String, String>> _filledDamageItems() =>
@@ -1060,7 +1086,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   void _addDamageItem() {
     setState(() {
       _damageItems.add({'part': '', 'pos': '', 'level': ''});
-      _damageExpanded = true;
+    });
+    // ขยายให้เห็นรายการที่เพิ่ง + (ถ้าถูกยุบอยู่) — หลัง build เฟรมถัดไป
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_damageExpCtl.isExpanded) _damageExpCtl.expand();
     });
   }
 
@@ -1432,7 +1461,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าประเภทที่เลือก
       final shots = await Navigator.of(context).push<List<XFile>>(
           MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: cat)));
-      if (shots == null || shots.isEmpty || !mounted) { revertProvisional(); return; }
+      if (shots == null || shots.isEmpty) { revertProvisional(); return; }
+      if (!mounted) { _deleteCameraTemps(shots); revertProvisional(); return; }
       final caseFolder = await _getCaseFolder();
       final slug = _catSlugOf(cat); // ตั้งชื่อไฟล์ตามหมวดที่เลือก เช่น opponent_car_1752..._0.jpg
       final added = <String>[];
@@ -3767,9 +3797,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          key: ValueKey('damage_expanded_$_damageExpanded'),
-          initiallyExpanded: _damageExpanded || _damageItems.isNotEmpty,
-          onExpansionChanged: (v) => _damageExpanded = v,
+          controller: _damageExpCtl,
+          initiallyExpanded: _damageItems.isNotEmpty, // อ่านครั้งแรกตอน mount เท่านั้น
           tilePadding: const EdgeInsets.symmetric(horizontal: 13),
           childrenPadding: const EdgeInsets.fromLTRB(13, 0, 13, 13),
           leading: const Icon(Icons.build_circle_outlined, color: _primary, size: 20),

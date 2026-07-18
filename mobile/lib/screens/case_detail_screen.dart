@@ -80,6 +80,9 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         _loadingDetail = false;
         _detailLoadFailed = true;
         _checkingArrival = false;
+        // fetch พัง = _checkArrivalPhotos ยังไม่ได้รัน → สถานะยืนยันถึงที่เกิดเหตุ "ไม่รู้"
+        // ต้องโชว์ปุ่มลองใหม่ ไม่ใช่ปล่อยตกไป prompt ถ่ายรูป (ถ่ายซ้ำ = ทับเวลาถึงที่เกิดเหตุจริง)
+        _arrivalCheckFailed = true;
       });
     }
   }
@@ -181,6 +184,8 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       final localPath = '$caseFolder/arrival.jpg';
       await File(photo.path).copy(localPath);
 
+      // จอถูก dispose ระหว่างกล้อง/copy (เช่น session หมดอายุเด้ง login) — setState ต่อไม่ได้
+      if (!mounted) return;
       setState(() {
         _arrivalPhotoPath = localPath;
         _uploadingArrival = true;
