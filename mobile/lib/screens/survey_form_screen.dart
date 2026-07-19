@@ -15,6 +15,7 @@ import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
 import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
 import 'survey/property_editor.dart';
@@ -190,19 +191,64 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     }
   }
 
+  // เลือกจากคลังภาพ: image_picker copy รูปที่เลือกเข้า cache ของแอปเสมอ — pipeline เดิม
+  // (_copyPhotoCompressed ลบ src / _deleteCameraTemps) ลบแค่สำเนาใน cache ไฟล์ต้นฉบับในเครื่องไม่ถูกแตะ
+  final _imgPicker = ImagePicker();
+
+  // ให้ผู้ใช้เลือกแหล่งรูป: กล้องในแอป หรือรูปที่มีในเครื่อง (ถ่ายด้วยกล้องมือถือเอง/ส่งมาจากแอปอื่น เช่น LINE)
+  Future<String?> _pickPhotoSource({String title = 'เพิ่มรูปจาก'}) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    return showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 2),
+            child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: _ink))),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined, color: _primary),
+            title: const Text('ถ่ายด้วยกล้อง', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            onTap: () => Navigator.pop(ctx, 'camera'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined, color: _primary),
+            title: const Text('เลือกจากคลังภาพ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            subtitle: const Text('รูปที่ถ่าย/บันทึกไว้ในเครื่อง เช่น ส่งมาจาก LINE', style: TextStyle(fontSize: 11.5, color: _muted)),
+            onTap: () => Navigator.pop(ctx, 'gallery'),
+          ),
+          const SizedBox(height: 6),
+        ]),
+      ),
+    );
+  }
+
   // ── OCR core: ถ่ายด้วยกล้องในแอป (กล้องหลังเสมอ) → เก็บรูปเข้าเคส + สกัดข้อมูล → คืน fields ──
   // kind = 'claim' | 'idcard' | 'license'; photoCategory = หมวด/ชื่อไฟล์ของรูปที่เก็บ (default 'เอกสาร')
   Future<Map<String, dynamic>?> _captureRetainOcr(String kind, {String photoCategory = 'เอกสาร', String? overwriteKey}) async {
     try {
-      final status = await Permission.camera.request();
-      if (!status.isGranted) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
-        return null;
+      final src = await _pickPhotoSource(title: 'สแกนจาก');
+      if (src == null || !mounted) return null;
+      List<XFile>? shots;
+      if (src == 'camera') {
+        final status = await Permission.camera.request();
+        if (!status.isGranted) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
+          return null;
+        }
+        if (!mounted) return null;
+        // กล้องในแอป เริ่มจากกล้องหลังเสมอ + ชัตเตอร์ได้รูปทันที (ไม่ต้องกด "ตกลง")
+        shots = await Navigator.of(context).push<List<XFile>>(
+            MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: photoCategory)));
+      } else {
+        // สแกนจากรูปในเครื่อง (เช่น การ์ดเคลม/บัตรที่ส่งมาทาง LINE) — สแกนใช้รูปเดียว
+        final x = await _imgPicker.pickImage(source: ImageSource.gallery);
+        shots = x == null ? null : [x];
       }
-      if (!mounted) return null;
-      // กล้องในแอป เริ่มจากกล้องหลังเสมอ + ชัตเตอร์ได้รูปทันที (ไม่ต้องกด "ตกลง")
-      final shots = await Navigator.of(context).push<List<XFile>>(
-          MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: photoCategory)));
       if (shots == null || shots.isEmpty) return null;
       if (!mounted) { _deleteCameraTemps(shots); return null; }
       final caseFolder = await _getCaseFolder();
@@ -1448,19 +1494,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _autosave();
     }
     try {
-      // เลือกประเภทรูปก่อน ค่อยเปิดกล้อง
-      final cat = await _pickImageCategory(title: 'ถ่ายรูปเข้าประเภท');
+      // เลือกประเภทรูปก่อน ค่อยเลือกแหล่งรูป (กล้อง/คลังภาพ)
+      final cat = await _pickImageCategory(title: 'เพิ่มรูปเข้าประเภท');
       if (cat == null || !mounted) { revertProvisional(); return; }
-      final status = await Permission.camera.request();
-      if (!status.isGranted) {
-        revertProvisional();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
-        return;
+      final src = await _pickPhotoSource();
+      if (src == null || !mounted) { revertProvisional(); return; }
+      List<XFile>? shots;
+      if (src == 'camera') {
+        final status = await Permission.camera.request();
+        if (!status.isGranted) {
+          revertProvisional();
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ต้องอนุญาตใช้กล้องก่อน')));
+          return;
+        }
+        if (!mounted) { revertProvisional(); return; }
+        // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าประเภทที่เลือก
+        shots = await Navigator.of(context).push<List<XFile>>(
+            MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: cat)));
+      } else {
+        // คลังภาพ: เลือกหลายรูปเข้าประเภทเดียวกันได้ในรอบเดียว
+        shots = await _imgPicker.pickMultiImage();
       }
-      if (!mounted) { revertProvisional(); return; }
-      // กล้องในแอป: กดชัตเตอร์แล้วได้รูปทันที (ไม่มีจอ "ตกลง"), ถ่ายรัวหลายรูปเข้าประเภทที่เลือก
-      final shots = await Navigator.of(context).push<List<XFile>>(
-          MaterialPageRoute(fullscreenDialog: true, builder: (_) => CameraCaptureScreen(captureCat: cat)));
       if (shots == null || shots.isEmpty) { revertProvisional(); return; }
       if (!mounted) { _deleteCameraTemps(shots); revertProvisional(); return; }
       final caseFolder = await _getCaseFolder();
@@ -1474,7 +1528,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       setState(() { for (final p in added) { _photoPaths.add(p); _photoCat[p] = cat; } });
       _autosave();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถเปิดกล้องได้')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('เพิ่มรูปไม่สำเร็จ')));
     }
   }
 
@@ -3928,9 +3982,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               width: double.infinity,
               decoration: BoxDecoration(color: _fill, border: Border.all(color: _lineStrong), borderRadius: BorderRadius.circular(13)),
               child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.photo_camera_outlined, size: 26, color: _muted),
+                Icon(Icons.add_a_photo_outlined, size: 26, color: _muted),
                 SizedBox(height: 4),
-                Text('ถ่ายรูป', style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500)),
+                Text('เพิ่มรูป', style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500)),
               ]),
             ),
           ),
