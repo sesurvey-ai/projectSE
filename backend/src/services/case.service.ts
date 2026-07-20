@@ -10,13 +10,19 @@ import { getIO } from '../socket';
 const JSONB_FIELDS = new Set([
   'opposing_parties', 'injured_persons', 'damaged_property', 'insured_damage',
 ]);
+// ข้อความ placeholder ของ dropdown ในแอป — ต้องไม่ถูกบันทึกเป็นค่าจริง (เคยหลุดเข้า acc_province/
+// car_color → รหัสจังหวัดใน XML ที่ส่งเข้า EMCS ว่าง) → normalize เป็นค่าว่างที่ชั้น bind (กันทุกฟิลด์)
+const PLACEHOLDER_SENTINELS = new Set(['-- ระบุ --', '-- เลือก --']);
+const stripSentinel = (v: unknown): unknown =>
+  (typeof v === 'string' && PLACEHOLDER_SENTINELS.has(v.trim())) ? '' : v;
+
 // แปลงค่า field ให้พร้อม bind: JSONB → stringify (ยกเว้นเป็น string อยู่แล้ว), อื่นๆ → ตามเดิม
 const bindVal = (f: string, v: unknown): unknown => {
   if (JSONB_FIELDS.has(f)) {
     if (v === undefined || v === null) return null;
     return typeof v === 'string' ? v : JSON.stringify(v);
   }
-  return v ?? null;
+  return stripSentinel(v) ?? null;
 };
 
 export type CaseUser = { id: number; role: string };
@@ -83,9 +89,10 @@ export const caseService = {
       const providedFields: string[] = [];
       const providedValues: unknown[] = [];
       for (const f of reportFields) {
-        if (data[f] !== undefined && data[f] !== '') {
+        const val = stripSentinel(data[f]); // กัน placeholder "-- ระบุ --" หลุดเข้าเป็นค่าจริง
+        if (val !== undefined && val !== '') {
           providedFields.push(f);
-          providedValues.push(data[f]);
+          providedValues.push(val);
         }
       }
 
