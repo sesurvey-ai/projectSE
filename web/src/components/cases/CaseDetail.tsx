@@ -106,6 +106,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const fd = new FormData(formRef.current);
       const data: Record<string, string> = {};
       fd.forEach((val, key) => { data[key] = val as string; });
+      // ป้าย placeholder ของ <select> ที่ยังไม่เลือก (เช่น acc_surveyor_branch/car_color/acc_province)
+      // ห้ามบันทึกเป็นค่าจริง — เคยหลุดเข้า DB → รหัสจังหวัดใน XML ที่ส่ง EMCS ว่าง
+      const SENTINELS = new Set(['-- ระบุ --', '-- เลือก --', '-- เขต --']);
+      for (const k of Object.keys(data)) if (SENTINELS.has((data[k] ?? '').trim())) data[k] = '';
       // acc_claim_opponent + car_lost อยู่ในส่วนที่ disabled ตอน read-only → ไม่อยู่ใน FormData
       // เขียนเฉพาะตอนกดแก้ไขจริง ไม่งั้นบันทึก (หรืออนุมัติ) จะทับเป็น ''/false = ข้อมูลหายเงียบ
       if (isEditing) {

@@ -973,10 +973,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       'mileage', 'driver_age', 'estimated_cost', 'deductible',
       'acc_claim_amount', 'acc_claim_total_amount',
     };
+    // ป้าย placeholder ของ dropdown (แอป/ฟอร์มเว็บ CaseDetail ที่ select ยังไม่เลือก) ห้ามหลุดเข้าเป็น
+    // ค่าจริงในช่อง — เคยหลุดเข้า car_color/acc_province/acc_surveyor_branch → submit ทับกลับ →
+    // รหัสจังหวัดใน XML ที่ส่ง EMCS ว่าง (แถวเก่าใน DB ก่อน backend เริ่ม strip ยังมีค่านี้อยู่)
+    const placeholderSentinels = {'-- ระบุ --', '-- เลือก --', '-- เขต --'};
     for (final entry in mapping.entries) {
       final val = data[entry.value];
       if (val != null) {
-        entry.key.text = val.toString();
+        final s = val.toString();
+        entry.key.text = placeholderSentinels.contains(s.trim()) ? '' : s;
       } else if (fromDraft && data.containsKey(entry.value) && nullableNumeric.contains(entry.value)) {
         entry.key.text = '';
       }

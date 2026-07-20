@@ -812,8 +812,10 @@ export const caseService = {
     for (const [key, val] of Object.entries(rd)) {
       if (validCols.has(key) && val !== undefined) {
         fields.push(`${key} = $${idx++}`);
+        // กัน placeholder "-- ระบุ --" จากฟอร์มเว็บ inspector (select ที่ยังไม่เลือก ส่ง label มาเป็นค่า)
+        const sv = stripSentinel(val);
         // JSONB คอลัมน์ต้อง stringify (และถือ '' เป็น null) กัน error type mismatch
-        params.push(JSONB_FIELDS.has(key) ? (val === '' ? null : bindVal(key, val)) : (val === '' ? null : val));
+        params.push(JSONB_FIELDS.has(key) ? (sv === '' ? null : bindVal(key, sv)) : (sv === '' ? null : sv));
       }
     }
 
