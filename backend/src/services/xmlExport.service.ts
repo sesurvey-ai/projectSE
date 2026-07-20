@@ -106,6 +106,21 @@ const BRAND: Record<string, string> = {
   'เบนซ์': 'BENZ', 'บีเอ็มดับเบิลยู': 'BMW', 'เกีย': 'KIA', 'ฮุนได': 'HYUNDAI', 'เอ็มจี': 'MG', 'MG': 'MG',
 };
 
+// ประเภทรถ (CTYPECODE / prefix ของ CMFG) — แอปเก็บเป็น code อยู่แล้ว (A/E/M/O/T/V/W) แต่คู่กรณี
+// (opposing_parties) อาจเก็บเป็นข้อความไทย → map ให้เป็น code เดียวกัน (ไม่งั้น CMFG เพี้ยน เช่น "เก๋งTOYOTA")
+const CAR_TYPE: Record<string, string> = {
+  'เก๋ง': 'A', 'เก๋งเอเชีย': 'A', 'เอเชีย': 'A', 'เก๋งยุโรป': 'E', 'ยุโรป': 'E',
+  'รถจักรยานยนต์': 'M', 'จักรยานยนต์': 'M', 'มอเตอร์ไซค์': 'M',
+  'รถอื่นๆ': 'O', 'อื่นๆ': 'O', 'กระบะ': 'T', 'รถกระบะ': 'T',
+  'รถตู้': 'V', 'ตู้': 'V', 'รถบรรทุก': 'W', 'บรรทุก': 'W',
+};
+const carTypeCode = (v: unknown): string => {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  if (/^[A-Za-z]$/.test(s)) return s.toUpperCase();   // เป็น code อยู่แล้ว
+  return CAR_TYPE[s] || '';
+};
+
 // ── helpers ──
 const esc = (s: unknown): string =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -179,7 +194,7 @@ type Row = Record<string, any>;
 
 // รถ 1 คัน (รถประกัน type=0 หรือ คู่กรณี) — insured อ่านจาก report, คู่กรณีอ่านจาก opposing_parties element
 function buildCar(c: Row, type: number, insured: boolean): string {
-  const ctype = insured ? String(c.car_type ?? '').trim().toUpperCase() : String(c.car_type ?? '').trim().toUpperCase();
+  const ctype = carTypeCode(c.car_type);   // code A/E/M/O/T/V/W (คู่กรณีอาจเก็บเป็นไทย → map)
   const brandRaw = insured ? c.car_brand : c.car_brand;
   const brandCode = lookup(BRAND, brandRaw) || String(brandRaw ?? '').trim();
   const cmfg = ctype && brandCode ? `${ctype}${brandCode}` : brandCode;
@@ -193,10 +208,11 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('TYPE', type) +
     el('OPO_NAME', insured ? '' : c.owner_name) +
     el('OPO_ADDRESS', insured ? '' : c.owner_address) +
-    el('OPO_TYPE', insured ? 'รถประกัน' : 'คู่กรณี') +
+    el('OPO_TYPE', insured ? 'รถประกัน' : 'รถคู่กรณี') +
     el('CAR_REGNO', insured ? c.license_plate : c.plate) +
     el('CAR_PROVINCE', provinceCode(insured ? c.car_province : c.province)) +
-    el('CHASSISNO', insured ? c.chassis_no : c.vin) +
+    // เลขตัวถังว่าง → "-" (EMCS ต้องการค่า ไม่รับ Null/ช่องว่าง; คู่กรณีมักไม่ทราบเลขตัวถัง)
+    el('CHASSISNO', String((insured ? c.chassis_no : c.vin) ?? '').trim() || '-') +
     el('ENGINENO', insured ? c.engine_no : '') +
     el('KM_NO', insured ? '' : c.mileage) +
     el('CMFG', cmfg) +
@@ -339,7 +355,9 @@ export function generateSurveyXml(r: Row): string {
     el('LOSS_ID', '') +
     '</TXN_SURV_REPORT>';
 
-  const cars = buildCar(r, 0, true) + opponents.map((o, i) => buildCar(o, i + 1, false)).join('');
+  // รถประกัน TYPE=0; คู่กรณี TYPE=20,21,… (EMCS: 0=รถประกัน 20=คู่กรณี — เดิมส่ง 1,2,… ทำให้ EMCS
+  // อ่านคู่กรณีเป็น "รถประกันคันที่ N" แล้วบังคับเลขตัวถัง/ฟิลด์ของรถประกัน → import ไม่ผ่าน)
+  const cars = buildCar(r, 0, true) + opponents.map((o, i) => buildCar(o, 20 + i, false)).join('');
   const assetBlocks = assets.map((a, i) => buildAsset(a, i + 1)).join('');   // ทรัพย์สินเสียหาย (0..n)
   const injureBlocks = injured.map((p, i) => buildInjure(p, i + 1)).join(''); // ผู้บาดเจ็บ (0..n)
 
