@@ -812,6 +812,25 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   // เคลมคู่จาก server — เคสอื่นในระบบที่เป็นอีกมุมของอุบัติเหตุเดียวกัน (ใช้เตือนกันข้อมูลปนกัน)
   List<Map<String, dynamic>> _linkedCases = [];
+  // ผู้ใช้กดปิดคำเตือนเคลมคู่แล้ว — จำต่อเคส (ปิดครั้งเดียว ไม่เด้งอีกทุกครั้งที่เปิดฟอร์ม)
+  bool _pairWarnDismissed = false;
+
+  Future<void> _loadPairWarnDismissed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted && (prefs.getBool('pair_warn_off_${widget.caseId}') ?? false)) {
+        setState(() => _pairWarnDismissed = true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _dismissPairWarn() async {
+    setState(() => _pairWarnDismissed = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('pair_warn_off_${widget.caseId}', true);
+    } catch (_) {}
+  }
 
   Future<void> _loadExistingReport() async {
     // โหลด draft ในเครื่อง "ก่อน" (เร็วกว่า network มาก) — เดิมรอ fetch server เสร็จก่อนค่อยโหลด draft
@@ -819,6 +838,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     // draft เป็น snapshot สมบูรณ์ของทั้งฟอร์ม (รวมค่าจาก server ณ ตอนสร้าง) → มี draft = ไม่ต้อง
     // populate จาก server ซ้ำ (เอาเฉพาะข้อมูลนอกฟอร์ม: รูป OCR, เวลาตั้งต้น SLA)
     final caseProvider = context.read<CaseProvider>(); // จับก่อน await — กันใช้ context ข้าม async gap
+    _loadPairWarnDismissed(); // ไม่ต้องรอ — แค่ตั้งธงซ่อนคำเตือนเคลมคู่ถ้าเคยกดปิด
     final hadDraft = await _loadDraft();
     if (hadDraft && mounted) {
       _loaded = true; // เปิด autosave ทันที — สิ่งที่ user พิมพ์ระหว่างรอ server ถูกเซฟ ไม่ถูกทับ
@@ -2185,6 +2205,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   // ── คำเตือนเคลมคู่ (อุบัติเหตุเดียวกัน คนละเคลม) — กันข้อมูลผู้บาดเจ็บ/ความเสียหายสองเคลมปนกัน ──
   // เงื่อนไขโชว์: คู่กรณีมีเลขเคลมของตัวเอง หรือ server เจอเคสอื่นในระบบที่พัวพันเลขเคลมกัน
   Widget _pairClaimWarning() {
+    if (_pairWarnDismissed) return const SizedBox.shrink();
     final oppClaims = <String>{};
     for (final o in _opponents) {
       final c = (o['claim_no'] ?? '').toString().trim();
@@ -2222,6 +2243,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               style: const TextStyle(fontSize: 11.5, color: _muted),
             ),
           ]),
+        ),
+        // ปุ่มปิด — จำต่อเคส เปิดฟอร์มรอบหน้าไม่เด้งอีก
+        InkWell(
+          onTap: _dismissPairWarn,
+          borderRadius: BorderRadius.circular(12),
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(Icons.close, size: 18, color: _muted),
+          ),
         ),
       ]),
     );
