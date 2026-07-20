@@ -59,6 +59,10 @@ class CaseProvider extends ChangeNotifier {
       if (report != null && data['data']['case_images'] != null) {
         report['case_images'] = data['data']['case_images'];
       }
+      // เคลมคู่จาก server (อุบัติเหตุเดียวกัน คนละเคลม) — ฟอร์มใช้โชว์คำเตือนกันข้อมูลปนกัน
+      if (report != null && data['data']['linked_cases'] != null) {
+        report['linked_cases'] = data['data']['linked_cases'];
+      }
       return report;
     }
     throw Exception('unexpected case-detail response');

@@ -1,6 +1,6 @@
 import { db } from '../config/database';
 import { env } from '../config/env';
-import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
+import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
 import { generateSurveyXml } from './xmlExport.service';
 import { getIO } from '../socket';
@@ -31,6 +31,16 @@ const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseU
 
 export const caseService = {
   async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
+    // กันเปิดเคสซ้ำเลขเคลมเดิม — เคสซ้ำ = ข้อมูลสองเคสปนกัน + เสี่ยง import EMCS ซ้ำที่เลขเคลมเดิม
+    const claimNo = String(data.claim_no ?? '').trim();
+    if (claimNo) {
+      const dup = await db.query(
+        `SELECT c.id FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
+          WHERE sr.claim_no = $1 LIMIT 1`, [claimNo]);
+      if (dup.rows.length > 0) {
+        throw new AppError(409, `เลขเคลม ${claimNo} มีเคสในระบบแล้ว (เคส #${dup.rows[0].id}) — ห้ามเปิดเคสซ้ำ`);
+      }
+    }
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
@@ -678,6 +688,41 @@ export const caseService = {
       expenses = expResult.rows[0] || null;
     }
 
+    // เคลมคู่ (อุบัติเหตุเดียวกัน คนละกรมธรรม์/คนละมุมมอง) — ให้แอปโชว์คำเตือน กันข้อมูลสองเคลมปนกัน:
+    // (1) เคสที่เลขเคลม = เลขเคลมคู่กรณีของเรา (2) เคสอื่นที่อ้างเลขเคลมเราเป็นคู่กรณี
+    let linkedCases: Array<Record<string, unknown>> = [];
+    if (report) {
+      const oppClaims = new Set<string>();
+      const addClaims = (s: unknown): void => {
+        for (const t of String(s ?? '').split(/[\s,]+/)) {
+          if (/^[0-9A-Za-z-]{10,}$/.test(t)) oppClaims.add(t);
+        }
+      };
+      addClaims(report.acc_claim_opponent);
+      if (Array.isArray(report.opposing_parties)) {
+        for (const p of report.opposing_parties) {
+          if (p && typeof p === 'object') addClaims((p as Record<string, unknown>).claim_no);
+        }
+      }
+      const conds: string[] = [];
+      const params: unknown[] = [caseId];
+      if (report.claim_no) {
+        params.push(String(report.claim_no));
+        conds.push(`sr.acc_claim_opponent ILIKE '%' || $${params.length} || '%'`);
+        conds.push(`sr.opposing_parties::text ILIKE '%' || $${params.length} || '%'`);
+      }
+      if (oppClaims.size > 0) {
+        params.push([...oppClaims]);
+        conds.push(`sr.claim_no = ANY($${params.length}::text[])`);
+      }
+      if (conds.length > 0) {
+        const lr = await db.query(
+          `SELECT c.id, sr.claim_no, c.status FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
+            WHERE c.id != $1 AND (${conds.join(' OR ')}) ORDER BY c.id DESC LIMIT 5`, params);
+        linkedCases = lr.rows;
+      }
+    }
+
     return {
       case: caseResult.rows[0],
       report,
@@ -686,6 +731,7 @@ export const caseService = {
       case_images: caseImagesResult.rows,
       visit_count: visitCount,
       expenses,
+      linked_cases: linkedCases,
     };
   },
 

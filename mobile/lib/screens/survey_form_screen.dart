@@ -810,6 +810,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     );
   }
 
+  // เคลมคู่จาก server — เคสอื่นในระบบที่เป็นอีกมุมของอุบัติเหตุเดียวกัน (ใช้เตือนกันข้อมูลปนกัน)
+  List<Map<String, dynamic>> _linkedCases = [];
+
   Future<void> _loadExistingReport() async {
     // โหลด draft ในเครื่อง "ก่อน" (เร็วกว่า network มาก) — เดิมรอ fetch server เสร็จก่อนค่อยโหลด draft
     // → เน็ตช้า ฟอร์มเปิดว่างทั้งที่มี draft, user เริ่มพิมพ์, server มาถึงทีหลังทับสิ่งที่พิมพ์หาย
@@ -830,6 +833,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               images.where((img) => img['image_type'] == 'ocr'),
             );
           });
+        }
+        // เคลมคู่: server metadata — เซ็ตเสมอไม่ว่ามี draft หรือไม่ (ไม่ใช่ข้อมูลฟอร์ม ไม่ทับอะไร)
+        final lc = report['linked_cases'];
+        if (lc is List) {
+          setState(() => _linkedCases =
+              lc.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
         }
         if (!hadDraft) {
           _populateForm(report);
@@ -2152,6 +2161,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         children: [
           _timelineStrip(),
           const SizedBox(height: 16),
+          // คำเตือนเคลมคู่ — โชว์เมื่อเคสนี้พัวพันกับเคลมอื่นของอุบัติเหตุเดียวกัน
+          _pairClaimWarning(),
           // ปุ่มถ่ายรูป (ไอคอนกล้องตรงกลาง) — ยกขึ้นบนสุด เข้าหน้ารูปภาพเหมือนเดิม (จำนวนรูปโชว์ด้านใน)
           _photoButton(),
           _hubCard(Icons.verified_user_outlined, '1. เคลม & กรมธรรม์', _s1Summary(), _SView.s1, _s1Filled(), asset: 'assets/section_icons/s1.png'),
@@ -2168,6 +2179,51 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               (v) => _hasProperty = v),
         ],
       ),
+    );
+  }
+
+  // ── คำเตือนเคลมคู่ (อุบัติเหตุเดียวกัน คนละเคลม) — กันข้อมูลผู้บาดเจ็บ/ความเสียหายสองเคลมปนกัน ──
+  // เงื่อนไขโชว์: คู่กรณีมีเลขเคลมของตัวเอง หรือ server เจอเคสอื่นในระบบที่พัวพันเลขเคลมกัน
+  Widget _pairClaimWarning() {
+    final oppClaims = <String>{};
+    for (final o in _opponents) {
+      final c = (o['claim_no'] ?? '').toString().trim();
+      if (c.isNotEmpty) oppClaims.add(c);
+    }
+    for (final lc in _linkedCases) {
+      final c = (lc['claim_no'] ?? '').toString().trim();
+      if (c.isNotEmpty) oppClaims.add(c);
+    }
+    if (oppClaims.isEmpty) return const SizedBox.shrink();
+    final inSystem = _linkedCases.map((lc) => 'เคส #${lc['id']}').join(', ');
+    final ourClaim = _claimNoCtl.text.trim();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: _warnTint,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _warn.withValues(alpha: .45)),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Icon(Icons.link, size: 20, color: _warn),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('เคลมคู่ — อุบัติเหตุเดียวกัน คนละเคลม',
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _warn)),
+            const SizedBox(height: 3),
+            Text('เคลมของคู่กรณี: ${oppClaims.join(', ')}${inSystem.isNotEmpty ? ' · ในระบบ: $inSystem' : ''}',
+                style: const TextStyle(fontSize: 12, color: _ink)),
+            const SizedBox(height: 3),
+            Text(
+              'บันทึกเฉพาะข้อมูลมุมมองของเคลมนี้${ourClaim.isNotEmpty ? ' ($ourClaim)' : ''} — '
+              'ผู้บาดเจ็บ/ความเสียหาย/ค่าซ่อมที่เบิกภายใต้เคลมคู่ ห้ามนำมาบันทึกซ้ำในเคลมนี้',
+              style: const TextStyle(fontSize: 11.5, color: _muted),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 
