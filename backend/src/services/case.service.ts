@@ -21,6 +21,23 @@ const bindVal = (f: string, v: unknown): unknown => {
 
 export type CaseUser = { id: number; role: string };
 
+// เลขเซอร์เวย์ (SETP-xxx ทั้งเลขหลักและเลขครั้งที่ 2) เป็นเลขอ้างอิงการเบิกเงิน — ห้ามซ้ำข้ามเคสเด็ดขาด
+// excludeCaseId: ตอน submit เคสเดิมย่อมเจอเลขของตัวเอง ต้องยกเว้น
+const assertSurveyJobNoUnique = async (jobNos: unknown[], excludeCaseId?: number): Promise<void> => {
+  for (const raw of jobNos) {
+    const jobNo = String(raw ?? '').trim();
+    if (!jobNo) continue;
+    const dup = await db.query(
+      `SELECT c.id FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
+        WHERE (sr.survey_job_no = $1 OR sr.survey_job_no_2 = $1) AND c.id != $2 LIMIT 1`,
+      [jobNo, excludeCaseId ?? -1]);
+    if (dup.rows.length > 0) {
+      throw new AppError(409,
+        `เลขเซอร์เวย์ ${jobNo} ถูกใช้แล้วในเคส #${dup.rows[0].id} — เลขเซอร์เวย์ใช้อ้างอิงเบิกเงิน ห้ามซ้ำ`);
+    }
+  }
+};
+
 // surveyor เข้าถึงได้เฉพาะเคสที่มอบหมายให้ตัวเอง (กัน IDOR ไล่เลข id อ่าน/ทับเคสคนอื่น)
 // checker/admin/callcenter เข้าถึงได้ทุกเคส (ตรวจงาน/จัดการ)
 const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseUser): void => {
@@ -31,16 +48,9 @@ const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseU
 
 export const caseService = {
   async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
-    // กันเปิดเคสซ้ำเลขเคลมเดิม — เคสซ้ำ = ข้อมูลสองเคสปนกัน + เสี่ยง import EMCS ซ้ำที่เลขเคลมเดิม
-    const claimNo = String(data.claim_no ?? '').trim();
-    if (claimNo) {
-      const dup = await db.query(
-        `SELECT c.id FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
-          WHERE sr.claim_no = $1 LIMIT 1`, [claimNo]);
-      if (dup.rows.length > 0) {
-        throw new AppError(409, `เลขเคลม ${claimNo} มีเคสในระบบแล้ว (เคส #${dup.rows[0].id}) — ห้ามเปิดเคสซ้ำ`);
-      }
-    }
+    // เลขเซอร์เวย์ (SETP-xxx) ห้ามซ้ำ — เป็นเลขอ้างอิงเบิกเงิน
+    // (เลขเคลมซ้ำได้โดยตั้งใจ: 1 เคลมออกงานหลายครั้ง — ระบบนับ "ครั้งที่" จาก claim_no เดิมอยู่แล้ว)
+    await assertSurveyJobNoUnique([data.survey_job_no, data.survey_job_no_2]);
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
@@ -471,6 +481,9 @@ export const caseService = {
     const caseData = caseResult.rows[0];
     if (caseData.status !== 'assigned') throw new ForbiddenError('Case is not in assigned status');
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
+
+    // เลขเซอร์เวย์ห้ามซ้ำข้ามเคส (อ้างอิงเบิกเงิน) — เช็คก่อนเขียน กันแก้เลขในฟอร์มไปชนเคสอื่น
+    await assertSurveyJobNoUnique([data.survey_job_no, data.survey_job_no_2], caseId);
 
     const client = await db.getClient();
     try {
