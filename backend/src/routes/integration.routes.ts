@@ -88,6 +88,16 @@ router.post('/cases/:id/emcs-imported', integrationAuth, asyncHandler(async (req
   res.json({ success: true, data: { already: false } });
 }));
 
+// ข้อมูลรายงานสำรวจ (ค่าไทย) ของเคส — SE-AutoKey ใช้เติม ClaimData ให้ fill_* กรอกหน้าหลัก EMCS
+// (fuzzy_select ต้องการชื่อไทย เช่น จังหวัด/ยี่ห้อ/ประเภทรถ — ต่างจาก XML ที่เป็นรหัส EMCS)
+router.get('/cases/:id/report', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const caseId = parseInt(req.params.id as string);
+  const { db } = await import('../config/database');
+  const r = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
+  if (r.rows.length === 0) { res.status(404).json({ success: false, message: 'report not found' }); return; }
+  res.json({ success: true, data: r.rows[0] });
+}));
+
 // รายการรูปของเคส (survey_photos ที่ผูกกับ report) — SE-AutoKey ใช้โหลดไปอัปเข้า EMCS
 router.get('/cases/:id/photos', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
