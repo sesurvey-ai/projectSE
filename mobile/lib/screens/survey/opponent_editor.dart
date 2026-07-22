@@ -7,13 +7,14 @@ import '../../data/survey_master.dart';
 class OpponentEditor extends StatefulWidget {
   final Map<String, dynamic> data;
   final List<String> provinces;
+  final Map<String, List<String>> provincesData; // จังหวัด → รายการอำเภอ (cascade เขต/อำเภอคู่กรณี)
   final int number; // คันที่ (1-based)
   final bool isNew;
   // สแกนเอกสาร (kind = idcard | license) → คืน fields (parent จัดการถ่าย+เก็บรูป+OCR)
   final Future<Map<String, dynamic>?> Function(String kind)? onScan;
   // เรียกทันทีหลังสแกน OCR สำเร็จ → ส่ง snapshot ปัจจุบันให้ parent เซฟ draft (กันข้อมูลหายถ้าถูก kill ก่อนกด "บันทึก")
   final void Function(Map<String, dynamic> data)? onDraft;
-  const OpponentEditor({super.key, required this.data, required this.provinces, required this.number, this.isNew = false, this.onScan, this.onDraft});
+  const OpponentEditor({super.key, required this.data, required this.provinces, this.provincesData = const {}, required this.number, this.isNew = false, this.onScan, this.onDraft});
 
   @override
   State<OpponentEditor> createState() => _OpponentEditorState();
@@ -22,7 +23,7 @@ class OpponentEditor extends StatefulWidget {
 class _OpponentEditorState extends State<OpponentEditor> {
   late final Map<String, TextEditingController> _c;
   final _damage = <Map<String, String>>[];
-  String _carType = '', _province = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
+  String _carType = '', _province = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
   bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
 
@@ -39,6 +40,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
     }
     _carType = (widget.data['car_type'] ?? '').toString();
     _province = (widget.data['province'] ?? '').toString();
+    _district = (widget.data['district'] ?? '').toString();
     _gender = (widget.data['gender'] ?? '').toString();
     _title = (widget.data['title'] ?? '').toString();
     _relation = (widget.data['relation'] ?? '').toString();
@@ -74,6 +76,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'car_color': _ctl('car_color').text.trim(),
         'plate': _ctl('plate').text.trim(),
         'province': _province,
+        'district': _district,
         'reg_year': _ctl('reg_year').text.trim(),
         'mileage': _ctl('mileage').text.trim(),
         'vin': _ctl('vin').text.trim(),
@@ -183,8 +186,11 @@ class _OpponentEditorState extends State<OpponentEditor> {
         kRow2(kText(_ctl('car_model'), 'รุ่น'), kText(_ctl('car_color'), 'สีรถ')),
         kRow2(
           kText(_ctl('plate'), 'ทะเบียน', req: true),
-          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, req: true, onSelected: (v) => setState(() => _province = v)),
+          // เปลี่ยนจังหวัด → ล้างอำเภอ (กันอำเภอเดิมข้ามจังหวัด → รหัส EMCS ไม่คู่กัน)
+          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, req: true, onSelected: (v) => setState(() { _province = v; _district = ''; })),
         ),
+        // เขต/อำเภอคู่กรณี (cascade จากจังหวัด) → DRI_DISTRICTID ของคู่กรณีใน EMCS
+        KPickerField(label: 'เขต/อำเภอ', value: _district, options: widget.provincesData[_province] ?? const [], onSelected: (v) => setState(() => _district = v)),
         kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),

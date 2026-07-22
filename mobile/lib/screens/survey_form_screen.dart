@@ -3170,7 +3170,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   Future<void> _addOpponent() async {
     if (_opponents.length >= 20) { _snack('เพิ่มคู่กรณีได้สูงสุด 20 คัน'); return; }
     final res = await _openRecordEditor('opponent', null, (onDraft) => OpponentEditor(
-        data: const {}, provinces: _provinceNames, number: _opponents.length + 1, isNew: true, onScan: _captureRetainOcr, onDraft: onDraft));
+        data: const {}, provinces: _provinceNames, provincesData: _provincesData, number: _opponents.length + 1, isNew: true, onScan: _captureRetainOcr, onDraft: onDraft));
     if (res == null || res['action'] != 'save') return;
     setState(() { _opponents.add(Map<String, dynamic>.from(res['data'] as Map)); _hasOpponents = true; });
     _autosave();
@@ -3178,7 +3178,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   Future<void> _editOpponent(int i) async {
     final res = await _openRecordEditor('opponent', i, (onDraft) => OpponentEditor(
-        data: _opponents[i], provinces: _provinceNames, number: i + 1, onScan: _captureRetainOcr, onDraft: onDraft));
+        data: _opponents[i], provinces: _provinceNames, provincesData: _provincesData, number: i + 1, onScan: _captureRetainOcr, onDraft: onDraft));
     if (res == null) return;
     setState(() {
       if (res['action'] == 'save') {

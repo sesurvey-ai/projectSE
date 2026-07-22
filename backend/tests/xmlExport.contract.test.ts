@@ -40,7 +40,7 @@ const row: Record<string, unknown> = {
   driver_gender: 'ชาย', estimated_cost: 3500,
   // 1:N JSONB
   opposing_parties: [{
-    plate: '7ชน807', province: 'กรุงเทพ', vin: 'OPPVIN1', car_type: 'A', car_brand: 'HONDA',
+    plate: '7ชน807', province: 'กรุงเทพ ฯ', district: 'เขตตลิ่งชัน', vin: 'OPPVIN1', car_type: 'A', car_brand: 'HONDA',
     car_model: 'CITY', reg_year: '2022', car_color: 'ขาว', title: 'นาย', first_name: 'คู่กรณี',
     last_name: 'ทดสอบ', age: 40, relation: 'เจ้าของรถ', address: 'ที่อยู่คู่กรณี', phone: '0888888888',
     cid: '9876543210987', license_no: 'OPPLIC', insurer: 'ไอโออิกรุงเทพประกันภัย',
@@ -99,6 +99,8 @@ check('คู่กรณี: CTYPECODE=A', has('CTYPECODE', 'A'));
 check('คู่กรณี: DRI_NAME', has('DRI_NAME', 'คู่กรณี ทดสอบ'));
 check('คู่กรณี: HAVE_INSURANCE=1 (มีประกัน)', has('HAVE_INSURANCE', '1'));
 check('คู่กรณี: POLICYNO/CLAIMNO', has('POLICYNO', 'OPPPOL') && has('CLAIMNO', 'OPPCLAIM'));
+// อำเภอคู่กรณี (wired ใหม่ 2026-07-22): เขตตลิ่งชัน กรุงเทพ → DRI_DISTRICTID=219 (เดิม hardcode ว่าง)
+check('คู่กรณี: DRI_DISTRICTID=219 (เขตตลิ่งชัน)', has('DRI_DISTRICTID', '219'));
 
 // ผู้บาดเจ็บ (TXN_SURV_INJ) — ข้อ 3: PERSON_TYPE/WOUNDED_TYPE
 check('บาดเจ็บ: NAME', has('NAME', 'ผู้บาดเจ็บ ทดสอบ'));

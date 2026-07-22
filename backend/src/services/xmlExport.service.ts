@@ -227,7 +227,8 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('DRI_RELATION', lookup(RELATION, insured ? c.driver_relation : c.relation)) +
     el('DRI_ADDRESS', insured ? c.driver_address : c.address) +
     // คู่กรณีไม่มีช่องอำเภอในแอป (มีแต่ที่อยู่) → ปล่อยว่างเฉพาะคู่กรณี
-    el('DRI_DISTRICTID', insured ? districtId(c.driver_province, c.driver_district) : '') +
+    // คู่กรณีมีช่องอำเภอแล้ว (opposing_parties[].district cascade จากจังหวัด) → ddlDri_DistrictID ของคู่กรณี
+    el('DRI_DISTRICTID', insured ? districtId(c.driver_province, c.driver_district) : districtId(c.province, c.district)) +
     el('DRI_PROVINCEID', provinceCode(insured ? c.driver_province : c.province)) +
     el('DRI_TELNO', insured ? c.driver_phone : c.phone) +
     el('DRI_CARDID', insured ? c.driver_id_card : c.cid) +
