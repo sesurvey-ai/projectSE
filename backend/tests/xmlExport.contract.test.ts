@@ -1,0 +1,110 @@
+/**
+ * Contract test — สัญญา XML ระหว่าง producer (se-survey) กับ consumer (se-autokey)
+ *
+ * ล็อกไว้ว่า generateSurveyXml() ต้อง emit "ทุก tag ที่ se-autokey/autokey/surv_xml.py
+ * (parse_surv_report) อ่าน" — ครบทั้ง 5 บล็อก: REPORT · รถประกัน(TYPE=0) · คู่กรณี(TYPE=20)
+ * · ผู้บาดเจ็บ(TXN_SURV_INJ) · ทรัพย์สิน(TXN_SURV_ASSET)
+ *
+ * ถ้าฝั่งใดแก้ชื่อ tag/format สัญญานี้จะพัง → เทสฟ้อง (แทนที่จะพังเงียบตอน import จริง)
+ * ⚠️ ต้อง sync กับ se-autokey/test_surv_contract.py (ใช้ค่าชุดเดียวกัน)
+ *
+ * รัน: npm test   (backend/)
+ */
+import { generateSurveyXml } from '../src/services/xmlExport.service';
+
+let failed = 0;
+function check(name: string, cond: boolean, detail = '') {
+  const status = cond ? 'PASS' : 'FAIL';
+  console.log(`[${status}] ${name}` + (detail ? `  (${detail})` : ''));
+  if (!cond) failed++;
+}
+
+// ── fixture: รถประกัน + คู่กรณี 1 + ผู้บาดเจ็บ 1 + ทรัพย์สิน 1 (ค่าชุดเดียวกับฝั่ง py) ──
+const row: Record<string, unknown> = {
+  survey_job_no: 'SETP-CONTRACT-001', claim_no: 'CLAIM-CONTRACT-001', claim_ref_no: 'REF-CONTRACT-001',
+  policy_no: 'POL-CONTRACT-001', assured_name: 'บริษัท ทดสอบสัญญา จำกัด', policy_type: '2+',
+  policy_start: '23/06/2026', policy_end: '23/06/2027',
+  acc_date: '27/06/2026', acc_time: '19:00', acc_place: 'ซอยทดสอบสัญญา',
+  acc_province: 'กรุงเทพฯ', acc_district: 'เขตตลิ่งชัน', acc_detail: 'รายละเอียดทดสอบสัญญา',
+  acc_fault: 'คู่กรณีผิด', acc_reporter: 'ผู้แจ้งทดสอบ', acc_surveyor: 'SE250 ผู้สำรวจ',
+  prb_number: 'PRB-1', claim_type: 'F',
+  // รถประกัน
+  car_brand: 'TOYOTA', car_type: 'A', car_color: 'น้ำเงิน', car_model: 'VIOS',
+  license_plate: 'ษข9066', car_province: 'กรุงเทพ', chassis_no: 'CHASSIS123', engine_no: 'ENGINE123',
+  car_reg_year: '2023', driver_name: 'ผู้ขับ ทดสอบ', driver_title: 'นาย', driver_age: 32,
+  driver_relation: 'ลูกจ้าง', driver_address: '37 บุรีรัมย์', driver_province: 'บุรีรัมย์',
+  driver_district: 'เมืองบุรีรัมย์', driver_phone: '0999999999', driver_id_card: '1234567890123',
+  driver_license_no: 'LIC123', driver_license_type: 'ใบขับขี่รถยนต์ส่วนบุคคล', driver_license_place: 'กรุงเทพ',
+  driver_license_start: '01/01/2020', driver_license_end: '01/01/2030', driver_birthdate: '16/05/1994',
+  driver_gender: 'ชาย', estimated_cost: 3500,
+  // 1:N JSONB
+  opposing_parties: [{
+    plate: '7ชน807', province: 'กรุงเทพ', vin: 'OPPVIN1', car_type: 'A', car_brand: 'HONDA',
+    car_model: 'CITY', reg_year: '2022', car_color: 'ขาว', title: 'นาย', first_name: 'คู่กรณี',
+    last_name: 'ทดสอบ', age: 40, relation: 'เจ้าของรถ', address: 'ที่อยู่คู่กรณี', phone: '0888888888',
+    cid: '9876543210987', license_no: 'OPPLIC', insurer: 'ไอโออิกรุงเทพประกันภัย',
+    policy_no: 'OPPPOL', claim_no: 'OPPCLAIM', policy_type: '1',
+  }],
+  injured_persons: [{
+    name: 'ผู้บาดเจ็บ ทดสอบ', age: 25, cid: '1111111111111', occupation: 'พนักงาน', car_reg: 'ษข9066',
+    address: 'ที่อยู่ผู้บาดเจ็บ', phone: '0777777777', hospital: 'รพ.ทดสอบ', treat_cost: 5000,
+    symptom: 'ฟกช้ำ', gender: 'ชาย', person_type: 'ผู้ขับขี่รถประกัน', wound_level: 'เล็กน้อย',
+  }],
+  damaged_property: [{
+    item: 'รั้วบ้าน', detail: 'รั้วหัก', cause: 'ถูกชน', estimated_cost: 2000,
+    owner_name: 'เจ้าของทรัพย์', owner_address: 'ที่อยู่ทรัพย์', owner_phone: '0666666666',
+  }],
+};
+
+const xml = generateSurveyXml(row as never);
+const has = (tag: string, val: string) => xml.includes(`<${tag}>${val}</${tag}>`);
+const tag = (t: string) => new RegExp(`<${t}>`).test(xml);
+
+// โครงหลัก
+check('root INSERT_SURV_REPORT_XML', xml.startsWith('<?xml') && xml.includes('<INSERT_SURV_REPORT_XML>'));
+check('มี TXN_SURV_CAR 2 บล็อก (รถประกัน + คู่กรณี)', (xml.match(/<TXN_SURV_CAR>/g) || []).length === 2);
+check('มี TXN_SURV_INJ 1 บล็อก', (xml.match(/<TXN_SURV_INJ>/g) || []).length === 1);
+check('มี TXN_SURV_ASSET 1 บล็อก', (xml.match(/<TXN_SURV_ASSET>/g) || []).length === 1);
+
+// REPORT — tag ที่ consumer/EMCS ต้องใช้
+check('REPORT: SURV_JOBNO', has('SURV_JOBNO', 'SETP-CONTRACT-001'));
+check('REPORT: REF_CLAIM_NO', has('REF_CLAIM_NO', 'CLAIM-CONTRACT-001'));
+check('REPORT: ACC_CLAIMREF_NO', has('ACC_CLAIMREF_NO', 'REF-CONTRACT-001'));
+check('REPORT: ACC_POLICY_NO', has('ACC_POLICY_NO', 'POL-CONTRACT-001'));
+check('REPORT: ASSURED_NAME', has('ASSURED_NAME', 'บริษัท ทดสอบสัญญา จำกัด'));
+check('REPORT: ACC_DETAIL', has('ACC_DETAIL', 'รายละเอียดทดสอบสัญญา'));
+
+// รถประกัน (TYPE=0) — consumer อ่าน gender/title_id/idcard
+check('รถประกัน: TYPE=0', has('TYPE', '0'));
+check('รถประกัน: CAR_REGNO=ษข9066', has('CAR_REGNO', 'ษข9066'));
+check('รถประกัน: CMFG=ATOYOTA (car_type A + brand)', has('CMFG', 'ATOYOTA'));
+check('รถประกัน: DRI_CARDID', has('DRI_CARDID', '1234567890123'));
+check('รถประกัน: DRI_GENDER (consumer อ่านเติมเพศ)', tag('DRI_GENDER') && xml.includes('ชาย'));
+check('รถประกัน: COST_DAMAGE=3500', has('COST_DAMAGE', '3500'));
+
+// คู่กรณี (TYPE=20)
+check('คู่กรณี: TYPE=20', has('TYPE', '20'));
+check('คู่กรณี: CAR_REGNO=7ชน807', has('CAR_REGNO', '7ชน807'));
+check('คู่กรณี: CMFG=AHONDA', has('CMFG', 'AHONDA'));
+check('คู่กรณี: CTYPECODE=A', has('CTYPECODE', 'A'));
+check('คู่กรณี: DRI_NAME', has('DRI_NAME', 'คู่กรณี ทดสอบ'));
+check('คู่กรณี: HAVE_INSURANCE=1 (มีประกัน)', has('HAVE_INSURANCE', '1'));
+check('คู่กรณี: POLICYNO/CLAIMNO', has('POLICYNO', 'OPPPOL') && has('CLAIMNO', 'OPPCLAIM'));
+
+// ผู้บาดเจ็บ (TXN_SURV_INJ) — ข้อ 3: PERSON_TYPE/WOUNDED_TYPE
+check('บาดเจ็บ: NAME', has('NAME', 'ผู้บาดเจ็บ ทดสอบ'));
+check('บาดเจ็บ: CITIZEN_ID', has('CITIZEN_ID', '1111111111111'));
+check('บาดเจ็บ: COST', has('COST', '5000'));
+check('บาดเจ็บ: INJURE=ฟกช้ำ', has('INJURE', 'ฟกช้ำ'));
+// ⚠️ ค่าล็อกสัญญา — PERSON_TYPE DV/ON + WOUNDED_TYPE 01-06 ยังไม่ได้ยืนยันกับ EMCS export จริงที่มีผู้บาดเจ็บ
+check('บาดเจ็บ: PERSON_TYPE=DV (ผู้ขับขี่รถประกัน)', has('PERSON_TYPE', 'DV'));
+check('บาดเจ็บ: WOUNDED_TYPE=01 (เล็กน้อย)', has('WOUNDED_TYPE', '01'));
+
+// ทรัพย์สิน (TXN_SURV_ASSET)
+check('ทรัพย์สิน: ASSET_DESC=รั้วบ้าน', has('ASSET_DESC', 'รั้วบ้าน'));
+check('ทรัพย์สิน: ASSET_DAMAGE=รั้วหัก', has('ASSET_DAMAGE', 'รั้วหัก'));
+check('ทรัพย์สิน: COST_DAMAGE=2000', has('COST_DAMAGE', '2000'));
+check('ทรัพย์สิน: OWNER', has('OWNER', 'เจ้าของทรัพย์'));
+
+console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
+process.exit(failed === 0 ? 0 : 1);
