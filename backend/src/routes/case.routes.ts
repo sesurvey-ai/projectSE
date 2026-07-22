@@ -212,6 +212,8 @@ const submitReviewSchema = z.object({
 
 router.get('/stats', auth, requireRole('callcenter'), caseController.getStats);
 router.get('/workload', auth, requireRole('callcenter', 'admin'), caseController.getWorkload);
+// รายการเคสทั้งหมด (มี filter/ค้นหา/แบ่งหน้า) — ต้องมาก่อน '/:id' ไม่งั้น "list" ถูกจับเป็น id
+router.get('/list', auth, requireRole('callcenter', 'admin'), caseController.list);
 router.post('/', auth, requireRole('callcenter'), validate(createCaseSchema), caseController.create);
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);

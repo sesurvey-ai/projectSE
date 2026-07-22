@@ -895,4 +895,52 @@ export const caseService = {
     );
     return { counts: result.rows[0], recent: recentResult.rows };
   },
+
+  // รายการเคสทั้งหมด (callcenter) — มี filter สถานะ + ค้นหา + แบ่งหน้า
+  async list(filters: { status?: string; search?: string; page?: number; limit?: number } = {}) {
+    const { status, search, page = 1, limit = 20 } = filters;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (status) {
+      conditions.push(`c.status = $${idx++}`);
+      params.push(status);
+    }
+    if (search) {
+      conditions.push(`(c.customer_name ILIKE $${idx} OR c.incident_location ILIKE $${idx} OR sr.claim_no ILIKE $${idx} OR sr.survey_job_no ILIKE $${idx} OR sr.claim_ref_no ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+
+    const [dataResult, countResult] = await Promise.all([
+      db.query(
+        `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
+                sr.claim_no, sr.survey_job_no, sr.claim_ref_no,
+                ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
+         FROM cases c
+         LEFT JOIN users u ON c.assigned_to = u.id
+         LEFT JOIN survey_reports sr ON sr.case_id = c.id
+         ${where}
+         ORDER BY c.created_at DESC
+         LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...params, limit, offset]
+      ),
+      db.query(
+        `SELECT COUNT(*)::int AS total FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id ${where}`,
+        params
+      ),
+    ]);
+
+    return {
+      cases: dataResult.rows,
+      total: countResult.rows[0].total,
+      page,
+      limit,
+      totalPages: Math.ceil(countResult.rows[0].total / limit),
+    };
+  },
 };

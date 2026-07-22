@@ -109,6 +109,15 @@ export const caseController = {
     sendSuccess(res, stats);
   }),
 
+  list: asyncHandler(async (req: Request, res: Response) => {
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+    const status = (req.query.status as string) || undefined;
+    const search = (req.query.search as string) || undefined;
+    const result = await caseService.list({ page, limit, status, search });
+    sendSuccess(res, result);
+  }),
+
   getWorkload: asyncHandler(async (_req: Request, res: Response) => {
     const data = await caseService.activeWorkload();
     sendSuccess(res, data);

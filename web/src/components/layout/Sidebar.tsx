@@ -20,6 +20,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
   callcenter: [
     { label: 'หน้าหลัก', href: '/callcenter' },
     { label: 'สร้างเคสใหม่', href: '/callcenter/cases/new' },
+    { label: 'รายการเคสทั้งหมด', href: '/callcenter/cases' },
     { label: 'พนักงานทั้งหมด', href: '/callcenter/employees' },
     { label: 'เวลาเข้างานพนักงาน · ประจำจุด', href: '/callcenter/checkin-board' },
     { label: 'เวลาเข้า–ออกงาน', href: '/callcenter/attendance' },
