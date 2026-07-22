@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { downloadCaseXml } from '@/lib/downloadXml';
@@ -29,6 +31,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 
 export default function CallcenterDashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [recent, setRecent] = useState<CaseRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,14 +125,19 @@ export default function CallcenterDashboard() {
                     <th className="px-5 py-3 font-semibold text-gray-600">เลขรับแจ้ง</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">ช่างสำรวจ</th>
                     <th className="px-5 py-3 font-semibold text-gray-600">ครั้งที่</th>
-                    <th className="px-5 py-3 font-semibold text-gray-600">ไฟล์</th>
+                    <th className="px-5 py-3 font-semibold text-gray-600">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recent.map((c) => {
                     const s = STATUS_MAP[c.status] || { label: c.status, color: 'text-gray-700', bg: 'bg-gray-100' };
+                    const isPending = c.status === 'pending';
                     return (
-                      <tr key={c.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <tr
+                        key={c.id}
+                        onClick={isPending ? () => router.push(`/callcenter/cases/${c.id}/assign`) : undefined}
+                        className={`border-t border-gray-100 hover:bg-gray-50 ${isPending ? 'cursor-pointer' : ''}`}
+                      >
                         <td className="px-5 py-3">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.color}`}>
                             {s.label}
@@ -152,6 +160,15 @@ export default function CallcenterDashboard() {
                             >
                               {xmlBusyId === c.id ? 'กำลังสร้าง...' : '⬇ XML'}
                             </button>
+                          ) : isPending ? (
+                            <Link
+                              href={`/callcenter/cases/${c.id}/assign`}
+                              onClick={(e) => e.stopPropagation()}
+                              title="มอบหมายช่างสำรวจให้เคสนี้"
+                              className="inline-block px-2.5 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            >
+                              มอบหมาย
+                            </Link>
                           ) : (
                             <span className="text-gray-300 text-xs">-</span>
                           )}
