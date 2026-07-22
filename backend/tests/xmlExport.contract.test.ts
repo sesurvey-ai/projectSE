@@ -31,7 +31,8 @@ const row: Record<string, unknown> = {
   // รถประกัน
   car_brand: 'TOYOTA', car_type: 'A', car_color: 'น้ำเงิน', car_model: 'VIOS',
   license_plate: 'ษข9066', car_province: 'กรุงเทพ', chassis_no: 'CHASSIS123', engine_no: 'ENGINE123',
-  car_reg_year: '2023', driver_name: 'ผู้ขับ ทดสอบ', driver_title: 'นาย', driver_age: 32,
+  car_reg_year: '2023', model_no: 'MDL-123', mileage: 45000, risk_code: 'RISK-01',
+  driver_name: 'ผู้ขับ ทดสอบ', driver_title: 'นาย', driver_age: 32,
   driver_relation: 'ลูกจ้าง', driver_address: '37 บุรีรัมย์', driver_province: 'บุรีรัมย์',
   driver_district: 'เมืองบุรีรัมย์', driver_phone: '0999999999', driver_id_card: '1234567890123',
   driver_license_no: 'LIC123', driver_license_type: 'ใบขับขี่รถยนต์ส่วนบุคคล', driver_license_place: 'กรุงเทพ',
@@ -81,6 +82,10 @@ check('รถประกัน: CMFG=ATOYOTA (car_type A + brand)', has('CMFG',
 check('รถประกัน: DRI_CARDID', has('DRI_CARDID', '1234567890123'));
 check('รถประกัน: DRI_GENDER (consumer อ่านเติมเพศ)', tag('DRI_GENDER') && xml.includes('ชาย'));
 check('รถประกัน: COST_DAMAGE=3500', has('COST_DAMAGE', '3500'));
+// tag ที่เพิ่งต่อสาย (gap audit 2026-07-22) — ล็อกไว้ไม่ให้หลุดกลับเป็นว่าง
+check('รถประกัน: MODELNO ← model_no', has('MODELNO', 'MDL-123'));
+check('รถประกัน: KM_NO ← mileage', has('KM_NO', '45000'));
+check('REPORT: RISK_CODE ← risk_code', has('RISK_CODE', 'RISK-01'));
 
 // คู่กรณี (TYPE=20)
 check('คู่กรณี: TYPE=20', has('TYPE', '20'));

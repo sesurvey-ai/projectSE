@@ -214,7 +214,7 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     // เลขตัวถังว่าง → "-" (EMCS ต้องการค่า ไม่รับ Null/ช่องว่าง; คู่กรณีมักไม่ทราบเลขตัวถัง)
     el('CHASSISNO', String((insured ? c.chassis_no : c.vin) ?? '').trim() || '-') +
     el('ENGINENO', insured ? c.engine_no : '') +
-    el('KM_NO', insured ? '' : c.mileage) +
+    el('KM_NO', c.mileage) +
     el('CMFG', cmfg) +
     el('CMODEL', c.car_model) +
     el('CAR_REGNO_YEAR', insured ? c.car_reg_year : c.reg_year) +
@@ -243,7 +243,7 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('CLAIMNO', insured ? '' : c.claim_no) +
     el('POLICY_TYPE', insured ? '' : policyTypeCode(c.policy_type)) +
     el('CTYPECODE', ctype) +
-    el('MODELNO', '') +
+    el('MODELNO', insured ? c.model_no : '') +
     el('COST_DAMAGE', insured ? c.estimated_cost : c.estimated_cost) +
     el('REPAIRER_NAME', '') +
     el('REPAIRER_TYPE', '') +
@@ -345,7 +345,7 @@ export function generateSurveyXml(r: Row): string {
     el('HEV_CAR', '') +
     el('ACC_CRASH_REAR', '') +
     el('HAS_PRB', r.prb_number ? '1' : '') +
-    el('RISK_CODE', '') +
+    el('RISK_CODE', r.risk_code) +
     el('LOST_CAR', r.car_lost === true ? '1' : '') +
     el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date, r.acc_insurance_notify_time)) +
     el('SURV_CLAIM_TYPE', String(r.claim_type ?? '').trim().toUpperCase()) +
