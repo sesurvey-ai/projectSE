@@ -50,6 +50,10 @@ const row: Record<string, unknown> = {
     name: 'ผู้บาดเจ็บ ทดสอบ', age: 25, cid: '1111111111111', occupation: 'พนักงาน', car_reg: 'ษข9066',
     address: 'ที่อยู่ผู้บาดเจ็บ', phone: '0777777777', hospital: 'รพ.ทดสอบ', treat_cost: 5000,
     symptom: 'ฟกช้ำ', gender: 'ชาย', person_type: 'ผู้ขับขี่รถประกัน', wound_level: 'เล็กน้อย',
+  }, {
+    // คนที่ 2 = ผู้โดยสารรถประกัน → PERSON_TYPE ต้องเป็น PV (ยืนยันจากฟอร์ม EMCS จริง ddlPerson_Type=03)
+    name: 'ผู้โดยสาร ทดสอบ', age: 30, cid: '2222222222222', hospital: 'รพ.ทดสอบ', treat_cost: 3000,
+    symptom: 'ถลอก', gender: 'หญิง', person_type: 'ผู้โดยสารรถประกัน', wound_level: 'ปานกลาง',
   }],
   damaged_property: [{
     item: 'รั้วบ้าน', detail: 'รั้วหัก', cause: 'ถูกชน', estimated_cost: 2000,
@@ -64,7 +68,7 @@ const tag = (t: string) => new RegExp(`<${t}>`).test(xml);
 // โครงหลัก
 check('root INSERT_SURV_REPORT_XML', xml.startsWith('<?xml') && xml.includes('<INSERT_SURV_REPORT_XML>'));
 check('มี TXN_SURV_CAR 2 บล็อก (รถประกัน + คู่กรณี)', (xml.match(/<TXN_SURV_CAR>/g) || []).length === 2);
-check('มี TXN_SURV_INJ 1 บล็อก', (xml.match(/<TXN_SURV_INJ>/g) || []).length === 1);
+check('มี TXN_SURV_INJ 2 บล็อก', (xml.match(/<TXN_SURV_INJ>/g) || []).length === 2);
 check('มี TXN_SURV_ASSET 1 บล็อก', (xml.match(/<TXN_SURV_ASSET>/g) || []).length === 1);
 
 // REPORT — tag ที่ consumer/EMCS ต้องใช้
@@ -103,7 +107,9 @@ check('บาดเจ็บ: COST', has('COST', '5000'));
 check('บาดเจ็บ: INJURE=ฟกช้ำ', has('INJURE', 'ฟกช้ำ'));
 // ⚠️ ค่าล็อกสัญญา — PERSON_TYPE DV/ON + WOUNDED_TYPE 01-06 ยังไม่ได้ยืนยันกับ EMCS export จริงที่มีผู้บาดเจ็บ
 check('บาดเจ็บ: PERSON_TYPE=DV (ผู้ขับขี่รถประกัน)', has('PERSON_TYPE', 'DV'));
+check('บาดเจ็บ: PERSON_TYPE=PV (ผู้โดยสารรถประกัน) — ยืนยันจากฟอร์มจริง', has('PERSON_TYPE', 'PV'));
 check('บาดเจ็บ: WOUNDED_TYPE=01 (เล็กน้อย)', has('WOUNDED_TYPE', '01'));
+check('บาดเจ็บ: WOUNDED_TYPE=02 (ปานกลาง)', has('WOUNDED_TYPE', '02'));
 
 // ทรัพย์สิน (TXN_SURV_ASSET)
 check('ทรัพย์สิน: ASSET_DESC=รั้วบ้าน', has('ASSET_DESC', 'รั้วบ้าน'));
