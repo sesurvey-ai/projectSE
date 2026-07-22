@@ -47,6 +47,8 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const [requestSent, setRequestSent] = useState(false);
   const [incidentLat, setIncidentLat] = useState<number | undefined>();
   const [incidentLng, setIncidentLng] = useState<number | undefined>();
+  // โหลดพิกัดเคสเสร็จหรือยัง — กัน race: ต้องได้พิกัดก่อน auto-request ถึงจะเข้า path เรียงตามระยะทาง
+  const [caseLoaded, setCaseLoaded] = useState(false);
 
   // Fetch case coordinates on mount
   useEffect(() => {
@@ -58,7 +60,8 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           if (c.incident_lng != null) setIncidentLng(parseFloat(c.incident_lng));
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setCaseLoaded(true));
   }, [caseIdStr]);
 
   // Listen for real-time location updates via socket
@@ -103,14 +106,15 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
       .finally(() => setLoading(false));
   }, [socket, caseIdStr, incidentLat, incidentLng]);
 
-  // Auto-request locations on mount when socket is ready
+  // Auto-request locations once socket ready AND case coords resolved
+  // (รอ caseLoaded กัน race — ถ้ายิงก่อนได้พิกัด รายชื่อจะไม่เรียงตามระยะทาง)
   const autoRequested = useRef(false);
   useEffect(() => {
-    if (socket && !autoRequested.current) {
+    if (socket && caseLoaded && !autoRequested.current) {
       autoRequested.current = true;
       handleRequestLocation();
     }
-  }, [socket, handleRequestLocation]);
+  }, [socket, caseLoaded, handleRequestLocation]);
 
   const handleAssign = async (surveyorUserId: string) => {
     setAssigning(surveyorUserId); setError('');
