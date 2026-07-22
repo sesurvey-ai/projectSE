@@ -274,8 +274,10 @@ function buildAsset(a: Row, seq: number): string {
 // tag จริงคือ TXN_SURV_INJ + ชื่อ field สั้น (NAME/AGE/CITIZEN_ID/...) — ยืนยันจาก parser
 // ของ se-autokey (surv_xml.py:91 อ้างเคลมจริง 2026013144960); ชุดเดิม TXN_SURV_INJURE/INJ_*
 // เป็น inferred ที่ผิด → importer จะมองไม่เห็นผู้บาดเจ็บทั้ง section
-// (work_place/position/income/from-to/relation ไม่มีใน field ที่ยืนยันแล้ว — ตัดออก
-//  จนกว่าจะมีไฟล์จริงที่มี tag พวกนี้)
+// work_place/position/income/treat-from-to/relation = form-carried: EMCS importer ไม่อ่าน
+// TXN_SURV_INJ (bot fill_injuries กรอกฟอร์มผู้บาดเจ็บเองทั้งบล็อก) → tag พวกนี้เราตั้งชื่อเอง
+// ให้ se-autokey (surv_xml.py) อ่านส่งต่อบอทไปกรอกช่องที่ id ยืนยันแล้วจาก ผู้บาดเจ็บ.html
+// (txtInj_Work_Place/Position/Income, wuCale_From/To_Date, ddlDri_Relation_ID — 2026-07-23)
 function buildInjure(p: Row, seq: number): string {
   return '<TXN_SURV_INJ>' +
     el('INJ_SEQ', seq) +
@@ -292,6 +294,13 @@ function buildInjure(p: Row, seq: number): string {
     el('GENDER', String(p.gender ?? '').trim().toUpperCase()) +
     el('PERSON_TYPE', lookup(PERSON_TYPE, p.person_type)) + // DV=ผู้ขับรถประกัน, ON=บุคคลอื่น
     el('WOUNDED_TYPE', lookup(WOUND, p.wound_level)) +
+    // ── form-carried (bot กรอกฟอร์มเอง; id ยืนยันจาก ผู้บาดเจ็บ.html) ──
+    el('WORK_PLACE', p.work_place) +                 // → txtInj_Work_Place
+    el('POSITION', p.position) +                     // → txtInj_Position
+    el('INCOME', p.income) +                         // → txtInj_Income (ประกอบค่าขาดรายได้)
+    el('TREAT_FROM', toXmlCE(p.treat_from)) +        // → wuCale_From_Date (ช่วงวันรักษา)
+    el('TREAT_TO', toXmlCE(p.treat_to)) +            // → wuCale_To_Date
+    el('RELATION', lookup(RELATION, p.relation)) +   // → ddlDri_Relation_ID (รหัส 1-35)
     '</TXN_SURV_INJ>';
 }
 

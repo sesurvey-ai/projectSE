@@ -50,6 +50,9 @@ const row: Record<string, unknown> = {
     name: 'ผู้บาดเจ็บ ทดสอบ', age: 25, cid: '1111111111111', occupation: 'พนักงาน', car_reg: 'ษข9066',
     address: 'ที่อยู่ผู้บาดเจ็บ', phone: '0777777777', hospital: 'รพ.ทดสอบ', treat_cost: 5000,
     symptom: 'ฟกช้ำ', gender: 'ชาย', person_type: 'ผู้ขับขี่รถประกัน', wound_level: 'เล็กน้อย',
+    // form-carried (bot กรอกฟอร์มเอง — 2026-07-23)
+    work_place: 'บริษัท ก จำกัด', position: 'พนักงานขาย', income: 15000,
+    treat_from: '27/06/2569', treat_to: '30/06/2569', relation: 'ญาติ',
   }, {
     // คนที่ 2 = ผู้โดยสารรถประกัน → PERSON_TYPE ต้องเป็น PV (ยืนยันจากฟอร์ม EMCS จริง ddlPerson_Type=03)
     name: 'ผู้โดยสาร ทดสอบ', age: 30, cid: '2222222222222', hospital: 'รพ.ทดสอบ', treat_cost: 3000,
@@ -112,6 +115,13 @@ check('บาดเจ็บ: PERSON_TYPE=DV (ผู้ขับขี่รถ�
 check('บาดเจ็บ: PERSON_TYPE=PV (ผู้โดยสารรถประกัน) — ยืนยันจากฟอร์มจริง', has('PERSON_TYPE', 'PV'));
 check('บาดเจ็บ: WOUNDED_TYPE=01 (เล็กน้อย)', has('WOUNDED_TYPE', '01'));
 check('บาดเจ็บ: WOUNDED_TYPE=02 (ปานกลาง)', has('WOUNDED_TYPE', '02'));
+// form-carried ผู้บาดเจ็บ (wired 2026-07-23): bot กรอกฟอร์มเองจาก tag เหล่านี้
+check('บาดเจ็บ: WORK_PLACE ← work_place', has('WORK_PLACE', 'บริษัท ก จำกัด'));
+check('บาดเจ็บ: POSITION ← position', has('POSITION', 'พนักงานขาย'));
+check('บาดเจ็บ: INCOME ← income', has('INCOME', '15000'));
+check('บาดเจ็บ: TREAT_FROM ← treat_from (พ.ศ.→ค.ศ.)', has('TREAT_FROM', '2026-06-27 00:00:00'));
+check('บาดเจ็บ: TREAT_TO ← treat_to', has('TREAT_TO', '2026-06-30 00:00:00'));
+check('บาดเจ็บ: RELATION=19 (ญาติ, lookup)', has('RELATION', '19'));
 
 // ทรัพย์สิน (TXN_SURV_ASSET)
 check('ทรัพย์สิน: ASSET_DESC=รั้วบ้าน', has('ASSET_DESC', 'รั้วบ้าน'));
