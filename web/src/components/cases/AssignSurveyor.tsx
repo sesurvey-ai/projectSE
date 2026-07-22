@@ -78,7 +78,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           else { updated = [...prev, data]; }
         }
         updated.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-        return updated.slice(0, 5);
+        return updated;
       });
     };
     socket.on('location_update', handle);
@@ -95,7 +95,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
       params.set('lat', String(incidentLat));
       params.set('lng', String(incidentLng));
     }
-    params.set('limit', '5');
+    // ไม่ส่ง limit → แสดงช่างสำรวจออนไลน์ทุกคน (เรียงตามระยะทางจากจุดเกิดเหตุ)
 
     api.get(`/api/locations/latest?${params.toString()}`)
       .then((res) => { if (res.data.success && res.data.data) setSurveyors(res.data.data); })
@@ -124,7 +124,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
     finally { setAssigning(null); }
   };
 
-  const sorted = [...surveyors].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)).slice(0, 5);
+  const sorted = [...surveyors].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 
   return (
     <div>

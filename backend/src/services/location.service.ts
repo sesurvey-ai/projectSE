@@ -22,7 +22,8 @@ export const locationService = {
     return result.rows;
   },
 
-  async getLatestNearest(incidentLat: number, incidentLng: number, limit: number = 5) {
+  async getLatestNearest(incidentLat: number, incidentLng: number, limit?: number | null) {
+    const hasLimit = typeof limit === 'number' && Number.isFinite(limit) && limit > 0;
     const result = await db.query(
       `SELECT * FROM (
          SELECT DISTINCT ON (sl.user_id)
@@ -36,8 +37,8 @@ export const locationService = {
          JOIN users u ON sl.user_id = u.id
          WHERE u.is_active = true AND u.role = 'surveyor'
          ORDER BY sl.user_id, sl.recorded_at DESC
-       ) sub ORDER BY distance ASC LIMIT $3`,
-      [incidentLat, incidentLng, limit]
+       ) sub ORDER BY distance ASC${hasLimit ? ' LIMIT $3' : ''}`,
+      hasLimit ? [incidentLat, incidentLng, limit] : [incidentLat, incidentLng]
     );
     return result.rows;
   },

@@ -13,7 +13,7 @@ export const locationController = {
   getLatest: asyncHandler(async (req: Request, res: Response) => {
     const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
 
     let locations;
     if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
