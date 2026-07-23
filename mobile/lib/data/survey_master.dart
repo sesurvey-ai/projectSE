@@ -40,8 +40,14 @@ const List<String> kOpoCarTypes = [
   'เก๋งเอเชีย', 'เก๋งยุโรป', 'รถจักรยานยนต์', 'รถอื่นๆ', 'กระบะ', 'รถตู้', 'รถบรรทุก',
 ];
 
-// EV
-const List<String> kEvTypes = ['BEV', 'PHEV', 'HEV', 'FCEV', 'MEV'];
+// EV — sync EMCS master ddlEvType (verbatim label, ลำดับ BEV/FCEV/HEV/MEV/PHEV) 2026-07-23
+const List<String> kEvTypes = [
+  'BEV รถยนต์ไฟฟ้า BEV (100%)',
+  'FCEV รถยนต์ไฟฟ้า เซลล์เชื้อเพลิง (FCEV)',
+  'HEV รถยนต์ไฟฟ้า ไฮบริด (HEV)',
+  'MEV รถยนต์ไฟฟ้าดัดแปลง (รถยนต์สันดาปที่ดัดแปลงเป็นรถไฟฟ้า)',
+  'PHEV รถยนต์ไฟฟ้า ปลั๊กอินไฮบริด (PHEV)',
+];
 
 // ความสัมพันธ์ — sync จาก EMCS master ddlDri_Relation_ID (40 รหัส, verbatim) 2026-07-23
 const List<String> kRelations = [
@@ -86,16 +92,16 @@ const List<String> kPolicyTypes = [
   'ชั้น 1', 'ชั้น 2+', 'ชั้น 2', 'ชั้น 3+', 'ชั้น 3', 'พรบ.', 'ไม่พบความคุ้มครอง',
 ];
 
-// ประเภทผู้บาดเจ็บ
+// ประเภทผู้บาดเจ็บ — sync EMCS master ddlPerson_Type (verbatim, 3 ตัว: 01/03/05) 2026-07-23
 const List<String> kPersonTypes = [
-  'ผู้ขับขี่รถประกัน', 'ผู้โดยสารรถประกัน', 'ผู้ขับขี่คู่กรณี', 'ผู้โดยสารคู่กรณี', 'บุคคลภายนอก',
+  'ผู้ขับขี่ - รถประกัน', 'ผู้โดยสาร - รถประกัน', 'บุคคลภายนอกรถ',
 ];
 
-// ระดับการบาดเจ็บ (label, สี)
+// ระดับการบาดเจ็บ (label, สี) — sync EMCS master ddlWounded_Type (verbatim label) 2026-07-23
 const List<Map<String, dynamic>> kWounds = [
-  {'label': 'เล็กน้อย', 'color': 0xFF16A34A},
-  {'label': 'ปานกลาง', 'color': 0xFFEAB308},
-  {'label': 'สาหัส', 'color': 0xFFEA8600},
+  {'label': 'บาดเจ็บ - เล็กน้อย', 'color': 0xFF16A34A},
+  {'label': 'บาดเจ็บ - ปานกลาง', 'color': 0xFFEAB308},
+  {'label': 'บาดเจ็บ - สาหัส', 'color': 0xFFEA8600},
   {'label': 'ทุพพลภาพ', 'color': 0xFFDC2626},
   {'label': 'เสียชีวิตก่อนรักษา', 'color': 0xFF1F2937},
   {'label': 'เสียชีวิตหลังรักษา', 'color': 0xFF4B5563},
