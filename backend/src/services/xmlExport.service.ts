@@ -139,6 +139,16 @@ const carTypeCode = (v: unknown): string => {
   return CAR_TYPE[s] || '';
 };
 
+// เพศ → รหัส 1 ตัว (EMCS XML importer อ่าน DRI_GENDER/GENDER ตรงๆ + บังคับขนาด 1 — Thai ยาว 3
+// ตัวจะถูก reject "ข้อมูลนำเข้ามีขนาดเกิน"). คู่กรณี/ผู้บาดเจ็บเก็บค่าไทย 'ชาย'/'หญิง';
+// รถประกันเก็บ M/F อยู่แล้ว → normalize เป็น M/F (ตรงกับ insured ที่ EMCS รับ 2026-07-23)
+const genderCode = (v: unknown): string => {
+  const s = String(v ?? '').trim();
+  if (s === 'ชาย') return 'M';
+  if (s === 'หญิง') return 'F';
+  return s.toUpperCase();   // M/F/W ผ่านตรง
+};
+
 // ── helpers ──
 const esc = (s: unknown): string =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -255,7 +265,7 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('DRI_DRVDATE_END', toXmlCE(insured ? c.driver_license_end : c.license_end)) +
     el('DRI_ORDER', '') +
     el('DRI_BIRTHDAY', toXmlCE(insured ? c.driver_birthdate : c.birthdate)) +
-    el('DRI_GENDER', String(g('driver_gender', 'gender') ?? '').trim().toUpperCase()) +
+    el('DRI_GENDER', genderCode(g('driver_gender', 'gender'))) +
     // insurer เก็บเป็นข้อความไทย — "ไม่มีบริษัทประกันภัย" ต้องนับว่า "ไม่มีประกัน" ไม่ใช่ truthy = 1
     el('HAVE_INSURANCE', insured ? '' : (c.insurer && c.insurer !== 'ไม่มีบริษัทประกันภัย' ? '1' : '')) +
     el('POLICYNO', insured ? '' : c.policy_no) +
@@ -315,7 +325,7 @@ function buildInjure(p: Row, seq: number): string {
     el('TO_DATE', toXmlCE(p.treat_to)) +             // ช่วงวันรักษา (ถึง)
     el('COST', p.treat_cost) +
     el('INJURE', p.symptom) +           // อาการบาดเจ็บ
-    el('GENDER', String(p.gender ?? '').trim().toUpperCase()) +
+    el('GENDER', genderCode(p.gender)) +
     el('PERSON_TYPE', lookup(PERSON_TYPE, p.person_type)) + // DV=ผู้ขับรถประกัน, ON=บุคคลอื่น
     el('WOUNDED_TYPE', lookup(WOUND, p.wound_level)) +
     '</TXN_SURV_INJ>';

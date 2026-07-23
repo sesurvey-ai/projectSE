@@ -42,7 +42,7 @@ const row: Record<string, unknown> = {
   opposing_parties: [{
     plate: '7ชน807', province: 'กรุงเทพ ฯ', district: 'เขตตลิ่งชัน', vin: 'OPPVIN1', car_type: 'A', car_brand: 'HONDA',
     car_model: 'CITY', reg_year: '2022', car_color: 'ขาว', title: 'นาย', first_name: 'คู่กรณี',
-    last_name: 'ทดสอบ', age: 40, relation: 'เจ้าของรถ', address: 'ที่อยู่คู่กรณี', phone: '0888888888',
+    last_name: 'ทดสอบ', age: 40, gender: 'ชาย', relation: 'เจ้าของรถ', address: 'ที่อยู่คู่กรณี', phone: '0888888888',
     cid: '9876543210987', license_no: 'OPPLIC', license_type: 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
     insurer: 'ไอโออิกรุงเทพประกันภัย',
     policy_no: 'OPPPOL', claim_no: 'OPPCLAIM', policy_type: '1',
@@ -88,7 +88,11 @@ check('รถประกัน: TYPE=0', has('TYPE', '0'));
 check('รถประกัน: CAR_REGNO=ษข9066', has('CAR_REGNO', 'ษข9066'));
 check('รถประกัน: CMFG=ATOYOTA (car_type A + brand)', has('CMFG', 'ATOYOTA'));
 check('รถประกัน: DRI_CARDID', has('DRI_CARDID', '1234567890123'));
-check('รถประกัน: DRI_GENDER (consumer อ่านเติมเพศ)', tag('DRI_GENDER') && xml.includes('ชาย'));
+// เพศ → รหัส 1 ตัว (EMCS XML importer บังคับขนาด 1 — ชาย→M, หญิง→F; live import 2026-07-23)
+check('รถประกัน/คู่กรณี: DRI_GENDER=M (ชาย→รหัส)', has('DRI_GENDER', 'M'));
+check('บาดเจ็บ: GENDER=M (ชาย→รหัส)', has('GENDER', 'M'));
+check('บาดเจ็บ: GENDER=F (หญิง→รหัส)', has('GENDER', 'F'));
+check('ไม่มีเพศไทยหลุดใน DRI_GENDER/GENDER', !xml.includes('<DRI_GENDER>ชาย') && !xml.includes('<GENDER>ชาย'));
 check('รถประกัน: COST_DAMAGE=3500', has('COST_DAMAGE', '3500'));
 // tag ที่เพิ่งต่อสาย (gap audit 2026-07-22) — ล็อกไว้ไม่ให้หลุดกลับเป็นว่าง
 check('รถประกัน: MODELNO ← model_no', has('MODELNO', 'MDL-123'));
