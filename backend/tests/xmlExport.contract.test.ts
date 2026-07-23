@@ -118,13 +118,13 @@ check('บาดเจ็บ: PERSON_TYPE=DV (ผู้ขับขี่รถ�
 check('บาดเจ็บ: PERSON_TYPE=PV (ผู้โดยสารรถประกัน) — ยืนยันจากฟอร์มจริง', has('PERSON_TYPE', 'PV'));
 check('บาดเจ็บ: WOUNDED_TYPE=01 (เล็กน้อย)', has('WOUNDED_TYPE', '01'));
 check('บาดเจ็บ: WOUNDED_TYPE=02 (ปานกลาง)', has('WOUNDED_TYPE', '02'));
-// form-carried ผู้บาดเจ็บ (wired 2026-07-23): bot กรอกฟอร์มเองจาก tag เหล่านี้
+// ผู้บาดเจ็บ tag EMCS canonical (ยืนยัน gold reference 2026-07-23): FROM_DATE/TO_DATE/DRI_RELATION_ID
 check('บาดเจ็บ: WORK_PLACE ← work_place', has('WORK_PLACE', 'บริษัท ก จำกัด'));
 check('บาดเจ็บ: POSITION ← position', has('POSITION', 'พนักงานขาย'));
 check('บาดเจ็บ: INCOME ← income', has('INCOME', '15000'));
-check('บาดเจ็บ: TREAT_FROM ← treat_from (พ.ศ.→ค.ศ.)', has('TREAT_FROM', '2026-06-27 00:00:00'));
-check('บาดเจ็บ: TREAT_TO ← treat_to', has('TREAT_TO', '2026-06-30 00:00:00'));
-check('บาดเจ็บ: RELATION=19 (ญาติ, lookup)', has('RELATION', '19'));
+check('บาดเจ็บ: FROM_DATE ← treat_from (พ.ศ.→ค.ศ.)', has('FROM_DATE', '2026-06-27 00:00:00'));
+check('บาดเจ็บ: TO_DATE ← treat_to', has('TO_DATE', '2026-06-30 00:00:00'));
+check('บาดเจ็บ: DRI_RELATION_ID=19 (ญาติ, lookup)', has('DRI_RELATION_ID', '19'));
 
 // ทรัพย์สิน (TXN_SURV_ASSET)
 check('ทรัพย์สิน: ASSET_DESC=รั้วบ้าน', has('ASSET_DESC', 'รั้วบ้าน'));
