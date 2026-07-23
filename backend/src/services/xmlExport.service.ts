@@ -256,13 +256,14 @@ function buildCar(c: Row, type: number, insured: boolean): string {
 }
 
 // ทรัพย์สินเสียหาย 1 ชิ้น (จาก damaged_property JSONB)
-// ชื่อ tag ตาม parser ของ se-autokey (autokey/surv_xml.py) ที่ map จากไฟล์ export จริง
+// ชื่อ tag + ลำดับ ยืนยันจาก gold reference (ISURVEY→EMCS XML จริง 21BR10AVD-6906-000831,
+// 2026-07-23): 8/8 tag ตรง; gold เรียง ASSET_DAMAGE_CAUSE ก่อน ASSET_DAMAGE
 function buildAsset(a: Row, seq: number): string {
   return '<TXN_SURV_ASSET>' +
     el('ASSET_SEQ', seq) +
-    el('ASSET_DESC', a.item) +          // ชื่อทรัพย์สิน
-    el('ASSET_DAMAGE', a.detail) +      // รายละเอียดความเสียหาย
-    el('ASSET_DAMAGE_CAUSE', a.cause) +
+    el('ASSET_DESC', a.item) +               // ชื่อทรัพย์สิน (เช่น เสาไฟฟ้า)
+    el('ASSET_DAMAGE_CAUSE', a.cause) +      // สาเหตุ (ลำดับตรง gold: cause ก่อน damage)
+    el('ASSET_DAMAGE', a.detail) +           // รายละเอียดความเสียหาย
     el('COST_DAMAGE', a.estimated_cost) +
     el('OWNER', a.owner_name) +
     el('ADDRESS', a.owner_address) +
