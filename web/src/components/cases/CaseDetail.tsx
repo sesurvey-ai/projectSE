@@ -99,7 +99,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [carType, setCarType] = useState<string>(report.car_type || '0');
   // จังหวัด → เขต/อำเภอ cascade (เดิมโชว์ 51 เขต กทม. กับทุกจังหวัด)
   const [accProv, setAccProv] = useState<string>(report.acc_province || '0');
+  const [accDist, setAccDist] = useState<string>(report.acc_district || '-- เขต --');
   const [driverProv, setDriverProv] = useState<string>(report.driver_province || '0');
+  const [driverDist, setDriverDist] = useState<string>(report.driver_district || '-- เขต --');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -436,11 +438,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-4 py-2" colSpan={3}>
                       <div className="flex items-center gap-2">
                         <input type="text" disabled={d} name="driver_address" defaultValue={report.driver_address || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <select disabled={d} name="driver_province" value={driverProv} onChange={e => setDriverProv(e.target.value)} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <select disabled={d} name="driver_province" value={driverProv} onChange={e => { setDriverProv(e.target.value); setDriverDist('-- เขต --'); }} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
-                        <select disabled={d} name="driver_district" defaultValue={report.driver_district || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          {districtOptions(driverProv, report.driver_district).map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                        <select disabled={d} name="driver_district" value={driverDist} onChange={e => setDriverDist(e.target.value)} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                          {districtOptions(driverProv, driverProv === report.driver_province ? report.driver_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
                         </select>
                       </div>
                     </td>
@@ -549,11 +551,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2" colSpan={2}>
                     <div className="flex items-center gap-1">
-                      <select disabled={d} name="acc_province" value={accProv} onChange={e => setAccProv(e.target.value)} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="acc_province" value={accProv} onChange={e => { setAccProv(e.target.value); setAccDist('-- เขต --'); }} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
-                      <select disabled={d} name="acc_district" defaultValue={report.acc_district || '-- เขต --'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        {districtOptions(accProv, report.acc_district).map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                      <select disabled={d} name="acc_district" value={accDist} onChange={e => setAccDist(e.target.value)} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        {districtOptions(accProv, accProv === report.acc_province ? report.acc_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
                       </select>
                     </div>
                   </td>
