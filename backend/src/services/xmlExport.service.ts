@@ -175,6 +175,33 @@ const lookup = (table: Record<string, string>, v: unknown): string => {
   return k && table[k] ? table[k] : '';
 };
 
+// การติดตามงาน (rdoFlu_Type) — value จริงของ EMCS: N/W/Y
+const FLU_TYPE: Record<string, string> = {
+  'ไม่มีการนัดหมาย': 'N', 'รอการนัดหมาย': 'W', 'มีการนัดหมาย': 'Y',
+};
+
+// ปีจดทะเบียน: แอป/DB เก็บ พ.ศ. แต่ EMCS รับเฉพาะ ค.ศ. (dropdown 1900-2026)
+const yearAD = (v: unknown): string => {
+  const s = String(v ?? '').trim();
+  if (!/^\d{4}$/.test(s)) return s;
+  const y = Number(s);
+  return y >= 2400 ? String(y - 543) : s;
+};
+
+// เบอร์โทร: EMCS maxlength=10 และรับเฉพาะตัวเลข ('081-234-5678' = 12 ตัว ถูกตัดท้ายเงียบ ๆ)
+const tel10 = (v: unknown): string => String(v ?? '').replace(/\D/g, '').slice(0, 10);
+
+// จำนวนเงิน: EMCS num() ใช้ regex ^\d+$|^\d+\.\d+$ ไม่ผ่าน = ล้างช่องทิ้ง (maxlength=10)
+const money = (v: unknown): string => {
+  let s = String(v ?? '').replace(/[,\s]/g, '');
+  const i = s.indexOf('.');
+  if (i >= 0) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '');
+  s = s.replace(/\.$/, '');
+  if (!/^\d+(\.\d+)?$/.test(s)) return '';
+  if (s.includes('.')) s = s.replace(/0+$/, '').replace(/\.$/, '');
+  return s.length > 10 ? '' : s;
+};
+
 const provinceCode = (v: unknown) => lookup(PROVINCE, v);
 
 // รหัสอำเภอ/เขต 4 หลักของพอร์ทัล (cascade รายจังหวัด) — ชื่อใน dropdown แอปมาจาก source เดียว
@@ -256,7 +283,7 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('KM_NO', c.mileage) +
     el('CMFG', cmfg) +
     el('CMODEL', c.car_model) +
-    el('CAR_REGNO_YEAR', insured ? c.car_reg_year : c.reg_year) +
+    el('CAR_REGNO_YEAR', yearAD(insured ? c.car_reg_year : c.reg_year)) +
     el('CCL_ID', lookup(COLOR, c.car_color)) +
     el('DRI_TITLE_ID', lookup(TITLE, insured ? c.driver_title : c.title)) +
     el('DRI_NAME', driName) +
@@ -284,7 +311,7 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('POLICY_TYPE', insured ? '' : policyTypeCode(c.policy_type)) +
     el('CTYPECODE', ctype) +
     el('MODELNO', insured ? c.model_no : '') +
-    el('COST_DAMAGE', insured ? c.estimated_cost : c.estimated_cost) +
+    el('COST_DAMAGE', money(c.estimated_cost)) +
     el('REPAIRER_NAME', '') +
     el('REPAIRER_TYPE', '') +
     el('DAMAGE_LIST', '') +
@@ -301,10 +328,10 @@ function buildAsset(a: Row, seq: number): string {
     el('ASSET_DESC', a.item) +               // ชื่อทรัพย์สิน (เช่น เสาไฟฟ้า)
     el('ASSET_DAMAGE_CAUSE', a.cause) +      // สาเหตุ (ลำดับตรง gold: cause ก่อน damage)
     el('ASSET_DAMAGE', a.detail) +           // รายละเอียดความเสียหาย
-    el('COST_DAMAGE', a.estimated_cost) +
+    el('COST_DAMAGE', money(a.estimated_cost)) +
     el('OWNER', a.owner_name) +
     el('ADDRESS', a.owner_address) +
-    el('TEL_NO', a.owner_phone) +
+    el('TEL_NO', tel10(a.owner_phone)) +
     '</TXN_SURV_ASSET>';
 }
 
@@ -327,7 +354,7 @@ function buildInjure(p: Row, seq: number): string {
     el('JOB', p.occupation) +
     el('CAR_REGNO', p.car_reg) +
     el('ADDRESS', p.address) +
-    el('TEL_NO', p.phone) +
+    el('TEL_NO', tel10(p.phone)) +
     el('WORK_PLACE', p.work_place) +
     el('POSITION', p.position) +
     el('INCOME', p.income) +                         // ประกอบค่าขาดรายได้
@@ -391,7 +418,8 @@ export function generateSurveyXml(r: Row): string {
     el('ACC_CAUSE_NO', r.acc_fault_opponent_no) +
     el('ALC_CHK', '') +
     el('ALC_RESULT', r.acc_alcohol_result || r.acc_alcohol_test) +
-    el('FLU_TYPE', '') + el('FLU_NO', '') + el('FLU_DETAIL', '') + el('FLU_DATE', '') +
+    el('FLU_TYPE', lookup(FLU_TYPE, r.acc_followup)) + el('FLU_NO', r.acc_followup_count) +
+    el('FLU_DETAIL', r.acc_followup_detail) + el('FLU_DATE', toXmlCE(r.acc_followup_date)) +
     el('HEV_CAR', '') +
     el('ACC_CRASH_REAR', '') +
     el('HAS_PRB', r.prb_number ? '1' : '') +

@@ -31,7 +31,9 @@ const row: Record<string, unknown> = {
   // รถประกัน
   car_brand: 'TOYOTA', car_type: 'A', car_color: 'น้ำเงิน', car_model: 'VIOS',
   license_plate: 'ษข9066', car_province: 'กรุงเทพ', chassis_no: 'CHASSIS123', engine_no: 'ENGINE123',
-  car_reg_year: '2023', model_no: 'MDL-123', mileage: 45000, risk_code: 'RISK-01',
+  car_reg_year: '2567',
+  acc_followup: 'มีการนัดหมาย', acc_followup_count: '2',
+  acc_followup_detail: 'นัดดูรถที่อู่', acc_followup_date: '2026-07-01', model_no: 'MDL-123', mileage: 45000, risk_code: 'RISK-01',
   driver_name: 'ผู้ขับ ทดสอบ', driver_title: 'นาย', driver_age: 32,
   driver_relation: 'ลูกจ้าง', driver_address: '37 บุรีรัมย์', driver_province: 'บุรีรัมย์',
   driver_district: 'เมืองบุรีรัมย์', driver_phone: '0999999999', driver_id_card: '1234567890123',
@@ -41,7 +43,7 @@ const row: Record<string, unknown> = {
   // 1:N JSONB
   opposing_parties: [{
     plate: '7ชน807', province: 'กรุงเทพ ฯ', district: 'เขตตลิ่งชัน', vin: 'OPPVIN1', car_type: 'A', car_brand: 'HONDA',
-    car_model: 'CITY', reg_year: '2022', car_color: 'ขาว', title: 'นาย', first_name: 'คู่กรณี',
+    car_model: 'CITY', reg_year: '2566', car_color: 'ขาว', title: 'นาย', first_name: 'คู่กรณี',
     last_name: 'ทดสอบ', age: 40, gender: 'ชาย', relation: 'เจ้าของรถ', address: 'ที่อยู่คู่กรณี', phone: '0888888888',
     cid: '9876543210987', license_no: 'OPPLIC', license_type: 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
     insurer: 'ไอโออิกรุงเทพประกันภัย',
@@ -49,7 +51,7 @@ const row: Record<string, unknown> = {
   }],
   injured_persons: [{
     name: 'ผู้บาดเจ็บ ทดสอบ', age: 25, cid: '1111111111111', occupation: 'พนักงาน', car_reg: 'ษข9066',
-    address: 'ที่อยู่ผู้บาดเจ็บ', phone: '0777777777', hospital: 'รพ.ทดสอบ', treat_cost: 5000,
+    address: 'ที่อยู่ผู้บาดเจ็บ', phone: '077-777-7777', hospital: 'รพ.ทดสอบ', treat_cost: 5000,
     symptom: 'ฟกช้ำ', gender: 'ชาย', person_type: 'ผู้ขับขี่รถประกัน', wound_level: 'เล็กน้อย',
     // form-carried (bot กรอกฟอร์มเอง — 2026-07-23)
     work_place: 'บริษัท ก จำกัด', position: 'พนักงานขาย', income: 15000,
@@ -60,7 +62,7 @@ const row: Record<string, unknown> = {
     symptom: 'ถลอก', gender: 'หญิง', person_type: 'ผู้โดยสารรถประกัน', wound_level: 'ปานกลาง',
   }],
   damaged_property: [{
-    item: 'รั้วบ้าน', detail: 'รั้วหัก', cause: 'ถูกชน', estimated_cost: 2000,
+    item: 'รั้วบ้าน', detail: 'รั้วหัก', cause: 'ถูกชน', estimated_cost: '2000.00',
     owner_name: 'เจ้าของทรัพย์', owner_address: 'ที่อยู่ทรัพย์', owner_phone: '0666666666',
   }],
 };
@@ -135,6 +137,19 @@ check('ทรัพย์สิน: ASSET_DESC=รั้วบ้าน', has('A
 check('ทรัพย์สิน: ASSET_DAMAGE=รั้วหัก', has('ASSET_DAMAGE', 'รั้วหัก'));
 check('ทรัพย์สิน: COST_DAMAGE=2000', has('COST_DAMAGE', '2000'));
 check('ทรัพย์สิน: OWNER', has('OWNER', 'เจ้าของทรัพย์'));
+
+// ── หน่วย/รูปแบบที่ EMCS บังคับ (แก้ 2026-07-25) ──
+check('ปีจดทะเบียนรถประกัน: พ.ศ.2567 -> ค.ศ.2024', has('CAR_REGNO_YEAR', '2024'));
+check('ปีจดทะเบียนคู่กรณี: พ.ศ.2566 -> ค.ศ.2023',
+      xml.includes('<CAR_REGNO_YEAR>2023</CAR_REGNO_YEAR>'));
+check('เบอร์ผู้บาดเจ็บ: ตัดขีดเหลือ 10 หลัก (EMCS maxlength=10)', has('TEL_NO', '0777777777'));
+check('ค่าเสียหายทรัพย์สิน: 2000.00 -> 2000 (EMCS num() ไม่รับศูนย์ท้าย)',
+      has('COST_DAMAGE', '2000'));
+
+// ── การติดตามงาน (เดิม hardcode ว่างทั้งบล็อก) ──
+check('ติดตามงาน: FLU_TYPE=Y (มีการนัดหมาย)', has('FLU_TYPE', 'Y'));
+check('ติดตามงาน: FLU_NO <- acc_followup_count', has('FLU_NO', '2'));
+check('ติดตามงาน: FLU_DETAIL <- acc_followup_detail', has('FLU_DETAIL', 'นัดดูรถที่อู่'));
 
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed === 0 ? 0 : 1);
