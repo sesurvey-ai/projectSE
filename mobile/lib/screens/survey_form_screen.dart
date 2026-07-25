@@ -13,7 +13,7 @@ import '../config/api_config.dart';
 import '../services/auth_token.dart';
 import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
-import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes;
+import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes, kCarColors;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'survey/opponent_editor.dart';
@@ -2558,7 +2558,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         final base = miss([
           ['วัน-เวลาเกิดเหตุ', has(_accDateCtl)],
           ['สถานที่เกิดเหตุ', has(_accPlaceCtl)],
+          // จังหวัด/เขต-อำเภอ/ลักษณะความเสียหาย = * บังคับฝั่ง EMCS เหมือนกัน
+          ['จังหวัดที่เกิดเหตุ', has(_accProvinceCtl)],
+          ['เขต/อำเภอที่เกิดเหตุ', has(_accDistrictCtl)],
           ['ลักษณะการเกิดเหตุ', has(_accCauseCtl)],
+          ['ลักษณะความเสียหาย', has(_accDamageTypeCtl)],
           ['รายละเอียดการเกิดเหตุ', has(_accDetailCtl)],
           ['ผู้สำรวจภัย', has(_accSurveyorCtl)],
         ]);
@@ -2897,9 +2901,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     return _dd('ยี่ห้อ', cur, items, (v) => setState(() => _carBrandCtl.text = v ?? ''), hint: 'เลือกยี่ห้อ', req: true, key: ValueKey('cb_$cur'));
   }
 
-  // สีรถ = dropdown
+  // สีรถ = dropdown (ลิสต์ตรง master EMCS ddlCar_Color — เดิม 'บรอนซ์'/'อื่นๆ' ไม่มีใน EMCS
+  // และ 'อื่นๆ' ยังไปเข้า 'ทอง' ตอนบอทกรอก (fuzzy 45) แบบเงียบ ๆ)
   Widget _carColorField() {
-    const base = ['ขาว', 'ดำ', 'เทา', 'เงิน', 'บรอนซ์', 'แดง', 'น้ำเงิน', 'ฟ้า', 'เขียว', 'เหลือง', 'ส้ม', 'น้ำตาล', 'ทอง', 'ม่วง', 'ชมพู', 'หลายสี', 'อื่นๆ'];
+    const base = kCarColors;
     final cur = _carColorCtl.text.trim();
     final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
     return _dd('สีรถ', cur, items, (v) => setState(() => _carColorCtl.text = v ?? ''), hint: 'เลือกสี', key: ValueKey('cc_$cur'));
@@ -2964,11 +2969,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   List<Widget> _secEvent() => [
         _dateTime(_accDateCtl, _accTimeCtl, 'วันที่เกิดเหตุ', req: true),
         _txt(_accPlaceCtl, 'สถานที่เกิดเหตุ', req: true),
-        _row2(_txt(_accProvinceCtl, 'จังหวัด'), _txt(_accDistrictCtl, 'เขต/อำเภอ')),
+        // จังหวัด/เขต-อำเภอที่เกิดเหตุ = dropdown (EMCS เป็น * บังคับทั้งคู่) — ใช้ชุดเดียว
+        // กับหน้าผู้ขับขี่ ซึ่งตรง master EMCS 79 จังหวัดอยู่แล้ว; เดิมพิมพ์เอง ทำให้
+        // 'กทม.' ไปเข้า 'ปทุมธานี' ตอนบอทกรอก EMCS (fuzzy 45 คะแนน) แบบไม่มีใครรู้
+        _row2(_accProvinceDropdown(), _accDistrictDropdown()),
         _dd('ลักษณะการเกิดเหตุ', _accCauseCtl.text, _accCauseOptions,
             (v) => setState(() => _accCauseCtl.text = v ?? ''), req: true, key: ValueKey('ac_${_accCauseCtl.text}')),
+        // ลักษณะความเสียหาย = * บังคับใน EMCS (ว่าง → บอทหยุดรอคนกรอกบนหน้า EMCS)
         _dd('ลักษณะความเสียหาย', _accDamageTypeCtl.text, _accDamageOptions,
-            (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), key: ValueKey('ad_${_accDamageTypeCtl.text}')),
+            (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), req: true, key: ValueKey('ad_${_accDamageTypeCtl.text}')),
         _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5, req: true),
         _faultDropdown(),
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
@@ -3899,6 +3908,20 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         req: true, key: ValueKey('rel_${_driverRelationCtl.text}'));
   }
 
+  // จังหวัด/เขต-อำเภอ "ที่เกิดเหตุ" — คู่เดียวกับหน้าผู้ขับขี่ (asset thai_provinces.json
+  // ตรง master EMCS verbatim) เปลี่ยนจังหวัดแล้วล้างอำเภอ กันคู่ที่ไม่เข้ากัน
+  Widget _accProvinceDropdown() => _dd('จังหวัด', _accProvinceCtl.text, _provinceNames,
+      (v) => setState(() { _accProvinceCtl.text = v ?? ''; _accDistrictCtl.text = ''; }),
+      hint: 'เลือกจังหวัด', req: true, key: ValueKey('ap_${_accProvinceCtl.text}'));
+
+  Widget _accDistrictDropdown() {
+    final districts = _provincesData[_accProvinceCtl.text] ?? const <String>[];
+    return _dd('เขต/อำเภอ', _accDistrictCtl.text, districts,
+        (v) => setState(() => _accDistrictCtl.text = v ?? ''),
+        hint: 'เลือกเขต/อำเภอ', req: true,
+        key: ValueKey('ad2_${_accProvinceCtl.text}_${_accDistrictCtl.text}'));
+  }
+
   Widget _districtDropdown() {
     final districts = (_driverProvinceCtl.text.isNotEmpty && _provincesData.containsKey(_driverProvinceCtl.text))
         ? _provincesData[_driverProvinceCtl.text]!
@@ -4154,7 +4177,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     'ทรัพย์สินหล่นใส่คู่กรณี', 'ผู้โดยสารตกรถ',
     'เกี่ยวสายไฟฟ้า/โทรศัพท์/สายน้ำมัน', 'เสียหลักล้ม',
     'ฝากระโปรงหน้าเปิด', 'ยางระเบิด', 'ตกหลุม',
-    'ถูกน้ำมันเบรครด', 'ประมาทร่วม', 'ต่างฝ่ายต่างซ่อม',
+    'ถูกน้ำมันเบรคราด', 'ประมาทร่วม', 'ต่างฝ่ายต่างซ่อม',
     'ช่วยเหลือมนุษยธรรม', 'รอคู่กรณีติดต่อ', 'รอตรวจสอบใบขับขี่',
     'แก๊สระเบิด', 'คู่กรณีชนท้าย', 'คู่กรณีชนแล้วหลบหนี',
     'คู่กรณีเฉี่ยวชน', 'คู่กรณีเฉี่ยวชนบุคคลในรถประกันบาดเจ็บ/เสียชีวิต',
@@ -4162,8 +4185,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     'คู่กรณีถอยชน', 'คู่กรณีชน/ทรัพย์สินผู้เอาประกันเดียวกัน',
     'คู่กรณีกลั่นแกล้ง', 'ทรัพย์สินคู่กรณีหล่นใส่',
     'เด็กปั๊มประมาทลืมปลดสายน้ำมัน',
-    'ความเสียหายของรถประกันที่เกิดจากเหตุภายนอก',
-    'รถหายโดยการฉ้อฉล ตามสัญญาประกันภัย',
+    'ความเสียหายของรถประกันทีเกิดจากเหตุภายนอก',
+    'รถหายโดยการฉ้อฉล ตามสัญญาประกันภัย(A.P.HONDA)',
     'ไฟไหม้จากเหตุภายนอก', 'ถูกก้อนหิน', 'ถูกขูดขีด/กลั่นแกล้ง',
     'วัตถุหล่นใส่', 'รถหายตามสัญญาเช่าซื้อ', 'รถหายโดยการโจรกรรม',
     'ไฟไหม้โดยระบบของตัวรถยนต์', 'ไฟไหม้ที่เกิดจากการชน',
@@ -4174,19 +4197,20 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     'รอรายงานอุบัติเหตุ', 'รอรถประกันติดต่อ',
     'เคลมซ้ำ', 'เปิดเคลมผิดพลาด',
     'ฉ้อฉลจากการชน', 'รถหายโดยการฉ้อฉล',
-    'ไฟไหม้โดยการฉ้อฉล', 'การยึดรถ (A.P.HONDA)',
+    'ไฟไหม้โดยการฉ้อฉล', 'การยึดรถ ( A.P.HONDA )',
     'เสียหายขณะจอดอยู่', 'กระจกบังลมหน้าแตก', 'กระจกอื่นๆ แตก',
     'รถประกันชนรถคู่กรณีไม่เอาความ', 'สูญเสียการควบคุม',
     'หนูกัดสายไฟ', 'การเสียชีวิตอ้นเกิดจากสาเหตุอื่นๆ',
-    'การเสียชีวิตอันเกิดจากการใช้รถ',
+    'การเสียชีวิตอันเกิดจาการใช้รถ',
   ];
 
+  // sync EMCS master ddlLoss_ID (verbatim + ลำดับตาม EMCS) 2026-07-25
   static const _accDamageOptions = [
-    'เคลมแห้ง', 'กระจกแตก', 'กระจกอื่น ๆ แตก', 'ชนคู่กรณีเสียหาย',
-    'ถูกคู่กรณีชน', 'ตกถนน', 'พลิกคว่ำ', 'รถประกันไฟไหม้',
+    'เคลมแห้ง', 'กระจกแตก', 'กระจกอื่นๆ แตก', 'ชนคู่กรณีเสียหาย',
+    'ถูกคู่กรณีชน', 'ตกถนน', 'พลิกคว่ำ', 'รถประกันชนรถคู่กรณีไม่เอาความ',
     'เฉี่ยวชนวัสดุ', 'ถูกขูดขีดกลั่นแกล้ง', 'ถูกลักอุปกรณ์ส่วนควบ',
     'วัสดุหล่นใส่', 'ยางระเบิด', 'จอดไว้ถูกชนไม่ทราบคู่กรณี',
-    'หนูกัดสายไฟ', 'รถหาย', 'น้ำท่วมเสียหาย',
+    'หนูกัดสายไฟ', 'รถหาย', 'รถประกันไฟไหม้', 'น้ำท่วมเสียหาย',
     'ชนคนบาดเจ็บ', 'ผู้โดยสารประกันตกรถ', 'เสียหายทั้งหมด',
   ];
 }
