@@ -958,6 +958,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _accCauseCtl: 'acc_cause', _accDamageTypeCtl: 'acc_damage_type', _accDetailCtl: 'acc_detail',
       _accReporterCtl: 'acc_reporter', _accSurveyorCtl: 'acc_surveyor',
       _accSurveyorBranchCtl: 'acc_surveyor_branch', _accSurveyorPhoneCtl: 'acc_surveyor_phone',
+      _accFaultOpponentNoCtl: 'acc_fault_opponent_no',
       _accClaimAmountCtl: 'acc_claim_amount',
       _accClaimTotalAmountCtl: 'acc_claim_total_amount',
       _accPoliceNameCtl: 'acc_police_name', _accPoliceStationCtl: 'acc_police_station',
@@ -971,7 +972,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     // หลังรีสตาร์ทแล้วถูก submit กลับไปทั้งที่ลบไปแล้ว); จาก server (fromDraft=false) ข้ามตามเดิม
     const nullableNumeric = {
       'mileage', 'driver_age', 'estimated_cost', 'deductible',
-      'acc_claim_amount', 'acc_claim_total_amount',
+      'acc_fault_opponent_no', 'acc_claim_amount', 'acc_claim_total_amount',
     };
     // ป้าย placeholder ของ dropdown (แอป/ฟอร์มเว็บ CaseDetail ที่ select ยังไม่เลือก) ห้ามหลุดเข้าเป็น
     // ค่าจริงในช่อง — เคยหลุดเข้า car_color/acc_province/acc_surveyor_branch → submit ทับกลับ →
@@ -1231,6 +1232,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   final _accSurveyCompleteTimeCtl = TextEditingController();
   // การเรียกร้องค่าเสียหายจากคู่กรณี (5 ตัวเลือก, เก็บ comma-separated ลง acc_claim_opponent)
   final Set<String> _opoClaims = {};
+  final _accFaultOpponentNoCtl = TextEditingController();   // คู่กรณีคันที่ (EMCS บังคับเมื่อคู่กรณีผิด)
   final _accClaimAmountCtl = TextEditingController();
   final _accClaimTotalAmountCtl = TextEditingController();
   final _accPoliceNameCtl = TextEditingController();
@@ -1984,6 +1986,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     data['deductible'] = asNum(_deductibleCtl.text);
     data['acc_claim_amount'] = asNum(_accClaimAmountCtl.text);
     data['acc_claim_total_amount'] = asNum(_accClaimTotalAmountCtl.text);
+    // คู่กรณีคันที่ — ส่งเฉพาะตอนผลคดี = คู่กรณีผิด (ช่องถูกซ่อนกรณีอื่น ค่าค้างไม่ควรหลุดไป)
+    data['acc_fault_opponent_no'] =
+        _accFault == 'คู่กรณีผิด' ? asNum(_accFaultOpponentNoCtl.text) : null;
     return data;
   }
 
@@ -2566,6 +2571,14 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           ['รายละเอียดการเกิดเหตุ', has(_accDetailCtl)],
           ['ผู้สำรวจภัย', has(_accSurveyorCtl)],
         ]);
+        // ผลคดี = คู่กรณีผิด → EMCS บังคับ "คู่กรณีคันที่" + ติ๊กการเรียกร้องอย่างน้อย 1 ข้อ
+        // (ไม่ครบ = กดบันทึกบน EMCS ไม่ผ่าน หัวหน้าต้องมานั่งเติมเองทุกเคส)
+        if (_accFault == 'คู่กรณีผิด') {
+          base.addAll(miss([
+            ['คู่กรณีคันที่', has(_accFaultOpponentNoCtl)],
+            ['การเรียกร้องค่าเสียหายจากคู่กรณี', _opoClaims.isNotEmpty],
+          ]));
+        }
         // บังคับช่องตำรวจเมื่อ "รอสรุปผลคดี" หรือเปิดสวิตช์ "มีการแจ้งความ" (ช่องขึ้น req: true อยู่แล้ว
         // — เดิม gate เช็คเฉพาะ รอสรุปผลคดี ทำให้เปิดสวิตช์แล้วเว้นว่างได้ ทั้งที่จุดแดงบอกว่าต้องกรอก)
         if (_policeRequired() || _hasPolice) {
@@ -2991,6 +3004,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             (v) => setState(() => _accDamageTypeCtl.text = v ?? ''), req: true, key: ValueKey('ad_${_accDamageTypeCtl.text}')),
         _txt(_accDetailCtl, 'รายละเอียดการเกิดเหตุ', maxLines: 5, req: true),
         _faultDropdown(),
+        // EMCS บังคับ 'คู่กรณีคันที่' + ติ๊กการเรียกร้อง เมื่อผลคดี = คู่กรณีผิด
+        // (ไม่กรอก = บอทกรอกให้ไม่ได้ หัวหน้าต้องมาเติมเองบน EMCS ทุกเคส)
+        if (_accFault == 'คู่กรณีผิด')
+          _numField(_accFaultOpponentNoCtl, 'คู่กรณีคันที่', req: true),
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
         _txt(_accSurveyorCtl, 'ผู้สำรวจภัย', req: true),
         _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
@@ -3403,10 +3420,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   Widget _opoClaimChecks() {
     const opts = {
       'คัดประจำวัน': 'คัดประจำวัน',
-      'รับหลักฐานจากคู่กรณีผิด': 'รับหลักฐานจากคู่กรณีผิด',
+      'รับหลักฐานจากคู่กรณี': 'รับหลักฐานจากคู่กรณี',
       'บันทึกยอมรับผิด': 'บันทึกยอมรับผิด',
       'บัตรติดต่อ': 'บัตรติดต่อ',
-      'รับเงิน': 'รับเงินจำนวน',
+      'รับเงินจำนวน': 'รับเงินจำนวน',
     };
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _fieldLabel('การเรียกร้องค่าเสียหายจากคู่กรณี'),
