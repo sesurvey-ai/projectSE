@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, BANGKOK_DISTRICT_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
+import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -96,6 +97,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // ประเภทรถ → ตัวเลือกยี่ห้อ (EMCS กรองลิสต์ยี่ห้อตามประเภทรถ; เดิมโชว์ชุดของ
   // 'เก๋งเอเชีย' ชุดเดียวกับทุกประเภท → กระบะ/มอเตอร์ไซค์เลือกยี่ห้อที่ EMCS ไม่รับ)
   const [carType, setCarType] = useState<string>(report.car_type || '0');
+  // จังหวัด → เขต/อำเภอ cascade (เดิมโชว์ 51 เขต กทม. กับทุกจังหวัด)
+  const [accProv, setAccProv] = useState<string>(report.acc_province || '0');
+  const [driverProv, setDriverProv] = useState<string>(report.driver_province || '0');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -432,11 +436,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-4 py-2" colSpan={3}>
                       <div className="flex items-center gap-2">
                         <input type="text" disabled={d} name="driver_address" defaultValue={report.driver_address || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <select disabled={d} name="driver_province" defaultValue={report.driver_province || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <select disabled={d} name="driver_province" value={driverProv} onChange={e => setDriverProv(e.target.value)} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                           {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                         <select disabled={d} name="driver_district" defaultValue={report.driver_district || '0'} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          {BANGKOK_DISTRICT_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                          {districtOptions(driverProv, report.driver_district).map(dt => <option key={dt} value={dt}>{dt}</option>)}
                         </select>
                       </div>
                     </td>
@@ -545,11 +549,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2" colSpan={2}>
                     <div className="flex items-center gap-1">
-                      <select disabled={d} name="acc_province" defaultValue={report.acc_province || '0'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                      <select disabled={d} name="acc_province" value={accProv} onChange={e => setAccProv(e.target.value)} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
                       <select disabled={d} name="acc_district" defaultValue={report.acc_district || '-- เขต --'} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        {BANGKOK_DISTRICT_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                        {districtOptions(accProv, report.acc_district).map(dt => <option key={dt} value={dt}>{dt}</option>)}
                       </select>
                     </div>
                   </td>
