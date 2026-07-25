@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, CAR_BRAND_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, BANGKOK_DISTRICT_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, BANGKOK_DISTRICT_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
 import api from '@/lib/api';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -93,6 +93,9 @@ const ColGroup = () => (
 
 export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, expenses, onReviewSubmitted }: CaseDetailProps) {
   const ex = expenses || {};
+  // ประเภทรถ → ตัวเลือกยี่ห้อ (EMCS กรองลิสต์ยี่ห้อตามประเภทรถ; เดิมโชว์ชุดของ
+  // 'เก๋งเอเชีย' ชุดเดียวกับทุกประเภท → กระบะ/มอเตอร์ไซค์เลือกยี่ห้อที่ EMCS ไม่รับ)
+  const [carType, setCarType] = useState<string>(report.car_type || '0');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -283,7 +286,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ประเภทรถ :</td>
                   <td className="px-4 py-2">
-                    <select disabled={d} name="car_type" defaultValue={report.car_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <select disabled={d} name="car_type" value={carType} onChange={e => setCarType(e.target.value)} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       <option value="0">-- ระบุ --</option>
                       <option value="A">เก๋งเอเชีย</option>
                       <option value="E">เก๋งยุโรป</option>
@@ -297,7 +300,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
                   <td className="px-4 py-2">
                     <select disabled={d} name="car_brand" defaultValue={report.car_brand || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {CAR_BRAND_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                      {carBrandOptions(carType, report.car_brand).map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </td>
                 </tr>

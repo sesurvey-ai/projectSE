@@ -23,7 +23,7 @@ class OpponentEditor extends StatefulWidget {
 class _OpponentEditorState extends State<OpponentEditor> {
   late final Map<String, TextEditingController> _c;
   final _damage = <Map<String, String>>[];
-  String _carType = '', _carColor = '', _province = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
+  String _carType = '', _carBrand = '', _carColor = '', _province = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
   bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
 
@@ -33,12 +33,13 @@ class _OpponentEditorState extends State<OpponentEditor> {
   void initState() {
     super.initState();
     _c = {};
-    for (final k in ['owner_name', 'owner_address', 'car_brand', 'car_model', 'plate', 'reg_year', 'mileage', 'vin',
+    for (final k in ['owner_name', 'owner_address', 'car_model', 'plate', 'reg_year', 'mileage', 'vin',
       'first_name', 'last_name', 'birthdate', 'age', 'phone', 'address', 'cid', 'license_no', 'license_place', 'license_start', 'license_end',
       'policy_no', 'claim_no', 'estimated_cost']) {
       _c[k] = TextEditingController(text: (widget.data[k] ?? '').toString());
     }
     _carType = (widget.data['car_type'] ?? '').toString();
+    _carBrand = (widget.data['car_brand'] ?? '').toString();
     _carColor = (widget.data['car_color'] ?? '').toString();
     _province = (widget.data['province'] ?? '').toString();
     _district = (widget.data['district'] ?? '').toString();
@@ -72,7 +73,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'owner_name': _ctl('owner_name').text.trim(),
         'owner_address': _ctl('owner_address').text.trim(),
         'car_type': _carType,
-        'car_brand': _ctl('car_brand').text.trim(),
+        'car_brand': _carBrand,
         'car_model': _ctl('car_model').text.trim(),
         'car_color': _carColor,
         'plate': _ctl('plate').text.trim(),
@@ -181,8 +182,13 @@ class _OpponentEditorState extends State<OpponentEditor> {
         kText(_ctl('owner_name'), 'เจ้าของคู่กรณี', req: true),
         kText(_ctl('owner_address'), 'ที่อยู่เจ้าของรถ', maxLines: 2),
         kRow2(
-          KPickerField(label: 'ประเภทรถ', value: _carType, options: kOpoCarTypes, req: true, onSelected: (v) => setState(() => _carType = v)),
-          kText(_ctl('car_brand'), 'ยี่ห้อ'),
+          // เปลี่ยนประเภทรถ → ล้างยี่ห้อ (ลิสต์ยี่ห้อของ EMCS ผูกกับประเภทรถ)
+          KPickerField(label: 'ประเภทรถ', value: _carType, options: kOpoCarTypes, req: true,
+              onSelected: (v) => setState(() { if (v != _carType) _carBrand = ''; _carType = v; })),
+          KPickerField(
+              label: _carType.isEmpty ? 'ยี่ห้อ (เลือกประเภทรถก่อน)' : 'ยี่ห้อ',
+              value: _carBrand, options: carBrandsFor(_carType),
+              onSelected: (v) => setState(() => _carBrand = v)),
         ),
         // สีรถ = ตัวเลือกตรง master EMCS (เดิมพิมพ์เอง เช่น 'บรอนซ์เงิน' ไม่ตรงตัวเลือกไหนเลย)
         kRow2(

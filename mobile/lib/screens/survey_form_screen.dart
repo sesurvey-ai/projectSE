@@ -13,7 +13,7 @@ import '../config/api_config.dart';
 import '../services/auth_token.dart';
 import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
-import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes, kCarColors;
+import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'survey/opponent_editor.dart';
@@ -2870,7 +2870,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           .toList(),
       items: labels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value, style: const TextStyle(fontSize: 14.5)))).toList(),
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onChanged: (v) => setState(() => _carType = v ?? '0'),
+      // เปลี่ยนประเภทรถ → ล้างยี่ห้อ (EMCS โหลดลิสต์ยี่ห้อใหม่ตามประเภท ยี่ห้อเดิม
+      // มักไม่มีในลิสต์ใหม่ — 231 จาก 350 ยี่ห้อมีอยู่แค่ประเภทเดียว)
+      onChanged: (v) => setState(() {
+        final next = v ?? '0';
+        if (next != _carType) _carBrandCtl.text = '';
+        _carType = next;
+      }),
     );
   }
 
@@ -2893,12 +2899,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     );
   }
 
-  // ยี่ห้อ = dropdown (คงค่าเดิมถ้าไม่อยู่ในลิสต์)
+  // ยี่ห้อ = dropdown ตาม "ประเภทรถ" ที่เลือก (EMCS กรองลิสต์ยี่ห้อตาม ddlCType)
+  // เดิมเป็นลิสต์ไทย 17 ตัวตายตัว → บอทเลือกใน EMCS ไม่ได้เลย ('เอ็มจี' vs 'MG' = 0 คะแนน)
   Widget _carBrandField() {
-    const base = ['โตโยต้า', 'ฮอนด้า', 'อีซูซุ', 'นิสสัน', 'มิตซูบิชิ', 'มาสด้า', 'ฟอร์ด', 'เชฟโรเลต', 'เอ็มจี', 'ซูซูกิ', 'ฮุนได', 'เกีย', 'บีเอ็มดับเบิลยู', 'เมอร์เซเดส-เบนซ์', 'ยามาฮ่า', 'เวสป้า', 'อื่นๆ'];
+    final base = carBrandsFor(_carType);
     final cur = _carBrandCtl.text.trim();
     final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
-    return _dd('ยี่ห้อ', cur, items, (v) => setState(() => _carBrandCtl.text = v ?? ''), hint: 'เลือกยี่ห้อ', req: true, key: ValueKey('cb_$cur'));
+    return _dd(
+        base.isEmpty ? 'ยี่ห้อ (เลือกประเภทรถก่อน)' : 'ยี่ห้อ', cur, items,
+        (v) => setState(() => _carBrandCtl.text = v ?? ''),
+        hint: base.isEmpty ? 'เลือกประเภทรถก่อน' : 'เลือกยี่ห้อ', req: true,
+        key: ValueKey('cb_${_carType}_$cur'));
   }
 
   // สีรถ = dropdown (ลิสต์ตรง master EMCS ddlCar_Color — เดิม 'บรอนซ์'/'อื่นๆ' ไม่มีใน EMCS

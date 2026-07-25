@@ -40,6 +40,102 @@ const List<String> kOpoCarTypes = [
   'เก๋งเอเชีย', 'เก๋งยุโรป', 'รถจักรยานยนต์', 'รถอื่นๆ', 'กระบะ', 'รถตู้', 'รถบรรทุก',
 ];
 
+// ยี่ห้อรถ — sync EMCS master ddlCMFG (verbatim) แยกตามประเภทรถ 2026-07-25
+// ⚠️ EMCS กรองลิสต์ยี่ห้อตาม ddlCType: 350 ยี่ห้อไม่ซ้ำ แต่ 231 ตัวมีอยู่แค่ประเภทเดียว
+// → ต้องเลือกประเภทรถก่อน ยี่ห้อถึงจะขึ้นให้ตรงกับที่ EMCS ยอมรับ
+// ป้ายเป็นอังกฤษล้วนตามต้นฉบับ (เคยเก็บเป็นไทยแล้วบอทเลือกไม่ได้ — 'เอ็มจี' vs 'MG')
+const Map<String, List<String>> kCarBrandsByType = {
+  'เก๋งเอเชีย': [
+    'AION', '-ALL-', 'ASIACAB', 'ATTHAM', 'AVATR', 'BAOJUN', 'BORGWARD', 'BYD', 'CHANGAN',
+    'CHERY', 'DAEWOO', 'DAIHATSU', 'DATSUN', 'DFM', 'FOMM', 'FORD', 'GEELY', 'HAVAL',
+    'HINDUSTAN', 'HONDA', 'HONGQI', 'HUASONG', 'HYUNDAI', 'ISUZU', 'JAECOO', 'JETOUR', 'JONWAY',
+    'JUNEYAO', 'KIA', 'LEAPMOTOR', 'LEPAS', 'LEXUS', 'LI AUTO', 'LUXGEN', 'LYNK CO', 'MAHINDRA',
+    'MAZDA', 'MG', 'MITSUBISHI', 'MITSUOKA', 'NASA', 'NAZA', 'NETA', 'NIO', 'NISSAN', 'OMODA',
+    'ORA', 'PERODUA', 'POCCO', 'PORSCHE', 'PROTON', 'SKODA', 'SSANGYONG', 'SUBARU', 'SUZUKI',
+    'TANK', 'TATA', 'TOYOTA', 'TRUMPCHI', 'VIAUTO', 'VINFAST', 'VMC', 'VOLT', 'WEIAO BOMA',
+    'WELTMEISTER', 'WEY', 'WULING', 'XPENG', 'ZEEKR', 'ZOTYE',
+  ],
+  'เก๋งยุโรป': [
+    'ALFA', '-ALL-', 'ALLARD', 'ALPINE', 'AMC JAVELIN', 'ASTONMARTIN', 'AUDI', 'AUSTIN',
+    'BENTLEY', 'BENZ', 'BMW', 'BYD', 'CADILLAC', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIMLER',
+    'DODGE', 'EM', 'FERRARI', 'FIAT', 'FORD', 'HILLMAN', 'HOLDEN', 'HUMMER', 'JAGUAR', 'JEEP',
+    'LAMBORGHINI', 'LANCIA', 'LANDROVER', 'LEXUS', 'LINCOLN', 'LONDON', 'LOTUS', 'MASERATI',
+    'MAZDA', 'MCLAREN', 'MERCER', 'MG', 'MINI', 'MORRIS', 'OLDSMOBILE', 'OPEL', 'PEUGEOT',
+    'PONTIAC', 'PORSCHE', 'RENAULT', 'ROEWE', 'ROLLSROYCE', 'ROVER', 'SAAB', 'SEAT', 'SIMCA',
+    'SKODA', 'SMART', 'SUZUKI', 'TATRA', 'TESLA', 'TOYOTA', 'VOLKSWAGEN', 'VOLVO',
+  ],
+  'รถจักรยานยนต์': [
+    'AJ', '-ALL-', 'ALPHA VOLANTIS', 'APRILIA', 'ATV', 'BAJAJ', 'BENELLI', 'BICOSE', 'BMW',
+    'CAGIVA', 'CAN-AM', 'CFMOTO', 'DECO', 'DUCATI', 'EM', 'ENGY', 'ETRAN', 'EVO', 'GPX',
+    'HANWAY', 'HAONAIQI', 'HARDE', 'HARLEY', 'HARLEYDEVIDSON', 'HONDA', 'HSEM', 'HUNTER',
+    'HUSABER', 'I-MOTOR', 'ISUZU', 'JONWAY', 'JRD', 'KAVALLO', 'KAWASAKI', 'KEEWAY', 'KOZAWA',
+    'KTM', 'L&P', 'LAMBRETTA', 'LIFAN', 'LION', 'LONCIN', 'LUCKY', 'LUYUAN', 'MALAGUTI',
+    'MJNT', 'MODENAS', 'MODYAK', 'MOTO GUZZI', 'MOTO PARILLA', 'MZ', 'NISSAN', 'NIU', 'NKT',
+    'PATTINUM', 'PEDA', 'PEUGEOT', 'PIAGGIO', 'PLATINUM', 'RAPID', 'ROYAL ALLOY',
+    'ROYAL ENFIELD', 'RYUKA', 'SACHS', 'SCOMADI', 'SHINERAY', 'SLEEK', 'STALLIONS', 'STAR8',
+    'STROM', 'SUZUKI', 'SWAP AND GO', 'SWM', 'SYM', 'TIGER', 'TOMAS', 'TRIUMPH', 'VARETA',
+    'VESPA', 'VINFAST', 'VMOTO', 'YADEA', 'YAMAHA', 'ZONGSHEN', 'ZONTES',
+  ],
+  'รถอื่นๆ': [
+    'AICHI', 'ANKAI', 'APRILIA', 'ASHOK LEYLAND', 'ASIASTAR', 'ATV', 'BAOJUN', 'BENELLI',
+    'BENZ', 'BIZNEX', 'BMC', 'BMW', 'BOBCAT', 'BOMAG', 'BONLUCK', 'BYD', 'CAMC', 'CATERPILLAR',
+    'CFMOTO', 'CHANGLIN', 'CHEETAH', 'CHERY', 'CIAGIA', 'CLAAS', 'DAEWOO', 'DAF', 'DAIHATSU',
+    'DAYUN', 'DENWAY', 'DEVA', 'DFM', 'DONGFENG', 'DUCATI', 'EAGLE', 'EUROTRAC', 'EVT', 'FAW',
+    'FORD', 'FOTON', 'FURUKAWA', 'GALION', 'GENIE', 'GOLDENDRAGON', 'GOLDHOFER', 'GPX', 'GTM',
+    'HALLA', 'HANIX', 'HAONAIQI', 'HARLEYDEVIDSON', 'HENGTONG', 'HIDROMEK', 'HIGER', 'HINO',
+    'HINOTA', 'HITACHI', 'HONDA', 'HUAJIAN', 'HUMMER', 'HUNTER', 'HYDROQUIP', 'HYMER', 'HYSTER',
+    'HYUNDAI', 'IHI', 'IMIO', 'INGERSOLLRAND', 'INTERNATIONAL', 'ISKI', 'ISUZU', 'IVECO', 'JAC',
+    'JCB', 'JGM', 'JIAHE', 'JMC', 'JNT', 'JOHNSTON', 'JRD', 'KALMAR', 'KATO', 'KAVALLO',
+    'KAWASAKI', 'KIA', 'KINGLONG', 'KOBELCO', 'KOMATSU', 'KRUPP', 'KTM', 'KUBOTA', 'LEYLAND',
+    'LIBAMOTOR', 'LIEBHERR', 'LIFAN', 'LIUGONG', 'LONKING', 'LOVOL', 'LV', 'MACK', 'MAN',
+    'MARSHELL', 'MASSEY FERGUSON', 'MAX LOGGER', 'MAZDA', 'MEADOW', 'MG', 'MIDEA', 'MINE',
+    'MINI', 'MITSUBISHI', 'MODYAK', 'MONIKA', 'NAGANO', 'NEX', 'NICHIYU', 'NIIGATA', 'NISSAN',
+    'OMNIA', 'ORA', 'P&H', 'PANUS', 'PETERBILT', 'PIAGGIO', 'PLATINUM', 'RCK', 'ROADTEC',
+    'ROSENBAUER', 'ROYAL ALLOY', 'ROYAL ENFIELD', 'SAKUN.C', 'SAMMITR', 'SANY', 'SCANIA',
+    'SDLG', 'SHACMAN', 'SHANTUI', 'SINGTHAI', 'SINOMACH', 'SINOTRUK', 'SKYWELL', 'SOKON',
+    'STALLIONS', 'STEYR', 'SUMITOMO', 'SUNLONG', 'SUNWARD', 'SUZUKI', 'SYZG', 'TADANO',
+    'TALAYTHONG', 'TATA', 'TCM', 'TEREX', 'TESLA', 'THAINA', 'TIGER', 'TKING', 'TOYOTA',
+    'TRAILER', 'TRIUMPH', 'VESPA', 'VOLVO', 'WIRTGEN', 'XCMG', 'XGMA', 'XINYUAN', 'YADEA',
+    'YAMAHA', 'YANMAR', 'YAXING', 'YBM', 'YUCHAI', 'YUTONG', 'ZHONGTONG', 'ZOOMLION',
+  ],
+  'กระบะ': [
+    '-ALL-', 'BENZ', 'BYD', 'CHANGAN', 'CHEVROLET', 'CITROEN', 'DAIHATSU', 'DATSUN', 'DFM',
+    'DODGE', 'FIREBRIGHT', 'FORD', 'FOTON', 'GMC', 'HONDA', 'HUANGHAI', 'INTERNATIONAL',
+    'ISUZU', 'JAC', 'JEEP', 'KARRY', 'KIA', 'KINGLONG', 'MAZDA', 'MG', 'MITSUBISHI', 'NEX',
+    'NEXTEM', 'NISSAN', 'OPEL', 'PEUGEOT', 'POER', 'RAM', 'RELY', 'RIDDARA', 'SAMMITR',
+    'SKYWELL', 'SUZUKI', 'TAKANO', 'TATA', 'THAIRUNG', 'TOYOTA', 'VOLKSWAGEN', 'WULING',
+  ],
+  'รถตู้': [
+    'AION', '-ALL-', 'BENZ', 'BYD', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIHATSU', 'DATSUN',
+    'DENZA', 'DFM', 'FARIZON', 'FORD', 'FOTON', 'GMC', 'HIGER', 'HINO', 'HONDA', 'HYUNDAI',
+    'ISUZU', 'JINBEI', 'JOYLONG', 'KARRY', 'KIA', 'KYC', 'LEXUS', 'MAXUS', 'MAZDA', 'MG',
+    'MITSUBISHI', 'NISSAN', 'PEUGEOT', 'POLARSUN', 'RELY', 'RENAULT', 'ROEWE', 'SKYWELL',
+    'SOKON', 'SUBARU', 'SUZUKI', 'THAIRUNG', 'TOYOTA', 'TRUMPCHI', 'VOLKSWAGEN', 'WEY',
+    'WULING', 'XPENG', 'ZEEKR', 'ZHONGTONG',
+  ],
+  'รถบรรทุก': [
+    '-ALL-', 'BEIBEN', 'BENZ', 'BMC', 'BMW', 'CAMC', 'CHENGLONG', 'DAF', 'DAYUN', 'DEVA', 'DFM',
+    'DONGFENG', 'EVO', 'FAW', 'FORD', 'FOTON', 'FUSO', 'HILLMAN', 'HINO', 'HONGYANG', 'HYUNDAI',
+    'ISUZU', 'IVECO', 'JAC', 'JMC', 'KIA', 'MAN', 'MAZDA', 'MINE', 'MITSUBISHI', 'NEOMOR',
+    'NEX', 'NISSAN', 'REO', 'RILEY', 'SAMMIT', 'SAMMITR', 'SANY', 'SCANIA', 'SERES', 'SHACMAN',
+    'SHINERAY', 'SINOTRUK', 'SKYWELL', 'SOKON', 'STEYR', 'TADANO', 'TATA', 'TATRA', 'THAINA',
+    'TKING', 'TOYOTA', 'TRAILER', 'UD TRUCKS', 'UDTRUCKS', 'VOLVO', 'WIRTGEN', 'WULING', 'XCMG',
+    'YUCHAI', 'YUTONG',
+  ],
+};
+
+// ประเภทรถรถประกันเก็บเป็น code (A/E/M/O/T/V/W) — แปลงเป็นป้าย EMCS ก่อนหาลิสต์ยี่ห้อ
+const Map<String, String> kCarTypeCodeToLabel = {
+  'A': 'เก๋งเอเชีย', 'E': 'เก๋งยุโรป', 'M': 'รถจักรยานยนต์', 'O': 'รถอื่นๆ',
+  'T': 'กระบะ', 'V': 'รถตู้', 'W': 'รถบรรทุก',
+};
+
+/// ยี่ห้อที่เลือกได้ของประเภทรถนี้ — รับได้ทั้ง code ('A') และป้าย ('เก๋งเอเชีย')
+List<String> carBrandsFor(String carType) {
+  final k = kCarTypeCodeToLabel[carType] ?? carType;
+  return kCarBrandsByType[k] ?? const <String>[];
+}
+
 // สีรถ — sync EMCS master ddlCar_Color (verbatim ตามลำดับ value) 2026-07-25
 // ⚠️ ป้ายต้องตรงเป๊ะ: EMCS ใช้ 'บรอน' (ไม่ใช่ 'บรอนซ์'), 'UNDEFINE' (ไม่ใช่ 'อื่นๆ')
 // และสีคู่มีทั้งแบบเว้นวรรครอบ / ('เทา / เงิน') และไม่เว้น ('ขาว/ดำ') — ลอกตามต้นฉบับ
