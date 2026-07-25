@@ -21,7 +21,7 @@ export const PROVINCE_OPTIONS = [
 export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   // เก๋งเอเชีย
   A: [
-    'AION', '-ALL-', 'ASIACAB', 'ATTHAM', 'AVATR', 'BAOJUN', 'BORGWARD', 'BYD', 'CHANGAN',
+    'AION', 'ASIACAB', 'ATTHAM', 'AVATR', 'BAOJUN', 'BORGWARD', 'BYD', 'CHANGAN',
     'CHERY', 'DAEWOO', 'DAIHATSU', 'DATSUN', 'DFM', 'FOMM', 'FORD', 'GEELY', 'HAVAL',
     'HINDUSTAN', 'HONDA', 'HONGQI', 'HUASONG', 'HYUNDAI', 'ISUZU', 'JAECOO', 'JETOUR', 'JONWAY',
     'JUNEYAO', 'KIA', 'LEAPMOTOR', 'LEPAS', 'LEXUS', 'LI AUTO', 'LUXGEN', 'LYNK CO', 'MAHINDRA',
@@ -32,7 +32,7 @@ export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   ],
   // เก๋งยุโรป
   E: [
-    'ALFA', '-ALL-', 'ALLARD', 'ALPINE', 'AMC JAVELIN', 'ASTONMARTIN', 'AUDI', 'AUSTIN',
+    'ALFA', 'ALLARD', 'ALPINE', 'AMC JAVELIN', 'ASTONMARTIN', 'AUDI', 'AUSTIN',
     'BENTLEY', 'BENZ', 'BMW', 'BYD', 'CADILLAC', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIMLER',
     'DODGE', 'EM', 'FERRARI', 'FIAT', 'FORD', 'HILLMAN', 'HOLDEN', 'HUMMER', 'JAGUAR', 'JEEP',
     'LAMBORGHINI', 'LANCIA', 'LANDROVER', 'LEXUS', 'LINCOLN', 'LONDON', 'LOTUS', 'MASERATI',
@@ -42,7 +42,7 @@ export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   ],
   // รถจักรยานยนต์
   M: [
-    'AJ', '-ALL-', 'ALPHA VOLANTIS', 'APRILIA', 'ATV', 'BAJAJ', 'BENELLI', 'BICOSE', 'BMW',
+    'AJ', 'ALPHA VOLANTIS', 'APRILIA', 'ATV', 'BAJAJ', 'BENELLI', 'BICOSE', 'BMW',
     'CAGIVA', 'CAN-AM', 'CFMOTO', 'DECO', 'DUCATI', 'EM', 'ENGY', 'ETRAN', 'EVO', 'GPX',
     'HANWAY', 'HAONAIQI', 'HARDE', 'HARLEY', 'HARLEYDEVIDSON', 'HONDA', 'HSEM', 'HUNTER',
     'HUSABER', 'I-MOTOR', 'ISUZU', 'JONWAY', 'JRD', 'KAVALLO', 'KAWASAKI', 'KEEWAY', 'KOZAWA',
@@ -78,7 +78,7 @@ export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   ],
   // กระบะ
   T: [
-    '-ALL-', 'BENZ', 'BYD', 'CHANGAN', 'CHEVROLET', 'CITROEN', 'DAIHATSU', 'DATSUN', 'DFM',
+    'BENZ', 'BYD', 'CHANGAN', 'CHEVROLET', 'CITROEN', 'DAIHATSU', 'DATSUN', 'DFM',
     'DODGE', 'FIREBRIGHT', 'FORD', 'FOTON', 'GMC', 'HONDA', 'HUANGHAI', 'INTERNATIONAL',
     'ISUZU', 'JAC', 'JEEP', 'KARRY', 'KIA', 'KINGLONG', 'MAZDA', 'MG', 'MITSUBISHI', 'NEX',
     'NEXTEM', 'NISSAN', 'OPEL', 'PEUGEOT', 'POER', 'RAM', 'RELY', 'RIDDARA', 'SAMMITR',
@@ -86,7 +86,7 @@ export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   ],
   // รถตู้
   V: [
-    'AION', '-ALL-', 'BENZ', 'BYD', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIHATSU', 'DATSUN',
+    'AION', 'BENZ', 'BYD', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIHATSU', 'DATSUN',
     'DENZA', 'DFM', 'FARIZON', 'FORD', 'FOTON', 'GMC', 'HIGER', 'HINO', 'HONDA', 'HYUNDAI',
     'ISUZU', 'JINBEI', 'JOYLONG', 'KARRY', 'KIA', 'KYC', 'LEXUS', 'MAXUS', 'MAZDA', 'MG',
     'MITSUBISHI', 'NISSAN', 'PEUGEOT', 'POLARSUN', 'RELY', 'RENAULT', 'ROEWE', 'SKYWELL',
@@ -95,7 +95,7 @@ export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   ],
   // รถบรรทุก
   W: [
-    '-ALL-', 'BEIBEN', 'BENZ', 'BMC', 'BMW', 'CAMC', 'CHENGLONG', 'DAF', 'DAYUN', 'DEVA', 'DFM',
+    'BEIBEN', 'BENZ', 'BMC', 'BMW', 'CAMC', 'CHENGLONG', 'DAF', 'DAYUN', 'DEVA', 'DFM',
     'DONGFENG', 'EVO', 'FAW', 'FORD', 'FOTON', 'FUSO', 'HILLMAN', 'HINO', 'HONGYANG', 'HYUNDAI',
     'ISUZU', 'IVECO', 'JAC', 'JMC', 'KIA', 'MAN', 'MAZDA', 'MINE', 'MITSUBISHI', 'NEOMOR',
     'NEX', 'NISSAN', 'REO', 'RILEY', 'SAMMIT', 'SAMMITR', 'SANY', 'SCANIA', 'SERES', 'SHACMAN',

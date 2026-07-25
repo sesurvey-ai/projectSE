@@ -46,7 +46,7 @@ const List<String> kOpoCarTypes = [
 // ป้ายเป็นอังกฤษล้วนตามต้นฉบับ (เคยเก็บเป็นไทยแล้วบอทเลือกไม่ได้ — 'เอ็มจี' vs 'MG')
 const Map<String, List<String>> kCarBrandsByType = {
   'เก๋งเอเชีย': [
-    'AION', '-ALL-', 'ASIACAB', 'ATTHAM', 'AVATR', 'BAOJUN', 'BORGWARD', 'BYD', 'CHANGAN',
+    'AION', 'ASIACAB', 'ATTHAM', 'AVATR', 'BAOJUN', 'BORGWARD', 'BYD', 'CHANGAN',
     'CHERY', 'DAEWOO', 'DAIHATSU', 'DATSUN', 'DFM', 'FOMM', 'FORD', 'GEELY', 'HAVAL',
     'HINDUSTAN', 'HONDA', 'HONGQI', 'HUASONG', 'HYUNDAI', 'ISUZU', 'JAECOO', 'JETOUR', 'JONWAY',
     'JUNEYAO', 'KIA', 'LEAPMOTOR', 'LEPAS', 'LEXUS', 'LI AUTO', 'LUXGEN', 'LYNK CO', 'MAHINDRA',
@@ -56,7 +56,7 @@ const Map<String, List<String>> kCarBrandsByType = {
     'WELTMEISTER', 'WEY', 'WULING', 'XPENG', 'ZEEKR', 'ZOTYE',
   ],
   'เก๋งยุโรป': [
-    'ALFA', '-ALL-', 'ALLARD', 'ALPINE', 'AMC JAVELIN', 'ASTONMARTIN', 'AUDI', 'AUSTIN',
+    'ALFA', 'ALLARD', 'ALPINE', 'AMC JAVELIN', 'ASTONMARTIN', 'AUDI', 'AUSTIN',
     'BENTLEY', 'BENZ', 'BMW', 'BYD', 'CADILLAC', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIMLER',
     'DODGE', 'EM', 'FERRARI', 'FIAT', 'FORD', 'HILLMAN', 'HOLDEN', 'HUMMER', 'JAGUAR', 'JEEP',
     'LAMBORGHINI', 'LANCIA', 'LANDROVER', 'LEXUS', 'LINCOLN', 'LONDON', 'LOTUS', 'MASERATI',
@@ -65,7 +65,7 @@ const Map<String, List<String>> kCarBrandsByType = {
     'SKODA', 'SMART', 'SUZUKI', 'TATRA', 'TESLA', 'TOYOTA', 'VOLKSWAGEN', 'VOLVO',
   ],
   'รถจักรยานยนต์': [
-    'AJ', '-ALL-', 'ALPHA VOLANTIS', 'APRILIA', 'ATV', 'BAJAJ', 'BENELLI', 'BICOSE', 'BMW',
+    'AJ', 'ALPHA VOLANTIS', 'APRILIA', 'ATV', 'BAJAJ', 'BENELLI', 'BICOSE', 'BMW',
     'CAGIVA', 'CAN-AM', 'CFMOTO', 'DECO', 'DUCATI', 'EM', 'ENGY', 'ETRAN', 'EVO', 'GPX',
     'HANWAY', 'HAONAIQI', 'HARDE', 'HARLEY', 'HARLEYDEVIDSON', 'HONDA', 'HSEM', 'HUNTER',
     'HUSABER', 'I-MOTOR', 'ISUZU', 'JONWAY', 'JRD', 'KAVALLO', 'KAWASAKI', 'KEEWAY', 'KOZAWA',
@@ -99,14 +99,14 @@ const Map<String, List<String>> kCarBrandsByType = {
     'YAMAHA', 'YANMAR', 'YAXING', 'YBM', 'YUCHAI', 'YUTONG', 'ZHONGTONG', 'ZOOMLION',
   ],
   'กระบะ': [
-    '-ALL-', 'BENZ', 'BYD', 'CHANGAN', 'CHEVROLET', 'CITROEN', 'DAIHATSU', 'DATSUN', 'DFM',
+    'BENZ', 'BYD', 'CHANGAN', 'CHEVROLET', 'CITROEN', 'DAIHATSU', 'DATSUN', 'DFM',
     'DODGE', 'FIREBRIGHT', 'FORD', 'FOTON', 'GMC', 'HONDA', 'HUANGHAI', 'INTERNATIONAL',
     'ISUZU', 'JAC', 'JEEP', 'KARRY', 'KIA', 'KINGLONG', 'MAZDA', 'MG', 'MITSUBISHI', 'NEX',
     'NEXTEM', 'NISSAN', 'OPEL', 'PEUGEOT', 'POER', 'RAM', 'RELY', 'RIDDARA', 'SAMMITR',
     'SKYWELL', 'SUZUKI', 'TAKANO', 'TATA', 'THAIRUNG', 'TOYOTA', 'VOLKSWAGEN', 'WULING',
   ],
   'รถตู้': [
-    'AION', '-ALL-', 'BENZ', 'BYD', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIHATSU', 'DATSUN',
+    'AION', 'BENZ', 'BYD', 'CHEVROLET', 'CHRYSLER', 'CITROEN', 'DAIHATSU', 'DATSUN',
     'DENZA', 'DFM', 'FARIZON', 'FORD', 'FOTON', 'GMC', 'HIGER', 'HINO', 'HONDA', 'HYUNDAI',
     'ISUZU', 'JINBEI', 'JOYLONG', 'KARRY', 'KIA', 'KYC', 'LEXUS', 'MAXUS', 'MAZDA', 'MG',
     'MITSUBISHI', 'NISSAN', 'PEUGEOT', 'POLARSUN', 'RELY', 'RENAULT', 'ROEWE', 'SKYWELL',
@@ -114,7 +114,7 @@ const Map<String, List<String>> kCarBrandsByType = {
     'WULING', 'XPENG', 'ZEEKR', 'ZHONGTONG',
   ],
   'รถบรรทุก': [
-    '-ALL-', 'BEIBEN', 'BENZ', 'BMC', 'BMW', 'CAMC', 'CHENGLONG', 'DAF', 'DAYUN', 'DEVA', 'DFM',
+    'BEIBEN', 'BENZ', 'BMC', 'BMW', 'CAMC', 'CHENGLONG', 'DAF', 'DAYUN', 'DEVA', 'DFM',
     'DONGFENG', 'EVO', 'FAW', 'FORD', 'FOTON', 'FUSO', 'HILLMAN', 'HINO', 'HONGYANG', 'HYUNDAI',
     'ISUZU', 'IVECO', 'JAC', 'JMC', 'KIA', 'MAN', 'MAZDA', 'MINE', 'MITSUBISHI', 'NEOMOR',
     'NEX', 'NISSAN', 'REO', 'RILEY', 'SAMMIT', 'SAMMITR', 'SANY', 'SCANIA', 'SERES', 'SHACMAN',
