@@ -382,6 +382,15 @@ const parseJsonArr = (v: unknown): Row[] =>
 /**
  * สร้าง INSERT_SURV_REPORT_XML จาก survey_reports row (+ opposing_parties/damaged_property/injured_persons ที่ parse แล้ว)
  */
+// "มี/ไม่มีการตรวจแอลกอฮอล์" → '1' มีการตรวจ / '0' ไม่มี / '' ไม่มีข้อมูล
+// (แอปเก็บเป็นข้อความอิสระช่องเดียว ต้องตีความ — ตรรกะเดียวกับ se-autokey _fill_police_and_alcohol)
+const alcChk = (test: unknown, result: unknown): string => {
+  const t = String(test ?? '').trim();
+  const rs = String(result ?? '').trim();
+  if (!t && !rs) return '';
+  return ['ไม่ได้ตรวจ', 'ไม่ตรวจ', 'ไม่มีการตรวจ', 'ไม่มี'].some((k) => t.includes(k)) ? '0' : '1';
+};
+
 export function generateSurveyXml(r: Row): string {
   const opponents = parseJsonArr(r.opposing_parties);
   const assets = parseJsonArr(r.damaged_property);
@@ -410,9 +419,12 @@ export function generateSurveyXml(r: Row): string {
     el('ACC_CALL_DATE', toXmlCE(r.acc_customer_report_date)) +
     el('ACC_REACH', toXmlCE(r.acc_survey_arrive_date)) +
     el('ACC_FINISH', toXmlCE(r.acc_survey_complete_date)) +
-    el('OPO_RESULT', '') +
-    el('OPO_PAY', '0') +
-    el('OPO_RECOVERY_AMOUNT', '') +
+    // การเรียกร้องค่าเสียหายจากคู่กรณี — แอปเก็บครบ (ติ๊ก 5 ข้อ + ยอดเงิน 2 ช่อง)
+    // แต่เดิม hardcode ว่างทั้งชุด → เส้นทาง XML ทิ้งข้อมูลนี้ทุกเคส
+    // (เส้นทางหลักผ่าน se-autokey กรอก chkOpo_Result บนหน้าให้แล้วตั้งแต่ 9719228)
+    el('OPO_RESULT', r.acc_claim_opponent) +
+    el('OPO_PAY', money(r.acc_claim_amount) || '0') +
+    el('OPO_RECOVERY_AMOUNT', money(r.acc_claim_total_amount)) +
     el('OPO_AMOUNT_TYPE', '') +
     el('POLICE_NAME', r.acc_police_name) +
     el('POLICE_STATION', r.acc_police_station) +
@@ -422,7 +434,9 @@ export function generateSurveyXml(r: Row): string {
     el('PRB_NUMBER', r.prb_number) +
     el('SURV_COMMENT', r.surveyor_comment || r.notes) +
     el('ACC_CAUSE_NO', r.acc_fault_opponent_no) +
-    el('ALC_CHK', '') +
+    // ALC_CHK = "มี/ไม่มีการตรวจแอลกอฮอล์" (EMCS เป็น radio) — แอปมีกล่องข้อความเดียว
+    // ตีความจากข้อความเดียวกับที่ se-autokey ทำ: มีข้อความที่ไม่ใช่ 'ไม่ได้ตรวจ' = มีการตรวจ
+    el('ALC_CHK', alcChk(r.acc_alcohol_test, r.acc_alcohol_result)) +
     el('ALC_RESULT', r.acc_alcohol_result || r.acc_alcohol_test) +
     el('FLU_TYPE', lookup(FLU_TYPE, r.acc_followup)) + el('FLU_NO', r.acc_followup_count) +
     el('FLU_DETAIL', r.acc_followup_detail) + el('FLU_DATE', toXmlCE(r.acc_followup_date)) +
