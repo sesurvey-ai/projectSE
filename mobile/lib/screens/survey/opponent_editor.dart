@@ -197,11 +197,14 @@ class _OpponentEditorState extends State<OpponentEditor> {
         ),
         kRow2(
           kText(_ctl('plate'), 'ทะเบียน', req: true),
-          // เปลี่ยนจังหวัด → ล้างอำเภอ (กันอำเภอเดิมข้ามจังหวัด → รหัส EMCS ไม่คู่กัน)
-          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, req: true, onSelected: (v) => setState(() { _province = v; _district = ''; })),
+          // จังหวัด "ป้ายทะเบียน" ของรถคู่กรณี → ddlCar_Province บน EMCS (บังคับ)
+          KPickerField(label: 'จังหวัด', value: _province, options: widget.provinces, req: true, onSelected: (v) => setState(() => _province = v)),
         ),
-        // เขต/อำเภอคู่กรณี (cascade จากจังหวัด) → DRI_DISTRICTID ของคู่กรณีใน EMCS
-        KPickerField(label: 'เขต/อำเภอ', value: _district, options: widget.provincesData[_province] ?? const [], onSelected: (v) => setState(() => _district = v)),
+        // ⛔ เอาช่อง "เขต/อำเภอ" ออก 2026-07-27: EMCS ไม่มีที่ให้ลงเลย —
+        // ddlDri_ProvinceID/DistrictID/Sub_DistrictID ของบล็อกคู่กรณีถูก display:none
+        // + ไม่มี option ครบทั้ง 20 แผง (ยืนยันทั้งหน้าที่พนักงานกรอกเองและ draft จริง)
+        // ที่อยู่คู่กรณีของ EMCS เป็นช่องข้อความเดียว → ให้พิมพ์อำเภอ/จังหวัดในช่อง "ที่อยู่" แทน
+        // (ยังเก็บค่าเดิมใน _collect เพื่อไม่ให้ข้อมูลที่เคยกรอกไว้หาย)
         kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
@@ -235,11 +238,11 @@ class _OpponentEditorState extends State<OpponentEditor> {
             })),
         if (_hasLicense) ...[
           KPickerField(label: 'ประเภทใบขับขี่', value: _licenseType, options: kLicenseTypes.where((t) => t != 'ไม่มีใบขับขี่').toList(), onSelected: (v) => setState(() => _licenseType = v)),
-          kRow2(
-            kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
-            kText(_ctl('license_place'), 'ออกให้ที่'),
-          ),
-          kRow2(KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0), KDateField(_ctl('license_end'), 'วันหมดอายุ', yearsAhead: 10)),
+          // ⛔ เอา "ออกให้ที่" + "วันหมดอายุ" ออก 2026-07-27: บล็อกคู่กรณีของ EMCS
+          // ไม่มี txtDri_DrvPlace และไม่มี wuCale_Dri_DrvDate_End (ฝั่งรถประกันมีครบ)
+          // → กรอกไปก็ไม่มีที่ลง (OCR ยังเติมค่าให้เบื้องหลังเผื่อใช้ภายใน)
+          kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
+          KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0),
         ],
         kSubhead('ประกันภัยคู่กรณี'),
         KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, req: true, onSelected: (v) => setState(() {
@@ -261,7 +264,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
         kSubhead('ความเสียหาย'),
         DamageDiagramField(items: _damage, onChanged: () => setState(() {})),
         DamagePartList(items: _damage, onChanged: () => setState(() {})),
-        kText(_ctl('damage_description'), 'รายละเอียดความเสียหาย', maxLines: 3),
+        // ⛔ เอา "รายละเอียดความเสียหาย" ออก 2026-07-27: EMCS ไม่มีช่องรองรับ
+        // (ความเสียหายลงเป็นรายการชิ้นส่วน+ระดับผ่าน popup เท่านั้น)
         kNum(_ctl('estimated_cost'), 'ค่าเสียหายประมาณ (บาท)', decimal: true),
       ],
     );

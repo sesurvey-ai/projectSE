@@ -41,12 +41,32 @@ class _PropertyEditorState extends State<PropertyEditor> {
         'owner_phone': _ctl('owner_phone').text.trim(),
       };
 
+  // ช่องที่ EMCS บังคับต่อทรัพย์สิน 1 ชิ้น (vlidAsset) — ไม่ครบ = บันทึกบล็อกทรัพย์สินไม่ผ่าน
+  List<String> _missing() => [
+        if (_ctl('item').text.trim().isEmpty) 'รายการทรัพย์สิน',
+        if (_ctl('cause').text.trim().isEmpty) 'สาเหตุที่ทรัพย์สินเสียหาย',
+        if (_ctl('detail').text.trim().isEmpty) 'รายละเอียด/ลักษณะความเสียหาย',
+        if (_ctl('owner_name').text.trim().isEmpty) 'ชื่อเจ้าของทรัพย์สิน',
+      ];
+
+  void _save() {
+    final miss = _missing();
+    if (miss.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('กรอกไม่ครบ: ${miss.join(", ")}'),
+        backgroundColor: Colors.red.shade700,
+        duration: const Duration(seconds: 4)));
+      return;
+    }
+    Navigator.pop(context, {'action': 'save', 'data': _collect()});
+  }
+
   @override
   Widget build(BuildContext context) {
     return EditorScaffold(
       title: 'ทรัพย์สินชิ้นที่ ${widget.number}',
       subtitle: 'ทรัพย์สินบุคคลภายนอกที่เสียหาย',
-      onSave: () => Navigator.pop(context, {'action': 'save', 'data': _collect()}),
+      onSave: _save,
       onDelete: widget.isNew ? null : () => Navigator.pop(context, {'action': 'delete'}),
       children: [
         kText(_ctl('item'), 'รายการทรัพย์สิน', req: true),

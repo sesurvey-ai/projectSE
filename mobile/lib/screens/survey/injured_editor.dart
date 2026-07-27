@@ -48,7 +48,10 @@ class _InjuredEditorState extends State<InjuredEditor> {
     if (fields == null || fields.isEmpty || !mounted) return;
     String f(String k) => (fields[k] ?? '').toString().trim();
     setState(() {
-      final name = [f('first_name'), f('last_name')].where((s) => s.isNotEmpty).join(' ');
+      // คงคำนำหน้าไว้ในชื่อ — EMCS ไม่มี dropdown คำนำหน้าของผู้บาดเจ็บที่ใช้จริง
+      // งานจริงของพนักงานพิมพ์รวมมาเลย ('น.ส. อุมาพร รื่นภาคลาภ')
+      final name = [f('prefix'), f('first_name'), f('last_name')]
+          .where((s) => s.isNotEmpty).join(' ');
       if (name.isNotEmpty) _ctl('name').text = name;
       if (f('cid').isNotEmpty) _ctl('cid').text = f('cid');
       if (f('address').isNotEmpty) _ctl('address').text = f('address');
@@ -83,6 +86,30 @@ class _InjuredEditorState extends State<InjuredEditor> {
     );
   }
 
+  // ช่องที่ EMCS บังคับต่อผู้บาดเจ็บ 1 คน (vlidInjPerson) — ไม่ครบ = กด "บันทึกผู้บาดเจ็บ"
+  // บน EMCS ไม่ผ่าน "ทั้งบล็อก" (ไม่ใช่แค่คนนี้) หัวหน้าต้องมานั่งเติมเองทุกเคส
+  // เดิม req: true เป็นแค่ดาวแดงตกแต่ง — onSave pop ทันทีโดยไม่ตรวจอะไรเลย
+  List<String> _missing() => [
+        if (_personType.trim().isEmpty) 'ประเภทผู้บาดเจ็บ',
+        if (_gender.trim().isEmpty) 'เพศ',
+        if (_ctl('name').text.trim().isEmpty) 'ชื่อ-นามสกุล',
+        if (_ctl('cid').text.trim().isEmpty) 'เลขบัตรประชาชน',
+        if (_ctl('hospital').text.trim().isEmpty) 'โรงพยาบาล',
+        if (_ctl('symptom').text.trim().isEmpty) 'อาการบาดเจ็บ',
+      ];
+
+  void _save() {
+    final miss = _missing();
+    if (miss.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('กรอกไม่ครบ: ${miss.join(", ")}'),
+        backgroundColor: Colors.red.shade700,
+        duration: const Duration(seconds: 4)));
+      return;
+    }
+    Navigator.pop(context, {'action': 'save', 'data': _collect()});
+  }
+
   Map<String, dynamic> _collect() => {
         'person_type': _personType,
         'relation': _relation,
@@ -110,7 +137,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
     return EditorScaffold(
       title: 'ผู้บาดเจ็บคนที่ ${widget.number}',
       subtitle: 'ข้อมูลผู้บาดเจ็บ + การรักษา',
-      onSave: () => Navigator.pop(context, {'action': 'save', 'data': _collect()}),
+      onSave: _save,
       onDelete: widget.isNew ? null : () => Navigator.pop(context, {'action': 'delete'}),
       children: [
         _scanBtn(),
@@ -128,7 +155,9 @@ class _InjuredEditorState extends State<InjuredEditor> {
         ]),
         Align(alignment: Alignment.centerLeft, child: SizedBox(width: 150, child: kNum(_ctl('age'), 'อายุ (ปี)'))),
         kText(_ctl('cid'), 'เลขบัตรประชาชน/ต่างด้าว/หนังสือเดินทาง', req: true),
-        kRow2(kText(_ctl('occupation'), 'อาชีพ'), kText(_ctl('car_reg'), 'เลขทะเบียน', req: true)),
+        // เลขทะเบียน: EMCS เติมให้เองแบบ readOnly (setDefault_CarRegNo ดึงจากรถประกัน/รถคู่กรณี
+        // ตามประเภทผู้บาดเจ็บ) — เลิกบังคับพนักงานพิมพ์เอง
+        kRow2(kText(_ctl('occupation'), 'อาชีพ'), kText(_ctl('car_reg'), 'เลขทะเบียน')),
         kText(_ctl('address'), 'ที่อยู่', maxLines: 2),
         kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone),
         kText(_ctl('work_place'), 'ทำงานที่'),

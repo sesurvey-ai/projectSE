@@ -2621,6 +2621,46 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     checkOpt('6. คู่กรณี', _hasOpponents, _opponents, 'คู่กรณี');
     checkOpt('7. ผู้บาดเจ็บ', _hasInjured, _injured, 'ผู้บาดเจ็บ');
     checkOpt('8. ทรัพย์สิน', _hasProperty, _property, 'ทรัพย์สิน');
+
+    // ── ช่องบังคับ "รายคน/รายชิ้น" ของหมวด 7-8 ────────────────────────────────
+    // _emptyRec ข้างบนจับได้แค่ "รายการที่ว่างทั้งก้อน" — กรอกแค่ชื่อคนเดียวก็ผ่าน gate
+    // แต่ EMCS บังคับหลายช่องต่อคน/ต่อชิ้น (vlidInjPerson / vlidAsset) ไม่ครบ =
+    // กดบันทึกบล็อกนั้นบน EMCS ไม่ผ่าน "ทั้งบล็อก" และช่องที่ว่างจะกลายเป็น '-'
+    // ให้หัวหน้าไล่แก้ทีละช่อง — จึงต้องดักตั้งแต่ตอนส่งงาน (เหมือนหมวด 1-5)
+    void checkItems(String title, bool has, List<Map<String, dynamic>> items,
+        String noun, Map<String, String> requiredKeys) {
+      if (!has || items.isEmpty) return;
+      final msgs = <String>[];
+      for (var i = 0; i < items.length; i++) {
+        final it = items[i];
+        if (_emptyRec(it)) continue;   // แจ้งไปแล้วโดย checkOpt
+        final miss = requiredKeys.entries
+            .where((kv) => (it[kv.key] ?? '').toString().trim().isEmpty)
+            .map((kv) => kv.value)
+            .toList();
+        if (miss.isNotEmpty) msgs.add('$noun คนที่/ชิ้นที่ ${i + 1}: ขาด ${miss.join(", ")}');
+      }
+      if (msgs.isNotEmpty) (e[title] ??= <String>[]).addAll(msgs);
+    }
+
+    checkItems('7. ผู้บาดเจ็บ', _hasInjured, _injured, 'ผู้บาดเจ็บ', const {
+      'person_type': 'ประเภทผู้บาดเจ็บ', 'gender': 'เพศ', 'name': 'ชื่อ-นามสกุล',
+      'cid': 'เลขบัตรประชาชน', 'hospital': 'โรงพยาบาล', 'symptom': 'อาการบาดเจ็บ',
+    });
+    checkItems('8. ทรัพย์สิน', _hasProperty, _property, 'ทรัพย์สิน', const {
+      'item': 'รายการทรัพย์สิน', 'cause': 'สาเหตุที่เสียหาย',
+      'detail': 'รายละเอียดความเสียหาย', 'owner_name': 'ชื่อเจ้าของ',
+    });
+
+    // เพดานของ EMCS: ผู้บาดเจ็บ 32 คน / ทรัพย์สิน 30 ชิ้น — ส่วนเกินหายเงียบตอน import
+    if (_injured.length > 32) {
+      (e['7. ผู้บาดเจ็บ'] ??= <String>[])
+          .add('เกิน 32 คน (${_injured.length}) — EMCS รับได้สูงสุด 32 ส่วนเกินจะไม่ถูกนำเข้า');
+    }
+    if (_property.length > 30) {
+      (e['8. ทรัพย์สิน'] ??= <String>[])
+          .add('เกิน 30 ชิ้น (${_property.length}) — EMCS รับได้สูงสุด 30 ส่วนเกินจะไม่ถูกนำเข้า');
+    }
     return e;
   }
 
@@ -3010,7 +3050,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           _numField(_accFaultOpponentNoCtl, 'คู่กรณีคันที่', req: true),
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
         _txt(_accSurveyorCtl, 'ผู้สำรวจภัย', req: true),
-        _row2(_txt(_accSurveyorBranchCtl, 'สาขา'), _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone)),
+        // ⛔ เอาช่อง "สาขา" ออก 2026-07-27: ddlSurv_Branch บน EMCS มี option เดียวคือ
+        // '-- ระบุ --' (เลือกอะไรไม่ได้) และงานจริงที่พนักงานทำก็ค้างที่ค่านั้น
+        // ส่วน "โทรศัพท์สำรวจ" มีปลายทางจริง (txtAcc_Tel) — บอทส่งให้แล้วตั้งแต่ 2d78f0e
+        _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone),
         _dateTime(_accCustomerReportDateCtl, _accCustomerReportTimeCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'),
         _dateTime(_accInsNotifyDateCtl, _accInsNotifyTimeCtl, 'วันที่ บ.ประกันแจ้งสำรวจ'),
         _dateTime(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl, 'วันที่ถึงที่เกิดเหตุ'),
