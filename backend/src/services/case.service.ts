@@ -762,16 +762,9 @@ export const caseService = {
     assertCaseAccess(caseResult.rows[0], user);
     const reportResult = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('ยังไม่มีข้อมูลรายงานสำรวจของเคสนี้');
-    const report = reportResult.rows[0];
-    // ตารางค่าใช้จ่ายอยู่คนละตาราง — ไม่ join = ทุกช่องราคาใน XML เป็น 0.00 ตลอด
-    // (หัวหน้าต้องพิมพ์ใหม่ทั้งตารางบน EMCS ทั้งที่หน้าเว็บกรอกไว้แล้ว)
-    const expResult = await db.query(
-      'SELECT * FROM survey_expenses WHERE report_id = $1 ORDER BY id DESC LIMIT 1', [report.id]);
-    if (expResult.rows.length > 0) {
-      const { id: _eid, report_id: _erid, created_at: _ecat, ...exp } = expResult.rows[0];
-      Object.assign(report, exp);   // คอลัมน์ค่าใช้จ่ายไม่ชนกับ survey_reports
-    }
-    return generateSurveyXml(report);
+    // ไม่ join survey_expenses โดยตั้งใจ — บล็อก TXN_SURV_BILL ส่ง 0 ทั้งหมด
+    // (กติกา user 2026-07-31: หัวหน้ากรอกยอดเงินเองบน EMCS)
+    return generateSurveyXml(reportResult.rows[0]);
   },
 
   async updateReport(caseId: number, data: Record<string, unknown>) {

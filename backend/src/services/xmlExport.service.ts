@@ -462,37 +462,22 @@ export function generateSurveyXml(r: Row): string {
   const assetBlocks = assets.map((a, i) => buildAsset(a, i + 1)).join('');   // ทรัพย์สินเสียหาย (0..n)
   const injureBlocks = injured.map((p, i) => buildInjure(p, i + 1)).join(''); // ผู้บาดเจ็บ (0..n)
 
-  // ── ตารางค่าใช้จ่าย ────────────────────────────────────────────────────────────
-  // เดิมฮาร์ดโค้ด '0.00' เกือบทุกช่อง + SUR_INVEST ดึงจาก claim_fee_price ('ค่าเรียกร้อง')
-  // ทั้งที่ SUR_INVEST คือ 'ค่าบริการ' = service_fee_price → ตารางราคาบน EMCS ว่างทุกเคส
-  // หัวหน้าต้องพิมพ์ใหม่ทั้งตาราง ทั้งที่หน้าเว็บ (CaseDetail) กรอกไว้ครบแล้ว
-  // ค่าที่ส่งเป็น "ราคาต่อหน่วย" คู่กับจำนวน (บอทฝั่ง se-autokey อ่านแบบนั้น: fill_fee_table)
-  // ยกเว้น SUR_PHOTO ที่ฝั่งบอทคาดว่าเป็น "ยอดรวม" แล้วหารด้วย PHOTO_NUM เอง → ส่งยอดรวม
-  const num = (v: unknown): number => {
-    const n = parseFloat(String(v ?? '').replace(/[,\s]/g, ''));
-    return Number.isFinite(n) ? n : 0;
-  };
-  const photoCount = num(r.photo_fee_count);
-  const photoUnit = num(r.photo_fee_price);
+  // ── ตารางค่าใช้จ่าย: ส่ง 0 ทั้งหมดโดยตั้งใจ ───────────────────────────────────
+  // กติกา user 2026-07-31: **หัวหน้าเป็นคนกรอกยอดเงินเองบน EMCS** แล้วสรุปรายละเอียด
+  // + กดส่งงานให้บริษัทประกัน — บอทกรอกหน้าค่าใช้จ่ายแค่ "เลขที่ใบแจ้งหนี้ + วันที่"
+  // (ยอดเงินที่เคยมีใน XML เป็นของ ISURVEY ซึ่งกำลังจะเลิกใช้ — พามาก็ชนกับที่หัวหน้ากรอก)
+  // เคยลองส่งค่าจริงจาก survey_expenses ไว้ชั่วคราว (0a4a783) แล้วถอยกลับตามกติกานี้
   const bill = '<TXN_SURV_BILL>' +
-    el('SUR_INVEST', money(r.service_fee_price) || '0.00') +      // ค่าบริการ (ต่อครั้ง)
-    el('FUL_INVEST', '0.00') +
-    el('SUR_TRANS', money(r.travel_fee_price) || '0.00') +        // ค่าเดินทาง/พาหนะ (ต่อครั้ง)
-    el('FUL_TRANS', '0.00') +
-    el('INVEST_NUM', String(num(r.service_fee_count) || 0)) +
-    el('TRANS_NUM', String(num(r.travel_fee_count) || 0)) +
-    el('PHOTO_NUM', String(photoCount || 0)) +
-    el('SUR_PHOTO', photoUnit ? String(+(photoUnit * (photoCount || 1)).toFixed(2)) : '0.00') +
-    el('FUL_PHOTO', '0.00') +
-    el('SUR_OTHER', money(r.other_fee_price) || '0.00') +
-    el('OTHER_DESC', r.other_fee_detail) +
+    el('SUR_INVEST', '0.00') + el('FUL_INVEST', '0.00') +
+    el('SUR_TRANS', '0.00') + el('FUL_TRANS', '0.00') +
+    el('INVEST_NUM', '0') + el('TRANS_NUM', '0') + el('PHOTO_NUM', '0') +
+    el('SUR_PHOTO', '0.00') + el('FUL_PHOTO', '0.00') + el('SUR_OTHER', '0.00') +
+    el('OTHER_DESC', '') +
     el('BILL_NO', '') + el('BILL_DATE', '') + el('CREDIT_TERM', '') + el('DUE_DATE', '') +
-    el('SUR_TEL', money(r.phone_fee) || '0.00') +                 // ค่าโทรศัพท์
-    el('SUR_INSURE', money(r.bail_fee) || '0.00') +               // ค่าประกันตัว
-    el('SUR_CLAIM', money(r.claim_fee_price) || '0.00') +         // ค่าเรียกร้อง
-    el('SUR_DAILY', money(r.daily_record_fee) || '0.00') +        // ค่าคัดประจำวัน
+    el('SUR_TEL', '0.00') + el('SUR_INSURE', '0.00') + el('SUR_CLAIM', '0.00') +
+    el('SUR_DAILY', '0.00') +
     el('ACC_RESULT', '') + el('ACC_COMMENT', '') + el('SURV_COMMENT', '') + el('INC_VAT', '') +
-    el('SUR_PERCENT_CLAIM', money(r.claim_fee_percent) || '0.00') +
+    el('SUR_PERCENT_CLAIM', '0.00') +
     '</TXN_SURV_BILL>';
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<INSERT_SURV_REPORT_XML>${report}${cars}${assetBlocks}${injureBlocks}${bill}</INSERT_SURV_REPORT_XML>`;
