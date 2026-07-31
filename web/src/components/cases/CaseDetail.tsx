@@ -497,7 +497,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ใบสั่ง :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_ticket" defaultValue={''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_ticket" defaultValue={report.driver_ticket || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
@@ -592,7 +592,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รอสรุปผลคดี" disabled={d} defaultChecked={report.acc_fault === 'รอสรุปผลคดี'} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ยกเลิกการเคลม" disabled={d} defaultChecked={report.acc_fault === 'ยกเลิกการเคลม'} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ไปถึง แล้วไม่พบ" disabled={d} defaultChecked={report.acc_fault === 'ไปถึง แล้วไม่พบ'} className="w-3.5 h-3.5" /> ไปถึง แล้วไม่พบ</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ไปถึงแล้วไม่พบ" disabled={d} defaultChecked={report.acc_fault === 'ไปถึงแล้วไม่พบ' || report.acc_fault === 'ไปถึง แล้วไม่พบ'} className="w-3.5 h-3.5" /> ไปถึงแล้วไม่พบ</label>
                     </div>
                   </td>
                 </tr>

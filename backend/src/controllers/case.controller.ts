@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { caseService } from '../services/case.service';
 import { sendSuccess } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
+import { parseIsurveyXml } from '../services/xmlImport.service';
+import { AppError } from '../middleware/errorHandler';
 
 export const caseController = {
   create: asyncHandler(async (req: Request, res: Response) => {
@@ -51,6 +53,35 @@ export const caseController = {
   }),
 
   // ดาวน์โหลด INSERT_SURV_REPORT_XML (สำหรับ import เข้าพอร์ทัลประกัน)
+  /** นำเข้าเคสจากไฟล์ XML ของ ISURVEY (+ zip รูป) — flow ระบบเก่าที่กำลังเลิกใช้ */
+  importXml: asyncHandler(async (req: Request, res: Response) => {
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+    const xmlFile = files?.xml?.[0];
+    if (!xmlFile) throw new AppError(400, 'กรุณาแนบไฟล์ XML ของรายงานสำรวจ');
+    const insuranceCompany = String((req.body?.insurance_company ?? '')).trim();
+    if (!insuranceCompany) throw new AppError(400, 'กรุณาเลือกบริษัทประกัน — XML ของ ISURVEY ไม่มีข้อมูลนี้ และบอทต้องใช้เลือกบริษัทก่อนนำเข้า EMCS');
+
+    const parsed = parseIsurveyXml(xmlFile.buffer.toString('utf8'));
+    const result = await caseService.importFromXml(parsed, {
+      insuranceCompany,
+      createdBy: req.user!.id,
+    });
+
+    let photos = { added: 0, perCat: {} as Record<string, number> };
+    const zipFile = files?.zip?.[0];
+    if (zipFile) photos = await caseService.importPhotoZip(result.caseId, zipFile.buffer);
+
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        photos,
+        warnings: parsed.warnings,
+        hasMoney: parsed.expenses !== null,
+      },
+    });
+  }),
+
   exportXml: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const xml = await caseService.getSurveyXml(caseId, req.user);

@@ -767,6 +767,134 @@ export const caseService = {
     return generateSurveyXml(reportResult.rows[0]);
   },
 
+  /**
+   * แตก zip รูปของ ISURVEY/EMCS ("ดาวน์โหลดรูปภาพ") ลงโฟลเดอร์เคส + ลง survey_photos
+   * โครงสร้างใน zip: PICTURES/<หมวด>/... — หมวดตรงกับที่ se-autokey ใช้ (autokey/images.py)
+   * เก็บลง path เดียวกับรูปจากมือถือ (uploads/case_<id>/job_<id>/) บอทจึงดึงผ่าน API เดิมได้
+   */
+  async importPhotoZip(caseId: number, zipBuffer: Buffer) {
+    const AdmZip = (await import('adm-zip')).default;
+    const fs = await import('fs');
+    const pathMod = await import('path');
+    const rid = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (rid.rows.length === 0) throw new NotFoundError('Report not found');
+    const reportId = rid.rows[0].id;
+
+    // หมวดใน zip → ป้ายประเภทรูปของ EMCS (ชุดเดียวกับ autokey/images.py ZIP_CAT_TO_EMCS)
+    const CAT: Record<string, string> = {
+      INS: 'รูปรถประกัน', ACC_MAP: 'รูปแผนที่เกิดเหตุ',
+      OTHERS: 'รูปประกอบ', REPORTS: 'รูปประกอบ',
+      TP_VEH: 'รูปรถคู่กรณี', TP_PERSON: 'รูปผู้บาดเจ็บ', TP_PROP: 'รูปทรัพย์สิน',
+    };
+    const IMG = /\.(jpe?g|png|webp|gif|bmp)$/i;
+    const dir = pathMod.default.resolve(env.UPLOAD_DIR, `case_${caseId}`, `job_${caseId}`);
+    fs.default.mkdirSync(dir, { recursive: true });
+
+    let added = 0;
+    const perCat: Record<string, number> = {};
+    for (const e of new AdmZip(zipBuffer).getEntries()) {
+      if (e.isDirectory) continue;
+      const parts = e.entryName.split('/');
+      const base = parts[parts.length - 1];
+      if (!base || !IMG.test(base)) continue;             // ข้าม PDF/ไฟล์อื่น
+      const cat = CAT[(parts[1] || '').toUpperCase()] ?? 'รูปประกอบ';
+      // กันชื่อชนกันข้ามหมวด (zip ของพอร์ทัลตั้งชื่อซ้ำได้) — ไม่ทับไฟล์เดิม
+      let name = base;
+      for (let i = 2; fs.default.existsSync(pathMod.default.join(dir, name)); i++) {
+        const dot = base.lastIndexOf('.');
+        name = `${base.slice(0, dot)}_${i}${base.slice(dot)}`;
+      }
+      fs.default.writeFileSync(pathMod.default.join(dir, name), e.getData());
+      await db.query(
+        'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
+        [reportId, `case_${caseId}/job_${caseId}/${name}`, cat]);
+      added++;
+      perCat[cat] = (perCat[cat] ?? 0) + 1;
+    }
+    return { added, perCat };
+  },
+
+  /**
+   * สร้างเคสจากไฟล์ XML ของ ISURVEY (flow ระบบเก่าที่กำลังเลิกใช้)
+   *
+   * ต่างจาก create(): รับได้ทุกคอลัมน์รวม JSONB (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน)
+   * และตั้ง status='surveyed' ทันที เพราะงานสำรวจ "ทำเสร็จบน ISURVEY แล้ว" —
+   * เว็บนี้เป็นแค่จุดตรวจก่อนส่งบอทเข้า EMCS (ผู้ตรวจกด "ปิดงาน" → review → 'reviewed')
+   *
+   * กันอัปไฟล์เดิมซ้ำด้วย assertSurveyJobNoUnique (เลขเซอร์เวย์ห้ามซ้ำอยู่แล้ว → 409)
+   */
+  async importFromXml(
+    parsed: { caseFields: { customer_name: string; incident_location: string };
+              report: Record<string, unknown>;
+              expenses: Record<string, number | null> | null;
+              surveyorCode: string },
+    opts: { insuranceCompany: string; createdBy: number },
+  ) {
+    const report: Record<string, unknown> = { ...parsed.report, insurance_company: opts.insuranceCompany };
+    await assertSurveyJobNoUnique([report.survey_job_no]);
+
+    // ผู้สำรวจ: จับจากรหัสใน ACC_SURV ('SE272 นาย ...') — หาไม่เจอก็ปล่อยว่าง ไม่ล้มทั้งงาน
+    let assignedTo: number | null = null;
+    if (parsed.surveyorCode) {
+      const u = await db.query('SELECT id FROM users WHERE UPPER(code) = $1 LIMIT 1',
+        [parsed.surveyorCode.toUpperCase()]);
+      if (u.rows.length > 0) assignedTo = u.rows[0].id;
+    }
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const c = await client.query(
+        `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status)
+         VALUES ($1, $2, $3, $4, 'surveyed') RETURNING *`,
+        [parsed.caseFields.customer_name || '(ไม่ระบุชื่อผู้เอาประกัน)',
+         parsed.caseFields.incident_location || '(ไม่ระบุสถานที่)',
+         opts.createdBy, assignedTo]);
+      const caseId = c.rows[0].id;
+
+      // เขียนเฉพาะคอลัมน์ที่มีจริง (ใช้ allowlist ชุดเดียวกับ updateReport) — กัน SQL พัง
+      // เมื่อ mapper ผลิตคีย์ที่ยังไม่มีคอลัมน์รองรับ
+      const cols = await client.query(
+        `SELECT column_name, data_type FROM information_schema.columns
+          WHERE table_name = 'survey_reports'`);
+      const valid = new Set<string>(cols.rows.map((r: { column_name: string }) => r.column_name));
+      // คอลัมน์ตัวเลข/วันที่/บูลีน รับสตริงว่างไม่ได้ (Postgres: invalid input syntax for type numeric)
+      // XML ให้ค่าว่างมาเยอะ (OPO_PAY, COST_DAMAGE ฯลฯ) → บังคับเป็น NULL
+      const nonText = new Set<string>(
+        cols.rows
+          .filter((r: { data_type: string }) => !/char|text|json/.test(r.data_type))
+          .map((r: { column_name: string }) => r.column_name));
+      const fields = Object.keys(report).filter((f) => valid.has(f) && report[f] !== undefined);
+      const values = fields.map((f) => {
+        const v = bindVal(f, report[f]);
+        return nonText.has(f) && (v === '' || v === undefined) ? null : v;
+      });
+      await client.query(
+        `INSERT INTO survey_reports (case_id${fields.length ? ', ' + fields.join(', ') : ''})
+         VALUES ($1${fields.map((_, i) => `, $${i + 2}`).join('')})`,
+        [caseId, ...values]);
+
+      // ยอดเงินจาก ISURVEY — เก็บไว้ให้หัวหน้าดูอ้างอิงบนเว็บ (ไม่ส่งเข้า EMCS ตามกติกา)
+      if (parsed.expenses) {
+        const rid = await client.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+        const exp = parsed.expenses;
+        const ef = Object.keys(exp);
+        await client.query(
+          `INSERT INTO survey_expenses (report_id, ${ef.join(', ')})
+           VALUES ($1${ef.map((_, i) => `, $${i + 2}`).join('')})`,
+          [rid.rows[0].id, ...ef.map((k) => exp[k])]);
+      }
+
+      await client.query('COMMIT');
+      return { caseId, assignedTo, surveyorCode: parsed.surveyorCode };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  },
+
   async updateReport(caseId: number, data: Record<string, unknown>) {
     const reportResult = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('Report not found');

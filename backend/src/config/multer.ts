@@ -48,3 +48,15 @@ export const uploadUnique = multer({
   limits: { fileSize: env.MAX_FILE_SIZE },
   fileFilter,
 });
+
+// อัปโหลดไฟล์ XML (SURV_REPORT) + zip รูป ของ ISURVEY — เก็บใน memory แล้ว service จัดการต่อ
+// (แยกจาก upload ด้านบนที่รับเฉพาะรูป และเขียนลงดิสก์ทันที)
+export const uploadXmlZip = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 200 * 1024 * 1024 },   // zip รูปทั้งเคสอาจใหญ่หลายสิบ MB
+  fileFilter: (_req, file, cb) => {
+    const ok = /\.(xml|txt|zip)$/i.test(file.originalname || '');
+    if (ok) { cb(null, true); return; }
+    cb(new Error('รับเฉพาะไฟล์ .xml/.txt (รายงาน) และ .zip (รูป)'));
+  },
+}).fields([{ name: 'xml', maxCount: 1 }, { name: 'zip', maxCount: 1 }]);

@@ -5,7 +5,7 @@ import { reviewController } from '../controllers/review.controller';
 import { auth } from '../middleware/auth';
 import { requireRole } from '../middleware/role';
 import { validate } from '../middleware/validate';
-import { upload } from '../config/multer';
+import { upload, uploadXmlZip } from '../config/multer';
 
 const router = Router();
 
@@ -215,6 +215,10 @@ router.get('/workload', auth, requireRole('callcenter', 'admin'), caseController
 // รายการเคสทั้งหมด (มี filter/ค้นหา/แบ่งหน้า) — ต้องมาก่อน '/:id' ไม่งั้น "list" ถูกจับเป็น id
 router.get('/list', auth, requireRole('callcenter', 'admin'), caseController.list);
 router.post('/', auth, requireRole('callcenter'), validate(createCaseSchema), caseController.create);
+// นำเข้าเคสจากไฟล์ XML ของ ISURVEY (+ zip รูป) — flow ระบบเก่าที่กำลังเลิกใช้
+// สร้างเคสสถานะ 'surveyed' ทันที (งานสำรวจทำเสร็จบน ISURVEY แล้ว) → ผู้ตรวจแก้/ปิดงานต่อ
+router.post('/import-xml', auth, requireRole('callcenter', 'checker', 'admin'),
+  uploadXmlZip, caseController.importXml);
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
 router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.getCase);
