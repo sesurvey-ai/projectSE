@@ -327,8 +327,13 @@ function buildCar(c: Row, type: number, insured: boolean): string {
     el('DRI_ADDRESS', insured ? c.driver_address : c.address) +
     // คู่กรณีไม่มีช่องอำเภอในแอป (มีแต่ที่อยู่) → ปล่อยว่างเฉพาะคู่กรณี
     // คู่กรณีมีช่องอำเภอแล้ว (opposing_parties[].district cascade จากจังหวัด) → ddlDri_DistrictID ของคู่กรณี
-    el('DRI_DISTRICTID', insured ? districtId(c.driver_province, c.driver_district) : districtId(c.province, c.district)) +
-    el('DRI_PROVINCEID', provinceCode(insured ? c.driver_province : c.province)) +
+    // ภูมิลำเนาผู้ขับขี่ (จากบัตรประชาชน/ทะเบียนบ้าน) — คนละช่องกับ CAR_PROVINCE ที่เป็น
+    // จังหวัดป้ายทะเบียน; EMCS แยก 2 dropdown จริง (ddlCar_Province vs ddlDri_ProvinceID)
+    // คู่กรณี: home_province เป็นช่องใหม่ — เคสเก่าที่ยังไม่มี fallback ไป province เดิม
+    el('DRI_DISTRICTID', insured
+      ? districtId(c.driver_province, c.driver_district)
+      : districtId(c.home_province || c.province, c.district)) +
+    el('DRI_PROVINCEID', provinceCode(insured ? c.driver_province : (c.home_province || c.province))) +
     el('DRI_TELNO', insured ? c.driver_phone : c.phone) +
     el('DRI_CARDID', insured ? c.driver_id_card : c.cid) +
     el('DRI_DRVID', insured ? c.driver_license_no : c.license_no) +
@@ -488,22 +493,45 @@ export function generateSurveyXml(r: Row): string {
   const assetBlocks = assets.map((a, i) => buildAsset(a, i + 1)).join('');   // ทรัพย์สินเสียหาย (0..n)
   const injureBlocks = injured.map((p, i) => buildInjure(p, i + 1)).join(''); // ผู้บาดเจ็บ (0..n)
 
-  // ── ตารางค่าใช้จ่าย: ส่ง 0 ทั้งหมดโดยตั้งใจ ───────────────────────────────────
-  // กติกา user 2026-07-31: **หัวหน้าเป็นคนกรอกยอดเงินเองบน EMCS** แล้วสรุปรายละเอียด
-  // + กดส่งงานให้บริษัทประกัน — บอทกรอกหน้าค่าใช้จ่ายแค่ "เลขที่ใบแจ้งหนี้ + วันที่"
-  // (ยอดเงินที่เคยมีใน XML เป็นของ ISURVEY ซึ่งกำลังจะเลิกใช้ — พามาก็ชนกับที่หัวหน้ากรอก)
-  // เคยลองส่งค่าจริงจาก survey_expenses ไว้ชั่วคราว (0a4a783) แล้วถอยกลับตามกติกานี้
+  // ── ตารางค่าใช้จ่าย: ยอดเงินขึ้นกับ "ที่มาของเคส" เพราะสองเส้นทางอยู่คนละขั้นตอน ──
+  //
+  //  งานจากแอปมือถือ  — พนักงานเพิ่งสำรวจเสร็จ ยังไม่มียอด หัวหน้าจะกรอกที่หน้า "ค่าใช้จ่าย"
+  //                     ของ EMCS เองแล้วกดส่งงาน → ส่ง 0 ทั้งบล็อก ไม่งั้นไปทับของหัวหน้า
+  //                     (บอทกรอกหน้านั้นแค่ "เลขที่ใบแจ้งหนี้ + วันที่")
+  //  งานนำเข้า ISURVEY — ยอดในไฟล์คือของที่ "หัวหน้ากรอกไว้แล้ว" บนระบบเก่า → ต้องส่งต่อ
+  //                     ไม่งั้นข้อมูลหายตอนย้ายระบบ
+  //
+  // caseService.getSurveyXml merge แถว survey_expenses เข้ามาให้เฉพาะเคส source='isurvey_xml'
+  // → ที่นี่แค่ดูว่ามีค่ามาไหม (มี = ISURVEY, ไม่มี = มือถือ) ไม่ต้องรู้จัก cases.source
+  const num = (v: unknown): number => {
+    const n = Number(String(v ?? '').replace(/,/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const photoCount = num(r.photo_fee_count);
+  const photoUnit = num(r.photo_fee_price);
+  // บล็อกนี้ gold reference ใช้ทศนิยม 2 ตำแหน่งเสมอ ('350.00') — money() ตัดศูนย์ท้ายทิ้ง
+  // ('350') ซึ่งอาจต่างจากที่ EMCS importer เคยรับมาหลายปี → คงรูปแบบเดิมไว้
+  const baht = (v: unknown): string => num(v).toFixed(2);
   const bill = '<TXN_SURV_BILL>' +
-    el('SUR_INVEST', '0.00') + el('FUL_INVEST', '0.00') +
-    el('SUR_TRANS', '0.00') + el('FUL_TRANS', '0.00') +
-    el('INVEST_NUM', '0') + el('TRANS_NUM', '0') + el('PHOTO_NUM', '0') +
-    el('SUR_PHOTO', '0.00') + el('FUL_PHOTO', '0.00') + el('SUR_OTHER', '0.00') +
-    el('OTHER_DESC', '') +
+    el('SUR_INVEST', baht(r.service_fee_price)) +   // ค่าบริการ (ต่อครั้ง)
+    el('FUL_INVEST', '0.00') +
+    el('SUR_TRANS', baht(r.travel_fee_price)) +     // ค่าเดินทาง/พาหนะ (ต่อครั้ง)
+    el('FUL_TRANS', '0.00') +
+    el('INVEST_NUM', String(num(r.service_fee_count) || 0)) +
+    el('TRANS_NUM', String(num(r.travel_fee_count) || 0)) +
+    el('PHOTO_NUM', String(photoCount || 0)) +
+    // SUR_PHOTO ฝั่งบอทคาดว่าเป็น "ยอดรวม" แล้วหารด้วย PHOTO_NUM เอง → ส่งยอดรวม
+    el('SUR_PHOTO', (photoUnit * (photoCount || 1)).toFixed(2)) +
+    el('FUL_PHOTO', '0.00') +
+    el('SUR_OTHER', baht(r.other_fee_price)) +
+    el('OTHER_DESC', String(r.other_fee_detail ?? '')) +
     el('BILL_NO', '') + el('BILL_DATE', '') + el('CREDIT_TERM', '') + el('DUE_DATE', '') +
-    el('SUR_TEL', '0.00') + el('SUR_INSURE', '0.00') + el('SUR_CLAIM', '0.00') +
-    el('SUR_DAILY', '0.00') +
+    el('SUR_TEL', baht(r.phone_fee)) +              // ค่าโทรศัพท์
+    el('SUR_INSURE', baht(r.bail_fee)) +            // ค่าประกันตัว
+    el('SUR_CLAIM', baht(r.claim_fee_price)) +      // ค่าเรียกร้อง
+    el('SUR_DAILY', baht(r.daily_record_fee)) +     // ค่าคัดประจำวัน
     el('ACC_RESULT', '') + el('ACC_COMMENT', '') + el('SURV_COMMENT', '') + el('INC_VAT', '') +
-    el('SUR_PERCENT_CLAIM', '0.00') +
+    el('SUR_PERCENT_CLAIM', baht(r.claim_fee_percent)) +
     '</TXN_SURV_BILL>';
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<INSERT_SURV_REPORT_XML>${report}${cars}${assetBlocks}${injureBlocks}${bill}</INSERT_SURV_REPORT_XML>`;

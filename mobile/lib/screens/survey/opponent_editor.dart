@@ -24,7 +24,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   late final Map<String, TextEditingController> _c;
   final _damage = <Map<String, String>>[];
   String _evType = '';
-  String _carType = '', _carBrand = '', _carColor = '', _province = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
+  String _carType = '', _carBrand = '', _carColor = '', _province = '', _homeProvince = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
   bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
 
@@ -43,6 +43,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _carBrand = (widget.data['car_brand'] ?? '').toString();
     _carColor = (widget.data['car_color'] ?? '').toString();
     _province = (widget.data['province'] ?? '').toString();
+    _homeProvince = (widget.data['home_province'] ?? '').toString();
     _district = (widget.data['district'] ?? '').toString();
     _evType = (widget.data['ev_type'] ?? '').toString();
     _gender = (widget.data['gender'] ?? '').toString();
@@ -80,6 +81,10 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'car_color': _carColor,
         'plate': _ctl('plate').text.trim(),
         'province': _province,
+        // ภูมิลำเนาผู้ขับขี่ (บัตร ปชช./ทะเบียนบ้าน) — คนละช่องกับจังหวัดป้ายทะเบียน
+        // EMCS แยกจริง: ddlCar_Province vs ddlDri_ProvinceID (เห็น option ครบ 80 ในหน้าที่กรอกแล้ว)
+        // ว่างได้ — xmlExport fallback ไปใช้ province (ป้ายทะเบียน) ให้เอง
+        'home_province': _homeProvince,
         'district': _district,
         'ev_type': _evType,   // → dtlOpo_ctlNN_wuOpo_ddlEv_Type (บอทเดินสายรออยู่แล้ว)
         'reg_year': _ctl('reg_year').text.trim(),
@@ -215,6 +220,10 @@ class _OpponentEditorState extends State<OpponentEditor> {
             onSelected: (v) => setState(() => _evType = v)),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
+        // จังหวัดภูมิลำเนาผู้ขับขี่คู่กรณี → ddlDri_ProvinceID (คนละช่องกับจังหวัดป้ายทะเบียนด้านบน)
+        // ไม่บังคับ — ไม่กรอกแล้วระบบใช้จังหวัดป้ายทะเบียนแทน
+        KPickerField(label: 'จังหวัดตามบัตร ปชช./ทะเบียนบ้าน', value: _homeProvince,
+            options: widget.provinces, onSelected: (v) => setState(() => _homeProvince = v)),
         _scanBtns(),
         Row(children: [
           kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),

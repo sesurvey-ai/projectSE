@@ -52,6 +52,21 @@ const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseU
   }
 };
 
+/**
+ * กติกายอดเงินใน XML ต่างกันตาม "ที่มาของเคส" (cases.source) เพราะสองเส้นทางอยู่คนละขั้นตอน:
+ *
+ *  mobile      — พนักงานเพิ่งสำรวจเสร็จ ยังไม่มียอดเงิน หัวหน้าจะกรอกที่หน้า "ค่าใช้จ่าย"
+ *                ของ EMCS แล้วกดส่งงานเอง → ส่ง 0 ไปทั้งบล็อก ไม่งั้นทับของหัวหน้า
+ *  isurvey_xml — ไฟล์จากระบบเก่ามียอดที่ "หัวหน้ากรอกไว้แล้ว" ติดมาด้วย → ต้องส่งต่อ
+ *                ไม่งั้นข้อมูลของหัวหน้าหายตอนย้ายระบบ
+ */
+async function withBillIfImported(caseId: number, report: Record<string, unknown>) {
+  const src = await db.query('SELECT source FROM cases WHERE id = $1', [caseId]);
+  if (src.rows[0]?.source !== 'isurvey_xml') return report;
+  const exp = await db.query('SELECT * FROM survey_expenses WHERE report_id = $1', [report.id]);
+  return exp.rows.length ? { ...report, ...exp.rows[0], id: report.id } : report;
+}
+
 export const caseService = {
   async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
     // เลขเซอร์เวย์ (SETP-xxx) ห้ามซ้ำ — เป็นเลขอ้างอิงเบิกเงิน
@@ -762,9 +777,7 @@ export const caseService = {
     assertCaseAccess(caseResult.rows[0], user);
     const reportResult = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('ยังไม่มีข้อมูลรายงานสำรวจของเคสนี้');
-    // ไม่ join survey_expenses โดยตั้งใจ — บล็อก TXN_SURV_BILL ส่ง 0 ทั้งหมด
-    // (กติกา user 2026-07-31: หัวหน้ากรอกยอดเงินเองบน EMCS)
-    return generateSurveyXml(reportResult.rows[0]);
+    return generateSurveyXml(await withBillIfImported(caseId, reportResult.rows[0]));
   },
 
   /**
@@ -845,8 +858,8 @@ export const caseService = {
     try {
       await client.query('BEGIN');
       const c = await client.query(
-        `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status)
-         VALUES ($1, $2, $3, $4, 'surveyed') RETURNING *`,
+        `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status, source)
+         VALUES ($1, $2, $3, $4, 'surveyed', 'isurvey_xml') RETURNING *`,
         [parsed.caseFields.customer_name || '(ไม่ระบุชื่อผู้เอาประกัน)',
          parsed.caseFields.incident_location || '(ไม่ระบุสถานที่)',
          opts.createdBy, assignedTo]);

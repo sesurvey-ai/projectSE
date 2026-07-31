@@ -357,9 +357,6 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     const insurer = /^\d+$/.test(haveIns) ? '' : haveIns;
     const carProv = txt(c, 'CAR_PROVINCE');
     const driProv = txt(c, 'DRI_PROVINCEID');
-    if (driProv && carProv && driProv !== carProv) {
-      warnings.push(`คู่กรณีทะเบียน ${txt(c, 'CAR_REGNO') || '-'}: จังหวัดป้ายทะเบียนกับภูมิลำเนาคนละจังหวัด — แอปมีช่องจังหวัดช่องเดียว จึงไม่ได้เก็บอำเภอ เลือกเองบนเว็บถ้าต้องใช้`);
-    }
     return {
       title,
       first_name: rest[0] ?? '',
@@ -370,13 +367,13 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
       cid: txt(c, 'DRI_CARDID'),
       phone: txt(c, 'DRI_TELNO'),
       address: txt(c, 'DRI_ADDRESS'),
-      // ⚠️ province ของแอป = "จังหวัดป้ายทะเบียน" (→ ddlCar_Province) ไม่ใช่ภูมิลำเนา
-      // และ district ต้อง cascade จาก province ตัวเดียวกันนี้ (xmlExport เรียก districtId(province, district))
-      // ISURVEY แยก 2 จังหวัด (CAR_PROVINCE = ป้ายทะเบียน, DRI_PROVINCEID = ภูมิลำเนา) แต่แอปมีช่องเดียว —
-      // ถ้าคนละจังหวัด เก็บชื่ออำเภอของอีกจังหวัดไว้ก็ export ไม่ออกอยู่ดี (หา code ในตารางไม่เจอ)
-      // → ปล่อยว่าง + เตือน ให้คนตรวจเลือกเองบนเว็บ ดีกว่าเก็บคู่จังหวัด-อำเภอที่ไม่ตรงกัน
+      // ⚠️ 2 จังหวัดคนละความหมาย — EMCS ก็แยก dropdown จริง:
+      //   province      = จังหวัดป้ายทะเบียน (→ ddlCar_Province)
+      //   home_province = ภูมิลำเนาจากบัตรประชาชน/ทะเบียนบ้าน (→ ddlDri_ProvinceID)
+      // district cascade จาก home_province (ไม่ใช่ป้ายทะเบียน) ไม่งั้น xmlExport หา code ไม่เจอ
       province: PROVINCE_BY_CODE[carProv] ?? '',
-      district: driProv === carProv ? districtName(driProv, txt(c, 'DRI_DISTRICTID')) : '',
+      home_province: PROVINCE_BY_CODE[driProv] ?? '',
+      district: districtName(driProv, txt(c, 'DRI_DISTRICTID')),
       plate: txt(c, 'CAR_REGNO'),
       car_type: CAR_TYPE_BY_CODE[ctype] ?? '',
       car_brand: cleanBrand(txt(c, 'CMFG'), ctype),
