@@ -7,6 +7,7 @@ import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, 
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import DamageEditor, { DamageItem } from './DamageEditor';
+import { InjuredEditor, PropertyEditor, dropEmptyRecords, RecordItem } from './RecordEditors';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface CaseDetailProps {
@@ -110,6 +111,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     (Array.isArray(report?.insured_damage) ? report.insured_damage : []).map((x: Record<string, unknown>) => ({
       part: String(x?.part ?? ''), pos: String(x?.pos ?? 'A'), level: String(x?.level ?? ''),
     })));
+  // ผู้บาดเจ็บ/ทรัพย์สิน เป็น JSONB เหมือนกัน — ค่าใน object เป็นสตริงทั้งหมด (แอปมือถือเก็บแบบนี้)
+  const toRecords = (v: unknown): RecordItem[] =>
+    (Array.isArray(v) ? v : []).map((x: Record<string, unknown>) =>
+      Object.fromEntries(Object.entries(x ?? {}).map(([k, val]) => [k, val == null ? '' : String(val)])));
+  const [injured, setInjured] = useState<RecordItem[]>(() => toRecords(report?.injured_persons));
+  const [property, setProperty] = useState<RecordItem[]>(() => toRecords(report?.damaged_property));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -140,6 +147,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (isEditing) {
         // ทิ้งแถวที่ยังกรอกไม่ครบ — ส่งไปก็ตกที่ EMCS อยู่ดี และทำให้บอทนับรายการเพี้ยน
         payload.insured_damage = damage.filter((x) => x.part && x.level);
+        payload.injured_persons = dropEmptyRecords(injured);
+        payload.damaged_property = dropEmptyRecords(property);
       }
       const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: payload });
       if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
@@ -863,12 +872,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </div>
                 )}
 
-                {/* ผู้บาดเจ็บ */}
-                {injuredPersons.length > 0 && (
+                {/* ผู้บาดเจ็บ — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอตอนแก้ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
+                {(injuredPersons.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: ผู้บาดเจ็บ ({injuredPersons.length} คน)</span>
+                      <span className="font-bold">::: ผู้บาดเจ็บ ({isEditing ? injured.length : injuredPersons.length} คน)</span>
                     </div>
+                    {isEditing ? (
+                      <div className="p-4"><InjuredEditor items={injured} onChange={setInjured} /></div>
+                    ) : (
                     <div className="p-4 space-y-4">
                       {injuredPersons.map((p: any, idx: number) => {
                         const genderLabel = p?.gender === 'M' ? 'ชาย' : p?.gender === 'F' ? 'หญิง' : (p?.gender || '');
@@ -908,15 +920,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 )}
 
-                {/* ทรัพย์สินเสียหาย */}
-                {damagedProperty.length > 0 && (
+                {/* ทรัพย์สินเสียหาย — แก้ได้ตอนกด "แก้ไข" */}
+                {(damagedProperty.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: ทรัพย์สินเสียหาย ({damagedProperty.length} ชิ้น)</span>
+                      <span className="font-bold">::: ทรัพย์สินเสียหาย ({isEditing ? property.length : damagedProperty.length} ชิ้น)</span>
                     </div>
+                    {isEditing ? (
+                      <div className="p-4"><PropertyEditor items={property} onChange={setProperty} /></div>
+                    ) : (
                     <div className="p-4 space-y-4">
                       {damagedProperty.map((item: any, idx: number) => (
                         <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -941,6 +957,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                 )}
 
