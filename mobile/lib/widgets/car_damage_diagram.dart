@@ -15,12 +15,13 @@ class DamageDiagramField extends StatefulWidget {
 class _DamageDiagramFieldState extends State<DamageDiagramField> {
   static const _lvlColor = {'L': Color(0xFF16A34A), 'M': Color(0xFFEAB308), 'H': Color(0xFFEA8600), 'X': Color(0xFFDC2626)};
 
-  Future<void> _tap(String part) async {
-    int idx = widget.items.indexWhere((it) => it['part'] == part);
+  Future<void> _tap(String part, [String pos = 'A']) async {
+    // ชื่อชิ้นส่วนตรง checklist EMCS (ไม่มีข้างในชื่อ) → ต้องจับคู่ด้วย part+pos
+    int idx = widget.items.indexWhere(
+        (it) => it['part'] == part && (it['pos'] ?? 'A') == pos);
     Map<String, String>? justAdded;
     if (idx < 0) {
-      final defPos = part.contains('ซ้าย') ? 'L' : (part.contains('ขวา') ? 'R' : 'A');
-      final item = {'part': part, 'pos': defPos, 'level': ''};
+      final item = {'part': part, 'pos': pos, 'level': ''};
       widget.items.add(item);
       justAdded = item;
       idx = widget.items.length - 1;
@@ -238,7 +239,7 @@ class _DamagePartListState extends State<DamagePartList> {
 /// items = [{part, pos, level}] (โครงเดียวกับ _damageItems ในฟอร์ม)
 class CarDamageDiagram extends StatelessWidget {
   final List<Map<String, String>> items;
-  final void Function(String part) onTapPart;
+  final void Function(String part, String pos) onTapPart;
   const CarDamageDiagram({super.key, required this.items, required this.onTapPart});
 
   // ระดับ → สี (L เขียว / M เหลือง / H ส้ม / X แดง)
@@ -249,22 +250,27 @@ class CarDamageDiagram extends StatelessWidget {
     'X': Color(0xFFDC2626),
   };
 
-  String? _levelOf(String part) {
+  // จับคู่ด้วย (ชิ้นส่วน + ด้าน) — ชื่อชิ้นส่วนตรงกับ checklist ของ EMCS ซึ่งไม่มีข้างอยู่ในชื่อ
+  // ('ประตูหน้า' ใช้ทั้งซ้ายและขวา) จึงต้องดู pos ประกอบ ไม่งั้น 2 ช่องจะชนกัน
+  String? _levelOf(String part, String pos) {
     for (final it in items) {
-      if (it['part'] == part && (it['level'] ?? '').isNotEmpty) return it['level'];
+      if (it['part'] == part && (it['pos'] ?? 'A') == pos && (it['level'] ?? '').isNotEmpty) {
+        return it['level'];
+      }
     }
     return null;
   }
 
-  Widget _cell(String part, {int flex = 1, double h = 38}) {
-    final lvl = _levelOf(part);
+  /// [pos] = 'L' ซ้าย / 'R' ขวา / 'A' ทั้งคัน (ตรงกับ rdoDam_Left_Right ของ EMCS)
+  Widget _cell(String part, {String pos = 'A', String? label, int flex = 1, double h = 38}) {
+    final lvl = _levelOf(part, pos);
     final c = lvl != null ? _lvlColor[lvl] : null;
     return Expanded(
       flex: flex,
       child: Padding(
         padding: const EdgeInsets.all(2),
         child: GestureDetector(
-          onTap: () => onTapPart(part),
+          onTap: () => onTapPart(part, pos),
           child: Container(
             height: h,
             alignment: Alignment.center,
@@ -277,7 +283,7 @@ class CarDamageDiagram extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(part, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+                Text(label ?? part, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 8.6, height: 1.05, fontWeight: FontWeight.w600, color: c ?? const Color(0xFF737D90))),
                 if (lvl != null)
                   Text(lvl, style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, color: c)),
@@ -300,31 +306,60 @@ class CarDamageDiagram extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // ⚠️ ชื่อชิ้นส่วน = ป้าย checklist ของ EMCS verbatim (22 ชิ้น) และ "ด้าน" แยกเป็น pos
+          //    EMCS checklist ไม่มีข้างในชื่อ ('ประตูหน้า' + radio L/R/A) — ถ้าใส่ข้างในชื่อ
+          //    จะ match checklist ไม่ได้เลย ตกไปช่องอิสระทุกชิ้นพร้อมชื่อเพี้ยน
+          //    label = ข้อความบนจอ (ใส่ข้างให้อ่านง่าย) ส่วน part = ค่าที่ส่งจริง
           // หน้า
           Row(children: [_cell('กันชนหน้า', flex: 3, h: 30)]),
-          Row(children: [_cell('ไฟหน้าซ้าย'), _cell('ฝากระโปรงหน้า', flex: 2), _cell('ไฟหน้าขวา')]),
+          Row(children: [
+            _cell('ไฟหน้า', pos: 'L', label: 'ไฟหน้าซ้าย'),
+            _cell('ฝากระโปรงหน้า', flex: 2),
+            _cell('ไฟหน้า', pos: 'R', label: 'ไฟหน้าขวา'),
+          ]),
+          Row(children: [
+            _cell('ไฟเลี้ยวหน้า', pos: 'L', label: 'ไฟเลี้ยวหน้าซ้าย'),
+            _cell('กระจังหน้า', flex: 2),
+            _cell('ไฟเลี้ยวหน้า', pos: 'R', label: 'ไฟเลี้ยวหน้าขวา'),
+          ]),
           // ลำตัว: ซ้าย | กลาง(กระจก/หลังคา) | ขวา
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: Column(children: [
-              Row(children: [_cell('บังโคลนหน้าซ้าย')]),
-              Row(children: [_cell('ประตูหน้าซ้าย')]),
-              Row(children: [_cell('ประตูหลังซ้าย')]),
-              Row(children: [_cell('บังโคลนหลังซ้าย')]),
+              Row(children: [_cell('บังโคลนหน้า', pos: 'L', label: 'บังโคลนหน้าซ้าย')]),
+              Row(children: [_cell('กระจกมองข้าง', pos: 'L', label: 'กระจกมองข้างซ้าย')]),
+              Row(children: [_cell('ประตูหน้า', pos: 'L', label: 'ประตูหน้าซ้าย')]),
+              Row(children: [_cell('ประตูหลัง', pos: 'L', label: 'ประตูหลังซ้าย')]),
+              Row(children: [_cell('บังโคลนหลัง', pos: 'L', label: 'บังโคลนหลังซ้าย')]),
+              Row(children: [_cell('บันได', pos: 'L', label: 'บันไดซ้าย')]),
             ])),
             Expanded(flex: 2, child: Column(children: [
-              Row(children: [_cell('กระจกหน้า', h: 30)]),
-              Row(children: [_cell('หลังคา', h: 52)]),
-              Row(children: [_cell('กระจกหลัง', h: 30)]),
+              Row(children: [_cell('กระจกบังลมหน้า', h: 30)]),
+              Row(children: [_cell('หลังคา', h: 44)]),
+              Row(children: [_cell('กระจกบังลมหลัง', h: 30)]),
+              Row(children: [_cell('กระบะ', h: 28)]),
+              Row(children: [_cell('แค็ป', h: 28)]),
             ])),
             Expanded(child: Column(children: [
-              Row(children: [_cell('บังโคลนหน้าขวา')]),
-              Row(children: [_cell('ประตูหน้าขวา')]),
-              Row(children: [_cell('ประตูหลังขวา')]),
-              Row(children: [_cell('บังโคลนหลังขวา')]),
+              Row(children: [_cell('บังโคลนหน้า', pos: 'R', label: 'บังโคลนหน้าขวา')]),
+              Row(children: [_cell('กระจกมองข้าง', pos: 'R', label: 'กระจกมองข้างขวา')]),
+              Row(children: [_cell('ประตูหน้า', pos: 'R', label: 'ประตูหน้าขวา')]),
+              Row(children: [_cell('ประตูหลัง', pos: 'R', label: 'ประตูหลังขวา')]),
+              Row(children: [_cell('บังโคลนหลัง', pos: 'R', label: 'บังโคลนหลังขวา')]),
+              Row(children: [_cell('บันได', pos: 'R', label: 'บันไดขวา')]),
             ])),
           ]),
           // ท้าย
-          Row(children: [_cell('ไฟท้ายซ้าย'), _cell('ฝากระโปรงหลัง', flex: 2), _cell('ไฟท้ายขวา')]),
+          Row(children: [
+            _cell('ไฟท้าย', pos: 'L', label: 'ไฟท้ายซ้าย'),
+            _cell('ฝากระโปรงหลัง', flex: 2),
+            _cell('ไฟท้าย', pos: 'R', label: 'ไฟท้ายขวา'),
+          ]),
+          Row(children: [
+            _cell('ไฟเลี้ยวหลัง', pos: 'L', label: 'ไฟเลี้ยวหลังซ้าย'),
+            _cell('ฝาปิดท้าย', flex: 2),
+            _cell('ไฟเลี้ยวหลัง', pos: 'R', label: 'ไฟเลี้ยวหลังขวา'),
+          ]),
+          Row(children: [_cell('แผงท้าย', flex: 3, h: 26)]),
           Row(children: [_cell('กันชนหลัง', flex: 3, h: 30)]),
           const SizedBox(height: 6),
           const Text('แตะชิ้นส่วนเพื่อระบุระดับความเสียหาย',

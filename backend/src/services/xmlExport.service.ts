@@ -196,6 +196,9 @@ const yearAD = (v: unknown): string => {
 
 // เบอร์โทร: EMCS maxlength=10 และรับเฉพาะตัวเลข ('081-234-5678' = 12 ตัว ถูกตัดท้ายเงียบ ๆ)
 const tel10 = (v: unknown): string => String(v ?? '').replace(/\D/g, '').slice(0, 10);
+// ช่องโทรศัพท์ของ "ทรัพย์สิน" บน EMCS รับได้ 50 ตัว (maxlength=50) — ตัดเหลือ 10 ทำให้
+// เบอร์ที่มีรหัสพื้นที่/ต่อภายใน/หลายเบอร์ ถูกตัดกลางคัน กลายเป็นเบอร์ผิดแบบเงียบ ๆ
+const tel50 = (v: unknown): string => String(v ?? '').trim().slice(0, 50);
 
 // จำนวนเงิน: EMCS num() ใช้ regex ^\d+$|^\d+\.\d+$ ไม่ผ่าน = ล้างช่องทิ้ง (maxlength=10)
 const money = (v: unknown): string => {
@@ -337,7 +340,7 @@ function buildAsset(a: Row, seq: number): string {
     el('COST_DAMAGE', money(a.estimated_cost)) +
     el('OWNER', a.owner_name) +
     el('ADDRESS', a.owner_address) +
-    el('TEL_NO', tel10(a.owner_phone)) +
+    el('TEL_NO', tel50(a.owner_phone)) +
     '</TXN_SURV_ASSET>';
 }
 

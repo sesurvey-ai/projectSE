@@ -502,12 +502,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   }
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
-  Future<void> _onTapDiagramPart(String part) async {
-    int idx = _damageItems.indexWhere((it) => it['part'] == part);
+  Future<void> _onTapDiagramPart(String part, [String pos = 'A']) async {
+    // ชื่อชิ้นส่วนตรง checklist EMCS (ไม่มีข้างในชื่อ) → จับคู่ด้วย part+pos
+    int idx = _damageItems.indexWhere(
+        (it) => it['part'] == part && (it['pos'] ?? 'A') == pos);
     Map<String, String>? justAdded;
     if (idx < 0) {
-      final defPos = part.contains('ซ้าย') ? 'L' : (part.contains('ขวา') ? 'R' : 'A');
-      justAdded = {'part': part, 'pos': defPos, 'level': ''};
+      justAdded = {'part': part, 'pos': pos, 'level': ''};
       _damageItems.add(justAdded);
       idx = _damageItems.length - 1;
       _syncDamageDesc();
@@ -964,6 +965,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _accPoliceNameCtl: 'acc_police_name', _accPoliceStationCtl: 'acc_police_station',
       _accPoliceCommentCtl: 'acc_police_comment', _accPoliceDateCtl: 'acc_police_date',
       _accPoliceBookNoCtl: 'acc_police_book_no', _accAlcoholTestCtl: 'acc_alcohol_test',
+      _accAlcoholResultCtl: 'acc_alcohol_result', _driverTicketCtl: 'driver_ticket',
       _accFollowupCountCtl: 'acc_followup_count', _accFollowupDetailCtl: 'acc_followup_detail',
       _accFollowupDateCtl: 'acc_followup_date', _notesCtl: 'notes',
     };
@@ -1064,6 +1066,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       splitDT('acc_insurance_notify_date', _accInsNotifyDateCtl, _accInsNotifyTimeCtl);
       splitDT('acc_survey_arrive_date', _accSurveyArriveDateCtl, _accSurveyArriveTimeCtl);
       splitDT('acc_survey_complete_date', _accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl);
+      splitDT('acc_police_date', _accPoliceDateCtl, _accPoliceTimeCtl);
+      splitDT('acc_followup_date', _accFollowupDateCtl, _accFollowupTimeCtl);
 
       // การเรียกร้องคู่กรณี: comma-separated → set checkbox
       final oc = (data['acc_claim_opponent'] ?? '').toString();
@@ -1246,6 +1250,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   final _accSurveyorBranchCtl = TextEditingController();
   final _accSurveyorPhoneCtl = TextEditingController();
   final _accPoliceDateCtl = TextEditingController();
+  // EMCS มีช่องชั่วโมง/นาทีแยกคู่กับวันที่ (txtPolice_Date_Hour/Minute,
+  // txtFlu_Date_Hour/Minute) — เดิมแอปมีแต่วันที่ หัวหน้าต้องเติมเวลาเองทุกเคส
+  final _driverTicketCtl = TextEditingController();   // → txtDri_Order (backend มีคอลัมน์อยู่แล้ว)
+  final _accPoliceTimeCtl = TextEditingController();
+  final _accFollowupTimeCtl = TextEditingController();
+  final _accAlcoholResultCtl = TextEditingController();
   final _accPoliceBookNoCtl = TextEditingController();
 
   // === หมายเหตุ ===
@@ -1964,16 +1974,18 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       'acc_survey_arrive_date': _combineDT(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl),
       'acc_survey_complete_date': _combineDT(_accSurveyCompleteDateCtl, _accSurveyCompleteTimeCtl),
       'acc_claim_opponent': _opoClaims.join(','),
+      'driver_ticket': _driverTicketCtl.text.trim(),
       'acc_police_name': _accPoliceNameCtl.text.trim(),
       'acc_police_station': _accPoliceStationCtl.text.trim(),
       'acc_police_comment': _accPoliceCommentCtl.text.trim(),
-      'acc_police_date': _accPoliceDateCtl.text.trim(),
+      'acc_police_date': _combineDT(_accPoliceDateCtl, _accPoliceTimeCtl),
       'acc_police_book_no': _accPoliceBookNoCtl.text.trim(),
       'acc_alcohol_test': _accAlcoholTestCtl.text.trim(),
+      'acc_alcohol_result': _accAlcoholResultCtl.text.trim(),
       'acc_followup': _accFollowup,
       'acc_followup_count': _accFollowupCountCtl.text.trim(),
       'acc_followup_detail': _accFollowupDetailCtl.text.trim(),
-      'acc_followup_date': _accFollowupDateCtl.text.trim(),
+      'acc_followup_date': _combineDT(_accFollowupDateCtl, _accFollowupTimeCtl),
       'notes': _notesCtl.text.trim(),
     };
     // ส่ง key ตัวเลข "เสมอ" (null เมื่อว่าง) — เดิม omit เมื่อว่าง ทำให้ล้างค่าไม่ได้ (ค่าเก่าฟื้นจาก draft/DB)
@@ -3026,7 +3038,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   List<Widget> _secDamage() => [
         CarDamageDiagram(items: _damageItems, onTapPart: _onTapDiagramPart),
         _damageList(),
-        _damageDescField(),
+        // ⛔ เอา "รายละเอียดความเสียหาย" ออก 2026-07-31: EMCS ไม่มี control รองรับ
+        // (ความเสียหายลงเป็นชิ้นส่วน+ด้าน+ระดับ ผ่าน checklist/ช่องอิสระเท่านั้น)
+        // คงคีย์ใน payload ไว้ ข้อมูลเก่าจึงไม่หาย
         _numField(_estimatedCostCtl, 'ค่าเสียหายประมาณ (บาท)', decimal: true),
       ];
 
@@ -3048,6 +3062,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         // (ไม่กรอก = บอทกรอกให้ไม่ได้ หัวหน้าต้องมาเติมเองบน EMCS ทุกเคส)
         if (_accFault == 'คู่กรณีผิด')
           _numField(_accFaultOpponentNoCtl, 'คู่กรณีคันที่', req: true),
+        // EMCS มีช่องจริงทั้งคู่ (txtDri_Order / chkLost_Car) แต่เดิมแอปไม่มีให้กรอก
+        _txt(_driverTicketCtl, 'ใบสั่ง (เลขที่ใบสั่งจราจร)'),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: const Text('รถหาย', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+          value: _carLost,
+          onChanged: (v) => setState(() => _carLost = v),
+        ),
         _txt(_accReporterCtl, 'ผู้แจ้ง'),
         _txt(_accSurveyorCtl, 'ผู้สำรวจภัย', req: true),
         // ⛔ เอาช่อง "สาขา" ออก 2026-07-27: ddlSurv_Branch บน EMCS มี option เดียวคือ
@@ -3067,15 +3090,55 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           _subhead('ตำรวจ'),
           _row2(_txt(_accPoliceNameCtl, 'ชื่อพนักงานสอบสวน', req: true), _txt(_accPoliceStationCtl, 'สถานีตำรวจ', req: true)),
           _txt(_accPoliceCommentCtl, 'ความเห็นพนักงานสอบสวน'),
-          _row2(_dateField(_accPoliceDateCtl, 'วันที่ (ตำรวจ)'), _txt(_accPoliceBookNoCtl, 'ประจำวันข้อที่')),
-          _txt(_accAlcoholTestCtl, 'ผลการตรวจแอลกอฮอล์'),
+          _dateTime(_accPoliceDateCtl, _accPoliceTimeCtl, 'วันที่ (ตำรวจ)'),
+          _txt(_accPoliceBookNoCtl, 'ประจำวันข้อที่'),
+          // EMCS เป็น radio 2 ตัว + ช่อง "ระบุผล" ที่ปลดล็อกเมื่อเลือก "มีการตรวจ"
+          _alcoholField(),
         ],
         _subhead('การติดตามงาน'),
         _followupDropdown(),
-        _txt(_accFollowupCountCtl, 'ครั้งที่นัดหมาย'),
+        // EMCS เป็น dropdown 1-5 (maxlength 2 + รับเฉพาะตัวเลข) ไม่ใช่ช่องพิมพ์อิสระ
+        _simpleDropdown('ครั้งที่นัดหมาย', _accFollowupCountCtl.text,
+            const ['1', '2', '3', '4', '5'], (v) => _accFollowupCountCtl.text = v),
         _txt(_accFollowupDetailCtl, 'รายละเอียดการนัดหมาย'),
-        _dateField(_accFollowupDateCtl, 'วันที่นัดหมาย'),
+        _dateTime(_accFollowupDateCtl, _accFollowupTimeCtl, 'วันที่นัดหมาย'),
       ];
+
+  // ผลการตรวจแอลกอฮอล์ — EMCS เป็น radio 2 ตัว (rdoAlc_Chk_0 = ไม่มีการตรวจ /
+  // _1 = มีการตรวจ) + ช่อง "ระบุผล" (txtAlc_Result) ที่ใช้ได้เมื่อเลือก "มีการตรวจ"
+  // เดิมแอปเป็นกล่องข้อความเดียว ทำให้บอทต้องเดาจากข้อความว่าตรวจหรือไม่ตรวจ
+  static const _kAlcNo = 'ไม่มีการตรวจแอลกอฮอล์';
+  static const _kAlcYes = 'มีการตรวจแอลกอฮอล์';
+
+  Widget _simpleDropdown(String label, String value, List<String> options,
+      void Function(String) onChanged) {
+    return DropdownButtonFormField<String>(
+      key: ValueKey('$label\_$value'),
+      initialValue: options.contains(value) ? value : null,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
+      decoration: _dec(label),
+      hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: _muted2)),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5, color: _muted2))),
+        ...options.map((k) => DropdownMenuItem(
+            value: k, child: Text(k, style: const TextStyle(fontSize: 14.5), overflow: TextOverflow.ellipsis))),
+      ],
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      onChanged: (v) => setState(() => onChanged(v ?? '')),
+    );
+  }
+
+  Widget _alcoholField() => Column(children: [
+        _simpleDropdown('ผลการตรวจแอลกอฮอล์', _accAlcoholTestCtl.text,
+            const [_kAlcNo, _kAlcYes], (v) {
+          _accAlcoholTestCtl.text = v;
+          if (v != _kAlcYes) _accAlcoholResultCtl.clear();
+        }),
+        if (_accAlcoholTestCtl.text == _kAlcYes)
+          _txt(_accAlcoholResultCtl, 'ระบุผล (ค่าที่ตรวจได้)'),
+      ]);
 
   // ฝ่ายประมาท — dropdown (โชว์ป้ายเต็ม, เก็บค่าเดิมแบบสั้น)
   Widget _faultDropdown() {

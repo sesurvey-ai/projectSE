@@ -23,6 +23,7 @@ class OpponentEditor extends StatefulWidget {
 class _OpponentEditorState extends State<OpponentEditor> {
   late final Map<String, TextEditingController> _c;
   final _damage = <Map<String, String>>[];
+  String _evType = '';
   String _carType = '', _carBrand = '', _carColor = '', _province = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
   bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
@@ -43,6 +44,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _carColor = (widget.data['car_color'] ?? '').toString();
     _province = (widget.data['province'] ?? '').toString();
     _district = (widget.data['district'] ?? '').toString();
+    _evType = (widget.data['ev_type'] ?? '').toString();
     _gender = (widget.data['gender'] ?? '').toString();
     _title = (widget.data['title'] ?? '').toString();
     _relation = (widget.data['relation'] ?? '').toString();
@@ -79,6 +81,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'plate': _ctl('plate').text.trim(),
         'province': _province,
         'district': _district,
+        'ev_type': _evType,   // → dtlOpo_ctlNN_wuOpo_ddlEv_Type (บอทเดินสายรออยู่แล้ว)
         'reg_year': _ctl('reg_year').text.trim(),
         'mileage': _ctl('mileage').text.trim(),
         'vin': _ctl('vin').text.trim(),
@@ -206,6 +209,10 @@ class _OpponentEditorState extends State<OpponentEditor> {
         // ที่อยู่คู่กรณีของ EMCS เป็นช่องข้อความเดียว → ให้พิมพ์อำเภอ/จังหวัดในช่อง "ที่อยู่" แทน
         // (ยังเก็บค่าเดิมใน _collect เพื่อไม่ให้ข้อมูลที่เคยกรอกไว้หาย)
         kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
+        // EMCS มีช่องนี้ให้คู่กรณีจริง (ddlEv_Type 6 ตัวเลือก) — เดิมแอปมีเฉพาะรถประกัน
+        KPickerField(label: 'รถยนต์ไฟฟ้า (EV)', value: _evType,
+            options: const ['BEV', 'HEV', 'PHEV', 'FCEV', 'MEV'],
+            onSelected: (v) => setState(() => _evType = v)),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
         _scanBtns(),
