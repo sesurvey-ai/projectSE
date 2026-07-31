@@ -20,6 +20,7 @@
  *     ต้องเลือกป้าย canonical เอง ให้ตรงกับ dropdown ของแอป/เว็บ ไม่งั้นกดบันทึกแล้วค่าหาย
  */
 import { EMCS_DISTRICTS } from '../data/emcsDistricts';
+import { CAUSE, RELATION, LICENSE_TYPE } from './xmlExport.service';
 
 // ───────────────────────── parser ขนาดเล็ก ─────────────────────────
 // XML ของ SURV_REPORT เป็น flat มาก (ไม่มี attribute/namespace/nested ซ้อนลึก)
@@ -156,6 +157,32 @@ const FLU_BY_CODE: Record<string, string> = {
   N: 'ไม่มีการนัดหมาย', W: 'รอการนัดหมาย', Y: 'มีการนัดหมาย',
 };
 
+/**
+ * ตารางรหัสของ CAUSE_CODE / DRI_RELATION / DRI_DRVTYPE ถอดกลับจากตารางจริงของ xmlExport
+ * แทนที่จะพิมพ์ซ้ำ — รหัสพวกนี้ไม่เรียงตามลำดับป้าย ('ประมาทร่วม' = 9191 ไม่ใช่ 9126,
+ * 'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว' = 4 ไม่ใช่ 3) เขียนมือแล้วเพี้ยนแน่
+ *
+ * ตาราง export เป็น many-to-one (กับดักข้อ 7) — 3 รหัสนี้มี 2 ป้าย และ **เดาไม่ได้**:
+ * ตัวที่ถูกไม่ใช่ตัวแรกเสมอ ('เฉี่ยวชนวัสดุ' มาก่อน) และไม่ใช่ตัวที่ยาวกว่าเสมอ
+ * ('ใบขับขี่รถยนต์ส่วนบุคคคล' พิมพ์ตก ค เกิน ยาวกว่าตัวจริง 1 ตัว) → ระบุตรงๆ
+ */
+const CANONICAL_LABEL: Record<string, string> = {
+  '9114': 'ชนวัสดุ/สิ่งของ เช่น เสา,กำแพง,ประตู ฯลฯ',
+  '16': 'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ',
+  '19': 'ใบขับขี่รถยนต์ส่วนบุคคล',
+};
+const reverseOf = (table: Record<string, string>): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const [label, code] of Object.entries(table)) {
+    if (!code) continue;
+    out[code] = CANONICAL_LABEL[code] ?? (out[code] ?? label);
+  }
+  return out;
+};
+const CAUSE_BY_CODE = reverseOf(CAUSE);
+const RELATION_BY_CODE = reverseOf(RELATION);
+const LICENSE_BY_CODE = reverseOf(LICENSE_TYPE);
+
 /** อำเภอ: รหัส (อาจถูกตัดศูนย์นำ) + รหัสจังหวัด → ชื่อไทย */
 function districtName(provinceCode: string, districtCode: string): string {
   const table = EMCS_DISTRICTS[String(provinceCode || '').trim()];
@@ -230,7 +257,11 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     acc_district: districtName(accProvCode, txt(rep, 'ACC_DISTRICTID')),
     acc_detail: txt(rep, 'ACC_DETAIL'),
     acc_fault: FAULT_BY_CODE[txt(rep, 'ACC_CAUSE')] ?? '',
+    // ⚠️ ACC_CAUSE = "ผลคดี/ฝ่ายผิด" ส่วน CAUSE_CODE = "ลักษณะการเกิดเหตุ" — คนละช่องกัน
+    acc_cause: CAUSE_BY_CODE[txt(rep, 'CAUSE_CODE')] ?? '',
     acc_fault_opponent_no: txt(rep, 'ACC_CAUSE_NO'),
+    // ประเภทเคลม (F/D/A/C) — radio หัวหน้าฟอร์ม; ไม่มีก็ต้องให้คนตรวจเลือกเอง
+    claim_type: txt(rep, 'SURV_CLAIM_TYPE').toUpperCase(),
     acc_reporter: txt(rep, 'ACC_CALL'),
     acc_surveyor: txt(rep, 'ACC_SURV'),
     surveyor_name: txt(rep, 'ACC_SURV'),
@@ -299,6 +330,8 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
       driver_license_end: dateOnly(txt(insuredCar, 'DRI_DRVDATE_END')),
       driver_birthdate: dateOnly(txt(insuredCar, 'DRI_BIRTHDAY')),
       driver_by_policy: txt(insuredCar, 'DRIVER_BY_POLICY'),
+      driver_license_type: LICENSE_BY_CODE[txt(insuredCar, 'DRI_DRVTYPE')] ?? '',
+      driver_relation: RELATION_BY_CODE[txt(insuredCar, 'DRI_RELATION')] ?? '',
     });
     // คำนำหน้า: XML ไม่เคยส่ง DRI_TITLE_ID (ว่าง 3/3 ไฟล์) และชื่ออาจพ่วงคำนำหน้ามา
     // 'คุณ' ปลอดภัยกับทั้ง 2 เพศ (เดาจากเพศเสี่ยงผิด นาง/นางสาว)
@@ -347,6 +380,8 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
       claim_no: txt(c, 'CLAIMNO'),
       policy_type: txt(c, 'INSURE_TYPE'),
       license_no: txt(c, 'DRI_DRVID'),
+      license_type: LICENSE_BY_CODE[txt(c, 'DRI_DRVTYPE')] ?? '',
+      relation: RELATION_BY_CODE[txt(c, 'DRI_RELATION')] ?? '',
       license_start: dateOnly(txt(c, 'DRI_DRVDATE_START')),
       estimated_cost: txt(c, 'COST_DAMAGE'),
       damage: [], // XML ไม่เคยมีรายการความเสียหาย — คนกรอกบนเว็บ
@@ -418,6 +453,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     warnings.push('ผู้บาดเจ็บบางรายมีรหัส ON — XML แยก "บุคคลภายนอก/ผู้ขับขี่คู่กรณี/ผู้โดยสารคู่กรณี" ไม่ได้ ตรวจประเภทผู้บาดเจ็บอีกครั้ง');
   }
   if (!report.acc_province) warnings.push('อ่านจังหวัดที่เกิดเหตุจากรหัสไม่ได้ — เลือกเองบนหน้าเว็บ');
+  // ISURVEY ไม่มี tag ระดับความเสียหาย (หนัก/เบา) เลย แต่ EMCS ใช้เลือกชุดฟิลด์บังคับ
+  warnings.push('ไฟล์ ISURVEY ไม่มี "รถเสียหาย หนัก/เบา" — เลือกเองบนหน้าเว็บก่อนนำเข้า EMCS');
+  if (!report.claim_type) warnings.push('ไม่มี "ประเภทเคลม" (SURV_CLAIM_TYPE) — เลือกเองบนหน้าเว็บ');
 
   return {
     caseFields: {
