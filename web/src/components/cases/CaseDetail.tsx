@@ -6,6 +6,7 @@ import ReviewForm from '@/components/review/ReviewForm';
 import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
+import DamageEditor, { DamageItem } from './DamageEditor';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface CaseDetailProps {
@@ -103,6 +104,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [driverProv, setDriverProv] = useState<string>(report.driver_province || '0');
   const [driverDist, setDriverDist] = useState<string>(report.driver_district || '-- เขต --');
   const [isEditing, setIsEditing] = useState(false);
+  // ความเสียหายรถประกันเป็น JSONB — แก้ผ่าน FormData ไม่ได้ ต้องถือ state เอง
+  // (เคสที่นำเข้าจากไฟล์ XML ของ ISURVEY จะว่างเสมอ ผู้ตรวจต้องกรอกก่อนส่งเข้า EMCS)
+  const [damage, setDamage] = useState<DamageItem[]>(() =>
+    (Array.isArray(report?.insured_damage) ? report.insured_damage : []).map((x: Record<string, unknown>) => ({
+      part: String(x?.part ?? ''), pos: String(x?.pos ?? 'A'), level: String(x?.level ?? ''),
+    })));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -129,7 +136,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       // ตัด comma ออกจากคอลัมน์ตัวเลข (เช่น mileage แสดงแบบ 12,345) กัน 500 invalid input for integer
       const numericCols = ['mileage', 'estimated_cost', 'deductible', 'acc_claim_amount', 'acc_claim_total_amount', 'driver_age'];
       for (const k of numericCols) if (typeof data[k] === 'string') data[k] = data[k].replace(/,/g, '');
-      const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: data });
+      const payload: Record<string, unknown> = { ...data };
+      if (isEditing) {
+        // ทิ้งแถวที่ยังกรอกไม่ครบ — ส่งไปก็ตกที่ EMCS อยู่ดี และทำให้บอทนับรายการเพี้ยน
+        payload.insured_damage = damage.filter((x) => x.part && x.level);
+      }
+      const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: payload });
       if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
       setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || '')); return false;
     } catch { setSaveMsg('เกิดข้อผิดพลาดในการบันทึก'); return false; }
@@ -932,14 +944,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </div>
                 )}
 
-                {/* แผนภาพความเสียหายรถประกัน */}
-                {insuredDamage.length > 0 && (
+                {/* ความเสียหายรถประกัน — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
+                {(insuredDamage.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: แผนภาพความเสียหายรถประกัน</span>
+                      <span className="font-bold">::: ความเสียหายรถประกัน</span>
                     </div>
                     <div className="p-4">
-                      <DamageChips items={insuredDamage} />
+                      {isEditing
+                        ? <DamageEditor items={damage} onChange={setDamage} />
+                        : <DamageChips items={insuredDamage} />}
                     </div>
                   </div>
                 )}
