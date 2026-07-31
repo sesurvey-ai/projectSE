@@ -27,6 +27,9 @@ import { CAUSE, RELATION, LICENSE_TYPE } from './xmlExport.service';
 // จึง parse ด้วย regex ได้ปลอดภัยกว่าการเพิ่ม dependency ใหม่เข้าโปรเจกต์
 const decode = (s: string): string =>
   s
+    // ขึ้นบรรทัดใน XML มาเป็น CRLF ที่เข้ารหัสครึ่งเดียว: '&#13;' (CR) แล้วตามด้วย LF ตัวจริง
+    // แปลง &#13; เป็น \n ตรง ๆ จะได้ 2 บรรทัดต่อ 1 การขึ้นบรรทัด → ความเห็นยืดเป็นสองเท่า
+    .replace(/&#13;\r?\n/g, '\n')
     .replace(/&#13;/g, '\n')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -352,6 +355,11 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     // HAVE_INSURANCE: ISURVEY ใส่ชื่อบริษัท / se-survey ใส่ flag '1' → ตัวเลขล้วน = flag
     const haveIns = txt(c, 'HAVE_INSURANCE');
     const insurer = /^\d+$/.test(haveIns) ? '' : haveIns;
+    const carProv = txt(c, 'CAR_PROVINCE');
+    const driProv = txt(c, 'DRI_PROVINCEID');
+    if (driProv && carProv && driProv !== carProv) {
+      warnings.push(`คู่กรณีทะเบียน ${txt(c, 'CAR_REGNO') || '-'}: จังหวัดป้ายทะเบียนกับภูมิลำเนาคนละจังหวัด — แอปมีช่องจังหวัดช่องเดียว จึงไม่ได้เก็บอำเภอ เลือกเองบนเว็บถ้าต้องใช้`);
+    }
     return {
       title,
       first_name: rest[0] ?? '',
@@ -363,8 +371,12 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
       phone: txt(c, 'DRI_TELNO'),
       address: txt(c, 'DRI_ADDRESS'),
       // ⚠️ province ของแอป = "จังหวัดป้ายทะเบียน" (→ ddlCar_Province) ไม่ใช่ภูมิลำเนา
-      province: PROVINCE_BY_CODE[txt(c, 'CAR_PROVINCE')] ?? '',
-      district: districtName(txt(c, 'DRI_PROVINCEID'), txt(c, 'DRI_DISTRICTID')),
+      // และ district ต้อง cascade จาก province ตัวเดียวกันนี้ (xmlExport เรียก districtId(province, district))
+      // ISURVEY แยก 2 จังหวัด (CAR_PROVINCE = ป้ายทะเบียน, DRI_PROVINCEID = ภูมิลำเนา) แต่แอปมีช่องเดียว —
+      // ถ้าคนละจังหวัด เก็บชื่ออำเภอของอีกจังหวัดไว้ก็ export ไม่ออกอยู่ดี (หา code ในตารางไม่เจอ)
+      // → ปล่อยว่าง + เตือน ให้คนตรวจเลือกเองบนเว็บ ดีกว่าเก็บคู่จังหวัด-อำเภอที่ไม่ตรงกัน
+      province: PROVINCE_BY_CODE[carProv] ?? '',
+      district: driProv === carProv ? districtName(driProv, txt(c, 'DRI_DISTRICTID')) : '',
       plate: txt(c, 'CAR_REGNO'),
       car_type: CAR_TYPE_BY_CODE[ctype] ?? '',
       car_brand: cleanBrand(txt(c, 'CMFG'), ctype),
@@ -382,7 +394,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
       license_no: txt(c, 'DRI_DRVID'),
       license_type: LICENSE_BY_CODE[txt(c, 'DRI_DRVTYPE')] ?? '',
       relation: RELATION_BY_CODE[txt(c, 'DRI_RELATION')] ?? '',
+      license_place: txt(c, 'DRI_DRVPLACE'),
       license_start: dateOnly(txt(c, 'DRI_DRVDATE_START')),
+      license_end: dateOnly(txt(c, 'DRI_DRVDATE_END')),
       estimated_cost: txt(c, 'COST_DAMAGE'),
       damage: [], // XML ไม่เคยมีรายการความเสียหาย — คนกรอกบนเว็บ
       kfk: false,
