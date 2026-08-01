@@ -15,7 +15,18 @@ class DamageDiagramField extends StatefulWidget {
 class _DamageDiagramFieldState extends State<DamageDiagramField> {
   static const _lvlColor = {'L': Color(0xFF16A34A), 'M': Color(0xFFEAB308), 'H': Color(0xFFEA8600), 'X': Color(0xFFDC2626)};
 
+  /// 12 ชิ้นที่ฟอร์มความเสียหายของ EMCS **ไม่มี radio ให้เลือกด้าน** (อีก 10 ชิ้นมี L/R/A)
+  /// เลือกด้านให้ไปก็ไม่มีที่ลง — บอทติ๊กไม่ได้ ด้านที่ช่างเลือกหายเงียบ
+  /// เว็บ (DamageEditor.tsx) ล็อกเป็น 'A' อยู่แล้ว มือถือต้องล็อกให้ตรงกัน
+  static const _noSideParts = {
+    'กันชนหน้า', 'กันชนหลัง', 'กระจกบังลมหน้า', 'กระจกบังลมหลัง', 'ฝากระโปรงหน้า',
+    'ฝากระโปรงหลัง', 'กระจังหน้า', 'กระบะ', 'หลังคา', 'แผงท้าย', 'ฝาปิดท้าย', 'แค็ป',
+  };
+
   Future<void> _tap(String part, [String pos = 'A']) async {
+    // ชิ้นส่วนที่ EMCS ไม่มีปุ่มเลือกด้าน → บังคับ 'A' เสมอ (กันข้อมูลเก่าที่เคยเก็บ L/R ไว้
+    // แล้วบอทติ๊ก radio ไม่ได้ — ตรงกับ DamageEditor.tsx ฝั่งเว็บ)
+    if (_noSideParts.contains(part)) pos = 'A';
     // ชื่อชิ้นส่วนตรง checklist EMCS (ไม่มีข้างในชื่อ) → ต้องจับคู่ด้วย part+pos
     int idx = widget.items.indexWhere(
         (it) => it['part'] == part && (it['pos'] ?? 'A') == pos);
@@ -79,10 +90,13 @@ class _DamageDiagramFieldState extends State<DamageDiagramField> {
                 child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle), child: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade700)),
               ),
             ]),
-            const SizedBox(height: 14),
-            const Text('ตำแหน่ง', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF737D90))),
-            const SizedBox(height: 8),
-            seg('pos', const {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'}, const {}),
+            // ชิ้นส่วนที่ EMCS ไม่มี radio ด้าน → ไม่ต้องโชว์ตัวเลือก (บังคับ 'A' ไปแล้วตอนแตะ)
+            if (!_noSideParts.contains(item['part'])) ...[
+              const SizedBox(height: 14),
+              const Text('ตำแหน่ง', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF737D90))),
+              const SizedBox(height: 8),
+              seg('pos', const {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'}, const {}),
+            ],
             const SizedBox(height: 14),
             const Text('ระดับความเสียหาย', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF737D90))),
             const SizedBox(height: 8),

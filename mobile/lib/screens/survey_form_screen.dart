@@ -2559,10 +2559,24 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           ['ประเภทรถ', _carType != '0'],
         ]);
       case _SView.s3:
+        // ⚠️ ต้องตรงกับ "จุดแดง" บนหน้าจอ และตรงกับที่ EMCS บังคับจริง (vlidSurvey):
+        // rdoGender / ddlDri_Title_ID / txtDri_Name01 / txtDri_LastName01 / txtDri_Age /
+        // wuCale_Dri_BirthDay / txtDri_TelNo / txtDri_CardID / txtDri_DrvID / txtDri_Address /
+        // ddlDri_ProvinceID / ddlDri_DistrictID
+        // เดิมตรวจแค่ 4 ช่อง → ช่างเห็น "ครบ" ทั้งที่ที่อยู่/จังหวัดยังว่าง แล้วหัวหน้าไป
+        // บันทึกบน EMCS ไม่ผ่าน (เจอสดตอนเทส 2026-08-01)
         final s3 = miss([
+          ['เพศ', _driverGender.isNotEmpty],
+          ['คำนำหน้า', _driverTitle != '0' && _driverTitle.isNotEmpty],
           ['ชื่อ-นามสกุลผู้ขับ', has(_driverNameCtl) && has(_driverLastnameCtl)],
+          ['ความสัมพันธ์', has(_driverRelationCtl)],
+          ['วันเกิด', has(_driverBirthdateCtl)],
+          ['อายุ', has(_driverAgeCtl)],
           ['โทรศัพท์', has(_driverPhoneCtl)],
           ['เลขบัตรประชาชน (ถูกต้อง)', _driverCidValid()],
+          ['ที่อยู่ปัจจุบัน', has(_driverAddressCtl)],
+          ['จังหวัดผู้ขับขี่', has(_driverProvinceCtl)],
+          ['เขต/อำเภอผู้ขับขี่', has(_driverDistrictCtl)],
         ]);
         // เลขใบขับขี่บังคับเฉพาะเมื่อ "มีใบขับขี่" (ปิดสวิตช์ = ไม่มี ไม่นับว่าขาด)
         if (_driverHasLicense) s3.addAll(miss([['เลขใบขับขี่', has(_driverLicenseNoCtl)]]));
@@ -2580,6 +2594,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           ['เขต/อำเภอที่เกิดเหตุ', has(_accDistrictCtl)],
           ['ลักษณะการเกิดเหตุ', has(_accCauseCtl)],
           ['ลักษณะความเสียหาย', has(_accDamageTypeCtl)],
+          // EMCS บังคับ rdoAcc_Cause0 — เดิมไม่ได้ตรวจ ส่งไปทั้งที่ยัง '-- ระบุ --' ได้
+          ['ฝ่ายประมาท', _accFault.isNotEmpty],
           ['รายละเอียดการเกิดเหตุ', has(_accDetailCtl)],
           ['ผู้สำรวจภัย', has(_accSurveyorCtl)],
         ]);
@@ -3158,7 +3174,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       isExpanded: true,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _muted),
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('ฝ่ายประมาท'),
+      decoration: _dec('ฝ่ายประมาท', req: true),   // EMCS บังคับ rdoAcc_Cause0 (vlidSurvey)
       hint: const Text('-- ระบุ --', style: TextStyle(fontSize: 13, color: _muted2)),
       items: [
         const DropdownMenuItem(value: '', child: Text('-- ระบุ --', style: TextStyle(fontSize: 14.5, color: _muted2))),
@@ -4060,9 +4076,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     final districts = (_driverProvinceCtl.text.isNotEmpty && _provincesData.containsKey(_driverProvinceCtl.text))
         ? _provincesData[_driverProvinceCtl.text]!
         : <String>[];
+    // req: EMCS บังคับ ddlDri_DistrictID ใน vlidSurvey (เดิมไม่มีจุดแดง → ปล่อยว่างแล้วส่งได้)
     return _dd('เขต/อำเภอ', _driverDistrictCtl.text, districts,
         (v) => setState(() { _driverDistrictCtl.text = v ?? ''; _ocrConf.remove('driver_district'); }),
-        hint: 'เลือกเขต/อำเภอ', key: ValueKey('dd_${_driverProvinceCtl.text}_${_driverDistrictCtl.text}'));
+        hint: 'เลือกเขต/อำเภอ', req: true, key: ValueKey('dd_${_driverProvinceCtl.text}_${_driverDistrictCtl.text}'));
   }
 
   Widget _licenseTypeDropdown() {
