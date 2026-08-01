@@ -13,7 +13,8 @@ import '../config/api_config.dart';
 import '../services/auth_token.dart';
 import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
-import '../data/survey_master.dart' show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor;
+import '../data/survey_master.dart'
+    show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'survey/opponent_editor.dart';
@@ -1586,6 +1587,21 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         child: Text('ถ่ายเข้าเคสโดยตรง · แตะรูปเพื่อดูรายละเอียด/จัดหมวด', style: TextStyle(fontSize: 11.5, color: _muted)),
       );
 
+  /// เกินโควตาแล้วหรือยัง (นับเฉพาะรูปที่จะส่ง EMCS — รูปยืนยันถึงที่เกิดเหตุไม่นับ
+  /// เพราะบอทกรองทิ้งอยู่แล้ว และมันเก็บคนละที่ ไม่ได้อยู่ใน _photoPaths)
+  bool get _photoQuotaOver => _photoPaths.length > kEmcsPhotoQuota;
+
+  /// ป้ายเตือนโควตา — null = ยังไม่ต้องเตือน
+  /// ⚠️ แอปรู้แค่ "เราถ่ายกี่ใบ" ไม่รู้โควตาที่เหลือจริงของเคลม (EMCS แชร์โควตากับรูป
+  /// ที่คนอื่นอัปไว้ก่อน) → เตือนอย่างเดียว **ไม่บล็อก** เพราะบล็อกแล้วช่างเสียหลักฐานถาวร
+  /// ส่วนบอทตัดให้พอดีโควตาจริงตอนอัป + log ว่าตกไปกี่ใบ (se-autokey 4ff9af1)
+  String? get _photoQuotaNote {
+    final n = _photoPaths.length;
+    if (n > kEmcsPhotoQuota) return 'เกินโควตา EMCS — รูปส่วนเกินจะไม่ขึ้นระบบประกัน';
+    if (n >= kEmcsPhotoWarn) return 'ใกล้เต็มโควตา EMCS ($kEmcsPhotoQuota ใบ/เคลม)';
+    return null;
+  }
+
   // การ์ดสรุปจำนวนรูปแต่ละประเภท (โชว์เฉพาะประเภทที่มีรูปแล้ว) — ซ่อนถ้ายังไม่มีรูป
   Widget _imgChecklist() {
     // จัดกลุ่ม: หมวดฐานก่อน แล้วตามด้วย variant "คันที่ N" ที่มีรูป (กันหมวด dynamic หลุดจากตารางนับ)
@@ -1604,7 +1620,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('จำนวนรูปภาพ (${_photoPaths.length})', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+        Row(children: [
+          Text('จำนวนรูปภาพ (${_photoPaths.length} / $kEmcsPhotoQuota)',
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+          if (_photoQuotaNote != null) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _photoQuotaOver ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(_photoQuotaNote!,
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: _photoQuotaOver ? const Color(0xFFB91C1C) : const Color(0xFF92400E))),
+              ),
+            ),
+          ],
+        ]),
         const SizedBox(height: 6),
         for (final c in rows)
           Padding(
