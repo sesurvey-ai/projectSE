@@ -553,7 +553,12 @@ export function generateSurveyXml(r: Row): string {
     el('SUR_INSURE', baht(r.bail_fee)) +            // ค่าประกันตัว
     el('SUR_CLAIM', baht(r.claim_fee_price)) +      // ค่าเรียกร้อง
     el('SUR_DAILY', baht(r.daily_record_fee)) +     // ค่าคัดประจำวัน
-    el('ACC_RESULT', '') + el('ACC_COMMENT', '') + el('SURV_COMMENT', '') + el('INC_VAT', '') +
+    // ผลการดำเนินงาน (txtAcc_result) — **EMCS บังคับในฟอร์มหลัก** (vlidSurvey) ไม่ใช่ช่องเสริม
+    // เดิม hardcode ว่าง ทั้งที่ผู้ตรวจกรอกไว้บนเว็บแล้ว (survey_reports.survey_result)
+    // → draft ที่ import เข้าไปมีช่องนี้ว่าง หัวหน้ากดบันทึกหน้าหลักไม่ผ่าน
+    // ⚠️ ACC_COMMENT (ความเห็นผู้ตรวจสอบ) + SURV_COMMENT ในบล็อกบิล ยังปล่อยว่างตามกติกา user:
+    //    หน้าค่าใช้จ่ายให้หัวหน้ากรอกเอง บอทแตะแค่เลขที่ใบแจ้งหนี้ + วันที่
+    el('ACC_RESULT', r.survey_result) + el('ACC_COMMENT', '') + el('SURV_COMMENT', '') + el('INC_VAT', '') +
     el('SUR_PERCENT_CLAIM', baht(r.claim_fee_percent)) +
     '</TXN_SURV_BILL>';
 
