@@ -2598,6 +2598,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           ['ฝ่ายประมาท', _accFault.isNotEmpty],
           ['รายละเอียดการเกิดเหตุ', has(_accDetailCtl)],
           ['ผู้สำรวจภัย', has(_accSurveyorCtl)],
+          ['โทรศัพท์สำรวจ', has(_accSurveyorPhoneCtl)],
         ]);
         // ผลคดี = คู่กรณีผิด → EMCS บังคับ "คู่กรณีคันที่" + ติ๊กการเรียกร้องอย่างน้อย 1 ข้อ
         // (ไม่ครบ = กดบันทึกบน EMCS ไม่ผ่าน หัวหน้าต้องมานั่งเติมเองทุกเคส)
@@ -3092,7 +3093,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         // ⛔ เอาช่อง "สาขา" ออก 2026-07-27: ddlSurv_Branch บน EMCS มี option เดียวคือ
         // '-- ระบุ --' (เลือกอะไรไม่ได้) และงานจริงที่พนักงานทำก็ค้างที่ค่านั้น
         // ส่วน "โทรศัพท์สำรวจ" มีปลายทางจริง (txtAcc_Tel) — บอทส่งให้แล้วตั้งแต่ 2d78f0e
-        _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', keyboardType: TextInputType.phone),
+        // req: EMCS บังคับ txtAcc_Tel ใน vlidSurvey (เดิมไม่มีจุดแดง ปล่อยว่างแล้วส่งได้)
+        _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', req: true, keyboardType: TextInputType.phone),
         _dateTime(_accCustomerReportDateCtl, _accCustomerReportTimeCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'),
         _dateTime(_accInsNotifyDateCtl, _accInsNotifyTimeCtl, 'วันที่ บ.ประกันแจ้งสำรวจ'),
         _dateTime(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl, 'วันที่ถึงที่เกิดเหตุ'),
