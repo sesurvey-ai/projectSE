@@ -743,8 +743,13 @@ export const caseService = {
       }
       const conds: string[] = [];
       const params: unknown[] = [caseId];
-      if (report.claim_no) {
-        params.push(String(report.claim_no));
+      // ⚠️ เงื่อนไขล่างเป็น "ค้นข้อความในก้อน JSON ของคู่กรณี" → เลขสั้นจับมั่วได้ทันที
+      // (เคสจริง 2026-08-01: เลขเคลมทดสอบ '11' ไปแมตช์เลขบัตร ปชช. '1139800001520'
+      //  ของอีกเคส แล้วขึ้นแบนเนอร์ "เคลมคู่" ผิด ๆ บนมือถือ)
+      // ใช้เกณฑ์เดียวกับ addClaims: ต้องยาวพอที่จะเป็นเลขเคลมจริง (จริง ๆ 21 ตัว เช่น
+      // 21BR10AVD-6906-001619) — สั้นกว่านั้นถือว่าเป็นข้อมูลทดสอบ/ยังไม่ได้เลขจริง ข้ามไป
+      if (report.claim_no && /^[0-9A-Za-z-]{10,}$/.test(String(report.claim_no).trim())) {
+        params.push(String(report.claim_no).trim());
         conds.push(`sr.acc_claim_opponent ILIKE '%' || $${params.length} || '%'`);
         conds.push(`sr.opposing_parties::text ILIKE '%' || $${params.length} || '%'`);
       }
