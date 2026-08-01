@@ -82,6 +82,24 @@ export const LICENSE_TYPE: Record<string, string> = {
   'อื่นๆ': '99', 'ใบขับขี่รถยนต์ส่วนบุคคคล': '19', 'ใบขับขี่รถยนต์ส่วนบุคคลหนี่งปีต่ออายุ': '16',
 };
 
+// ลักษณะความเสียหาย (ddlLoss_ID) — master EMCS 21 รหัส verbatim
+const LOSS: Record<string, string> = {
+  'เคลมแห้ง': '1', 'กระจกแตก': '2', 'กระจกอื่นๆ แตก': '3', 'ชนคู่กรณีเสียหาย': '4',
+  'ถูกคู่กรณีชน': '5', 'ตกถนน': '6', 'พลิกคว่ำ': '7', 'รถประกันชนรถคู่กรณีไม่เอาความ': '8',
+  'เฉี่ยวชนวัสดุ': '9', 'ถูกขูดขีดกลั่นแกล้ง': '10', 'ถูกลักอุปกรณ์ส่วนควบ': '11',
+  'วัสดุหล่นใส่': '12', 'ยางระเบิด': '13', 'จอดไว้ถูกชนไม่ทราบคู่กรณี': '14',
+  'หนูกัดสายไฟ': '15', 'รถหาย': '16', 'รถประกันไฟไหม้': '17', 'น้ำท่วมเสียหาย': '18',
+  'ชนคนบาดเจ็บ': '19', 'ผู้โดยสารประกันตกรถ': '20', 'เสียหายทั้งหมด': '21',
+};
+
+/** ระดับความเสียหายรถประกัน (rdoHev_Car) — หนัก=1 / เบา=0 (ค่าจริงจากฟอร์ม EMCS) */
+const hevCar = (v: unknown): string => {
+  const s = String(v ?? '').trim();
+  if (s === 'หนัก') return '1';
+  if (s === 'เบา') return '0';
+  return '';
+};
+
 // ฝ่ายประมาท (rdoAcc_Cause 1-7) — รับได้ทั้ง key สั้นของแอป และข้อความเต็ม
 const FAULT: Record<string, string> = {
   'ฝ่ายผิด': '1', 'รถประกันฝ่ายผิด': '1', 'รถประกันเป็นฝ่ายผิด': '1', 'รถประกันเป็นฝ่ายผิด ': '1',
@@ -450,6 +468,8 @@ export function generateSurveyXml(r: Row): string {
     el('ACC_CAUSE', lookup(FAULT, r.acc_fault)) +
     el('ACC_CALL', r.acc_reporter) +
     el('ACC_SURV', r.acc_surveyor) +
+    // โทรศัพท์ผู้สำรวจภัย — EMCS บังคับ (txtAcc_Tel ใน vlidSurvey) แต่ XML ไม่เคยมี tag นี้เลย
+    el('ACC_TEL', tel10(r.acc_surveyor_phone)) +
     el('ACC_CALL_DATE', toXmlCE(r.acc_customer_report_date)) +
     el('ACC_REACH', toXmlCE(r.acc_survey_arrive_date)) +
     el('ACC_FINISH', toXmlCE(r.acc_survey_complete_date)) +
@@ -474,7 +494,9 @@ export function generateSurveyXml(r: Row): string {
     el('ALC_RESULT', r.acc_alcohol_result || r.acc_alcohol_test) +
     el('FLU_TYPE', lookup(FLU_TYPE, r.acc_followup)) + el('FLU_NO', r.acc_followup_count) +
     el('FLU_DETAIL', r.acc_followup_detail) + el('FLU_DATE', toXmlCE(r.acc_followup_date)) +
-    el('HEV_CAR', '') +
+    // ระดับความเสียหายรถประกัน — EMCS บังคับ (rdoHev_Car ใน vlidSurvey) เดิม hardcode ว่าง
+    // ทั้งที่แอปบังคับให้เลือก หนัก/เบา อยู่แล้ว → ค่าที่ช่างเลือกไม่เคยไปถึง EMCS
+    el('HEV_CAR', hevCar(r.damage_level)) +
     el('ACC_CRASH_REAR', '') +
     el('HAS_PRB', r.prb_number ? '1' : '') +
     el('RISK_CODE', r.risk_code) +
@@ -484,7 +506,8 @@ export function generateSurveyXml(r: Row): string {
     el('DRIVER_BY_POLICY', r.driver_by_policy) +
     el('DEDUCTIBLE', r.deductible) +
     el('CAUSE_CODE', lookup(CAUSE, r.acc_cause)) +
-    el('LOSS_ID', '') +
+    // ลักษณะความเสียหาย — EMCS บังคับ (ddlLoss_ID ใน vlidSurvey) เดิม hardcode ว่างเช่นกัน
+    el('LOSS_ID', lookup(LOSS, r.acc_damage_type)) +
     '</TXN_SURV_REPORT>';
 
   // รถประกัน TYPE=0; คู่กรณี TYPE=20,21,… (EMCS: 0=รถประกัน 20=คู่กรณี — เดิมส่ง 1,2,… ทำให้ EMCS
