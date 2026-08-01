@@ -89,11 +89,15 @@ class _InjuredEditorState extends State<InjuredEditor> {
   // ช่องที่ EMCS บังคับต่อผู้บาดเจ็บ 1 คน (vlidInjPerson) — ไม่ครบ = กด "บันทึกผู้บาดเจ็บ"
   // บน EMCS ไม่ผ่าน "ทั้งบล็อก" (ไม่ใช่แค่คนนี้) หัวหน้าต้องมานั่งเติมเองทุกเคส
   // เดิม req: true เป็นแค่ดาวแดงตกแต่ง — onSave pop ทันทีโดยไม่ตรวจอะไรเลย
+  /// EMCS บังคับเลขทะเบียนทุกประเภท ยกเว้น 'บุคคลภายนอกรถ' (รหัส 05)
+  bool get _carRegRequired => _personType.isNotEmpty && _personType != 'บุคคลภายนอกรถ';
+
   List<String> _missing() => [
         if (_personType.trim().isEmpty) 'ประเภทผู้บาดเจ็บ',
         if (_gender.trim().isEmpty) 'เพศ',
         if (_ctl('name').text.trim().isEmpty) 'ชื่อ-นามสกุล',
         if (_ctl('cid').text.trim().isEmpty) 'เลขบัตรประชาชน',
+        if (_carRegRequired && _ctl('car_reg').text.trim().isEmpty) 'เลขทะเบียน',
         if (_ctl('hospital').text.trim().isEmpty) 'โรงพยาบาล',
         if (_ctl('symptom').text.trim().isEmpty) 'อาการบาดเจ็บ',
       ];
@@ -157,7 +161,10 @@ class _InjuredEditorState extends State<InjuredEditor> {
         kText(_ctl('cid'), 'เลขบัตรประชาชน/ต่างด้าว/หนังสือเดินทาง', req: true),
         // เลขทะเบียน: EMCS เติมให้เองแบบ readOnly (setDefault_CarRegNo ดึงจากรถประกัน/รถคู่กรณี
         // ตามประเภทผู้บาดเจ็บ) — เลิกบังคับพนักงานพิมพ์เอง
-        kRow2(kText(_ctl('occupation'), 'อาชีพ'), kText(_ctl('car_reg'), 'เลขทะเบียน')),
+        // เลขทะเบียน: EMCS บังคับ **ยกเว้น** ประเภท = '05 บุคคลภายนอกรถ' (คนนอกรถไม่มีทะเบียน)
+        // vlidInjPerson: if (strPerson_Type != 05 && != 0) → CheckInputBoxValid(txtCar_RegNo)
+        kRow2(kText(_ctl('occupation'), 'อาชีพ'),
+            kText(_ctl('car_reg'), 'เลขทะเบียน', req: _carRegRequired)),
         kText(_ctl('address'), 'ที่อยู่', maxLines: 2),
         kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone),
         kText(_ctl('work_place'), 'ทำงานที่'),
