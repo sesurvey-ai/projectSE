@@ -213,7 +213,10 @@ class _OpponentEditorState extends State<OpponentEditor> {
         // + ไม่มี option ครบทั้ง 20 แผง (ยืนยันทั้งหน้าที่พนักงานกรอกเองและ draft จริง)
         // ที่อยู่คู่กรณีของ EMCS เป็นช่องข้อความเดียว → ให้พิมพ์อำเภอ/จังหวัดในช่อง "ที่อยู่" แทน
         // (ยังเก็บค่าเดิมใน _collect เพื่อไม่ให้ข้อมูลที่เคยกรอกไว้หาย)
-        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.', req: true)),
+        // ⚠️ 'เลข กม.' กับ 'ออกให้วันที่' มีดอกจันแดงบน EMCS แต่ **ไม่ได้บังคับจริง** —
+        // vlidOpoCar() ตรวจ txtKm_No เฉพาะบริษัทรหัส 2 และไม่แตะ wuCale_Dri_DrvDate_Start เลย
+        // (ยืนยัน 2026-08-01: ว่างไว้ก็กดบันทึกผ่าน) → ห้ามตั้ง req ไม่งั้นบล็อกพนักงานฟรี ๆ
+        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
         // EMCS มีช่องนี้ให้คู่กรณีจริง (ddlEv_Type 6 ตัวเลือก) — เดิมแอปมีเฉพาะรถประกัน
         KPickerField(label: 'รถยนต์ไฟฟ้า (EV)', value: _evType,
             options: const ['BEV', 'HEV', 'PHEV', 'FCEV', 'MEV'],
@@ -258,7 +261,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
           // ไม่มี txtDri_DrvPlace และไม่มี wuCale_Dri_DrvDate_End (ฝั่งรถประกันมีครบ)
           // → กรอกไปก็ไม่มีที่ลง (OCR ยังเติมค่าให้เบื้องหลังเผื่อใช้ภายใน)
           kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
-          KDateField(_ctl('license_start'), 'ออกให้วันที่', req: true, yearsAhead: 0),
+          KDateField(_ctl('license_start'), 'ออกให้วันที่', yearsAhead: 0),
         ],
         kSubhead('ประกันภัยคู่กรณี'),
         KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, req: true, onSelected: (v) => setState(() {
