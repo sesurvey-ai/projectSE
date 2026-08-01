@@ -81,9 +81,9 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'car_color': _carColor,
         'plate': _ctl('plate').text.trim(),
         'province': _province,
-        // ภูมิลำเนาผู้ขับขี่ (บัตร ปชช./ทะเบียนบ้าน) — คนละช่องกับจังหวัดป้ายทะเบียน
-        // EMCS แยกจริง: ddlCar_Province vs ddlDri_ProvinceID (เห็น option ครบ 80 ในหน้าที่กรอกแล้ว)
-        // ว่างได้ — xmlExport fallback ไปใช้ province (ป้ายทะเบียน) ให้เอง
+        // ภูมิลำเนาผู้ขับขี่ (บัตร ปชช./ทะเบียนบ้าน) — ไม่มีช่องให้กรอกในแอป เพราะ EMCS ซ่อน
+        // ddlDri_ProvinceID ของบล็อกคู่กรณีไว้ ส่งผ่านเฉย ๆ เพื่อไม่ทับค่าที่นำเข้าจาก XML ของ
+        // ISURVEY (ไฟล์นั้นมี DRI_PROVINCEID จริง); ว่าง → xmlExport ใช้ province (ป้ายทะเบียน) แทน
         'home_province': _homeProvince,
         'district': _district,
         'ev_type': _evType,   // → dtlOpo_ctlNN_wuOpo_ddlEv_Type (บอทเดินสายรออยู่แล้ว)
@@ -213,17 +213,17 @@ class _OpponentEditorState extends State<OpponentEditor> {
         // + ไม่มี option ครบทั้ง 20 แผง (ยืนยันทั้งหน้าที่พนักงานกรอกเองและ draft จริง)
         // ที่อยู่คู่กรณีของ EMCS เป็นช่องข้อความเดียว → ให้พิมพ์อำเภอ/จังหวัดในช่อง "ที่อยู่" แทน
         // (ยังเก็บค่าเดิมใน _collect เพื่อไม่ให้ข้อมูลที่เคยกรอกไว้หาย)
-        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.')),
+        kRow2(kText(_ctl('reg_year'), 'ปีจดทะเบียน (พ.ศ.)'), kNum(_ctl('mileage'), 'เลข กม.', req: true)),
         // EMCS มีช่องนี้ให้คู่กรณีจริง (ddlEv_Type 6 ตัวเลือก) — เดิมแอปมีเฉพาะรถประกัน
         KPickerField(label: 'รถยนต์ไฟฟ้า (EV)', value: _evType,
             options: const ['BEV', 'HEV', 'PHEV', 'FCEV', 'MEV'],
             onSelected: (v) => setState(() => _evType = v)),
         kText(_ctl('vin'), 'หมายเลขตัวถัง (VIN)'),
         kSubhead('ผู้ขับขี่'),
-        // จังหวัดภูมิลำเนาผู้ขับขี่คู่กรณี → ddlDri_ProvinceID (คนละช่องกับจังหวัดป้ายทะเบียนด้านบน)
-        // ไม่บังคับ — ไม่กรอกแล้วระบบใช้จังหวัดป้ายทะเบียนแทน
-        KPickerField(label: 'จังหวัดตามบัตร ปชช./ทะเบียนบ้าน', value: _homeProvince,
-            options: widget.provinces, onSelected: (v) => setState(() => _homeProvince = v)),
+        // ⛔ ไม่มีช่อง "จังหวัดภูมิลำเนา" (ddlDri_ProvinceID) เพราะบล็อกคู่กรณีของ EMCS ซ่อนไว้ —
+        // หน้าจริงมีแค่ "ที่อยู่ปัจจุบันผู้ขับขี่" เป็นกล่องข้อความเดี่ยว (ยืนยันจากหน้าจอจริง 2026-08-01)
+        // ค่ายังส่งผ่าน _collect เพื่อไม่ทับของที่นำเข้ามาจากไฟล์ XML ของ ISURVEY (ไฟล์นั้นมี
+        // DRI_PROVINCEID จริง และ xmlExport ใช้ home_province ถ้ามี ไม่มีค่อย fallback เป็น province)
         _scanBtns(),
         Row(children: [
           kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),
@@ -258,7 +258,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
           // ไม่มี txtDri_DrvPlace และไม่มี wuCale_Dri_DrvDate_End (ฝั่งรถประกันมีครบ)
           // → กรอกไปก็ไม่มีที่ลง (OCR ยังเติมค่าให้เบื้องหลังเผื่อใช้ภายใน)
           kText(_ctl('license_no'), 'ใบอนุญาตขับขี่เลขที่', req: true),
-          KDateField(_ctl('license_start'), 'วันออกบัตร', yearsAhead: 0),
+          KDateField(_ctl('license_start'), 'ออกให้วันที่', req: true, yearsAhead: 0),
         ],
         kSubhead('ประกันภัยคู่กรณี'),
         KPickerField(label: 'มีประกันภัยที่', value: _insurer, options: kOpoInsurers, req: true, onSelected: (v) => setState(() {
