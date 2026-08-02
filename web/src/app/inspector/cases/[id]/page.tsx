@@ -16,6 +16,9 @@ export default function CaseDetailPage() {
   const [review, setReview] = useState(null);
   const [visitCount, setVisitCount] = useState(1);
   const [expenses, setExpenses] = useState(null);
+  // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้งตอนหัวหน้าคลิกโดน (backend คำนวณให้)
+  const [nameWarnings, setNameWarnings] = useState<
+    { tag: string; label: string; value: string; bad: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -30,6 +33,7 @@ export default function CaseDetailPage() {
         setReview(res.data.data.review || null);
         setVisitCount(res.data.data.visit_count || 1);
         setExpenses(res.data.data.expenses || null);
+        setNameWarnings(res.data.data.emcs_name_warnings || []);
       }
     } catch { setError('ไม่สามารถโหลดข้อมูลเคสได้'); }
     finally { setLoading(false); }
@@ -74,6 +78,27 @@ export default function CaseDetailPage() {
           </button>
         )}
       </div>
+      {nameWarnings.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">
+            ⚠️ ชื่อ {nameWarnings.length} รายการมีอักขระที่ EMCS ไม่รับ
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            EMCS จะ<strong>ลบข้อความทั้งช่องทิ้ง</strong>ทันทีที่มีคนคลิกเข้า-ออกช่องนั้น
+            (ไม่ใช่แค่ตัดอักขระ) แก้ที่นี่ก่อนส่งเข้า EMCS — ใช้ได้เฉพาะตัวอักษร ตัวเลข เว้นวรรค จุด และขีดกลาง
+          </p>
+          <ul className="mt-2 space-y-1">
+            {nameWarnings.map((w, i) => (
+              <li key={i} className="text-xs text-amber-900">
+                <span className="font-medium">{w.label}</span>
+                <span className="mx-1 text-amber-700">—</span>
+                <span className="rounded bg-white px-1 py-0.5 font-mono">{w.value}</span>
+                <span className="ml-1 text-amber-700">(อักขระที่มีปัญหา: <strong>{w.bad}</strong>)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} expenses={expenses} onReviewSubmitted={fetchDetail} />
     </div>
   );

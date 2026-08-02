@@ -2,7 +2,7 @@ import { db } from '../config/database';
 import { env } from '../config/env';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
-import { generateSurveyXml } from './xmlExport.service';
+import { generateSurveyXml, emcsNameWarnings } from './xmlExport.service';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -774,6 +774,8 @@ export const caseService = {
       visit_count: visitCount,
       expenses,
       linked_cases: linkedCases,
+      // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้ง — เตือนคนตรวจก่อนส่งเข้า EMCS
+      emcs_name_warnings: report ? emcsNameWarnings(report) : [],
     };
   },
 
@@ -784,7 +786,12 @@ export const caseService = {
     assertCaseAccess(caseResult.rows[0], user);
     const reportResult = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('ยังไม่มีข้อมูลรายงานสำรวจของเคสนี้');
-    return generateSurveyXml(await withBillIfImported(caseId, reportResult.rows[0]));
+    const row = await withBillIfImported(caseId, reportResult.rows[0]);
+    // เตือนซ้ำในล็อกฝั่งเซิร์ฟเวอร์ด้วย เพราะบอทดึง XML ผ่านทางนี้ ไม่ได้เห็นแบนเนอร์บนเว็บ
+    for (const w of emcsNameWarnings(row)) {
+      console.warn(`[EMCS] เคส ${caseId}: ${w.label} มีอักขระ ${w.bad} ที่ EMCS จะล้างค่าทิ้ง — ${w.value}`);
+    }
+    return generateSurveyXml(row);
   },
 
   /**

@@ -443,6 +443,56 @@ const alcChk = (test: unknown, result: unknown): string => {
   return ['ไม่ได้ตรวจ', 'ไม่ตรวจ', 'ไม่มีการตรวจ', 'ไม่มี'].some((k) => t.includes(k)) ? '0' : '1';
 };
 
+/**
+ * ช่อง "ชื่อคน" ของ EMCS ที่มีตัวกรองอักขระติดอยู่ — ถ้าค่ามีอักขระนอกลิสต์
+ * **EMCS จะล้างค่าทั้งช่องทิ้งเงียบ ๆ** ตอนคนคลิกเข้า-ออกช่องนั้น (ไม่ใช่แค่ปฏิเสธตัวอักษร)
+ *
+ *   function noTyping_paste(strInput) {            // TextboxValidate.js ของ EMCS
+ *       var format = /([ a-zA-Z0-9ก-์.-])/;
+ *       ... if (!format.test(character[i])) { alert(...); strInput.value = ""; }
+ *   }
+ *
+ * import ผ่าน XML ไม่โดนกรอง (JS ไม่ทำงาน) ค่าจึงเข้าไปได้ — แต่พอหัวหน้าเปิดมาตรวจ
+ * แล้วคลิกโดนช่องนั้น ชื่อหายทั้งช่องโดยไม่มีใครรู้ตัว จึงต้องเตือนตั้งแต่ตอน export
+ *
+ * รายชื่อ id ที่มีตัวกรองนี้ ตรวจจากหน้า EMCS จริงทั้ง 4 หน้า (2026-08-02):
+ *   หน้าหลัก   txtAcc_Call · txtAcc_Surv · txtPolice_Name · txtDri_Name(01)/LastName01
+ *              + ของคู่กรณีทุกแถว txtOpo_Name · txtDri_Name(01)/LastName01
+ *   ผู้บาดเจ็บ  txtInj_Name(01)/LastName01
+ *   ทรัพย์สิน   txtOwner
+ * (ผู้เอาประกัน txtAssured_Name **ไม่มี** ตัวกรองนี้ — ตรวจแล้ว ไม่ต้องเตือน)
+ */
+const EMCS_NAME_OK = /^[ a-zA-Z0-9ก-์.-]*$/;
+
+export type EmcsNameWarning = { tag: string; label: string; value: string; bad: string };
+
+const nameWarn = (out: EmcsNameWarning[], tag: string, label: string, v: unknown) => {
+  const s = String(v ?? '').trim();
+  if (!s || EMCS_NAME_OK.test(s)) return;
+  const bad = [...new Set([...s].filter((c) => !EMCS_NAME_OK.test(c)))].join(' ');
+  out.push({ tag, label, value: s, bad });
+};
+
+/** ตรวจก่อนส่ง: ชื่อคนช่องไหนมีอักขระที่ EMCS จะล้างทิ้ง (ว่าง = ไม่มีปัญหา) */
+export function emcsNameWarnings(r: Row): EmcsNameWarning[] {
+  const out: EmcsNameWarning[] = [];
+  nameWarn(out, 'ACC_CALL', 'ผู้แจ้ง', r.acc_reporter);
+  nameWarn(out, 'ACC_SURV', 'ผู้สำรวจภัย', r.acc_surveyor);
+  nameWarn(out, 'POLICE_NAME', 'ชื่อพนักงานสอบสวน', r.acc_police_name);
+  nameWarn(out, 'DRI_NAME', 'ชื่อผู้ขับขี่รถประกัน',
+    String(r.driver_name ?? '').trim() || `${r.driver_first_name ?? ''} ${r.driver_last_name ?? ''}`.trim());
+  parseJsonArr(r.opposing_parties).forEach((o, i) => {
+    nameWarn(out, 'OPO_NAME', `เจ้าของรถคู่กรณีคันที่ ${i + 1}`, o.owner_name);
+    nameWarn(out, 'DRI_NAME', `ผู้ขับขี่รถคู่กรณีคันที่ ${i + 1}`,
+      `${o.first_name ?? ''} ${o.last_name ?? ''}`.trim());
+  });
+  parseJsonArr(r.injured_persons).forEach((p, i) =>
+    nameWarn(out, 'NAME', `ชื่อผู้บาดเจ็บคนที่ ${i + 1}`, p.name));
+  parseJsonArr(r.damaged_property).forEach((a, i) =>
+    nameWarn(out, 'OWNER', `เจ้าของทรัพย์สินรายการที่ ${i + 1}`, a.owner_name));
+  return out;
+}
+
 export function generateSurveyXml(r: Row): string {
   const opponents = parseJsonArr(r.opposing_parties);
   const assets = parseJsonArr(r.damaged_property);
