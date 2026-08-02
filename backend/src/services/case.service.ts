@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
 import { generateSurveyXml, emcsNameWarnings } from './xmlExport.service';
+import type { XmlImportResult } from './xmlImport.service';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -850,11 +851,10 @@ export const caseService = {
    *
    * กันอัปไฟล์เดิมซ้ำด้วย assertSurveyJobNoUnique (เลขเซอร์เวย์ห้ามซ้ำอยู่แล้ว → 409)
    */
+  // ใช้ type กลางจาก xmlImport.service — เดิมประกาศโครงซ้ำไว้ตรงนี้แบบ inline
+  // พอฝั่งโน้นเพิ่มฟิลด์ (source/warnings) ตรงนี้ไม่รู้เรื่อง แล้วหลุดเงียบ
   async importFromXml(
-    parsed: { caseFields: { customer_name: string; incident_location: string };
-              report: Record<string, unknown>;
-              expenses: Record<string, number | null> | null;
-              surveyorCode: string },
+    parsed: XmlImportResult,
     opts: { insuranceCompany: string; createdBy: number },
   ) {
     const report: Record<string, unknown> = { ...parsed.report, insurance_company: opts.insuranceCompany };
@@ -872,11 +872,15 @@ export const caseService = {
     try {
       await client.query('BEGIN');
       const c = await client.query(
+        // ที่มาต้องมาจากไฟล์ ห้าม hardcode — ไฟล์ที่สกัดกลับจากหน้าเว็บ EMCS
+        // (source='emcs_extract') เป็นข้อมูลทดสอบ กติกาต่างกับงานจริงจากระบบเก่า
+        // โดยเฉพาะเรื่องยอดเงิน: withBillIfImported ส่งบิลต่อเข้า EMCS เฉพาะ 'isurvey_xml'
+        // เท่านั้น เคสทดสอบจึงไม่ดันยอดเงินเข้าระบบประกันโดยไม่ตั้งใจ
         `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status, source)
-         VALUES ($1, $2, $3, $4, 'surveyed', 'isurvey_xml') RETURNING *`,
+         VALUES ($1, $2, $3, $4, 'surveyed', $5) RETURNING *`,
         [parsed.caseFields.customer_name || '(ไม่ระบุชื่อผู้เอาประกัน)',
          parsed.caseFields.incident_location || '(ไม่ระบุสถานที่)',
-         opts.createdBy, assignedTo]);
+         opts.createdBy, assignedTo, parsed.source]);
       const caseId = c.rows[0].id;
 
       // เขียนเฉพาะคอลัมน์ที่มีจริง (ใช้ allowlist ชุดเดียวกับ updateReport) — กัน SQL พัง

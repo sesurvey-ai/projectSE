@@ -224,13 +224,32 @@ export interface XmlImportResult {
   surveyorCode: string;
   /** เรื่องที่ผู้ใช้ต้องรู้ก่อนกดสร้างเคส */
   warnings: string[];
+  /**
+   * ที่มาของไฟล์ — กติกาต่างกันคนละเรื่อง ห้ามปนกัน
+   *   'isurvey_xml'  ระบบเก่า: ไม่มีหนัก/เบา · ลักษณะความเสียหาย ฯลฯ → ต้องเตือนให้หัวหน้ากรอกเอง
+   *                  และมียอดเงินที่หัวหน้ากรอกไว้แล้ว ต้องส่งต่อเข้า EMCS
+   *   'emcs_extract' สกัดกลับจากหน้าเว็บ EMCS ด้วย tools/emcs_dump.py → **ข้อมูลทดสอบเท่านั้น**
+   *                  ข้อมูลครบเพราะผู้ใช้กรอกและตรวจแล้ว แต่ไม่ใช่งานใหม่ ห้ามนับเป็นงาน ISURVEY
+   */
+  source: 'isurvey_xml' | 'emcs_extract';
 }
+
+/** ไฟล์ที่ emcs_dump.py สร้าง จะประทับตรานี้ไว้บรรทัดบนสุด */
+const EMCS_EXTRACT_MARK = /<!--\s*SOURCE=EMCS_EXTRACT/i;
 
 /** อ่านไฟล์ XML ของ ISURVEY → โครงข้อมูลของ se-survey */
 export function parseIsurveyXml(xml: string): XmlImportResult {
   const warnings: string[] = [];
   const rep = blocks(xml, 'TXN_SURV_REPORT')[0];
   if (!rep) throw new Error('ไฟล์นี้ไม่ใช่ XML ของรายงานสำรวจ (ไม่พบบล็อก TXN_SURV_REPORT)');
+
+  const source: XmlImportResult['source'] =
+    EMCS_EXTRACT_MARK.test(xml) ? 'emcs_extract' : 'isurvey_xml';
+  if (source === 'emcs_extract') {
+    warnings.push(
+      'ไฟล์นี้สกัดกลับมาจากหน้าเว็บ EMCS (ไม่ใช่ไฟล์จากระบบ ISURVEY) — ' +
+      'ใช้เป็นข้อมูลทดสอบเท่านั้น เคสที่สร้างจะถูกทำเครื่องหมายแยกไว้ ไม่นับเป็นงานจากระบบเก่า');
+  }
 
   const cars = blocks(xml, 'TXN_SURV_CAR');
   const insuredCar = cars.find((c) => txt(c, 'TYPE') === '0') ?? '';
@@ -462,13 +481,18 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
   // ── คำเตือนที่ผู้ใช้ต้องเห็นก่อนกดสร้าง ──
   if (!report.claim_ref_no) warnings.push('ไม่มี "เลขที่รับแจ้ง" (ACC_CLAIMREF_NO) — EMCS บังคับช่องนี้ ต้องกรอกก่อนนำเข้า');
   if (!report.survey_job_no) warnings.push('ไม่มีเลขเซอร์เวย์ (SURV_JOBNO) — ใช้กันเคสซ้ำไม่ได้');
-  warnings.push('ไฟล์ ISURVEY ไม่เคยส่ง "รายการความเสียหาย" มาด้วย — ต้องกรอกความเสียหายเองบนเว็บก่อนนำเข้า EMCS');
+  // ⚠️ ถ้อยคำต้องตรงกับที่มาของไฟล์ — ไฟล์ที่สกัดจาก EMCS ไม่ใช่ของ ISURVEY
+  // ขึ้นข้อความว่า "ไฟล์ ISURVEY ไม่มี..." กับไฟล์ EMCS จะทำให้คนตรวจเข้าใจผิด
+  const src = source === 'emcs_extract' ? 'ไฟล์ที่สกัดจาก EMCS ' : 'ไฟล์ ISURVEY ';
+  warnings.push(`${src}ไม่มี "รายการความเสียหาย" (DAMAGE_LIST ว่างเสมอ) — ต้องกรอกความเสียหายเองบนเว็บก่อนนำเข้า EMCS`);
   if (injBlocks.some((p) => txt(p, 'PERSON_TYPE') === 'ON')) {
     warnings.push('ผู้บาดเจ็บบางรายมีรหัส ON — XML แยก "บุคคลภายนอก/ผู้ขับขี่คู่กรณี/ผู้โดยสารคู่กรณี" ไม่ได้ ตรวจประเภทผู้บาดเจ็บอีกครั้ง');
   }
   if (!report.acc_province) warnings.push('อ่านจังหวัดที่เกิดเหตุจากรหัสไม่ได้ — เลือกเองบนหน้าเว็บ');
   // ISURVEY ไม่มี tag ระดับความเสียหาย (หนัก/เบา) เลย แต่ EMCS ใช้เลือกชุดฟิลด์บังคับ
-  warnings.push('ไฟล์ ISURVEY ไม่มี "รถเสียหาย หนัก/เบา" — เลือกเองบนหน้าเว็บก่อนนำเข้า EMCS');
+  // ฝั่ง EMCS มี HEV_CAR มาให้จริง แต่ตัวนำเข้านี้เป็นเส้นทางของระบบเก่า จึงไม่อ่านกลับ
+  // (ตั้งใจ — ดูกติกาแยกที่มาในคอมเมนต์ของ XmlImportResult.source)
+  warnings.push(`${src}ไม่มี "รถเสียหาย หนัก/เบา" — เลือกเองบนหน้าเว็บก่อนนำเข้า EMCS`);
   if (!report.claim_type) warnings.push('ไม่มี "ประเภทเคลม" (SURV_CLAIM_TYPE) — เลือกเองบนหน้าเว็บ');
 
   return {
@@ -480,5 +504,6 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     expenses: hasMoney ? bill : null,
     surveyorCode: (txt(rep, 'ACC_SURV').match(/^(SE\d+)/i)?.[1] ?? '').toUpperCase(),
     warnings,
+    source,
   };
 }
