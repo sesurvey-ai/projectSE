@@ -268,6 +268,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     acc_reporter: txt(rep, 'ACC_CALL'),
     acc_surveyor: txt(rep, 'ACC_SURV'),
     surveyor_name: txt(rep, 'ACC_SURV'),
+    // โทรศัพท์ผู้สำรวจภัย — เราส่งออกเป็น ACC_TEL อยู่แล้วแต่เดิมไม่ได้อ่านกลับ
+    // ทำให้ round-trip (EMCS → XML → ระบบเรา) ทิ้งเบอร์นี้ทุกครั้ง ทั้งที่ EMCS บังคับช่องนี้
+    acc_surveyor_phone: txt(rep, 'ACC_TEL'),
     // ไทม์สแตมป์ 4 จุด — se-survey เก็บ 'dd/mm/yyyy|HH:MM'
     acc_customer_report_date: dateTime(txt(rep, 'ACC_CALL_DATE')),
     acc_insurance_notify_date: dateTime(txt(rep, 'INS_CALLING_SURV_DATE')),
