@@ -21,6 +21,7 @@
  */
 import { EMCS_DISTRICTS } from '../data/emcsDistricts';
 import { CAUSE, RELATION, LICENSE_TYPE } from './xmlExport.service';
+import { EMCS_REQUIRED } from '../data/emcsRequired';
 
 // ───────────────────────── parser ขนาดเล็ก ─────────────────────────
 // XML ของ SURV_REPORT เป็น flat มาก (ไม่มี attribute/namespace/nested ซ้อนลึก)
@@ -489,11 +490,22 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     warnings.push('ผู้บาดเจ็บบางรายมีรหัส ON — XML แยก "บุคคลภายนอก/ผู้ขับขี่คู่กรณี/ผู้โดยสารคู่กรณี" ไม่ได้ ตรวจประเภทผู้บาดเจ็บอีกครั้ง');
   }
   if (!report.acc_province) warnings.push('อ่านจังหวัดที่เกิดเหตุจากรหัสไม่ได้ — เลือกเองบนหน้าเว็บ');
-  // ISURVEY ไม่มี tag ระดับความเสียหาย (หนัก/เบา) เลย แต่ EMCS ใช้เลือกชุดฟิลด์บังคับ
-  // ฝั่ง EMCS มี HEV_CAR มาให้จริง แต่ตัวนำเข้านี้เป็นเส้นทางของระบบเก่า จึงไม่อ่านกลับ
-  // (ตั้งใจ — ดูกติกาแยกที่มาในคอมเมนต์ของ XmlImportResult.source)
-  warnings.push(`${src}ไม่มี "รถเสียหาย หนัก/เบา" — เลือกเองบนหน้าเว็บก่อนนำเข้า EMCS`);
   if (!report.claim_type) warnings.push('ไม่มี "ประเภทเคลม" (SURV_CLAIM_TYPE) — เลือกเองบนหน้าเว็บ');
+
+  // ── ช่องบังคับของ EMCS ที่ไฟล์ไม่มีค่ามา — เตือนจากลิสต์ที่สกัดอัตโนมัติ ──
+  //
+  // เดิมเขียนข้อความเตือนทีละบรรทัดด้วยมือ ปัญหาคือถ้า EMCS เพิ่มช่องบังคับใหม่
+  // ระบบจะไม่รู้เรื่องเลย เงียบไปจนกว่าคนจะไปเจอว่าบันทึก draft ไม่ผ่าน
+  // ตอนนี้ลิสต์มาจาก se-autokey/tools/emcs_spec.py --emit-ts ซึ่งอ่านฟังก์ชัน vlid*
+  // ในหน้า EMCS จริง → EMCS เปลี่ยนเมื่อไหร่ รันเครื่องมือใหม่แล้ว commit ไฟล์เดียวจบ
+  //
+  // ในลิสต์มีเฉพาะช่องที่ **บังคับทุกบริษัทแบบไม่มีเงื่อนไข** — ช่องที่บังคับเฉพาะบางบริษัท
+  // (99 ช่อง) หรือมีเงื่อนไข (25 ช่อง) ไม่รวม เพราะตอน parse ยังไม่รู้ว่าเป็นบริษัทไหน
+  for (const f of EMCS_REQUIRED) {
+    const block = f.block === 'CAR' ? insuredCar : rep;
+    if (txt(block, f.tag)) continue;
+    warnings.push(`${src}ไม่มี "${f.label}" (${f.tag}) — EMCS บังคับช่องนี้ทุกบริษัท ต้องกรอกเองบนเว็บก่อนนำเข้า`);
+  }
 
   return {
     caseFields: {
