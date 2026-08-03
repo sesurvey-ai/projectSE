@@ -12,6 +12,9 @@
  *    ที่บันทึกไว้ → v1 ปล่อยว่าง (เหมือน ACC_DISTRICTID ในตัวอย่าง) จนกว่าจะได้ตารางอำเภอครบจากประกัน
  */
 
+import { EMCS_REQUIRED, EMCS_REQUIRED_BY_INSURER, EMCS_INSURER_CODE }
+  from '../data/emcsRequired';
+import type { EmcsRequiredField } from '../data/emcsRequired';
 import { EMCS_DISTRICTS } from '../data/emcsDistricts';
 
 // ── SE Survey identity ในพอร์ทัล (คงที่ต่อบริษัท; override ได้ผ่าน env) ──
@@ -491,6 +494,40 @@ export function emcsNameWarnings(r: Row): EmcsNameWarning[] {
   parseJsonArr(r.damaged_property).forEach((a, i) =>
     nameWarn(out, 'OWNER', `เจ้าของทรัพย์สินรายการที่ ${i + 1}`, a.owner_name));
   return out;
+}
+
+/**
+ * ช่องที่ EMCS บังคับ แต่ XML ที่เราจะส่งยังว่าง — ให้หัวหน้าเห็นตอนตรวจงาน
+ *
+ * ทำไมต้องตรวจตอนนี้ (ไม่ใช่ตอนอัปโหลดไฟล์): ตอนตรวจงาน **เรารู้บริษัทประกันแล้ว**
+ * จึงเช็คช่องบังคับ "เฉพาะบางบริษัท" ได้ด้วย ซึ่งตอนอ่านไฟล์ยังทำไม่ได้
+ *
+ * วิธีเช็ค: สร้าง XML จริงแล้วอ่านค่าจาก tag — ไม่ทำ mapping ซ้ำ อะไรที่ exporter
+ * จะส่งจริงคือสิ่งที่ตรวจ (ถ้า exporter เปลี่ยน การตรวจก็เปลี่ยนตาม ไม่หลุดจากกัน)
+ *
+ * ลิสต์ช่องบังคับมาจาก se-autokey/tools/emcs_spec.py --emit-ts (อ่านฟังก์ชัน vlid*
+ * ในหน้า EMCS จริง) — ไม่ใช่รายการที่เขียนมือ
+ */
+export function emcsMissingRequired(r: Row): EmcsRequiredField[] {
+  const xml = generateSurveyXml(r);
+  const blocks = (name: string): string[] =>
+    [...xml.matchAll(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, 'g'))].map((m) => m[1]);
+  const report = blocks('TXN_SURV_REPORT')[0] ?? '';
+  // รถประกัน = บล็อกแรก (TYPE=0) — คู่กรณีมีกติกาคนละชุด ยังไม่ตรวจในรอบนี้
+  const car = blocks('TXN_SURV_CAR')[0] ?? '';
+  const val = (block: string, tag: string): string => {
+    const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+    return m ? m[1].trim() : '';
+  };
+
+  const code = EMCS_INSURER_CODE[String(r.insurance_company ?? '').trim()] ?? '';
+  const list = [...EMCS_REQUIRED, ...(code ? EMCS_REQUIRED_BY_INSURER[code] ?? [] : [])];
+  const seen = new Set<string>();
+  return list.filter((f) => {
+    if (seen.has(f.tag)) return false;
+    seen.add(f.tag);
+    return !val(f.block === 'CAR' ? car : report, f.tag);
+  });
 }
 
 export function generateSurveyXml(r: Row): string {
