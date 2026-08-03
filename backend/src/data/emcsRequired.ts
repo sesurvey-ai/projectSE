@@ -19,7 +19,6 @@ export interface EmcsRequiredField {
 
 export const EMCS_REQUIRED: EmcsRequiredField[] = [
   { tag: 'HEV_CAR', block: 'REPORT', label: 'รถเสียหาย', emcsId: 'rdoHev_Car_' },
-  { tag: 'INSURERBRID', block: 'REPORT', label: 'สาขาบริษัทประกัน', emcsId: 'ddlInsurer_Name' },
   { tag: 'CAR_REGNO', block: 'CAR', label: 'หมายเลขทะเบียน', emcsId: 'txtCar_RegNo' },
   { tag: 'CAR_PROVINCE', block: 'CAR', label: 'จังหวัด', emcsId: 'ddlCar_Province' },
   { tag: 'CTYPECODE', block: 'CAR', label: 'ประเภทรถ', emcsId: 'ddlCType' },
