@@ -504,6 +504,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   // ── แตะชิ้นส่วนบนแผนภาพ → เพิ่ม/แก้รายการ + เลือกข้าง/ระดับใน bottom sheet ──
   Future<void> _onTapDiagramPart(String part, [String pos = 'A']) async {
+    // ชิ้นส่วนที่ EMCS ไม่มีปุ่มเลือกด้าน → บังคับ 'A' (ใช้ลิสต์กลางร่วมกับ car_damage_diagram)
+    if (kNoSideParts.contains(part)) pos = 'A';
     // ชื่อชิ้นส่วนตรง checklist EMCS (ไม่มีข้างในชื่อ) → จับคู่ด้วย part+pos
     int idx = _damageItems.indexWhere(
         (it) => it['part'] == part && (it['pos'] ?? 'A') == pos);
@@ -569,10 +571,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
                   child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle), child: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade700)),
                 ),
               ]),
-              const SizedBox(height: 14),
-              const Text('ตำแหน่ง', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
-              const SizedBox(height: 8),
-              seg('pos', const {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'}, const {}),
+              // ชิ้นส่วนที่ EMCS ไม่มี radio ด้าน → ไม่ต้องโชว์ตัวเลือก (บังคับ 'A' ไปแล้วตอนแตะ)
+              if (!kNoSideParts.contains(item['part'])) ...[
+                const SizedBox(height: 14),
+                const Text('ตำแหน่ง', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
+                const SizedBox(height: 8),
+                seg('pos', const {'L': 'ซ้าย', 'R': 'ขวา', 'A': 'ทั้งหมด'}, const {}),
+              ],
               const SizedBox(height: 14),
               const Text('ระดับความเสียหาย', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _muted)),
               const SizedBox(height: 8),
@@ -4215,6 +4220,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
                 onChanged: (v) => _updateDamageItem(i, 'part', v),
               ),
               const SizedBox(height: 8),
+              // ชิ้นส่วนที่ EMCS ไม่มีปุ่มเลือกด้าน → ไม่ต้องโชว์ (สำเนาที่ 4 ของ UI เดียวกัน
+              // — เจอตอนกรอกงานจริง หลังแก้ 3 จุดแรกแล้วยังโผล่อยู่ในรายการด้านล่างแผนภาพ)
+              if (!kNoSideParts.contains((_damageItems[i]['part'] ?? '').trim()))
               Row(children: [
                 const Text('ตำแหน่ง ', style: TextStyle(fontSize: 11, color: _muted)),
                 ...['L', 'R', 'A'].map((pos) {
