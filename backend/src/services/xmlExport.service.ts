@@ -538,8 +538,12 @@ export function generateSurveyXml(r: Row): string {
     el('PRB_NUMBER', r.prb_number) +
     el('SURV_COMMENT', r.surveyor_comment || r.notes) +
     el('ACC_CAUSE_NO', r.acc_fault_opponent_no) +
-    // ALC_CHK = "มี/ไม่มีการตรวจแอลกอฮอล์" (EMCS เป็น radio) — แอปมีกล่องข้อความเดียว
-    // ตีความจากข้อความเดียวกับที่ se-autokey ทำ: มีข้อความที่ไม่ใช่ 'ไม่ได้ตรวจ' = มีการตรวจ
+    // ALC_CHK = "มี/ไม่มีการตรวจแอลกอฮอล์" (EMCS เป็น radio 2 ตัว rdoAlc_Chk_0/_1)
+    // ✅ แอปมือถือใช้ dropdown 2 ตัวเลือกที่ป้ายตรงกับ EMCS แล้ว
+    //    ('ไม่มีการตรวจแอลกอฮอล์' / 'มีการตรวจแอลกอฮอล์') + ช่อง "ระบุผล" ที่โผล่เมื่อเลือก "มี"
+    //    ป้ายชุดนี้ตรงกันทั้ง 5 จุด: มือถือ · เว็บ (radio) · importer · exporter · บอท
+    // การตีความจากข้อความด้านล่างจึงเป็น **fallback ของเคสเก่า/ISURVEY** ที่เป็น free text
+    // (คอมเมนต์เดิมเขียนว่า "แอปมีกล่องข้อความเดียว" — ล้าสมัยแล้ว เคยทำให้เข้าใจผิดว่าต้องไปแก้แอป)
     el('ALC_CHK', alcChk(r.acc_alcohol_test, r.acc_alcohol_result)) +
     el('ALC_RESULT', r.acc_alcohol_result || r.acc_alcohol_test) +
     el('FLU_TYPE', lookup(FLU_TYPE, r.acc_followup)) + el('FLU_NO', r.acc_followup_count) +
