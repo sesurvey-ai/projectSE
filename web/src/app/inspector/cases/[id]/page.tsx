@@ -19,9 +19,6 @@ export default function CaseDetailPage() {
   // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้งตอนหัวหน้าคลิกโดน (backend คำนวณให้)
   const [nameWarnings, setNameWarnings] = useState<
     { tag: string; label: string; value: string; bad: string }[]>([]);
-  // ช่องที่ EMCS บังคับแต่ยังว่าง (backend คำนวณจาก XML จริง + บริษัทประกันของเคส)
-  const [emcsMissing, setEmcsMissing] = useState<
-    { tag: string; label: string; emcsId: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,7 +34,6 @@ export default function CaseDetailPage() {
         setVisitCount(res.data.data.visit_count || 1);
         setExpenses(res.data.data.expenses || null);
         setNameWarnings(res.data.data.emcs_name_warnings || []);
-        setEmcsMissing(res.data.data.emcs_missing || []);
       }
     } catch { setError('ไม่สามารถโหลดข้อมูลเคสได้'); }
     finally { setLoading(false); }
@@ -82,25 +78,6 @@ export default function CaseDetailPage() {
           </button>
         )}
       </div>
-      {emcsMissing.length > 0 && (
-        <div className="mb-4 rounded-lg border border-sky-300 bg-sky-50 px-4 py-3">
-          <p className="text-sm font-semibold text-sky-900">
-            ℹ️ ช่องที่ EMCS บังคับ แต่ยังไม่มีข้อมูล {emcsMissing.length} ช่อง
-          </p>
-          <p className="mt-1 text-xs text-sky-800">
-            เติมที่นี่ก่อนส่งเข้า EMCS จะช่วยให้หัวหน้าไม่ต้องไล่แก้ทีละช่องบนหน้า EMCS
-            — ถ้าไม่มีข้อมูลจริงก็ปล่อยไว้ได้ ระบบจะใส่ <span className="font-mono">-</span> ให้บันทึกผ่าน
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {emcsMissing.map((m) => (
-              <li key={m.tag}
-                className="rounded bg-white px-2 py-0.5 text-xs text-sky-900 border border-sky-200">
-                {m.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
       {nameWarnings.length > 0 && (
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
           <p className="text-sm font-semibold text-amber-900">

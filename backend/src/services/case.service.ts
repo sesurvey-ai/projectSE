@@ -2,7 +2,7 @@ import { db } from '../config/database';
 import { env } from '../config/env';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
-import { generateSurveyXml, emcsNameWarnings, emcsMissingRequired } from './xmlExport.service';
+import { generateSurveyXml, emcsNameWarnings } from './xmlExport.service';
 import type { XmlImportResult } from './xmlImport.service';
 import { getIO } from '../socket';
 
@@ -777,9 +777,6 @@ export const caseService = {
       linked_cases: linkedCases,
       // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้ง — เตือนคนตรวจก่อนส่งเข้า EMCS
       emcs_name_warnings: report ? emcsNameWarnings(report) : [],
-      // ช่องที่ EMCS บังคับแต่ยังว่าง — ตรวจตอนนี้ได้ครบกว่าตอนอัปโหลดไฟล์
-      // เพราะรู้บริษัทประกันแล้ว จึงเช็คช่องบังคับ "เฉพาะบางบริษัท" ได้ด้วย
-      emcs_missing: report ? emcsMissingRequired(report) : [],
     };
   },
 
