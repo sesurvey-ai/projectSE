@@ -17,6 +17,14 @@ const PLACEHOLDER_SENTINELS = new Set(['-- ระบุ --', '-- เลือก
 const stripSentinel = (v: unknown): unknown =>
   (typeof v === 'string' && PLACEHOLDER_SENTINELS.has(v.trim())) ? '' : v;
 
+// รูป "ยืนยันถึงที่เกิดเหตุ" (แอปถ่ายให้ตอนกดปุ่มถึงที่เกิดเหตุ) ไม่ได้อยู่ในหมวดที่
+// มือถือส่งมา (photo_categories) เลยเคยลงเป็น category = NULL แล้วไปกองรวมใน
+// "ไม่ระบุหมวด" บนหน้าเคส — ติดป้ายให้ตั้งแต่ตอนบันทึก จะได้ไม่ต้องตามใส่ทีหลัง
+// (ไม่กระทบการนำเข้า EMCS: se-autokey กรองรูปนี้ทิ้งด้วย "ชื่อไฟล์" ไม่ได้ดูหมวด)
+const ARRIVAL_CATEGORY = 'รูปยืนยันถึงที่เกิดเหตุ';
+const arrivalCategory = (fileName: string): string | null =>
+  (/^arrival(_\d+)?\.(jpe?g|png)$/i.test(fileName) ? ARRIVAL_CATEGORY : null);
+
 // แปลงค่า field ให้พร้อม bind: JSONB → stringify (ยกเว้นเป็น string อยู่แล้ว), อื่นๆ → ตามเดิม
 const bindVal = (f: string, v: unknown): unknown => {
   if (JSONB_FIELDS.has(f)) {
@@ -624,7 +632,7 @@ export const caseService = {
         for (const fileName of photoFiles) {
           await client.query(
             'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
-            [report.id, `${rel}/${fileName}`, catByName[fileName] || null]
+            [report.id, `${rel}/${fileName}`, catByName[fileName] || arrivalCategory(fileName)]
           );
         }
         break; // โฟลเดอร์แรกที่มีอยู่จริง = แหล่งความจริง แม้ว่าง
