@@ -220,6 +220,24 @@ const el = (tag: string, v: unknown): string => {
   return `<${tag}>${s === '' ? ' ' : esc(s)}</${tag}>`;
 };
 
+// ตัดคำนำหน้าไทยหน้าชื่อ (เรียงยาว→สั้น ให้ 'นางสาว' จับก่อน 'นาง')
+// ใช้กับ DRI_NAME ที่ต้องเป็น "ชื่อ นามสกุล" ล้วน — คำนำหน้าไปทาง DRI_TITLE_ID
+const THAI_TITLES = ['เด็กหญิง', 'เด็กชาย', 'นางสาว', 'น.ส.', 'นส.',
+                     'ด.ญ.', 'ด.ช.', 'นาง', 'นาย', 'คุณ'];
+// 'คุณ' ต้องมีช่องว่างคั่นถึงจะนับเป็นคำนำหน้า — เป็นต้นคำของชื่อจริงได้
+// (คุณากร, คุณัญญา) ตัดแบบติดกันแล้วชื่อหาย — กติกาเดียวกับ split_thai_name ของ se-autokey
+const TITLES_NEED_SPACE = new Set(['คุณ']);
+const stripThaiTitle = (full: string): string => {
+  const s = String(full ?? '').trim();
+  for (const t of THAI_TITLES) {
+    if (!s.startsWith(t)) continue;
+    const rest = s.slice(t.length);
+    if (TITLES_NEED_SPACE.has(t) && !/^\s/.test(rest)) continue;
+    return rest.trim();
+  }
+  return s;
+};
+
 const lookup = (table: Record<string, string>, v: unknown): string => {
   const k = String(v ?? '').trim();
   return k && table[k] ? table[k] : '';
@@ -317,9 +335,15 @@ function buildCar(c: Row, type: number, insured: boolean): string {
   const brandRaw = insured ? c.car_brand : c.car_brand;
   const brandCode = lookup(BRAND, brandRaw) || String(brandRaw ?? '').trim();
   const cmfg = ctype && brandCode ? `${ctype}${brandCode}` : brandCode;
+  // DRI_NAME = "ชื่อ นามสกุล" เท่านั้น ห้ามมีคำนำหน้า — คำนำหน้าไปทาง DRI_TITLE_ID
+  // (ไฟล์จริงของระบบเก่าเป็นแบบนี้ทุกใบ) ถ้าใส่คำนำหน้าติดไปด้วย EMCS จะยัดทั้งก้อน
+  // ลงช่อง "ชื่อ" แล้วช่อง "นามสกุล" ว่าง — เจอจริงเคส 125 'นางสาว ลัลนา สุวรรณอำไพ'
+  // จึงเอาช่องที่แยกไว้แล้ว (first/last) ก่อน แล้วค่อยถอยไปตัดคำนำหน้าจากชื่อเต็ม
   const driName = insured
-    ? (String(c.driver_name ?? '').trim() || `${c.driver_first_name ?? ''} ${c.driver_last_name ?? ''}`.trim())
-    : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim();
+    ? (`${c.driver_first_name ?? ''} ${c.driver_last_name ?? ''}`.trim()
+       || stripThaiTitle(String(c.driver_name ?? '')))
+    : (`${c.first_name ?? ''} ${c.last_name ?? ''}`.trim()
+       || stripThaiTitle(String(c.driver_name ?? '')));
 
   const g = (k: string, ok: string) => (insured ? c[k] : c[ok]);
 
