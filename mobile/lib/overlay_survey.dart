@@ -90,12 +90,8 @@ class OverlaySurvey extends StatelessWidget {
   }
 }
 
-// Entry point สำหรับ overlay
-@pragma("vm:entry-point")
-void overlayMain() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: OverlaySurvey(),
-  ));
-}
+// ⚠️ entry point ของ overlay ย้ายไปอยู่ main.dart แล้ว (2026-08-06)
+// ปลั๊กอิน flutter_overlay_window เรียก DartEntrypoint(bundlePath, "overlayMain")
+// ซึ่งหาฟังก์ชันใน "ไลบรารีหลัก" (main.dart) เท่านั้น — ประกาศไว้ที่ไฟล์นี้
+// เอนจินตัวที่สองสตาร์ตไม่ขึ้น ("Could not resolve main entrypoint function")
+// การ์ดลอยตอนมีงานใหม่จึงไม่เคยโผล่เลยตั้งแต่ build release

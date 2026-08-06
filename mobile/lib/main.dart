@@ -11,7 +11,24 @@ import 'providers/case_provider.dart';
 import 'config/api_config.dart';
 import 'services/notification_service.dart';
 import 'screens/incoming_survey_page.dart';
+import 'overlay_survey.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+
+/// Entry point ของ "หน้าต่างลอย" (การ์ดแจ้งงานใหม่ที่ทับแอปอื่น)
+///
+/// ⚠️ ต้องอยู่ในไฟล์นี้เท่านั้น — ปลั๊กอิน flutter_overlay_window เรียก
+/// `DartEntrypoint(bundlePath, "overlayMain")` ซึ่งมองหาฟังก์ชันใน
+/// **ไลบรารีหลัก (main.dart)** ถ้าไปประกาศไว้ไฟล์อื่น เอนจินตัวที่สองจะสตาร์ต
+/// ไม่ขึ้น ขึ้น log "Could not resolve main entrypoint function" แล้วการ์ดลอย
+/// ไม่โผล่เลย (เจอจริง 2026-08-06 — เดิมประกาศไว้ใน overlay_survey.dart)
+@pragma("vm:entry-point")
+void overlayMain() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: OverlaySurvey(),
+  ));
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
