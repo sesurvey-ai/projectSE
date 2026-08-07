@@ -77,6 +77,17 @@ const optStr = z.string().nullish();
 const optNum = z.number().nullish();
 const optInt = z.number().int().nullish();
 const optBool = z.boolean().nullish();
+// ช่องที่ "เก็บเป็นข้อความ แต่แอปส่งมาเป็นตัวเลข" — รับทั้งสองแบบแล้วแปลงเป็นข้อความ
+//
+// เจอจริง 2026-08-07: acc_fault_opponent_no (คู่กรณีคันที่) คอลัมน์เป็น VARCHAR(50)
+// แต่แอปส่ง double มาตลอด → **ส่งรายงานไม่ผ่านทุกครั้งที่ผลคดี = คู่กรณีผิด**
+// ตอบแค่ "Validation error" ไม่บอกช่อง เลยไม่มีใครรู้ว่าติดตรงไหน
+// แอปเก่าที่พนักงานถือยังส่งแบบเดิม จึงต้องรับให้ได้ ไม่ใช่บังคับให้อัปแอปก่อน
+// แปลงเป็นจำนวนเต็ม ('1' ไม่ใช่ '1.0') เพราะ EMCS รับเลขคันที่เป็นจำนวนเต็ม
+const optStrOrNum = z.union([z.string(), z.number()]).nullish().transform((v) => {
+  if (v === null || v === undefined) return v;
+  return typeof v === 'number' ? String(Math.trunc(v)) : v;
+});
 // ข้อมูล 1:N เก็บเป็น JSONB array (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน/ชิ้นส่วนความเสียหาย)
 // element เป็น object อิสระ — ยืดหยุ่นระหว่างพัฒนา, app คุมรูปทรง, ค่อย tighten ภายหลัง
 const optJsonArr = z.array(z.record(z.string(), z.any())).nullish();
@@ -161,7 +172,7 @@ const submitSurveySchema = z.object({
   acc_damage_type: optStr,
   acc_detail: optStr,
   acc_fault: optStr,
-  acc_fault_opponent_no: optStr,
+  acc_fault_opponent_no: optStrOrNum,   // แอปเก่าส่งมาเป็นตัวเลข — ดูหมายเหตุที่ optStrOrNum
   // การสำรวจ
   acc_reporter: optStr,
   reporter_phone: optStr,

@@ -2046,8 +2046,11 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     data['acc_claim_amount'] = asNum(_accClaimAmountCtl.text);
     data['acc_claim_total_amount'] = asNum(_accClaimTotalAmountCtl.text);
     // คู่กรณีคันที่ — ส่งเฉพาะตอนผลคดี = คู่กรณีผิด (ช่องถูกซ่อนกรณีอื่น ค่าค้างไม่ควรหลุดไป)
+    // ⚠️ ช่องนี้เก็บเป็น "ข้อความ" (VARCHAR) ไม่ใช่ตัวเลข — เดิมส่ง double ไป
+    // server ตีกลับ 400 ทุกครั้งที่ผลคดี = คู่กรณีผิด (เจอจริง 2026-08-07)
+    final _oppNo = asInt(_accFaultOpponentNoCtl.text);
     data['acc_fault_opponent_no'] =
-        _accFault == 'คู่กรณีผิด' ? asNum(_accFaultOpponentNoCtl.text) : null;
+        _accFault == 'คู่กรณีผิด' ? _oppNo?.toString() : null;
     return data;
   }
 

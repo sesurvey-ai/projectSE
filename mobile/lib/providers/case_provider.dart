@@ -144,10 +144,22 @@ class CaseProvider extends ChangeNotifier {
         return 'queued';
       }
       String msg = 'ไม่สามารถส่งข้อมูลสำรวจได้';
-      if (e is DioException && e.response?.data is Map && (e.response!.data as Map)['message'] != null) {
-        msg = '$msg: ${(e.response!.data as Map)['message']}';
+      if (e is DioException && e.response?.data is Map) {
+        final body = e.response!.data as Map;
+        if (body['message'] != null) msg = '$msg: ${body['message']}';
+        // "Validation error" เฉย ๆ บอกไม่ได้ว่าช่องไหน — server ส่งรายชื่อช่องมาใน errors
+        // อยู่แล้ว เอามาโชว์ด้วย (เดิมทิ้ง ทำให้ต้องไล่เดาทีละช่อง)
+        final errs = body['errors'];
+        if (errs is Map && errs.isNotEmpty) {
+          final fields = errs.entries
+              .map((x) => '${x.key}: ${x.value is List ? (x.value as List).join(', ') : x.value}')
+              .take(4)
+              .join(' · ');
+          msg = '$msg\n$fields';
+        }
       }
-      debugPrint('submitSurveyOffline error: $e');
+      debugPrint('submitSurveyOffline error: $e'
+          '${e is DioException ? ' | body=${e.response?.data}' : ''}');
       _error = msg;
       notifyListeners();
       return 'error';
