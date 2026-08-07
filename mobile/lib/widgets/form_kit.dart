@@ -212,6 +212,58 @@ Widget kChip(String label, bool selected, VoidCallback onTap, {Color? color, boo
   return grow ? Expanded(child: chip) : chip;
 }
 
+// ── ช่องเลขบัตร + ตัวเลือก คนไทย/ต่างชาติ (ใช้ร่วมกันทั้งผู้ขับขี่/คู่กรณี/ผู้บาดเจ็บ) ──
+//
+// คนไทย   = ตัวเลข 13 หลัก + ตรวจ checksum (ไอคอน ✓/⚠ ท้ายช่อง) เหมือนที่เคยเป็น
+// ต่างชาติ = พิมพ์อะไรก็ได้ ไม่ตรวจ checksum (บัตรต่างด้าว/หนังสือเดินทาง)
+//
+// ⚠️ จำกัด 13 ตัวทั้งสองแบบ เพราะช่องบน EMCS (txtDri_CardID) เป็น maxlength=13
+// พิมพ์ยาวกว่านั้นเบราว์เซอร์จะตัดทิ้งเงียบ ๆ ตอนบอทกรอก ไม่มี error ให้เห็น
+// (ช่องผู้บาดเจ็บบน EMCS รับ 20 แต่คุมเท่ากันหมดเพื่อไม่ให้พนักงานต้องจำเป็นช่อง ๆ)
+const int kCidMaxLen = 13;
+
+Widget kCidField(
+  TextEditingController c, {
+  required bool isThai,
+  required ValueChanged<bool> onTypeChanged,
+  required bool Function(String) checksum,
+  String label = 'บัตรประชาชนเลขที่',
+  String foreignLabel = 'เลขบัตรต่างด้าว/หนังสือเดินทาง',
+  bool req = true,
+  ValueChanged<String>? onChanged,
+}) {
+  final digits = c.text.replaceAll(RegExp(r'\D'), '');
+  final ok = digits.length == kCidMaxLen && checksum(c.text);
+  return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+    SizedBox(
+      width: 148,
+      child: Row(children: [
+        kChip('คนไทย', isThai, () => onTypeChanged(true), grow: true),
+        const SizedBox(width: 6),
+        kChip('ต่างชาติ', !isThai, () => onTypeChanged(false), grow: true),
+      ]),
+    ),
+    const SizedBox(width: 8),
+    Expanded(
+      child: TextFormField(
+        controller: c,
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: kInk),
+        decoration: kDec(isThai ? label : foreignLabel, req: req,
+            suffixIcon: (isThai && digits.length == kCidMaxLen)
+                ? Icon(ok ? Icons.check_circle : Icons.error_outline,
+                    size: 18, color: ok ? kOk : kDanger)
+                : null),
+        keyboardType: isThai ? TextInputType.number : TextInputType.text,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(kCidMaxLen),
+          if (isThai) FilteringTextInputFormatter.digitsOnly,
+        ],
+        onChanged: onChanged,
+      ),
+    ),
+  ]);
+}
+
 // ── ช่องเลือก (เปิด searchable picker) ──
 class KPickerField extends StatelessWidget {
   final String label;

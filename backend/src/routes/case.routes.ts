@@ -139,6 +139,7 @@ const submitSurveySchema = z.object({
   driver_province: optStr,
   driver_district: optStr,
   driver_id_card: optStr,
+  driver_id_type: optStr,   // 'thai' | 'foreign' — คุมการตรวจ 13 หลักฝั่งแอป
   driver_license_no: optStr,
   driver_license_type: optStr,
   driver_license_place: optStr,

@@ -26,6 +26,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   String _evType = '';
   String _carType = '', _carBrand = '', _carColor = '', _province = '', _homeProvince = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
+  bool _cidThai = true;   // true = คนไทย (13 หลัก+checksum) / false = ต่างชาติ
   bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
 
   TextEditingController _ctl(String k) => _c[k] ??= TextEditingController(text: (widget.data[k] ?? '').toString());
@@ -53,6 +54,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _licenseType = (widget.data['license_type'] ?? '').toString();
     _policyType = (widget.data['policy_type'] ?? '').toString();
     _kfk = widget.data['kfk'] == true;
+    // ชนิดบัตร: ค่าที่เคยเลือก; ไม่มี = คนไทย (พฤติกรรมเดิม)
+    _cidThai = '${widget.data['id_type'] ?? ''}'.trim() != 'foreign';
     // มีใบขับขี่ = ประเภทเป็นชนิดจริง หรือมีเลขใบขับขี่อยู่แล้ว; ว่าง/ยังไม่กรอก = ไม่มี (สแกนแล้วจะเปิดเอง)
     _hasLicense = (_licenseType.isNotEmpty && _licenseType != 'ไม่มีใบขับขี่') || (widget.data['license_no'] ?? '').toString().trim().isNotEmpty;
     final dmg = widget.data['damage'];
@@ -100,6 +103,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'phone': _ctl('phone').text.trim(),
         'address': _ctl('address').text.trim(),
         'cid': _ctl('cid').text.trim(),
+        'id_type': _cidThai ? 'thai' : 'foreign',
         'license_no': _ctl('license_no').text.trim(),
         'license_type': _hasLicense ? _licenseType : 'ไม่มีใบขับขี่', // สวิตช์ปิด = เก็บ "ไม่มีใบขับขี่"
         'license_place': _ctl('license_place').text.trim(),
@@ -170,12 +174,13 @@ class _OpponentEditorState extends State<OpponentEditor> {
     return Row(children: [b(Icons.credit_card, 'สแกนบัตรประชาชน', 'idcard'), const SizedBox(width: 8), b(Icons.badge_outlined, 'สแกนใบขับขี่', 'license')]);
   }
 
-  Widget _cidField() {
-    final ok = cidChecksum(_ctl('cid').text);
-    final has = _ctl('cid').text.replaceAll(RegExp(r'\D'), '').length == 13;
-    return kText(_ctl('cid'), 'เลขบัตรประชาชน', keyboardType: TextInputType.number, req: true, onChanged: (_) => setState(() {}),
-        suffixIcon: has ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? kOk : kDanger) : null);
-  }
+  // คนไทย = 13 หลัก + checksum · ต่างชาติ = พิมพ์อิสระ ไม่เกิน 13 ตัว (เพดาน EMCS)
+  Widget _cidField() => kCidField(_ctl('cid'),
+      isThai: _cidThai,
+      onTypeChanged: (v) => setState(() => _cidThai = v),
+      checksum: cidChecksum,
+      label: 'เลขบัตรประชาชน',
+      onChanged: (_) => setState(() {}));
 
   @override
   Widget build(BuildContext context) {

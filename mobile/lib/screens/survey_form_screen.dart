@@ -17,6 +17,7 @@ import '../data/survey_master.dart'
     show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
+import '../widgets/form_kit.dart' show kCidField;
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
 import 'survey/property_editor.dart';
@@ -1050,6 +1051,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _hasProperty = _property.isNotEmpty || data['has_property'] == true;
       // มีใบขับขี่ = ประเภทเป็นชนิดจริง (ไม่ว่าง/ไม่ใช่ "ไม่มีใบขับขี่") หรือมีเลขใบขับขี่อยู่แล้ว; ว่าง/ยังไม่กรอก = ไม่มี (สแกนแล้วจะเปิดเอง)
       _driverHasLicense = (_driverLicenseTypeCtl.text.trim().isNotEmpty && _driverLicenseTypeCtl.text.trim() != 'ไม่มีใบขับขี่') || _driverLicenseNoCtl.text.trim().isNotEmpty;
+      // ชนิดบัตร: ใช้ค่าที่เคยเลือกไว้; ไม่มี (งานเก่า/ยังไม่เคยเลือก) = คนไทยตามเดิม
+      _driverIdThai = '${data['driver_id_type'] ?? ''}'.trim() != 'foreign';
       final idmg = data['insured_damage'];
       if (idmg is List) {
         _damageItems
@@ -1147,6 +1150,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   final _driverPhoneCtl = TextEditingController();
   final _driverAddressCtl = TextEditingController();
   final _driverIdCardCtl = TextEditingController();
+  // ชนิดบัตรผู้ขับขี่: true = คนไทย (13 หลัก+checksum) / false = ต่างชาติ (พิมพ์อิสระ)
+  bool _driverIdThai = true;
   final _driverLicenseNoCtl = TextEditingController();
   final _driverLicenseTypeCtl = TextEditingController();
   final _driverLicensePlaceCtl = TextEditingController();
@@ -1972,6 +1977,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       'driver_phone': _driverPhoneCtl.text.trim(),
       'driver_address': _driverAddressCtl.text.trim(),
       'driver_id_card': _driverIdCardCtl.text.trim(),
+      'driver_id_type': _driverIdThai ? 'thai' : 'foreign',
       'driver_license_no': _driverLicenseNoCtl.text.trim(),
       'driver_license_type': _driverHasLicense ? _driverLicenseTypeCtl.text.trim() : 'ไม่มีใบขับขี่', // สวิตช์ปิด = เก็บ "ไม่มีใบขับขี่"
       'driver_license_place': _driverLicensePlaceCtl.text.trim(),
@@ -2573,9 +2579,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   // ══ Validation (Phase 4) ══════════════════════════════════════════
   // ตำรวจจำเป็นเมื่อ: ฝ่ายประมาท="รอสรุปผลคดี" เท่านั้น (มีผู้บาดเจ็บไม่บังคับ)
   bool _policeRequired() => _accFault == 'รอสรุปผลคดี';
+  // คนไทย = ต้องผ่าน checksum 13 หลัก · ต่างชาติ = ขอแค่ไม่ว่าง (บัตรต่างด้าว/พาสปอร์ต
+  // ไม่มีสูตรตรวจ) — user สรุป 2026-08-06
   bool _driverCidValid() {
     final t = _driverIdCardCtl.text.trim();
-    return t.isEmpty ? false : cidChecksum(t);
+    if (t.isEmpty) return false;
+    return _driverIdThai ? cidChecksum(t) : true;
   }
 
   // รายการ "ที่ยังขาด" ของแต่ละหมวด (label ที่ผู้ใช้อ่านเข้าใจ)
@@ -3540,18 +3549,15 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         ]),
       );
 
-  // ช่องเลขบัตร ปชช ผู้ขับ + ตรวจ checksum แสดงไอคอน ✓/⚠
-  Widget _driverCidField() {
-    final digits = _driverIdCardCtl.text.replaceAll(RegExp(r'\D'), '');
-    final ok = digits.length == 13 && cidChecksum(_driverIdCardCtl.text);
-    return TextFormField(
-      controller: _driverIdCardCtl,
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
-      decoration: _dec('บัตรประชาชนเลขที่', req: true, suffixIcon: digits.length == 13 ? Icon(ok ? Icons.check_circle : Icons.error_outline, size: 18, color: ok ? _ok : _warn) : null),
-      keyboardType: TextInputType.number,
-      onChanged: (_) => setState(() { _ocrConf.remove('driver_id_card'); }),
-    );
-  }
+  // ช่องเลขบัตร ปชช ผู้ขับ + ตัวเลือก คนไทย/ต่างชาติ
+  // คนไทย = 13 หลัก + checksum (ไอคอน ✓/⚠) · ต่างชาติ = พิมพ์อะไรก็ได้ ไม่เกิน 13 ตัว
+  Widget _driverCidField() => kCidField(
+        _driverIdCardCtl,
+        isThai: _driverIdThai,
+        onTypeChanged: (v) => setState(() { _driverIdThai = v; _autosave(); }),
+        checksum: cidChecksum,
+        onChanged: (_) => setState(() { _ocrConf.remove('driver_id_card'); _autosave(); }),
+      );
 
   // รวมวันที่+เวลา เป็น "dd/mm/yyyy|HH:mm" (ตรงกับที่หน้าเว็บ checker อ่าน)
   String _combineDT(TextEditingController d, TextEditingController t) {

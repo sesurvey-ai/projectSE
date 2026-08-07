@@ -20,6 +20,7 @@ class InjuredEditor extends StatefulWidget {
 class _InjuredEditorState extends State<InjuredEditor> {
   late final Map<String, TextEditingController> _c;
   String _personType = '', _gender = '', _wound = '', _relation = '';
+  bool _cidThai = true;   // true = คนไทย (13 หลัก+checksum) / false = ต่างชาติ
 
   TextEditingController _ctl(String k) => _c[k]!;
 
@@ -31,6 +32,8 @@ class _InjuredEditorState extends State<InjuredEditor> {
         k: TextEditingController(text: (widget.data[k] ?? '').toString()),
     };
     _personType = (widget.data['person_type'] ?? '').toString();
+    // ชนิดบัตร: ค่าที่เคยเลือก; ไม่มี = คนไทย (พฤติกรรมเดิม)
+    _cidThai = '${widget.data['id_type'] ?? ''}'.trim() != 'foreign';
     _gender = (widget.data['gender'] ?? '').toString();
     _wound = (widget.data['wound_level'] ?? '').toString();
     _relation = (widget.data['relation'] ?? '').toString();
@@ -121,6 +124,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
         'name': _ctl('name').text.trim(),
         'age': _ctl('age').text.trim(),
         'cid': _ctl('cid').text.trim(),
+        'id_type': _cidThai ? 'thai' : 'foreign',
         'car_reg': _ctl('car_reg').text.trim(),
         'occupation': _ctl('occupation').text.trim(),
         'work_place': _ctl('work_place').text.trim(),
@@ -158,7 +162,13 @@ class _InjuredEditorState extends State<InjuredEditor> {
           Expanded(child: kText(_ctl('name'), 'ชื่อ-นามสกุล', req: true)),
         ]),
         Align(alignment: Alignment.centerLeft, child: SizedBox(width: 150, child: kNum(_ctl('age'), 'อายุ (ปี)'))),
-        kText(_ctl('cid'), 'เลขบัตรประชาชน/ต่างด้าว/หนังสือเดินทาง', req: true),
+        // คนไทย = 13 หลัก + checksum · ต่างชาติ = พิมพ์อิสระ (บัตรต่างด้าว/หนังสือเดินทาง)
+        kCidField(_ctl('cid'),
+            isThai: _cidThai,
+            onTypeChanged: (v) => setState(() => _cidThai = v),
+            checksum: cidChecksum,
+            label: 'เลขบัตรประชาชน',
+            onChanged: (_) => setState(() {})),
         // เลขทะเบียน: EMCS เติมให้เองแบบ readOnly (setDefault_CarRegNo ดึงจากรถประกัน/รถคู่กรณี
         // ตามประเภทผู้บาดเจ็บ) — เลิกบังคับพนักงานพิมพ์เอง
         // เลขทะเบียน: EMCS บังคับ **ยกเว้น** ประเภท = '05 บุคคลภายนอกรถ' (คนนอกรถไม่มีทะเบียน)
