@@ -234,18 +234,27 @@ Widget kCidField(
 }) {
   final digits = c.text.replaceAll(RegExp(r'\D'), '');
   final ok = digits.length == kCidMaxLen && checksum(c.text);
+  // ⚠️ สลับชนิดคีย์บอร์ดของช่องที่ "กำลังโฟกัสอยู่" ไม่มีผล — Flutter ตั้งชนิดคีย์บอร์ด
+  // ตอนเปิด input connection ครั้งแรก rebuild เฉย ๆ ไม่เปลี่ยนให้ (เจอจริง 2026-08-06:
+  // เอาติ๊ก "ไทย" ออกแล้วคีย์บอร์ดยังเป็นตัวเลข พิมพ์ตัวอักษรไม่ได้)
+  // → ปิดคีย์บอร์ดก่อนสลับ + ใส่ key ให้ TextFormField ถูกสร้างใหม่ทั้งตัว
+  void toggle(bool v) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    onTypeChanged(v);
+  }
+
   return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
     // ติ๊ก "ไทย" = บัตรประชาชน (ค่าเริ่มต้น) · เอาติ๊กออก = ต่างชาติ
     // (เดิมเป็น chip 2 ตัว กินที่จนคำว่า "ต่างชาติ" ตกบรรทัด — user เสนอเปลี่ยน 2026-08-06)
     GestureDetector(
-      onTap: () => onTypeChanged(!isThai),
+      onTap: () => toggle(!isThai),
       behavior: HitTestBehavior.opaque,
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(
           width: 24, height: 24,
           child: Checkbox(
             value: isThai,
-            onChanged: (v) => onTypeChanged(v ?? true),
+            onChanged: (v) => toggle(v ?? true),
             activeColor: kPrimary,
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -260,6 +269,8 @@ Widget kCidField(
     const SizedBox(width: 10),
     Expanded(
       child: TextFormField(
+        // key ผูกกับชนิดบัตร → สลับติ๊กแล้ว widget ถูกสร้างใหม่ ได้คีย์บอร์ดชนิดใหม่จริง
+        key: ValueKey('cid_${isThai ? 'th' : 'fo'}_${identityHashCode(c)}'),
         controller: c,
         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: kInk),
         decoration: kDec(isThai ? label : foreignLabel, req: req,
@@ -268,6 +279,8 @@ Widget kCidField(
                     size: 18, color: ok ? kOk : kDanger)
                 : null),
         keyboardType: isThai ? TextInputType.number : TextInputType.text,
+        textCapitalization:
+            isThai ? TextCapitalization.none : TextCapitalization.characters,
         inputFormatters: [
           LengthLimitingTextInputFormatter(kCidMaxLen),
           if (isThai) FilteringTextInputFormatter.digitsOnly,
