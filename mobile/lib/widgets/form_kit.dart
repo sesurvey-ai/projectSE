@@ -235,15 +235,29 @@ Widget kCidField(
   final digits = c.text.replaceAll(RegExp(r'\D'), '');
   final ok = digits.length == kCidMaxLen && checksum(c.text);
   return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-    SizedBox(
-      width: 148,
-      child: Row(children: [
-        kChip('คนไทย', isThai, () => onTypeChanged(true), grow: true),
+    // ติ๊ก "ไทย" = บัตรประชาชน (ค่าเริ่มต้น) · เอาติ๊กออก = ต่างชาติ
+    // (เดิมเป็น chip 2 ตัว กินที่จนคำว่า "ต่างชาติ" ตกบรรทัด — user เสนอเปลี่ยน 2026-08-06)
+    GestureDetector(
+      onTap: () => onTypeChanged(!isThai),
+      behavior: HitTestBehavior.opaque,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+          width: 24, height: 24,
+          child: Checkbox(
+            value: isThai,
+            onChanged: (v) => onTypeChanged(v ?? true),
+            activeColor: kPrimary,
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
         const SizedBox(width: 6),
-        kChip('ต่างชาติ', !isThai, () => onTypeChanged(false), grow: true),
+        Text('ไทย', style: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w600,
+            color: isThai ? kInk : kMuted)),
       ]),
     ),
-    const SizedBox(width: 8),
+    const SizedBox(width: 10),
     Expanded(
       child: TextFormField(
         controller: c,
