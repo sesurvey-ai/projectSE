@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { fcmService } from './fcm.service';
 import { generateSurveyXml, emcsNameWarnings } from './xmlExport.service';
+import { invalidateCaseOwner } from '../middleware/uploadsAuth';
 import type { XmlImportResult } from './xmlImport.service';
 import { getIO } from '../socket';
 
@@ -218,6 +219,8 @@ export const caseService = {
     if (updated.rowCount === 0) {
       throw new ForbiddenError('ไม่สามารถมอบหมายงานนี้ได้ (อาจถูกมอบหมายไปแล้ว)');
     }
+    // ย้ายเจ้าของเคสแล้ว — ล้าง cache สิทธิ์ดูรูป ไม่งั้นคนเดิมยังเปิดรูปเคสนี้ได้อีกพักหนึ่ง
+    invalidateCaseOwner(caseId);
 
     // "แจ้งเซอร์เวย์" (ไทม์ไลน์งานบนมือถือ) = เวลาที่ callcenter กดมอบหมายงาน → บันทึกลง acc_insurance_notify_date
     // ต้องเป็นเวลาไทย (Asia/Bangkok) ไม่ใช่เวลา server (prod = UTC); รูปแบบ D/M/พ.ศ.|HH:MM ตรงกับที่มือถืออ่าน (splitDT)
@@ -283,6 +286,8 @@ export const caseService = {
       "UPDATE cases SET status = 'declined', assigned_to = NULL WHERE id = $1 RETURNING *",
       [caseId]
     );
+    // ปฏิเสธงาน = เลิกเป็นเจ้าของ → ล้าง cache สิทธิ์ดูรูป (ไม่งั้นยังเปิดรูปเคสนี้ได้อีกพักหนึ่ง)
+    invalidateCaseOwner(caseId);
     return result.rows[0];
   },
 
