@@ -142,8 +142,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
     if (_insurer.isEmpty) _insurer = 'อื่นๆ';       // = มีประกันกับบริษัทนอกลิสต์ (ช่องกรมธรรม์จึงไม่โผล่)
     if (_gender.isEmpty) _gender = 'ชาย';
     if (_title.isEmpty) _title = 'นาย';             // ให้เข้าชุดกับเพศ (ระบบประกันรวมเป็นชื่อช่องเดียว)
-    if (_relation.isEmpty) _relation = 'เจ้าของรถ'; // ไม่รู้ผู้ขับ = ถือเป็นเจ้าของรถไปก่อน
-    if (_ctl('birthdate').text.trim().isEmpty) _ctl('birthdate').text = '01/01/2542';  // = 1 ม.ค. ค.ศ. 1999
+    // ⛔ ไม่แตะ "ความสัมพันธ์กับเจ้าของรถ" — ไม่ใช่ช่องบังคับบน EMCS (ยืนยันจากหน้าจอจริง 2026-08-10)
+    if (_ctl('birthdate').text.trim().isEmpty) _ctl('birthdate').text = '01/01/2525';
     _syncAge();
   }
 
@@ -344,7 +344,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
         ]),
         kRow2(
           KPickerField(label: 'คำนำหน้า', value: _title, options: kTitles, req: true, onSelected: (v) => setState(() => _title = v)),
-          KPickerField(label: 'ความสัมพันธ์', value: _relation, options: kRelations, req: true, onSelected: (v) => setState(() => _relation = v)),
+          // ไม่มีจุดแดง — EMCS ไม่ได้บังคับช่องนี้ในบล็อกคู่กรณี (ยืนยันจากหน้าจอจริง 2026-08-10)
+          KPickerField(label: 'ความสัมพันธ์', value: _relation, options: kRelations, onSelected: (v) => setState(() => _relation = v)),
         ),
         kRow2(kText(_ctl('first_name'), 'ชื่อ', req: true), kText(_ctl('last_name'), 'นามสกุล', req: true)),
         kRow2(
