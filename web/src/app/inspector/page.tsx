@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import CaseList from '@/components/cases/CaseList';
+import CaseList, { type Case } from '@/components/cases/CaseList';
 
 export default function InspectorDashboard() {
-  const [cases, setCases] = useState([]);
+  const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // draft ค้าง = สร้างเรื่องใน EMCS แล้วแต่ยังไม่มีใครกด "ส่งงานใหม่"
+  // เดิมนับไม่ได้เลยเพราะระบบมีแค่ "นำเข้าแล้ว/ยังไม่นำเข้า" — งานค้างจึงมองไม่เห็น
+  const pendingDrafts = cases.filter((c) => c.emcs_imported_at && !c.emcs_submitted_at).length;
 
   useEffect(() => {
     api.get('/api/cases/review')
@@ -24,6 +28,15 @@ export default function InspectorDashboard() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">รายการงานตรวจสอบ</h2>
         <p className="text-gray-500 mt-1">รายการงานที่รอการตรวจสอบและอนุมัติ</p>
+        {pendingDrafts > 0 && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
+            <span className="text-lg leading-none">⏳</span>
+            <span className="text-sm text-amber-800">
+              มี <strong>{pendingDrafts}</strong> เรื่องที่สร้างใน EMCS แล้วแต่ยังไม่ได้กด
+              &quot;ส่งงานใหม่&quot; — บริษัทประกันยังไม่ได้รับงาน
+            </span>
+          </div>
+        )}
       </div>
       <CaseList cases={cases} basePath="/inspector" />
     </div>

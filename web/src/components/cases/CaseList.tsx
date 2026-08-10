@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface Case {
+export interface Case {
   id: number;
   customer_name: string;
   status: string;
@@ -14,7 +14,10 @@ interface Case {
   surveyor_last_name?: string;
   visit_count?: number;
   created_at: string;
-  emcs_imported_at?: string | null; // นำเข้า EMCS แล้วเมื่อ (null = ยัง) — กันกดซ้ำถาวรข้ามเครื่อง
+  emcs_imported_at?: string | null; // สร้าง draft ใน EMCS แล้วเมื่อ (null = ยัง) — กันกดซ้ำถาวรข้ามเครื่อง
+  // ⚠️ "นำเข้าแล้ว" ≠ "ส่งงานแล้ว" — บอทสร้าง draft ให้เท่านั้น ปุ่ม "ส่งงานใหม่" คนกดเอง
+  emcs_submitted_at?: string | null;  // ยืนยันแล้วว่าประกันรับงาน (null = ยังเป็น draft ค้าง)
+  emcs_status_text?: string | null;   // ข้อความสถานะดิบจากหน้ารายการ EMCS
 }
 interface CaseListProps { cases: Case[]; basePath?: string; }
 
@@ -93,8 +96,19 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
               <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                 {(c.status === 'surveyed' || c.status === 'reviewed') ? (
                   c.emcs_imported_at ? (
-                    // นำเข้า EMCS สำเร็จแล้ว (mark ถาวรใน DB) — ห้าม import ซ้ำ: EMCS จะสร้างเรื่องซ้ำที่เลขเคลมเดิม
-                    <span className="text-xs font-medium text-green-700" title={`นำเข้าเมื่อ ${c.emcs_imported_at}`}>✓ นำเข้า EMCS แล้ว</span>
+                    // นำเข้า EMCS แล้ว (mark ถาวรใน DB) — ห้าม import ซ้ำ: EMCS จะสร้างเรื่องซ้ำที่เลขเคลมเดิม
+                    // แต่ "นำเข้าแล้ว" ยังไม่ใช่ "ประกันได้รับงาน" — บอทสร้างได้แค่ draft
+                    // ปุ่ม "ส่งงานใหม่" บน EMCS คนต้องกดเอง ป้ายจึงต้องแยก 2 สถานะ
+                    c.emcs_submitted_at ? (
+                      <span className="text-xs font-medium text-green-700"
+                            title={`ส่งงานเมื่อ ${c.emcs_submitted_at}`}>✓ ส่งงานแล้ว</span>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-700"
+                            title={`สร้าง draft เมื่อ ${c.emcs_imported_at}`
+                                   + (c.emcs_status_text ? ` · สถานะล่าสุด: ${c.emcs_status_text}` : '')}>
+                        ⏳ draft ค้าง — รอกด &quot;ส่งงานใหม่&quot;
+                      </span>
+                    )
                   ) : sentIds.has(c.id) ? (
                     <span className="text-xs font-medium text-emerald-700">✓ ส่งเข้า AutoKey แล้ว</span>
                   ) : (

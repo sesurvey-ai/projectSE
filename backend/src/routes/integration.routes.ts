@@ -88,6 +88,37 @@ router.post('/cases/:id/emcs-imported', integrationAuth, asyncHandler(async (req
   res.json({ success: true, data: { already: false } });
 }));
 
+// SE-AutoKey รายงานสถานะที่อ่านได้จากหน้ารายการ EMCS กลับมา
+// แยกจาก emcs-imported โดยตั้งใจ: "สร้าง draft แล้ว" ≠ "ส่งงานให้ประกันแล้ว"
+// (บอทไม่กดปุ่มส่งเอง คนกด แล้วค่อยสั่งบอทมาตรวจสถานะ)
+//
+// body: { status_text: string, submitted: boolean|null, esurvey_no?: string }
+//   submitted=true  → บันทึกเวลาส่ง (ครั้งแรกเท่านั้น ไม่ทับของเดิม)
+//   submitted=false → ยังเป็น draft
+//   submitted=null  → อ่านสถานะไม่ได้/แยกเรื่องไม่ออก → เก็บแค่ข้อความ ไม่สรุปอะไร
+router.post('/cases/:id/emcs-status', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const caseId = parseInt(req.params.id as string);
+  const statusText = String(req.body?.status_text ?? '').slice(0, 100) || null;
+  const submitted = req.body?.submitted === true ? true : req.body?.submitted === false ? false : null;
+  const esurveyNo = String(req.body?.esurvey_no ?? '').slice(0, 50) || null;
+  const { db } = await import('../config/database');
+  const r = await db.query(
+    `UPDATE cases
+        SET emcs_status_text = COALESCE($2, emcs_status_text),
+            emcs_status_checked_at = NOW() AT TIME ZONE 'Asia/Bangkok',
+            emcs_esurvey_no = COALESCE($4, emcs_esurvey_no),
+            -- ครั้งแรกที่ยืนยันว่าส่งแล้วเท่านั้น — ตรวจซ้ำทีหลังห้ามเลื่อนเวลา
+            emcs_submitted_at = CASE WHEN $3::boolean IS TRUE AND emcs_submitted_at IS NULL
+                                     THEN NOW() AT TIME ZONE 'Asia/Bangkok'
+                                     ELSE emcs_submitted_at END
+      WHERE id = $1
+      RETURNING to_char(emcs_submitted_at, 'YYYY-MM-DD HH24:MI') AS submitted_at, emcs_status_text`,
+    [caseId, statusText, submitted, esurveyNo]
+  );
+  if (r.rowCount === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
+  res.json({ success: true, data: r.rows[0] });
+}));
+
 // ข้อมูลรายงานสำรวจ (ค่าไทย) ของเคส — SE-AutoKey ใช้เติม ClaimData ให้ fill_* กรอกหน้าหลัก EMCS
 // (fuzzy_select ต้องการชื่อไทย เช่น จังหวัด/ยี่ห้อ/ประเภทรถ — ต่างจาก XML ที่เป็นรหัส EMCS)
 router.get('/cases/:id/report', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
