@@ -12,6 +12,9 @@ interface User {
   role: string;
   is_active: boolean;
   created_at: string;
+  // เวอร์ชันแอปล่าสุดที่เครื่องคนนี้ยิงเข้ามา (null = ยังไม่เคยเข้าจากแอปรุ่นที่ส่งเวอร์ชัน)
+  app_version?: string | null;
+  app_version_at?: string | null;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -131,6 +134,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อ-สกุล</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">บทบาท</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">เวอร์ชันแอป</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่สร้าง</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">จัดการ</th>
               </tr>
@@ -150,6 +154,18 @@ export default function AdminUsersPage() {
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                       {u.is_active ? 'ใช้งาน' : 'ปิดใช้งาน'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {u.app_version ? (
+                      <span className="text-gray-700" title={u.app_version_at ? `เข้าใช้ล่าสุด ${u.app_version_at}` : undefined}>
+                        {u.app_version}
+                      </span>
+                    ) : (
+                      // ไม่เคยส่งเวอร์ชันมา = ยังใช้ APK รุ่นก่อนที่จะเริ่มส่ง (หรือไม่เคยเข้าจากแอป)
+                      <span className="text-amber-700" title="ยังไม่เคยเข้าใช้จากแอปรุ่นที่รายงานเวอร์ชัน — น่าจะยังไม่ได้อัป APK">
+                        ไม่ทราบ
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {new Date(u.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}

@@ -4,6 +4,7 @@ import { AppError, NotFoundError, ForbiddenError } from '../middleware/errorHand
 import { fcmService } from './fcm.service';
 import { generateSurveyXml, emcsNameWarnings } from './xmlExport.service';
 import { invalidateCaseOwner } from '../middleware/uploadsAuth';
+import { isFirebaseReady } from '../config/firebase';
 import type { XmlImportResult } from './xmlImport.service';
 import { getIO } from '../socket';
 
@@ -242,9 +243,20 @@ export const caseService = {
     }
 
     // Send push notification via FCM
+    //
+    // ⚠️ ผลการส่งต้อง "ไหลกลับไปถึงคนกดมอบหมาย" — เดิมสำเร็จก็ log พังก็ log แล้วไปต่อ
+    // เงียบ ๆ หน้าเว็บขึ้นว่ามอบหมายสำเร็จเหมือนกันหมด ทั้งที่ช่างอาจไม่ได้รับอะไรเลย
+    // (ตรวจ prod 2026-08-11: ผู้สำรวจ active 144 คน มี fcm_token แค่ 84 — อีก 60 คน
+    //  จ่ายงานไปก็ไม่มีทางได้รับแจ้งเตือน และไม่มีสัญญาณอะไรบอกคนจ่ายเลย)
     const surveyor = surveyorResult.rows[0];
-    console.log(`[FCM] Surveyor ${surveyor.id} fcm_token: ${surveyor.fcm_token ? 'EXISTS' : 'NULL'}`);
-    if (surveyor.fcm_token) {
+    let push: { status: 'sent' | 'no_token' | 'failed' | 'no_fcm'; reason?: string };
+    if (!isFirebaseReady()) {
+      push = { status: 'no_fcm', reason: 'ระบบแจ้งเตือนยังไม่ได้ตั้งค่าบนเซิร์ฟเวอร์' };
+      console.error('[FCM] Firebase not configured — assign without push');
+    } else if (!surveyor.fcm_token) {
+      push = { status: 'no_token', reason: 'เครื่องของผู้สำรวจยังไม่เคยลงทะเบียนรับแจ้งเตือน' };
+      console.warn(`[FCM] Surveyor ${surveyor.id} has no token — skip push`);
+    } else {
       try {
         const fcmResult = await fcmService.sendUrgentSurvey(
           surveyor.fcm_token,
@@ -254,11 +266,19 @@ export const caseService = {
           caseData.sr_insurance_company || ''
         );
         console.log('[FCM] Send success:', fcmResult);
+        push = { status: 'sent' };
       } catch (err) {
+        const code = (err as { code?: string })?.code || '';
         console.error('[FCM] Send failed:', err);
+        // token ตายแล้ว (ถอนแอป/ล้างข้อมูล) → ล้างทิ้ง ไม่งั้นค้างหลอกว่ามี token
+        if (code.includes('registration-token-not-registered') || code.includes('invalid-argument')) {
+          await db.query('UPDATE users SET fcm_token = NULL WHERE id = $1', [surveyor.id])
+            .catch(() => {});
+          push = { status: 'no_token', reason: 'เครื่องของผู้สำรวจถอนการลงทะเบียนแจ้งเตือนไปแล้ว' };
+        } else {
+          push = { status: 'failed', reason: 'ส่งแจ้งเตือนไม่สำเร็จ' };
+        }
       }
-    } else {
-      console.warn('[FCM] No token — skip push notification');
     }
 
     // Send real-time notification via Socket.io
@@ -272,7 +292,9 @@ export const caseService = {
       });
     }
 
-    return updated.rows[0];
+    // แนบผลการส่งแจ้งเตือนไปกับแถวเคส — หน้าเว็บใช้ตัดสินว่าจะเตือนคนจ่ายงานไหม
+    // (เพิ่มฟิลด์ ไม่เปลี่ยนรูปทรงเดิม ที่อ่าน res.data.data อยู่แล้วจึงไม่พัง)
+    return { ...updated.rows[0], push };
   },
 
   async declineCase(caseId: number, surveyorId: number) {

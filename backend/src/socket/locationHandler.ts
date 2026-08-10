@@ -22,15 +22,26 @@ export function setupLocationHandler(io: Server, socket: Socket) {
         const result = await db.query(
           "SELECT id, fcm_token FROM users WHERE role = 'surveyor' AND is_active = true AND fcm_token IS NOT NULL"
         );
+        // นับผลจริง — เดิม log ว่า "ส่งให้ N คน" โดยนับจากจำนวนแถวใน DB
+        // ไม่ใช่จำนวนที่ส่งสำเร็จ คนไม่มี token ก็ถูกนับรวม = ตัวเลขโกหก
+        let sent = 0, noToken = 0, failed = 0;
         for (const surveyor of result.rows) {
-          if (surveyor.fcm_token) {
+          if (!surveyor.fcm_token) { noToken++; continue; }
+          try {
             await fcmService.sendSilentPush(surveyor.fcm_token, {
               type: 'request_location',
               request_id: data.request_id,
             });
+            sent++;
+          } catch (e) {
+            failed++;
+            console.error(`[FCM] request_location ไปไม่ถึง user ${surveyor.id}:`, e);
           }
         }
-        console.log(`[FCM] Sent request_location to ${result.rows.length} surveyors`);
+        console.log(`[FCM] request_location — ส่งสำเร็จ ${sent} · ไม่มี token ${noToken} · ล้มเหลว ${failed}`);
+        if (sent === 0 && result.rows.length > 0) {
+          console.error('[FCM] เรียกพิกัดไม่ถึงใครเลย — แผนที่จะว่างโดยไม่มีสาเหตุให้ผู้ใช้เห็น');
+        }
       } catch (err) {
         console.error('[FCM] Error sending request_location:', err);
       }

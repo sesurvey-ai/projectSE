@@ -7,8 +7,12 @@ import { startUploadSweeper } from './utils/uploadSweeper';
 
 const server = http.createServer(app);
 
-// Initialize Firebase (optional — skips if no credentials)
-initFirebase();
+// Firebase — ไม่มี credential ก็ยัง boot ได้ (พฤติกรรมเดิม) แต่ log ดังแล้ว
+// ตั้ง FCM_REQUIRED=1 เมื่ออยากให้ "ไม่มี push = ไม่ต้องขึ้นเลย" (ต้องตั้งใจเปิดเอง)
+if (!initFirebase() && process.env.FCM_REQUIRED === '1') {
+  console.error('[FCM] FCM_REQUIRED=1 แต่ Firebase ไม่พร้อม — ปิดตัวเอง');
+  process.exit(1);
+}
 
 // Initialize Socket.io
 setupSocket(server);

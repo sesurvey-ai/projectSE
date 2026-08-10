@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { db } from '../config/database';
+import { recordAppVersion } from './appVersion';
 
 export const auth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const header = req.headers.authorization;
@@ -42,6 +43,8 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
       username: user.username,
       role: user.role as 'admin' | 'surveyor' | 'callcenter' | 'checker',
     };
+    // จดเวอร์ชันแอปที่ส่งมากับ header (ไม่บล็อก ไม่ await — ดู appVersion.ts)
+    recordAppVersion(req, user.id);
     next();
   } catch (err) {
     next(err);

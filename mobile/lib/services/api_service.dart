@@ -1,9 +1,36 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import 'auth_token.dart';
+
+/// เวอร์ชันแอป (เช่น '1.0.40+42') ส่งไปกับทุก request ให้ฝั่งเซิร์ฟเวอร์รู้ว่า
+/// เครื่องไหนใช้เวอร์ชันอะไร — **ไม่ได้ใช้บล็อกการทำงาน** แค่ทำให้มองเห็น
+///
+/// ทำไมต้องมี: APK แจกด้วยมือ ไม่มีใครรู้ว่าเครื่องพนักงานอยู่เวอร์ชันไหน แล้ว
+/// ของที่เปลี่ยนฝั่งเซิร์ฟเวอร์ (เช่น /uploads ต้องแนบ token) ทำให้แอปเวอร์ชันเก่า
+/// พังเงียบ — วันที่ตรวจ (2026-08-11) log prod มี GET /uploads/att_*.jpg ตอบ 401
+/// 191 ครั้ง สำเร็จ 0 ครั้ง เพราะเครื่องพนักงานยังเป็น APK เก่า
+///
+/// อ่านครั้งเดียวแล้ว cache — PackageInfo.fromPlatform() คุยข้าม platform channel
+/// ทุกครั้งที่เรียก ถ้าปล่อยให้ interceptor เรียกทุก request จะช้าโดยไม่จำเป็น
+/// (background isolate มี memory คนละก้อน จึงอ่านของตัวเองอีกครั้ง — ถูกต้องแล้ว)
+class AppVersion {
+  static String? _cached;
+
+  static Future<String> get() async {
+    if (_cached != null) return _cached!;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _cached = '${info.version}+${info.buildNumber}';
+    } catch (_) {
+      _cached = '';   // อ่านไม่ได้ = ไม่ส่ง header ดีกว่าส่งค่ามั่ว
+    }
+    return _cached!;
+  }
+}
 
 class ApiService {
   late final Dio _dio;
@@ -33,6 +60,8 @@ class ApiService {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        final ver = await AppVersion.get();
+        if (ver.isNotEmpty) options.headers['X-App-Version'] = ver;
         handler.next(options);
       },
       onError: (error, handler) {

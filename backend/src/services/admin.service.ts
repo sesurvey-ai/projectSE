@@ -75,7 +75,10 @@ export const adminService = {
 
     const [dataResult, countResult] = await Promise.all([
       db.query(
-        `SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at
+        // app_version = เวอร์ชันแอปล่าสุดที่เครื่องคนนี้ยิงเข้ามา (soft mode ไม่บล็อก)
+        // ไว้ไล่ดูว่าใครยังไม่อัป APK — แจกด้วยมือ ไม่มีทางรู้จากที่อื่น
+        `SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at,
+                app_version, to_char(app_version_at, 'YYYY-MM-DD HH24:MI') AS app_version_at
          FROM users ${where} ORDER BY id ASC LIMIT $${idx} OFFSET $${idx + 1}`,
         [...params, limit, offset]
       ),

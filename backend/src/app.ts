@@ -6,6 +6,7 @@ import path from 'path';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
 import { uploadsAuth } from './middleware/uploadsAuth';
+import { isFirebaseReady } from './config/firebase';
 import routes from './routes';
 
 const app = express();
@@ -43,9 +44,9 @@ app.use('/api', (_req, res, next) => {
 // API routes
 app.use('/api', routes);
 
-// Health check
+// Health check — เปิดสาธารณะ จึงบอกแค่ boolean ห้ามใส่รายละเอียด (projectId/error)
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', firebase: isFirebaseReady(), timestamp: new Date().toISOString() });
 });
 
 // Error handler (must be last)

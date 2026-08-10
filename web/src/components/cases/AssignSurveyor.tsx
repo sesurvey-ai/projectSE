@@ -44,6 +44,8 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // แจ้งเตือนงานใหม่ไปไม่ถึงเครื่องช่าง — มอบหมายสำเร็จแล้วแต่ต้องโทรตาม
+  const [pushWarning, setPushWarning] = useState('');
   const [requestSent, setRequestSent] = useState(false);
   const [incidentLat, setIncidentLat] = useState<number | undefined>();
   const [incidentLng, setIncidentLng] = useState<number | undefined>();
@@ -121,6 +123,13 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
     try {
       const res = await api.post(`/api/cases/${caseIdStr}/assign`, { surveyor_id: Number(surveyorUserId) });
       if (res.data.success) {
+        // มอบหมายสำเร็จ ≠ ช่างรู้ตัว — ถ้าแจ้งเตือนไปไม่ถึง ต้องบอกคนจ่ายงานให้โทรตาม
+        // (เดิมเด้งออกจากหน้าทันทีเหมือนกันหมด ทั้งที่ push อาจล้มเงียบ)
+        const push = res.data.data?.push as { status?: string; reason?: string } | undefined;
+        if (push && push.status !== 'sent') {
+          setPushWarning(push.reason || 'แจ้งเตือนไปไม่ถึงเครื่องช่าง');
+          return;   // ค้างหน้าไว้ให้เห็นคำเตือน ไม่เด้งออก
+        }
         if (onAssigned) onAssigned(Number(surveyorUserId));
         else router.push('/callcenter');
       } else setError(res.data.message || 'ไม่สามารถมอบหมายงานได้');
@@ -133,6 +142,20 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   return (
     <div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">{error}</div>}
+
+      {pushWarning && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-lg text-sm mb-6">
+          <div className="font-semibold mb-1">⚠️ มอบหมายงานแล้ว แต่แจ้งเตือนไปไม่ถึงเครื่องช่าง</div>
+          <div className="text-amber-800">{pushWarning} — <strong>โทรแจ้งช่างด้วย</strong> ไม่งั้นอาจไม่มีใครรู้ว่ามีงาน</div>
+          <button
+            type="button"
+            onClick={() => { setPushWarning(''); if (onAssigned) onAssigned(0); else router.push('/callcenter'); }}
+            className="mt-2 px-4 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+          >
+            รับทราบ
+          </button>
+        </div>
+      )}
 
       <div className="mb-6">
         <button type="button" onClick={handleRequestLocation} disabled={loading} className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
