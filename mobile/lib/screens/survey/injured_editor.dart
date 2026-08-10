@@ -176,7 +176,7 @@ class _InjuredEditorState extends State<InjuredEditor> {
         kRow2(kText(_ctl('occupation'), 'อาชีพ'),
             kText(_ctl('car_reg'), 'เลขทะเบียน', req: _carRegRequired)),
         kText(_ctl('address'), 'ที่อยู่', maxLines: 2),
-        kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone),
+        kPhone(_ctl('phone'), 'โทรศัพท์'),
         kText(_ctl('work_place'), 'ทำงานที่'),
         kText(_ctl('position'), 'ตำแหน่ง'),
         kNum(_ctl('income'), 'รายได้ประจำเดือน/วันละ (บาท)', decimal: true),

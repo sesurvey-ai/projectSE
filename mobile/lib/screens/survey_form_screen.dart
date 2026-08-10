@@ -17,7 +17,7 @@ import '../data/survey_master.dart'
     show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
-import '../widgets/form_kit.dart' show kCidField;
+import '../widgets/form_kit.dart' show kCidField, kPhoneFormatters;
 import 'survey/opponent_editor.dart';
 import 'survey/injured_editor.dart';
 import 'survey/property_editor.dart';
@@ -3101,7 +3101,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           const SizedBox(width: 10),
           Expanded(flex: 3, child: _numField(_driverAgeCtl, 'อายุ', req: true)),
         ]),
-        _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
+        _txt(_driverPhoneCtl, 'โทรศัพท์', keyboardType: TextInputType.phone, req: true, formatters: kPhoneFormatters),
         _ocrField('driver_id_card', _driverCidField()),
         _ocrField('driver_address', _txt(_driverAddressCtl, 'ที่อยู่ปัจจุบัน', req: true, ocrKey: 'driver_address', maxLines: 2)),
         _ocrField('driver_province', _dd('จังหวัด', _driverProvinceCtl.text, _provinceNames,
@@ -3174,7 +3174,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         // '-- ระบุ --' (เลือกอะไรไม่ได้) และงานจริงที่พนักงานทำก็ค้างที่ค่านั้น
         // ส่วน "โทรศัพท์สำรวจ" มีปลายทางจริง (txtAcc_Tel) — บอทส่งให้แล้วตั้งแต่ 2d78f0e
         // req: EMCS บังคับ txtAcc_Tel ใน vlidSurvey (เดิมไม่มีจุดแดง ปล่อยว่างแล้วส่งได้)
-        _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', req: true, keyboardType: TextInputType.phone),
+        _txt(_accSurveyorPhoneCtl, 'โทรศัพท์สำรวจ', req: true, keyboardType: TextInputType.phone, formatters: kPhoneFormatters),
         _dateTime(_accCustomerReportDateCtl, _accCustomerReportTimeCtl, 'วันที่ลูกค้าแจ้ง บ.ประกัน'),
         _dateTime(_accInsNotifyDateCtl, _accInsNotifyTimeCtl, 'วันที่ บ.ประกันแจ้งสำรวจ'),
         _dateTime(_accSurveyArriveDateCtl, _accSurveyArriveTimeCtl, 'วันที่ถึงที่เกิดเหตุ'),
@@ -3926,12 +3926,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     );
   }
 
-  Widget _txt(TextEditingController ctl, String label, {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged, bool req = false, String? ocrKey}) {
+  Widget _txt(TextEditingController ctl, String label, {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged, bool req = false, String? ocrKey, List<TextInputFormatter>? formatters}) {
     return TextFormField(
       controller: ctl,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _ink),
       decoration: _dec(label, req: req),
       keyboardType: keyboardType,
+      inputFormatters: formatters,
       maxLines: maxLines,
       textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
       // แก้ช่องเอง → ล้างธงเตือน OCR (setState เฉพาะครั้งแรกที่มีธงให้ล้าง)

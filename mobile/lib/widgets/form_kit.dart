@@ -57,6 +57,21 @@ Widget kText(TextEditingController c, String label,
   );
 }
 
+// ── ช่องเบอร์โทร ────────────────────────────────────────────────────────────
+// ช่องเบอร์โทรของระบบประกันเป็น varchar(10) รับเฉพาะตัวเลข — ยาวกว่านั้น importer
+// **ตีกลับทั้งไฟล์** ("ข้อมูลนำเข้ามีขนาดเกิน") ไม่ใช่แค่ตัดช่องนั้นทิ้ง
+// เจอจริง 2026-08-10 เคส #124: เลขบัตรประชาชน 13 หลักถูกกรอกลงช่องโทรศัพท์
+// (ช่องเลขบัตรปล่อยว่าง) → นำเข้าไม่ผ่านทั้งเคส กันตั้งแต่ตอนพิมพ์จะรู้ตัวทันที
+const int kPhoneMaxLen = 10;
+
+final List<TextInputFormatter> kPhoneFormatters = [
+  FilteringTextInputFormatter.digitsOnly,
+  LengthLimitingTextInputFormatter(kPhoneMaxLen),
+];
+
+Widget kPhone(TextEditingController c, String label, {bool req = false}) =>
+    kText(c, label, keyboardType: TextInputType.phone, req: req, formatters: kPhoneFormatters);
+
 Widget kNum(TextEditingController c, String label, {bool decimal = false, bool req = false}) {
   return TextFormField(
     controller: c,

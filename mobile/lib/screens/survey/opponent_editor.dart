@@ -133,7 +133,9 @@ class _OpponentEditorState extends State<OpponentEditor> {
   void _applyPending() {
     void fill(String k) { if (_ctl(k).text.trim().isEmpty) _ctl(k).text = _pendingText; }
     // ช่องบังคับชนิดข้อความ → "รอตรวจสอบ"
-    for (final k in ['owner_name', 'plate', 'first_name', 'last_name', 'phone', 'address', 'cid']) {
+    // ⛔ ไม่รวม 'phone' — ช่องเบอร์โทรรับเฉพาะตัวเลข (ระบบประกันเป็น varchar(10) ตัวเลขล้วน)
+    //    ใส่ข้อความลงไปก็ถูกกรองทิ้งตอนส่งออกอยู่ดี ปล่อยว่างแล้วให้บอทใส่ '-' ให้ EMCS เอง
+    for (final k in ['owner_name', 'plate', 'first_name', 'last_name', 'address', 'cid']) {
       fill(k);
     }
     // ช่องบังคับชนิดตัวเลือก/วันที่/ตัวเลข → ใส่ "รอตรวจสอบ" ไม่ได้ ต้องเป็นค่าที่มีจริงในลิสต์
@@ -354,7 +356,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
               onChanged: (_) => setState(_syncAge)),
           kNum(_ctl('age'), 'อายุ', req: true),
         ),
-        kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
+        kPhone(_ctl('phone'), 'โทรศัพท์', req: true),
         kText(_ctl('address'), 'ที่อยู่ปัจจุบัน', req: true, maxLines: 2),
         _cidField(),
         // ── ใบขับขี่ (เปิด/ปิด — บางเคสไม่มีใบขับขี่) ──
