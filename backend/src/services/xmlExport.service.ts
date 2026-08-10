@@ -376,7 +376,10 @@ function buildCar(c: Row, type: number, insured: boolean): string {
       ? districtId(c.driver_province, c.driver_district)
       : districtId(c.home_province || c.province, c.district)) +
     el('DRI_PROVINCEID', provinceCode(insured ? c.driver_province : (c.home_province || c.province))) +
-    el('DRI_TELNO', insured ? c.driver_phone : c.phone) +
+    // DRI_TELNO บน EMCS เป็น varchar(10) — ยาวกว่านั้น importer ตีกลับทั้งไฟล์
+    // ("ข้อมูลนำเข้ามีขนาดเกิน") ช่องโทรศัพท์อื่นใช้ tel10 กันหมดแล้ว ตกหล่นเฉพาะช่องนี้
+    // เจอจริง 2026-08-10 เคส #124: ผู้ขับคู่กรณีถูกกรอกเลข 13 หลักลงช่องโทรศัพท์
+    el('DRI_TELNO', tel10(insured ? c.driver_phone : c.phone)) +
     el('DRI_CARDID', insured ? c.driver_id_card : c.cid) +
     el('DRI_DRVID', insured ? c.driver_license_no : c.license_no) +
     el('DRI_DRVTYPE', lookup(LICENSE_TYPE, insured ? c.driver_license_type : c.license_type)) +
@@ -547,10 +550,17 @@ export function generateSurveyXml(r: Row): string {
     el('ACC_CALL_DATE', toXmlCE(r.acc_customer_report_date)) +
     el('ACC_REACH', toXmlCE(r.acc_survey_arrive_date)) +
     el('ACC_FINISH', toXmlCE(r.acc_survey_complete_date)) +
-    // การเรียกร้องค่าเสียหายจากคู่กรณี — แอปเก็บครบ (ติ๊ก 5 ข้อ + ยอดเงิน 2 ช่อง)
-    // แต่เดิม hardcode ว่างทั้งชุด → เส้นทาง XML ทิ้งข้อมูลนี้ทุกเคส
-    // (เส้นทางหลักผ่าน se-autokey กรอก chkOpo_Result บนหน้าให้แล้วตั้งแต่ 9719228)
-    el('OPO_RESULT', r.acc_claim_opponent) +
+    // การเรียกร้องค่าเสียหายจากคู่กรณี — ส่งเป็น "ค่าว่าง" โดยตั้งใจ
+    //
+    // OPO_RESULT บน EMCS เป็น varchar(18) และไม่ได้เก็บ "ป้ายไทย" แต่เป็นรหัสของ
+    // chkOpo_Result 5 ตัว — ยัดป้ายไทยลงไปจึงยาวเกินและ importer ตีกลับทั้งไฟล์
+    // ("ข้อมูลนำเข้ามีขนาดเกิน" — เจอจริง 2026-08-10 เคส #124 ค่า 'รับหลักฐานจากคู่กรณี'
+    // ยาว 20 ตัว) และแอปติ๊กได้หลายข้อ ต่อกันด้วยคอมมายิ่งยาวไปกันใหญ่
+    // ไฟล์ ISURVEY จริงทุกใบที่มีก็ส่งช่องนี้ว่าง — EMCS รับได้ปกติ
+    //
+    // ข้อมูลไม่หาย: se-autokey อ่าน acc_claim_opponent จาก report API (ไม่ใช่ XML)
+    // แล้วไปติ๊ก chkOpo_Result บนหน้าจอให้เอง
+    el('OPO_RESULT', '') +
     el('OPO_PAY', money(r.acc_claim_amount) || '0') +
     el('OPO_RECOVERY_AMOUNT', money(r.acc_claim_total_amount)) +
     el('OPO_AMOUNT_TYPE', '') +
