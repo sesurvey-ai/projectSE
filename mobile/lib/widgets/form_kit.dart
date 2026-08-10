@@ -74,14 +74,15 @@ class KDateField extends StatelessWidget {
   final bool req;
   final int defaultYearsAgo;
   final int yearsAhead;
-  const KDateField(this.controller, this.label, {super.key, this.req = false, this.defaultYearsAgo = 0, this.yearsAhead = 5});
+  final ValueChanged<String>? onChanged;   // เลือกวันแล้วเรียกต่อ (เช่น วันเกิด → คำนวณอายุ)
+  const KDateField(this.controller, this.label, {super.key, this.req = false, this.defaultYearsAgo = 0, this.yearsAhead = 5, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () async {
         final r = await showKDate(context, title: label, current: controller.text, defaultYearsAgo: defaultYearsAgo, yearsAhead: yearsAhead);
-        if (r != null) controller.text = r;
+        if (r != null) { controller.text = r; onChanged?.call(r); }
       },
       child: AbsorbPointer(
         child: TextFormField(
@@ -102,6 +103,19 @@ String kNormThaiDateEra(String s) {
   final y = int.tryParse(parts[2].trim());
   if (y == null || y < 1900 || y >= 2100) return s.trim(); // ไม่ใช่ ค.ศ. ชัดเจน → คงเดิม
   return '${parts[0].trim()}/${parts[1].trim()}/${y + 543}';
+}
+
+// อายุ (ปีเต็ม) จากวันเกิด "d/m/yyyy" — รับทั้ง พ.ศ. และ ค.ศ.; อ่านไม่ออก/ไม่สมเหตุผล = ''
+String kAgeFromThaiDate(String s) {
+  final p = s.trim().split('/');
+  if (p.length != 3) return '';
+  final d = int.tryParse(p[0].trim()), m = int.tryParse(p[1].trim()), y = int.tryParse(p[2].trim());
+  if (d == null || m == null || y == null) return '';
+  final yearAd = y > 2200 ? y - 543 : y;   // ปี > 2200 = พ.ศ. แน่นอน
+  final now = DateTime.now();
+  var age = now.year - yearAd;
+  if (now.month < m || (now.month == m && now.day < d)) age--;
+  return (age < 0 || age > 120) ? '' : '$age';
 }
 
 // date picker พ.ศ. (wheel) → คืน "dd/mm/yyyy" หรือ null

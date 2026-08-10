@@ -26,6 +26,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   String _evType = '';
   String _carType = '', _carBrand = '', _carColor = '', _province = '', _homeProvince = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
+  bool _pending = false;  // "รอตรวจสอบ" — คู่กรณีหลบหนี / ยังไม่มีรายละเอียด
   bool _cidThai = true;   // true = คนไทย (13 หลัก+checksum) / false = ต่างชาติ
   bool _hasLicense = false; // สวิตช์ "มีใบขับขี่" — ค่าเริ่มต้น=ปิด (=ไม่มีใบขับขี่); สแกนใบขับขี่ = เปิดอัตโนมัติ; ปิด = ซ่อน+เคลียร์
 
@@ -54,6 +55,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _licenseType = (widget.data['license_type'] ?? '').toString();
     _policyType = (widget.data['policy_type'] ?? '').toString();
     _kfk = widget.data['kfk'] == true;
+    _pending = widget.data['pending'] == true;
     // ชนิดบัตร: ค่าที่เคยเลือก; ไม่มี = คนไทย (พฤติกรรมเดิม)
     _cidThai = '${widget.data['id_type'] ?? ''}'.trim() != 'foreign';
     // มีใบขับขี่ = ประเภทเป็นชนิดจริง หรือมีเลขใบขับขี่อยู่แล้ว; ว่าง/ยังไม่กรอก = ไม่มี (สแกนแล้วจะเปิดเอง)
@@ -120,7 +122,36 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'damage_description': _ctl('damage_description').text.trim(),
         'estimated_cost': _ctl('estimated_cost').text.trim(),
         'kfk': !_noInsurance && _kfk,
+        'pending': _pending,   // จำสถานะติ๊กไว้ เปิดคันเดิมกลับมาจะยังติ๊กอยู่
       };
+
+  // ── "รอตรวจสอบ" — คู่กรณีหลบหนี / ยังไม่มีรายละเอียด ────────────────────────
+  // ค่าที่เติมคือค่าที่ระบบประกัน **ยอมรับ** ให้บันทึกผ่าน ไม่ใช่ข้อมูลจริง —
+  // เติมเฉพาะช่องที่ยังว่าง (ที่กรอกไว้แล้วคือของจริง ห้ามทับ) แล้วพนักงานแก้ทีหลังได้
+  // เอาติ๊กออก = ไม่ล้างค่าคืน (ล้างแล้วของที่พิมพ์เองหายไปด้วย)
+  static const _pendingText = 'รอตรวจสอบ';
+  void _applyPending() {
+    void fill(String k) { if (_ctl(k).text.trim().isEmpty) _ctl(k).text = _pendingText; }
+    // ช่องบังคับชนิดข้อความ → "รอตรวจสอบ"
+    for (final k in ['owner_name', 'plate', 'first_name', 'last_name', 'phone', 'address', 'cid']) {
+      fill(k);
+    }
+    // ช่องบังคับชนิดตัวเลือก/วันที่/ตัวเลข → ใส่ "รอตรวจสอบ" ไม่ได้ ต้องเป็นค่าที่มีจริงในลิสต์
+    if (_carType.isEmpty) _carType = 'รถอื่นๆ';
+    if (_province.isEmpty) _province = 'อื่นๆ';
+    if (_insurer.isEmpty) _insurer = 'อื่นๆ';       // = มีประกันกับบริษัทนอกลิสต์ (ช่องกรมธรรม์จึงไม่โผล่)
+    if (_gender.isEmpty) _gender = 'ชาย';
+    if (_title.isEmpty) _title = 'นาย';             // ให้เข้าชุดกับเพศ (ระบบประกันรวมเป็นชื่อช่องเดียว)
+    if (_relation.isEmpty) _relation = 'เจ้าของรถ'; // ไม่รู้ผู้ขับ = ถือเป็นเจ้าของรถไปก่อน
+    if (_ctl('birthdate').text.trim().isEmpty) _ctl('birthdate').text = '01/01/2542';  // = 1 ม.ค. ค.ศ. 1999
+    _syncAge();
+  }
+
+  // อายุมาจากวันเกิดเสมอ — เลือกวันเกิดใหม่แล้วอายุขยับตาม
+  void _syncAge() {
+    final a = kAgeFromThaiDate(_ctl('birthdate').text);
+    if (a.isNotEmpty) _ctl('age').text = a;
+  }
 
   // ── ช่องที่ EMCS บังคับต่อคู่กรณี 1 คัน และ "บอทเติมแทนไม่ได้" ──────────────
   // ช่องข้อความที่บังคับ (เจ้าของ · ที่อยู่ · โทร · บัตร ปชช. · ใบขับขี่ · กรมธรรม์ ·
@@ -198,6 +229,39 @@ class _OpponentEditorState extends State<OpponentEditor> {
     widget.onDraft?.call(_collect());   // autosave ทันทีหลังสแกน — กันข้อมูลหายถ้าแอปถูก kill ก่อนกด "บันทึก"
   }
 
+  Widget _pendingToggle() => GestureDetector(
+        onTap: () => setState(() { _pending = !_pending; if (_pending) _applyPending(); }),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(6, 4, 12, 4),
+          decoration: BoxDecoration(
+            color: _pending ? kTint : kFill,
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: _pending ? kPrimary : kLine),
+          ),
+          child: Row(children: [
+            SizedBox(
+              width: 24, height: 24,
+              child: Checkbox(
+                value: _pending,
+                onChanged: (v) => setState(() { _pending = v ?? false; if (_pending) _applyPending(); }),
+                activeColor: kPrimary,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('รอตรวจสอบ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _pending ? kPrimary : kInk)),
+                const Text('คู่กรณีหลบหนี / ยังไม่มีรายละเอียด — เติมช่องบังคับให้อัตโนมัติ แก้เองได้',
+                    style: TextStyle(fontSize: 11, color: kMuted)),
+              ]),
+            ),
+          ]),
+        ),
+      );
+
   Widget _scanBtns() {
     if (widget.onScan == null) return const SizedBox.shrink();
     Widget b(IconData i, String l, String kind) => Expanded(
@@ -228,6 +292,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
       onDelete: widget.isNew ? null : _delete,
       saveLabel: 'บันทึกคันนี้',
       children: [
+        _pendingToggle(),
         kSubhead('เจ้าของ / รถ'),
         kText(_ctl('owner_name'), 'เจ้าของคู่กรณี', req: true),
         kText(_ctl('owner_address'), 'ที่อยู่เจ้าของรถ', maxLines: 2),
@@ -282,7 +347,12 @@ class _OpponentEditorState extends State<OpponentEditor> {
           KPickerField(label: 'ความสัมพันธ์', value: _relation, options: kRelations, req: true, onSelected: (v) => setState(() => _relation = v)),
         ),
         kRow2(kText(_ctl('first_name'), 'ชื่อ', req: true), kText(_ctl('last_name'), 'นามสกุล', req: true)),
-        kRow2(KDateField(_ctl('birthdate'), 'วันเกิด (พ.ศ.)', req: true, defaultYearsAgo: 25, yearsAhead: 0), kNum(_ctl('age'), 'อายุ', req: true)),
+        kRow2(
+          // เลือกวันเกิด → อายุคำนวณให้เอง (ยังพิมพ์ทับได้)
+          KDateField(_ctl('birthdate'), 'วันเกิด (พ.ศ.)', req: true, defaultYearsAgo: 25, yearsAhead: 0,
+              onChanged: (_) => setState(_syncAge)),
+          kNum(_ctl('age'), 'อายุ', req: true),
+        ),
         kText(_ctl('phone'), 'โทรศัพท์', keyboardType: TextInputType.phone, req: true),
         kText(_ctl('address'), 'ที่อยู่ปัจจุบัน', req: true, maxLines: 2),
         _cidField(),
