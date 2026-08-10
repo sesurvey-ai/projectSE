@@ -2710,7 +2710,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     // กดบันทึกบล็อกนั้นบน EMCS ไม่ผ่าน "ทั้งบล็อก" และช่องที่ว่างจะกลายเป็น '-'
     // ให้หัวหน้าไล่แก้ทีละช่อง — จึงต้องดักตั้งแต่ตอนส่งงาน (เหมือนหมวด 1-5)
     void checkItems(String title, bool has, List<Map<String, dynamic>> items,
-        String noun, Map<String, String> requiredKeys) {
+        String noun, Map<String, String> requiredKeys, {String unit = 'คนที่/ชิ้นที่'}) {
       if (!has || items.isEmpty) return;
       final msgs = <String>[];
       for (var i = 0; i < items.length; i++) {
@@ -2720,11 +2720,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             .where((kv) => (it[kv.key] ?? '').toString().trim().isEmpty)
             .map((kv) => kv.value)
             .toList();
-        if (miss.isNotEmpty) msgs.add('$noun คนที่/ชิ้นที่ ${i + 1}: ขาด ${miss.join(", ")}');
+        if (miss.isNotEmpty) msgs.add('$noun $unit ${i + 1}: ขาด ${miss.join(", ")}');
       }
       if (msgs.isNotEmpty) (e[title] ??= <String>[]).addAll(msgs);
     }
 
+    // หมวด 6 เป็นหมวดเดียวที่ไม่เคยตรวจรายคัน — ปล่อยว่างได้ 4 ช่องที่ EMCS บล็อก
+    // (เพศ · วันเกิด · อายุ · มีประกันภัยที่ ล้วนเป็นตัวเลือก/วันที่/ตัวเลข ใส่ "-" แทนไม่ได้)
+    // เจอจริง 2026-08-10 เคลม 21BR10AVD-6908-000097 — บอทค้างกลางทางที่หน้าคู่กรณี
+    checkItems('6. คู่กรณี', _hasOpponents, _opponents, 'คู่กรณี', const {
+      'car_type': 'ประเภทรถ', 'plate': 'ทะเบียน', 'province': 'จังหวัด',
+      'gender': 'เพศผู้ขับขี่', 'birthdate': 'วันเกิด', 'age': 'อายุ',
+      'insurer': 'มีประกันภัยที่',
+    }, unit: 'คันที่');
     checkItems('7. ผู้บาดเจ็บ', _hasInjured, _injured, 'ผู้บาดเจ็บ', const {
       'person_type': 'ประเภทผู้บาดเจ็บ', 'gender': 'เพศ', 'name': 'ชื่อ-นามสกุล',
       'cid': 'เลขบัตรประชาชน', 'hospital': 'โรงพยาบาล', 'symptom': 'อาการบาดเจ็บ',

@@ -122,7 +122,44 @@ class _OpponentEditorState extends State<OpponentEditor> {
         'kfk': !_noInsurance && _kfk,
       };
 
-  void _save() {
+  // ── ช่องที่ EMCS บังคับต่อคู่กรณี 1 คัน และ "บอทเติมแทนไม่ได้" ──────────────
+  // ช่องข้อความที่บังคับ (เจ้าของ · ที่อยู่ · โทร · บัตร ปชช. · ใบขับขี่ · กรมธรรม์ ·
+  // เลขเคลม · ประเภทประกัน) บอทใส่ "-" ให้ผ่านด่าน EMCS ได้ แต่ **ตัวเลือก/วันที่/
+  // ตัวเลข ใส่ "-" ไม่ได้** → EMCS บล็อกการบันทึก "ทั้งบล็อกคู่กรณี" (ไม่ใช่แค่คันนี้)
+  // หัวหน้าต้องมานั่งเติมเองทุกเคส และบอทค้างรอกลางทาง
+  // เจอจริง 2026-08-10 เคลม 21BR10AVD-6908-000097: ขาด เพศ · วันเกิด · อายุ ·
+  // มีประกันภัยที่ ครบทั้ง 4 ช่อง (เดิม req: true เป็นแค่จุดแดง กด "บันทึกคันนี้" ผ่านเลย)
+  List<String> _missing() => [
+        if (_carType.trim().isEmpty) 'ประเภทรถ',
+        if (_ctl('plate').text.trim().isEmpty) 'ทะเบียน',
+        if (_province.trim().isEmpty) 'จังหวัด',
+        if (_gender.trim().isEmpty) 'เพศผู้ขับขี่',
+        if (_ctl('birthdate').text.trim().isEmpty) 'วันเกิด',
+        if (_ctl('age').text.trim().isEmpty) 'อายุ',
+        if (_insurer.trim().isEmpty) 'มีประกันภัยที่',
+      ];
+
+  Future<void> _save() async {
+    final miss = _missing();
+    // ไม่บล็อกตาย — คู่กรณีหนีหรือยังไม่ให้ข้อมูล ก็ต้องเก็บทะเบียน/ความเสียหายไว้ก่อน
+    // (บล็อกตาย = พนักงานลบคันทิ้งแล้วข้อมูลที่ถ่ายมาหายหมด) แต่ต้องเห็นก่อนออกจากที่เกิดเหตุ
+    if (miss.isNotEmpty) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('ยังกรอกไม่ครบ'),
+          content: Text('ขาด: ${miss.join(", ")}\n\n'
+              'ช่องพวกนี้ระบบประกันบังคับ และเติมแทนให้ไม่ได้ — '
+              'ถ้าปล่อยว่าง หัวหน้าจะบันทึกข้อมูลคู่กรณีเข้าระบบไม่ผ่าน'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('กลับไปกรอก')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('บันทึกทั้งที่ยังไม่ครบ', style: TextStyle(color: kDanger))),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
     Navigator.pop(context, {'action': 'save', 'data': _collect()});
   }
 
@@ -233,6 +270,8 @@ class _OpponentEditorState extends State<OpponentEditor> {
         // ค่ายังส่งผ่าน _collect เพื่อไม่ทับของที่นำเข้ามาจากไฟล์ XML ของ ISURVEY (ไฟล์นั้นมี
         // DRI_PROVINCEID จริง และ xmlExport ใช้ home_province ถ้ามี ไม่มีค่อย fallback เป็น province)
         _scanBtns(),
+        // เพศ = radio บังคับบน EMCS (ผู้ขับขี่คู่กรณี *) — เดิมไม่มีป้าย ไม่มีจุดแดง
+        kFieldLabel('เพศผู้ขับขี่', req: true),
         Row(children: [
           kChip('ชาย', _gender == 'ชาย', () => setState(() => _gender = 'ชาย'), grow: true),
           const SizedBox(width: 8),

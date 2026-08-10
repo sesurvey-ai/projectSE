@@ -168,8 +168,14 @@ Future<String?> showKDate(BuildContext context, {String title = 'เลือก
   );
 }
 
-Widget kFieldLabel(String t) =>
-    Padding(padding: const EdgeInsets.only(top: 2, bottom: 2), child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kInk)));
+// req: true = จุดแดงท้ายป้าย เหมือนช่องกรอกทั่วไป (ใช้กับกลุ่มปุ่มเลือกที่ไม่มี label ในตัว)
+Widget kFieldLabel(String t, {bool req = false}) => Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 2),
+      child: Text.rich(
+        TextSpan(text: t, children: req ? const [TextSpan(text: ' ●', style: TextStyle(color: kDanger))] : null),
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kInk),
+      ),
+    );
 
 Widget kSubhead(String t) => Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 2),
