@@ -293,6 +293,23 @@ export const caseService = {
     const caseData = caseResult.rows[0];
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
 
+    // ── guard สถานะ (เพิ่ม 2026-08-11) ────────────────────────────────────────
+    // เดิมตรวจแค่ assigned_to → แอปที่เปิดฟอร์มค้างไว้เขียนทับงานที่ส่งไปแล้ว /
+    // ที่ผู้ตรวจแก้บนเว็บแล้ว / ที่นำเข้าระบบประกันไปแล้ว ได้เงียบ ๆ ไม่มีสัญญาณเลย
+    // (submitSurvey กับ confirmArrival มี guard นี้อยู่แล้ว ตกหล่นเฉพาะ endpoint นี้)
+    if (caseData.status !== 'assigned') {
+      throw new AppError(409, 'งานนี้ส่งไปแล้ว แก้ไขจากแอปไม่ได้ — ให้ผู้ตรวจแก้บนเว็บแทน');
+    }
+    if (caseData.emcs_imported_at) {
+      throw new AppError(409, 'งานนี้นำเข้าระบบประกันไปแล้ว แก้ไขจากแอปไม่ได้');
+    }
+
+    // เลขเซอร์เวย์อยู่ใน whitelist ของ endpoint นี้ (แก้ได้) แต่เดิมไม่เคยตรวจซ้ำ
+    // — ตรวจเฉพาะ survey_job_no; survey_job_no_2 เขียนผ่าน endpoint นี้ไม่ได้
+    if (data.survey_job_no !== undefined) {
+      await assertSurveyJobNoUnique([data.survey_job_no], caseId);
+    }
+
     const reportResult = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('Survey report not found');
 
@@ -940,6 +957,12 @@ export const caseService = {
     const reportId = reportResult.rows[0].id;
 
     const rd = (data.report_data || data) as Record<string, string>;
+
+    // เส้นทางผู้ตรวจแก้บนเว็บ — เดิมไม่เคยตรวจเลขซ้ำเลย ทั้งที่แก้เลขเซอร์เวย์ได้
+    // (ตรวจก่อนเข้า transaction; DB มี unique index กันชั้นสุดท้ายอีกที — migration 030)
+    if (rd.survey_job_no !== undefined || rd.survey_job_no_2 !== undefined) {
+      await assertSurveyJobNoUnique([rd.survey_job_no, rd.survey_job_no_2], caseId);
+    }
 
     // === 1. Combine time fields ===
     const g = (k: string) => rd[k] || '';
