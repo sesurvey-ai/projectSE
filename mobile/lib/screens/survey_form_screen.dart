@@ -1527,6 +1527,19 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     }
   }
 
+  // "คู่กรณีคันที่" (หมวด 5 ตอนผลคดี = คู่กรณีผิด) อ้างอิงลำดับคันในหมวด 6 —
+  // ลบคู่กรณีทิ้งแล้วเลขต้องขยับตาม ไม่งั้นค่าเดิมชี้ไปคันที่ไม่มีอยู่แล้วไหลเข้าระบบประกันตรง ๆ
+  void _remapFaultOpponentNo(int removedIdx) {
+    final n = int.tryParse(_accFaultOpponentNoCtl.text.trim());
+    if (n == null) return;
+    final removed = removedIdx + 1;
+    if (n == removed) {
+      _accFaultOpponentNoCtl.clear();   // คันที่ถูกอ้างอิงโดนลบเอง → ต้องเลือกใหม่ ไม่เดาแทน
+    } else if (n > removed) {
+      _accFaultOpponentNoCtl.text = '${n - 1}';
+    }
+  }
+
   void _demoteRecordPhotoTags(String word) {
     final marker = ' $word ';
     for (final key in _photoCat.keys.toList()) {
@@ -2660,6 +2673,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             ['คู่กรณีคันที่', has(_accFaultOpponentNoCtl)],
             ['การเรียกร้องค่าเสียหายจากคู่กรณี', _opoClaims.isNotEmpty],
           ]));
+          // เลขคันต้องมีคันนั้นอยู่จริงในหมวด 6 — ลบคู่กรณีทิ้งแล้วเลขค้าง = ชี้ไปคันที่ไม่มี
+          // (ค่านี้ไหลเข้าช่อง 'คู่กรณีคันที่' ของระบบประกันตรง ๆ ไม่มีใครดักให้)
+          final n = int.tryParse(_accFaultOpponentNoCtl.text.trim());
+          if (n != null && (n < 1 || n > _opponents.length)) {
+            base.add('คู่กรณีคันที่ = $n แต่ในหมวด 6 มี ${_opponents.length} คัน');
+          }
         }
         // บังคับช่องตำรวจเมื่อ "รอสรุปผลคดี" หรือเปิดสวิตช์ "มีการแจ้งความ" (ช่องขึ้น req: true อยู่แล้ว
         // — เดิม gate เช็คเฉพาะ รอสรุปผลคดี ทำให้เปิดสวิตช์แล้วเว้นว่างได้ ทั้งที่จุดแดงบอกว่าต้องกรอก)
@@ -3370,7 +3389,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         addLabel: 'เพิ่มคู่กรณี',
         onAdd: _addOpponent,
         onTap: _editOpponent,
-        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() { _opponents.removeAt(i); _remapRecordPhotoTags('คันที่', i); })),
+        onDelete: (i) => _confirmDelete('คู่กรณีคันที่ ${i + 1}', () => setState(() { _opponents.removeAt(i); _remapRecordPhotoTags('คันที่', i); _remapFaultOpponentNo(i); })),
         lineTitle: (m, i) => 'คันที่ ${i + 1}${(m['plate'] ?? '').toString().trim().isNotEmpty ? ' · ${m['plate']}' : ''}',
         lineSub: (m) {
           final owner = (m['owner_name'] ?? '').toString().trim();
