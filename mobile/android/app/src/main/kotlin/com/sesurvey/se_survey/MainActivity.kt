@@ -25,6 +25,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private val CHANNEL = "com.sesurvey.se_survey/notification"
+    private val PRINTER_CHANNEL = "com.sesurvey.se_survey/printer"
     private var methodChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -51,6 +52,11 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // เครื่องพิมพ์พกพา — ต้องมี fallback ข้าม SDP จึงเขียนเองแทนใช้ plugin (ดู PrinterBridge)
+        PrinterBridge.register(
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PRINTER_CHANNEL)
+        )
     }
 
     override fun onUserLeaveHint() {

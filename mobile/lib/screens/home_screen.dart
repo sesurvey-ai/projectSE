@@ -180,6 +180,15 @@ class HomeScreen extends StatelessWidget {
               tint: _purpleTint,
               onTap: () => context.push('/calllog'),
             ),
+            // ⚠️ ชั่วคราว — เมนูทดสอบเครื่องพิมพ์พกพา (Phase 0 ใบแจ้งความเสียหาย)
+            // ถอดออกเมื่อฟีเจอร์ใบแจ้งความเสียหายเข้าที่แล้ว (ย้ายไปเป็นปุ่มในหน้าเคส)
+            const SizedBox(height: 12),
+            _menuCard(
+              icon: Icons.print_outlined,
+              title: 'ทดสอบเครื่องพิมพ์',
+              subtitle: 'ชั่วคราว — พิมพ์ใบแจ้งความเสียหายตัวอย่าง',
+              onTap: () => context.push('/printer-test'),
+            ),
           ],
         ),
       ),

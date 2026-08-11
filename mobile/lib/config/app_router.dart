@@ -9,6 +9,7 @@ import '../screens/attendance_screen.dart';
 import '../screens/case_list_screen.dart';
 import '../screens/case_detail_screen.dart';
 import '../screens/survey_form_screen.dart';
+import '../screens/printer_test_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -55,6 +56,12 @@ GoRouter createRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/attendance',
         builder: (context, state) => const AttendanceScreen(),
+      ),
+      // ทดสอบเครื่องพิมพ์พกพา (Phase 0 ใบแจ้งความเสียหาย) — ยังไม่มีปุ่มเข้าจากหน้าไหน
+      // เปิดด้วย: adb shell am start -a android.intent.action.VIEW -d "sesurvey://printer-test"
+      GoRoute(
+        path: '/printer-test',
+        builder: (context, state) => const PrinterTestScreen(),
       ),
       GoRoute(
         path: '/cases',

@@ -14,6 +14,14 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- เครื่องพิมพ์พกพา (TSC) ต่อผ่าน Bluetooth Classic SPP -->
+    <!-- Android ≤11 ใช้ 2 ตัวบน / Android 12+ ใช้ BLUETOOTH_CONNECT แทน (ขอ runtime) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <!-- neverForLocation: เราต่อเฉพาะเครื่องที่จับคู่ไว้แล้ว ไม่ได้ใช้ Bluetooth หาตำแหน่ง -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <application
         android:label="SE Survey"
         android:name="${applicationName}"

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.40+42
+version: 1.0.49+51
 
 environment:
   sdk: ^3.11.1
@@ -55,6 +55,12 @@ dependencies:
   workmanager: ^0.9.0       # background sync ประวัติการโทรปรึกษาหัวหน้า (ไม่ต้องเปิดแอป)
   flutter_image_compress: ^2.4.0
   package_info_plus: ^8.0.0       # อ่านเวอร์ชันแอปตอนรัน — ส่งไปกับทุก request ให้ระบบรู้ว่าเครื่องไหนใช้เวอร์ชันอะไร
+  # ── ใบแจ้งความเสียหาย: สร้างใบ → พิมพ์เครื่องพกพา TSC (Alpha-3R / RE310B) ──
+  # TSC ทั้งสองรุ่นรองรับ ESC/POS emulation จึงใช้เส้นทางมาตรฐานได้ ไม่ต้องเขียน TSPL เอง
+  print_bluetooth_thermal: ^1.1.1  # ต่อ Bluetooth Classic (SPP) + ส่ง byte ดิบเข้าเครื่องพิมพ์
+  esc_pos_utils_plus: ^2.0.4       # ประกอบคำสั่ง ESC/POS (ใช้เฉพาะโหมด raster image)
+  image: ^4.3.0                    # แปลง PNG → bitmap ก่อนส่งเข้าเครื่องพิมพ์
+  qr_flutter: ^4.1.0               # QR บนใบ (ชี้หน้ารายชื่อสาขา/อู่ของเราเอง)
 
 dev_dependencies:
   flutter_test:
