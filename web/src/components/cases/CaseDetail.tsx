@@ -285,9 +285,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-4 py-2 text-gray-500">รหัสภัยยานยนต์ :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="risk_code" defaultValue={report.risk_code || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
-                  <tr className="bg-gray-50">
+                  <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2 text-gray-500">ค่าเสียหายส่วนแรก :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="deductible" defaultValue={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    <td className="px-4 py-2" colSpan={2}></td>
+                  </tr>
+                  {/* ชื่ออู่/ศูนย์ซ่อม เป็นข้อความล้วน — ห้ามใส่ใน numericCols (ตัด comma จะกินชื่ออู่ที่มีลูกน้ำ) */}
+                  <tr>
+                    <td className="px-4 py-2 text-gray-500">ซ่อมที่ :</td>
+                    <td className="px-4 py-2">{/* maxLength ตรงกับ VARCHAR(200) — ยาวเกินแล้ว Postgres ไม่ตัดปลายให้ แต่ error จนบันทึกไม่ผ่านทั้งใบ */}<input type="text" disabled={d} maxLength={200} name="repair_shop" defaultValue={report.repair_shop || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                 </tbody>

@@ -3,11 +3,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'signature_pad.dart';
 
-/// ใบแจ้งความเสียหาย — ใบกระดาษที่พิมพ์ให้ผู้ขับขี่เซ็นรับรองหน้างาน
+/// ใบเอกสารหน้างาน — พิมพ์ให้ผู้ขับขี่/เจ้าของทรัพย์สินเซ็นรับรอง แล้วให้เขาถือกลับ
 ///
-/// **ประกอบจากบล็อก ไม่ hardcode ต่อแบบ** — ใบมีหลายแบบ (รถประกัน · รถคู่กรณี · …)
-/// ซึ่งต่างกันแค่ "มีบรรทัดไหนบ้าง" การเพิ่มแบบใหม่จึงเป็นแค่การประกอบ
-/// [DamageNoticeData] ชุดใหม่ ไม่ต้องแตะ widget นี้
+/// **ประกอบจากบล็อก ไม่ hardcode ต่อแบบ** — มีทั้งหมด 10 แบบ (ดู `damage_notice_catalog.dart`)
+/// ซึ่งต่างกันแค่ "มีบล็อกไหนบ้าง" การเพิ่มแบบใหม่จึงเป็นแค่การประกอบ [DamageNoticeData]
+/// ชุดใหม่ ไม่ต้องแตะ widget นี้
 ///
 /// วาดที่ความกว้าง [slipDots] = 384 จุด ตรงกับกระดาษ 58 มม. ที่ 203 dpi พอดี
 /// จับภาพด้วย pixelRatio 1.0 แล้วได้ PNG ที่ส่งเข้าเครื่องพิมพ์ได้ตรงจุด ไม่ต้องย่อ
@@ -34,6 +34,7 @@ class DamageNoticeSlip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final f = data.footer;
     return Container(
       width: slipDots,
       color: Colors.white,
@@ -43,12 +44,12 @@ class DamageNoticeSlip extends StatelessWidget {
       child: DefaultTextStyle(
         style: _body,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // หัวกระดาษ = โลโก้อย่างเดียว ไม่มีที่อยู่บริษัท (กติกา user 2026-08-11)
           Center(child: Image.asset('assets/se-mark.png', width: 92, fit: BoxFit.contain)),
           const SizedBox(height: 8),
           const Divider(color: Colors.black, thickness: 1, height: 1),
           const SizedBox(height: 12),
 
-          // หัวใบ — บรรทัดที่ 2 บอกว่าเป็นใบของรถคันไหน (ประกัน/คู่กรณี)
           Center(
             child: Text('${data.title}\n${data.subtitle}',
                 textAlign: TextAlign.center,
@@ -58,35 +59,50 @@ class DamageNoticeSlip extends StatelessWidget {
           const SizedBox(height: 12),
 
           ...data.fields.map(_line),
-          const SizedBox(height: 12),
 
-          const Text('รายการความเสียหาย'),
-          const SizedBox(height: 4),
-          Row(children: const [
-            Expanded(flex: 6, child: Text('ชิ้นส่วน')),
-            Expanded(flex: 4, child: Text('ระดับ')),
-          ]),
-          const SizedBox(height: 2),
-          ...data.damages.map((d) => Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(flex: 6, child: Text(d.part, style: _small)),
-                  Expanded(flex: 4, child: Text(d.level, style: _small)),
-                ]),
-              )),
-          const SizedBox(height: 8),
-          Text('รวมจำนวนความเสียหายทั้งสิ้น : ${data.damages.length} รายการ'),
+          // ใบติดต่อไม่มีตารางความเสียหาย → ส่ง damages ว่างมา แล้วบล็อกนี้หายทั้งก้อน
+          if (data.damages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('รายการความเสียหาย'),
+            const SizedBox(height: 4),
+            Row(children: const [
+              Expanded(flex: 6, child: Text('ชิ้นส่วน')),
+              Expanded(flex: 4, child: Text('ระดับ')),
+            ]),
+            const SizedBox(height: 2),
+            ...data.damages.map((d) => Padding(
+                  padding: const EdgeInsets.only(bottom: 1),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(flex: 6, child: Text(d.part, style: _small)),
+                    Expanded(flex: 4, child: Text(d.level, style: _small)),
+                  ]),
+                )),
+            const SizedBox(height: 8),
+            Text('รวมจำนวนความเสียหายทั้งสิ้น : ${data.damages.length} รายการ'),
+          ],
+
           Text('*${data.note ?? 'หมายเหตุ'}'),
 
-          // บล็อกเสริม (ใบรถประกันมี "ความเสียหายส่วนแรก" ใบคู่กรณีไม่มี)
+          // "ความเสียหายส่วนแรก" — มีเฉพาะเคลมที่มีค่าเสียหายส่วนแรกจริง
+          // ไม่มีข้อมูล = ซ่อนทั้งบล็อก (ทั้งไอโออิและไทยไพบูลย์ กติกา user 2026-08-11)
           if (data.extraTitle != null) ...[
             const SizedBox(height: 10),
             Text(data.extraTitle!),
             ...data.extraFields.map(_line),
           ],
 
-          const SizedBox(height: 12),
-          Text(data.certifyText, style: _small),
+          // "เอกสารที่ใช้ในการติดต่อ" — มีเฉพาะใบติดต่อ
+          if (data.docs.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            if (data.docsTitle != null) Text(data.docsTitle!),
+            ...data.docs.asMap().entries.map((e) => Text('${e.key + 1}. ${e.value}')),
+            if (data.docsFootnote != null) Text('**${data.docsFootnote!}**', style: _small),
+          ],
+
+          if (data.certifyText != null) ...[
+            const SizedBox(height: 12),
+            Text(data.certifyText!, style: _small),
+          ],
           const SizedBox(height: 8),
 
           // กรอบเซ็นชื่อ — ผู้ขับขี่เซ็นบนจอตรงนี้ เส้นที่เซ็นติดไปกับรูปที่พิมพ์เลย
@@ -108,20 +124,25 @@ class DamageNoticeSlip extends StatelessWidget {
           const Divider(color: Colors.black, thickness: 1, height: 1),
           const SizedBox(height: 10),
 
-          ...data.insurerLines.map((t) => Text(t, style: _bold)),
+          ...f.lines.map((t) => Text(t, style: _bold)),
           const SizedBox(height: 10),
-          Text(data.qrCaption, style: _small),
-          const SizedBox(height: 8),
-          Center(
-            child: QrImageView(
-              data: data.qrUrl,
-              size: 116,
-              padding: EdgeInsets.zero,
-              backgroundColor: Colors.white,
-              // M = กันเลอะได้ ~15% พอสำหรับกระดาษความร้อนที่อาจซีด
-              errorCorrectionLevel: QrErrorCorrectLevel.M,
+          Text(f.caption, style: _small),
+
+          // ไอโออิ = QR · ไทยไพบูลย์ = พิมพ์ลิงก์เป็นข้อความ (กติกา user 2026-08-11)
+          if (f.qrUrl != null) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: QrImageView(
+                data: f.qrUrl!,
+                size: 116,
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.white,
+                // M = กันเลอะได้ ~15% พอสำหรับกระดาษความร้อนที่อาจซีด
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
+              ),
             ),
-          ),
+          ] else if (f.linkText != null)
+            Text(f.linkText!, style: _small),
         ]),
       ),
     );
@@ -140,31 +161,45 @@ class SlipDamage {
   const SlipDamage(this.part, this.level);
   final String part;
 
-  /// ป้ายไทยเต็ม (ต่ำ/กลาง/สูง/สูงมาก) ตาม master ของ EMCS — ไม่ใช้ตัวย่อ L/M/H/X
-  /// เพราะใบนี้ให้คนนอกบริษัทอ่านและเซ็นรับรอง
+  /// ป้ายไทยพร้อมรหัสในวงเล็บ เช่น `ต่ำ (L)` — ไทยเพื่อให้คนที่เซ็นรับรองอ่านออกว่าตัวเองเซ็นอะไร
+  /// รหัสเพื่อให้ผู้ตรวจเทียบกับหน้าระบบประกันได้โดยไม่ต้องแปลในหัว
   final String level;
 }
 
-/// ข้อมูลบนใบ 1 ใบ — ตัวที่ทำให้ "แบบ" ต่างกันคือ [fields] / [extraFields] / [signerLabel]
+/// ท้ายใบ — **ต่างกันตามบริษัทประกัน ไม่ใช่แค่ QR**
+/// ไอโออิ = ติดต่อภายใน 7 วัน + QR · ไทยไพบูลย์ = ภายใน 15 วัน + พิมพ์ลิงก์เป็นข้อความ
+class InsurerFooter {
+  const InsurerFooter({
+    required this.lines,
+    required this.caption,
+    this.qrUrl,
+    this.linkText,
+  });
+
+  final List<String> lines;
+  final String caption;
+  final String? qrUrl;
+  final String? linkText;
+}
+
+/// ข้อมูลบนใบ 1 ใบ — "แบบ" ต่างกันที่บล็อกไหนมี/ไม่มี ไม่ใช่ที่ layout
 class DamageNoticeData {
   const DamageNoticeData({
-    this.title = 'ใบแจ้งความเสียหาย',
+    required this.title,
     required this.subtitle,
     required this.fields,
-    required this.damages,
     required this.signerLabel,
     required this.operatorLine,
     required this.operatorPhone,
-    required this.insurerLines,
-    required this.qrUrl,
+    required this.footer,
+    this.damages = const [],
     this.note,
     this.extraTitle,
     this.extraFields = const [],
-    this.certifyText =
-        'ข้าพเจ้าได้ตรวจสอบรายการความเสียหายที่ระบุไว้ข้างต้น '
-        'ขอรับรองว่า ครบถ้วนถูกต้องทุกประการ',
-    this.qrCaption =
-        'ท่านสามารถตรวจสอบรายชื่อสาขา/ศูนย์/อู่ในสัญญา ได้โดยการสแกน QR Code',
+    this.docsTitle,
+    this.docs = const [],
+    this.docsFootnote,
+    this.certifyText,
   });
 
   final String title;
@@ -174,11 +209,12 @@ class DamageNoticeData {
   final String? note;
   final String? extraTitle;
   final List<SlipField> extraFields;
-  final String certifyText;
+  final String? docsTitle;
+  final List<String> docs;
+  final String? docsFootnote;
+  final String? certifyText;
   final String signerLabel;
   final String operatorLine;
   final String operatorPhone;
-  final List<String> insurerLines;
-  final String qrCaption;
-  final String qrUrl;
+  final InsurerFooter footer;
 }

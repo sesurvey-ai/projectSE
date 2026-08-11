@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 
+import '../data/damage_notice_catalog.dart';
+import '../services/damage_notice_builder.dart';
 import '../services/thermal_printer.dart';
 import '../widgets/damage_notice_slip.dart';
 import '../widgets/signature_pad.dart';
@@ -33,6 +35,7 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
   bool _connected = false;
   bool _busy = false;
   PrintLang _lang = PrintLang.tspl;
+  SlipType _type = kSlipTypes.first;
   final List<String> _log = [];
 
   @override
@@ -277,6 +280,27 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
               ],
             ),
             const SizedBox(height: 8),
+            DropdownButtonFormField<SlipType>(
+              initialValue: _type,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'แบบใบ', border: OutlineInputBorder()),
+              items: kSlipTypes
+                  .map((t) => DropdownMenuItem(
+                        value: t,
+                        // แบบที่ยังไม่เคยเห็นเนื้อในใบจริง เลือกไม่ได้ — เดาเนื้อหาเอกสาร
+                        // ที่คนนอกต้องเซ็นรับรองไม่ได้
+                        enabled: t.ready,
+                        child: Text(
+                            t.ready ? t.name : '${t.name}  (ยังไม่มีข้อมูล)',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: t.ready ? null : Colors.grey)),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _type = v ?? kSlipTypes.first),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -315,7 +339,7 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
               child: FittedBox(
                 child: RepaintBoundary(
                   key: _slipKey,
-                  child: DamageNoticeSlip(data: _demoData(), signature: _sign),
+                  child: DamageNoticeSlip(data: _slipData(), signature: _sign),
                 ),
               ),
             ),
@@ -329,41 +353,48 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
     );
   }
 
-  /// ข้อมูลตัวอย่างจากใบจริง (ไอโออิ · แบบรถประกัน ซึ่งมีบล็อกครบกว่าแบบคู่กรณี)
-  DamageNoticeData _demoData() => const DamageNoticeData(
-    subtitle: 'รถประกัน',
-    fields: [
-      SlipField('พิมพ์วันที่', '1 ส.ค. 2569 เวลา 14:05'),
-      SlipField('เลขที่อุบัติเหตุ', '2026013700512'),
-      SlipField('เลขเรื่อง Survey', 'SEABI-210260B00041'),
-      SlipField('เลขกรมธรรม์', '1230137300'),
-      SlipField('ประเภทกรมธรรม์', 'ประกัน 1 ซ่อมห้าง'),
-      SlipField('ทะเบียนรถ', 'ขง6693'),
-      SlipField('จังหวัด', 'พิษณุโลก'),
-      SlipField('ยี่ห้อ/รุ่น', 'TOYOTA/'),
-      SlipField('สี', 'ขาว'),
-      SlipField('ฝ่ายใดเป็นฝ่ายถูก/ผิด', 'รถประกันเป็นฝ่ายผิด'),
-      SlipField('ซ่อมที่', 'บริษัท โตโยต้า เมืองสองแคว จำกัด'),
+  /// เคสตัวอย่างในรูปแบบเดียวกับ payload จริงของฟอร์มสำรวจ
+  ///
+  /// จงใจไม่ hardcode ใบสำเร็จรูป — ให้เดินผ่าน [DamageNoticeBuilder] ตัวเดียวกับของจริง
+  /// หน้าทดสอบจึงพิสูจน์ "เส้นทางข้อมูล" ด้วย ไม่ใช่แค่พิสูจน์เครื่องพิมพ์
+  static const _demoReport = <String, dynamic>{
+    'insurance_company': 'บริษัท ไอโออิ กรุงเทพ ประกันภัย จำกัด (มหาชน)',
+    'claim_no': '2026013700512',
+    'survey_job_no': 'SEABI-210260B00041',
+    'policy_no': '1230137300',
+    'policy_type': 'ประกัน 1 ซ่อมห้าง',
+    'license_plate': 'ขง6693',
+    'car_province': 'พิษณุโลก',
+    'car_brand': 'TOYOTA',
+    'car_model': '',
+    'car_color': 'ขาว',
+    'acc_fault': 'รถประกันเป็นฝ่ายผิด',
+    'repair_shop': 'บริษัท โตโยต้า เมืองสองแคว จำกัด',
+    'deductible': 2000,
+    'insured_damage': [
+      {'part': 'กันชนหน้า(กันชน)', 'pos': 'A', 'level': 'L'},
+      {'part': 'ฝากระโปรงหน้า', 'pos': 'A', 'level': 'L'},
+      {'part': 'คานหน้า', 'pos': 'L', 'level': 'X'},
     ],
-    damages: [
-      SlipDamage('กันชนหน้า(กันชน)', 'ต่ำ'),
-      SlipDamage('ฝากระโปรงหน้า', 'ต่ำ'),
-      SlipDamage('คานหน้าแอ่งด้านซ้าย', 'สูงมาก'),
+    'opposing_parties': [
+      {
+        'plate': '7ขต308',
+        'province': 'กรุงเทพฯ',
+        'car_brand': 'HONDA',
+        'car_model': '',
+        'car_color': 'ดำ',
+        'policy_no': '',
+        'policy_type': '',
+        'damage': [
+          {'part': 'ประตูหลังซ้าย+มือเปิด', 'pos': 'L', 'level': 'M'},
+        ],
+      },
     ],
-    extraTitle: 'ความเสียหายส่วนแรก',
-    extraFields: [
-      SlipField('ตามเงื่อนไข', 'EX2,000'),
-      SlipField('จำนวนเงิน', '2,000 บาท'),
-    ],
-    signerLabel: 'ผู้ขับขี่รถประกัน',
-    operatorLine: 'SE206 นายศิริเทพ ทรงวิชาญสกุล',
-    operatorPhone: '096-1436568',
-    insurerLines: [
-      '*** กรุณาติดต่อบริษัทฯภายใน 7 วัน',
-      'บริษัทไอโออิ กรุงเทพ ประกันภัย จำกัด (มหาชน)',
-      'ฝ่ายสินไหม 02-7808000 กด 7',
-      '(เวลา 08:30-16:30น.)',
-    ],
-    qrUrl: 'https://survey.sesurvey.cloud/branches/1059',
-  );
+  };
+
+  DamageNoticeData _slipData() => const DamageNoticeBuilder(
+        report: _demoReport,
+        operatorName: 'SE206 นายศิริเทพ ทรงวิชาญสกุล',
+        operatorPhone: '096-1436568',
+      ).build(_type);
 }

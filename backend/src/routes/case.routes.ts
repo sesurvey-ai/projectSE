@@ -161,6 +161,9 @@ const submitSurveySchema = z.object({
   // ความเสียหาย
   damage_description: optStr,
   estimated_cost: optNum,
+  // "ซ่อมที่" ชื่ออู่/ศูนย์ที่นำรถเข้าซ่อม — อยู่หมวดกรมธรรม์บนหน้าจอ (ทั้งมือถือและเว็บ)
+  // ต้องประกาศตรงนี้ด้วย ไม่งั้น zod ตัดคีย์ทิ้งเงียบตั้งแต่ก่อนถึง service
+  repair_shop: optStr,
   // รายละเอียดอุบัติเหตุ
   acc_date: optStr,
   acc_time: optStr,

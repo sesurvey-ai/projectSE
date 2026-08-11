@@ -946,6 +946,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _policyStartCtl: 'policy_start', _policyEndCtl: 'policy_end',
       _assuredNameCtl: 'assured_name', _policyTypeCtl: 'policy_type',
       _assuredEmailCtl: 'assured_email', _riskCodeCtl: 'risk_code', _deductibleCtl: 'deductible',
+      _repairShopCtl: 'repair_shop',
       _licensePlateCtl: 'license_plate', _carProvinceCtl: 'car_province',
       _carBrandCtl: 'car_brand', _carModelCtl: 'car_model', _carColorCtl: 'car_color',
       _carRegYearCtl: 'car_reg_year', _chassisNoCtl: 'chassis_no', _engineNoCtl: 'engine_no',
@@ -1122,6 +1123,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   final _assuredEmailCtl = TextEditingController();
   final _riskCodeCtl = TextEditingController();
   final _deductibleCtl = TextEditingController();
+  // ชื่ออู่/ศูนย์ที่นำรถเข้าซ่อม — ข้อความล้วน (บางที่ตั้งชื่อมีตัวเลข/สาขา อย่าทำเป็นช่องตัวเลข)
+  final _repairShopCtl = TextEditingController();
 
   // === รถ ===
   String _carType = '0';
@@ -1291,6 +1294,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _insuranceCompanyCtl, _insuranceBranchCtl, _surveyJobNoCtl, _claimRefNoCtl, _claimNoCtl,
       _prbNumberCtl, _policyNoCtl, _driverByPolicyCtl, _policyStartCtl, _policyEndCtl,
       _assuredNameCtl, _policyTypeCtl, _assuredEmailCtl, _riskCodeCtl, _deductibleCtl,
+      _repairShopCtl,
       _carBrandCtl, _carModelCtl, _carColorCtl, _licensePlateCtl, _carProvinceCtl,
       _chassisNoCtl, _engineNoCtl, _mileageCtl, _carRegYearCtl, _modelNoCtl,
       _evBatteryNoCtl, _evBatteryStartCtl, _evChargerNoCtl,
@@ -1966,6 +1970,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       'policy_type': _policyTypeCtl.text.trim(),
       'assured_email': _assuredEmailCtl.text.trim(),
       'risk_code': _riskCodeCtl.text.trim(),
+      'repair_shop': _repairShopCtl.text.trim(),
       'car_brand': _carBrandCtl.text.trim(),
       'car_model': _carModelCtl.text.trim(),
       'car_color': _carColorCtl.text.trim(),
@@ -2987,6 +2992,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         _row2(_policyTypeField(), _txt(_riskCodeCtl, 'รหัสภัยยานยนต์')),
         _txt(_assuredEmailCtl, 'อีเมลผู้เอาประกัน', keyboardType: TextInputType.emailAddress),
         _numField(_deductibleCtl, 'ค่าเสียหายส่วนแรก', decimal: true),
+        // จำกัด 200 ตัวให้ตรงกับ VARCHAR(200) ในฐานข้อมูล — ช่องนี้คนมักวางชื่ออู่พ่วงที่อยู่ยาว ๆ
+        // ยาวเกินแล้ว Postgres ไม่ได้ตัดปลายให้ แต่โยน error จน **ส่งงานทั้งใบไม่ผ่าน**
+        _txt(_repairShopCtl, 'ซ่อมที่',
+            formatters: [LengthLimitingTextInputFormatter(200)]),
       ];
 
   // ประเภทประกัน = dropdown (POL_TYPES) + คงค่าเดิมถ้าไม่อยู่ในลิสต์

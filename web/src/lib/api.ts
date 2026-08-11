@@ -21,7 +21,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // หน้าสาธารณะ (QR บนใบแจ้งความเสียหายชี้มา) ห้ามเด้งไป login —
+      // พนักงานที่เคยล็อกอินแล้ว token หมดอายุ สแกน QR แล้วจะโดนเด้งทั้งที่หน้านี้ไม่ต้องล็อกอิน
+      if (!window.location.pathname.startsWith('/branches')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
