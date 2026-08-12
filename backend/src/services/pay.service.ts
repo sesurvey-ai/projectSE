@@ -257,7 +257,24 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
   money[PAY_DEDUCT_FIELD] = deduct === null ? null : Math.abs(deduct);
   const total = round2(
     PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0) - (money[PAY_DEDUCT_FIELD] ?? 0));
+
+  // snapshot ต้องสะท้อน "สิ่งที่กรอกรอบนี้" ไม่ใช่แถวเก่าที่ยังไม่ทันอัปเดต —
+  // getCasePay อ่านตัวปรับจากแถวที่บันทึกไว้ก่อนหน้า จึงได้ค่าเก่า/ว่างเสมอในครั้งแรก
+  // ตัว snapshot มีหน้าที่อธิบายว่ายอดนี้มาจากอะไร ถ้าบอกตัวปรับผิดก็หมดประโยชน์
   const { suggest } = await getCasePay(caseId);
+  const snapshot = {
+    ...(suggest?.snapshot ?? {}),
+    out_of_area: input.out_of_area ? true : null,
+    out_of_hours: input.out_of_hours ? true : null,
+    special_tumbon: input.special_tumbon ? true : null,
+    daily_check: input.daily_check ?? null,
+    deduct: money[PAY_DEDUCT_FIELD],
+    deduct_reasons: [
+      input.deduct_late ? 'ส่งช้า' : null,
+      input.deduct_docs ? 'เอกสารไม่ครบ' : null,
+      input.deduct_reason || null,
+    ].filter(Boolean),
+  };
 
   const r = await db.query(
     `INSERT INTO survey_pay (case_id, service_fee, travel_fee, photo_fee, phone_fee, bail_fee,
@@ -280,7 +297,7 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
      money.bail_fee, money.claim_fee, money.daily_fee, money.other_fee,
      input.other_reason ?? null, Boolean(input.out_of_area), Boolean(input.out_of_hours),
      Boolean(input.special_tumbon), input.daily_check ?? null, total,
-     JSON.stringify(suggest?.snapshot ?? {}), userId ?? null,
+     JSON.stringify(snapshot), userId ?? null,
      money[PAY_DEDUCT_FIELD], Boolean(input.deduct_late), Boolean(input.deduct_docs),
      input.deduct_reason ?? null]);
   return r.rows[0];
