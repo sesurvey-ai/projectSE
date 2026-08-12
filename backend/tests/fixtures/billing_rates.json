@@ -1,0 +1,3515 @@
+{
+ "amphur": {
+  "1001": {
+   "amphur_id": "1001",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1002": {
+   "amphur_id": "1002",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1003": {
+   "amphur_id": "1003",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1004": {
+   "amphur_id": "1004",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1005": {
+   "amphur_id": "1005",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1006": {
+   "amphur_id": "1006",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1007": {
+   "amphur_id": "1007",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1008": {
+   "amphur_id": "1008",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1009": {
+   "amphur_id": "1009",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1010": {
+   "amphur_id": "1010",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1011": {
+   "amphur_id": "1011",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1012": {
+   "amphur_id": "1012",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1013": {
+   "amphur_id": "1013",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1014": {
+   "amphur_id": "1014",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1015": {
+   "amphur_id": "1015",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1016": {
+   "amphur_id": "1016",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1017": {
+   "amphur_id": "1017",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1018": {
+   "amphur_id": "1018",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1019": {
+   "amphur_id": "1019",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1020": {
+   "amphur_id": "1020",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1021": {
+   "amphur_id": "1021",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1022": {
+   "amphur_id": "1022",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1023": {
+   "amphur_id": "1023",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1024": {
+   "amphur_id": "1024",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1025": {
+   "amphur_id": "1025",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1026": {
+   "amphur_id": "1026",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1027": {
+   "amphur_id": "1027",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1028": {
+   "amphur_id": "1028",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1029": {
+   "amphur_id": "1029",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1030": {
+   "amphur_id": "1030",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1031": {
+   "amphur_id": "1031",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1032": {
+   "amphur_id": "1032",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1033": {
+   "amphur_id": "1033",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1034": {
+   "amphur_id": "1034",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1035": {
+   "amphur_id": "1035",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1036": {
+   "amphur_id": "1036",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1037": {
+   "amphur_id": "1037",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1038": {
+   "amphur_id": "1038",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1039": {
+   "amphur_id": "1039",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1040": {
+   "amphur_id": "1040",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1041": {
+   "amphur_id": "1041",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1042": {
+   "amphur_id": "1042",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1043": {
+   "amphur_id": "1043",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1044": {
+   "amphur_id": "1044",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1045": {
+   "amphur_id": "1045",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1046": {
+   "amphur_id": "1046",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1047": {
+   "amphur_id": "1047",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1048": {
+   "amphur_id": "1048",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1049": {
+   "amphur_id": "1049",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1050": {
+   "amphur_id": "1050",
+   "sur_invest": 300,
+   "ins_invest_12": 700,
+   "ins_invest_34": 700,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1101": {
+   "amphur_id": "1101",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1102": {
+   "amphur_id": "1102",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1103": {
+   "amphur_id": "1103",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1104": {
+   "amphur_id": "1104",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1105": {
+   "amphur_id": "1105",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1106": {
+   "amphur_id": "1106",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1201": {
+   "amphur_id": "1201",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1202": {
+   "amphur_id": "1202",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1203": {
+   "amphur_id": "1203",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1204": {
+   "amphur_id": "1204",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1205": {
+   "amphur_id": "1205",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1206": {
+   "amphur_id": "1206",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1301": {
+   "amphur_id": "1301",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1302": {
+   "amphur_id": "1302",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1303": {
+   "amphur_id": "1303",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1304": {
+   "amphur_id": "1304",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1305": {
+   "amphur_id": "1305",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1306": {
+   "amphur_id": "1306",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1307": {
+   "amphur_id": "1307",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1351": {
+   "amphur_id": "1351",
+   "sur_invest": 300,
+   "ins_invest_12": 300,
+   "ins_invest_34": 200,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1401": {
+   "amphur_id": "1401",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1402": {
+   "amphur_id": "1402",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1403": {
+   "amphur_id": "1403",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1404": {
+   "amphur_id": "1404",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1405": {
+   "amphur_id": "1405",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1406": {
+   "amphur_id": "1406",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1407": {
+   "amphur_id": "1407",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1408": {
+   "amphur_id": "1408",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 550
+   },
+   "ins_trans_by_team": {
+    "SEC283": 550
+   }
+  },
+  "1409": {
+   "amphur_id": "1409",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1410": {
+   "amphur_id": "1410",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 800
+   },
+   "ins_trans_by_team": {
+    "SEC283": 800
+   }
+  },
+  "1411": {
+   "amphur_id": "1411",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1412": {
+   "amphur_id": "1412",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1413": {
+   "amphur_id": "1413",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 600
+   },
+   "ins_trans_by_team": {
+    "SEC283": 500
+   }
+  },
+  "1414": {
+   "amphur_id": "1414",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1415": {
+   "amphur_id": "1415",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1416": {
+   "amphur_id": "1416",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1901": {
+   "amphur_id": "1901",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1902": {
+   "amphur_id": "1902",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1903": {
+   "amphur_id": "1903",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1904": {
+   "amphur_id": "1904",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1905": {
+   "amphur_id": "1905",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1906": {
+   "amphur_id": "1906",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1907": {
+   "amphur_id": "1907",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1908": {
+   "amphur_id": "1908",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1909": {
+   "amphur_id": "1909",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1910": {
+   "amphur_id": "1910",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1911": {
+   "amphur_id": "1911",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1912": {
+   "amphur_id": "1912",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1913": {
+   "amphur_id": "1913",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2001": {
+   "amphur_id": "2001",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 400,
+    "ศรีราชา": 500,
+    "บางละมุง": 600
+   },
+   "ins_trans_by_team": null
+  },
+  "2002": {
+   "amphur_id": "2002",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 500,
+    "ศรีราชา": 600,
+    "บางละมุง": 700
+   },
+   "ins_trans_by_team": null
+  },
+  "2003": {
+   "amphur_id": "2003",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 700,
+    "ศรีราชา": 800,
+    "บางละมุง": 900
+   },
+   "ins_trans_by_team": null
+  },
+  "2004": {
+   "amphur_id": "2004",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 600,
+    "ศรีราชา": 500,
+    "บางละมุง": 400
+   },
+   "ins_trans_by_team": null
+  },
+  "2005": {
+   "amphur_id": "2005",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 400,
+    "ศรีราชา": 600,
+    "บางละมุง": 700
+   },
+   "ins_trans_by_team": null
+  },
+  "2006": {
+   "amphur_id": "2006",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 550,
+    "ศรีราชา": 600,
+    "บางละมุง": 700
+   },
+   "ins_trans_by_team": null
+  },
+  "2007": {
+   "amphur_id": "2007",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 500,
+    "ศรีราชา": 400,
+    "บางละมุง": 500
+   },
+   "ins_trans_by_team": null
+  },
+  "2009": {
+   "amphur_id": "2009",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 1000,
+    "ศรีราชา": 800,
+    "บางละมุง": 500
+   },
+   "ins_trans_by_team": null
+  },
+  "2010": {
+   "amphur_id": "2010",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 700,
+    "ศรีราชา": 900,
+    "บางละมุง": 1200
+   },
+   "ins_trans_by_team": null
+  },
+  "2011": {
+   "amphur_id": "2011",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 600,
+    "ศรีราชา": 900,
+    "บางละมุง": 1150
+   },
+   "ins_trans_by_team": null
+  },
+  "2101": {
+   "amphur_id": "2101",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2102": {
+   "amphur_id": "2102",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2103": {
+   "amphur_id": "2103",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2104": {
+   "amphur_id": "2104",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2105": {
+   "amphur_id": "2105",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2106": {
+   "amphur_id": "2106",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2107": {
+   "amphur_id": "2107",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 950,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2108": {
+   "amphur_id": "2108",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2201": {
+   "amphur_id": "2201",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2202": {
+   "amphur_id": "2202",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2203": {
+   "amphur_id": "2203",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2204": {
+   "amphur_id": "2204",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2205": {
+   "amphur_id": "2205",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2206": {
+   "amphur_id": "2206",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2207": {
+   "amphur_id": "2207",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2208": {
+   "amphur_id": "2208",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2209": {
+   "amphur_id": "2209",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2210": {
+   "amphur_id": "2210",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2401": {
+   "amphur_id": "2401",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2402": {
+   "amphur_id": "2402",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2403": {
+   "amphur_id": "2403",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2404": {
+   "amphur_id": "2404",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2405": {
+   "amphur_id": "2405",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2406": {
+   "amphur_id": "2406",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2407": {
+   "amphur_id": "2407",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2408": {
+   "amphur_id": "2408",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2409": {
+   "amphur_id": "2409",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2410": {
+   "amphur_id": "2410",
+   "sur_invest": 1300,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1250,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2411": {
+   "amphur_id": "2411",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2701": {
+   "amphur_id": "2701",
+   "sur_invest": 800,
+   "ins_invest_12": 1200,
+   "ins_invest_34": 1200,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2702": {
+   "amphur_id": "2702",
+   "sur_invest": 1100,
+   "ins_invest_12": 1500,
+   "ins_invest_34": 1500,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2703": {
+   "amphur_id": "2703",
+   "sur_invest": 1100,
+   "ins_invest_12": 1500,
+   "ins_invest_34": 1500,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2704": {
+   "amphur_id": "2704",
+   "sur_invest": 800,
+   "ins_invest_12": 1200,
+   "ins_invest_34": 1200,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2705": {
+   "amphur_id": "2705",
+   "sur_invest": 800,
+   "ins_invest_12": 1200,
+   "ins_invest_34": 1200,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2706": {
+   "amphur_id": "2706",
+   "sur_invest": 1100,
+   "ins_invest_12": 1500,
+   "ins_invest_34": 1500,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2707": {
+   "amphur_id": "2707",
+   "sur_invest": 800,
+   "ins_invest_12": 1200,
+   "ins_invest_34": 1200,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2708": {
+   "amphur_id": "2708",
+   "sur_invest": 1100,
+   "ins_invest_12": 1500,
+   "ins_invest_34": 1500,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "2709": {
+   "amphur_id": "2709",
+   "sur_invest": 800,
+   "ins_invest_12": 1200,
+   "ins_invest_34": 1200,
+   "ins_trans": null,
+   "ins_photo_12": null,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3001": {
+   "amphur_id": "3001",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3002": {
+   "amphur_id": "3002",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3003": {
+   "amphur_id": "3003",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1100,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3004": {
+   "amphur_id": "3004",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3005": {
+   "amphur_id": "3005",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3006": {
+   "amphur_id": "3006",
+   "sur_invest": 750,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3007": {
+   "amphur_id": "3007",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3008": {
+   "amphur_id": "3008",
+   "sur_invest": 750,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3009": {
+   "amphur_id": "3009",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3010": {
+   "amphur_id": "3010",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3011": {
+   "amphur_id": "3011",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 650,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3012": {
+   "amphur_id": "3012",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3013": {
+   "amphur_id": "3013",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1100,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3014": {
+   "amphur_id": "3014",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3015": {
+   "amphur_id": "3015",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 650,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3016": {
+   "amphur_id": "3016",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3017": {
+   "amphur_id": "3017",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3018": {
+   "amphur_id": "3018",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3019": {
+   "amphur_id": "3019",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3020": {
+   "amphur_id": "3020",
+   "sur_invest": 750,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3021": {
+   "amphur_id": "3021",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3022": {
+   "amphur_id": "3022",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3023": {
+   "amphur_id": "3023",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 950,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3024": {
+   "amphur_id": "3024",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3025": {
+   "amphur_id": "3025",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3026": {
+   "amphur_id": "3026",
+   "sur_invest": 950,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3027": {
+   "amphur_id": "3027",
+   "sur_invest": 1200,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1250,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3028": {
+   "amphur_id": "3028",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3029": {
+   "amphur_id": "3029",
+   "sur_invest": 1300,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3030": {
+   "amphur_id": "3030",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3031": {
+   "amphur_id": "3031",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3032": {
+   "amphur_id": "3032",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3401": {
+   "amphur_id": "3401",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3402": {
+   "amphur_id": "3402",
+   "sur_invest": 1150,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3403": {
+   "amphur_id": "3403",
+   "sur_invest": 1250,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3404": {
+   "amphur_id": "3404",
+   "sur_invest": 650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3405": {
+   "amphur_id": "3405",
+   "sur_invest": 1500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3407": {
+   "amphur_id": "3407",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3408": {
+   "amphur_id": "3408",
+   "sur_invest": 1600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3409": {
+   "amphur_id": "3409",
+   "sur_invest": 1700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3410": {
+   "amphur_id": "3410",
+   "sur_invest": 1400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3411": {
+   "amphur_id": "3411",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3412": {
+   "amphur_id": "3412",
+   "sur_invest": 1150,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1250,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3414": {
+   "amphur_id": "3414",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3415": {
+   "amphur_id": "3415",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3419": {
+   "amphur_id": "3419",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3420": {
+   "amphur_id": "3420",
+   "sur_invest": 650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3421": {
+   "amphur_id": "3421",
+   "sur_invest": 1400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3422": {
+   "amphur_id": "3422",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3424": {
+   "amphur_id": "3424",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3425": {
+   "amphur_id": "3425",
+   "sur_invest": 1150,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3426": {
+   "amphur_id": "3426",
+   "sur_invest": 1150,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3429": {
+   "amphur_id": "3429",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3430": {
+   "amphur_id": "3430",
+   "sur_invest": 1350,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3431": {
+   "amphur_id": "3431",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3432": {
+   "amphur_id": "3432",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "3433": {
+   "amphur_id": "3433",
+   "sur_invest": 1400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4001": {
+   "amphur_id": "4001",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4002": {
+   "amphur_id": "4002",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4003": {
+   "amphur_id": "4003",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4004": {
+   "amphur_id": "4004",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4005": {
+   "amphur_id": "4005",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4006": {
+   "amphur_id": "4006",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4007": {
+   "amphur_id": "4007",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4008": {
+   "amphur_id": "4008",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4009": {
+   "amphur_id": "4009",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4010": {
+   "amphur_id": "4010",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4011": {
+   "amphur_id": "4011",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4012": {
+   "amphur_id": "4012",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4013": {
+   "amphur_id": "4013",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4014": {
+   "amphur_id": "4014",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1050,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4015": {
+   "amphur_id": "4015",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4016": {
+   "amphur_id": "4016",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4017": {
+   "amphur_id": "4017",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4018": {
+   "amphur_id": "4018",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4019": {
+   "amphur_id": "4019",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4020": {
+   "amphur_id": "4020",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4021": {
+   "amphur_id": "4021",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4022": {
+   "amphur_id": "4022",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4023": {
+   "amphur_id": "4023",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4024": {
+   "amphur_id": "4024",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4025": {
+   "amphur_id": "4025",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "4029": {
+   "amphur_id": "4029",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5001": {
+   "amphur_id": "5001",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5002": {
+   "amphur_id": "5002",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5003": {
+   "amphur_id": "5003",
+   "sur_invest": 1600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 2100,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5004": {
+   "amphur_id": "5004",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5005": {
+   "amphur_id": "5005",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5006": {
+   "amphur_id": "5006",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5007": {
+   "amphur_id": "5007",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5008": {
+   "amphur_id": "5008",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1050,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5009": {
+   "amphur_id": "5009",
+   "sur_invest": 1700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5010": {
+   "amphur_id": "5010",
+   "sur_invest": 1900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 2200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5011": {
+   "amphur_id": "5011",
+   "sur_invest": 1100,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5012": {
+   "amphur_id": "5012",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5013": {
+   "amphur_id": "5013",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5014": {
+   "amphur_id": "5014",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5015": {
+   "amphur_id": "5015",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5016": {
+   "amphur_id": "5016",
+   "sur_invest": 1300,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5017": {
+   "amphur_id": "5017",
+   "sur_invest": 1400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5018": {
+   "amphur_id": "5018",
+   "sur_invest": 1800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 2800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5019": {
+   "amphur_id": "5019",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 300,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5020": {
+   "amphur_id": "5020",
+   "sur_invest": 1900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5021": {
+   "amphur_id": "5021",
+   "sur_invest": 1600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5022": {
+   "amphur_id": "5022",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5023": {
+   "amphur_id": "5023",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5024": {
+   "amphur_id": "5024",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "5025": {
+   "amphur_id": "5025",
+   "sur_invest": 1700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6404": {
+   "amphur_id": "6404",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6501": {
+   "amphur_id": "6501",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6502": {
+   "amphur_id": "6502",
+   "sur_invest": 1400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6503": {
+   "amphur_id": "6503",
+   "sur_invest": 1500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6504": {
+   "amphur_id": "6504",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6505": {
+   "amphur_id": "6505",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6506": {
+   "amphur_id": "6506",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6507": {
+   "amphur_id": "6507",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6508": {
+   "amphur_id": "6508",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6509": {
+   "amphur_id": "6509",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 950,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6601": {
+   "amphur_id": "6601",
+   "sur_invest": 650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6607": {
+   "amphur_id": "6607",
+   "sur_invest": 650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6609": {
+   "amphur_id": "6609",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "6612": {
+   "amphur_id": "6612",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7101": {
+   "amphur_id": "7101",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7102": {
+   "amphur_id": "7102",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7103": {
+   "amphur_id": "7103",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7104": {
+   "amphur_id": "7104",
+   "sur_invest": 1550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1650,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7105": {
+   "amphur_id": "7105",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7106": {
+   "amphur_id": "7106",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7107": {
+   "amphur_id": "7107",
+   "sur_invest": 2000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 2050,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7108": {
+   "amphur_id": "7108",
+   "sur_invest": 3000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 3100,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7109": {
+   "amphur_id": "7109",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 700
+   },
+   "ins_trans_by_team": {
+    "SEC283": 500
+   }
+  },
+  "7110": {
+   "amphur_id": "7110",
+   "sur_invest": 1150,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 1000
+   },
+   "ins_trans_by_team": {
+    "SEC283": 1000
+   }
+  },
+  "7111": {
+   "amphur_id": "7111",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7112": {
+   "amphur_id": "7112",
+   "sur_invest": 1050,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1100,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 1200
+   },
+   "ins_trans_by_team": {
+    "SEC283": 1100
+   }
+  },
+  "7113": {
+   "amphur_id": "7113",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 1000
+   },
+   "ins_trans_by_team": {
+    "SEC283": 850
+   }
+  },
+  "7201": {
+   "amphur_id": "7201",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7202": {
+   "amphur_id": "7202",
+   "sur_invest": 1250,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7203": {
+   "amphur_id": "7203",
+   "sur_invest": 1650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7204": {
+   "amphur_id": "7204",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7205": {
+   "amphur_id": "7205",
+   "sur_invest": 850,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7206": {
+   "amphur_id": "7206",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7207": {
+   "amphur_id": "7207",
+   "sur_invest": 1050,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7208": {
+   "amphur_id": "7208",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7209": {
+   "amphur_id": "7209",
+   "sur_invest": 1050,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "7210": {
+   "amphur_id": "7210",
+   "sur_invest": 1450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8001": {
+   "amphur_id": "8001",
+   "sur_invest": 400,
+   "ins_invest_12": 800,
+   "ins_invest_34": 650,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8002": {
+   "amphur_id": "8002",
+   "sur_invest": 450,
+   "ins_invest_12": 850,
+   "ins_invest_34": 700,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8003": {
+   "amphur_id": "8003",
+   "sur_invest": 450,
+   "ins_invest_12": 850,
+   "ins_invest_34": 700,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8004": {
+   "amphur_id": "8004",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8005": {
+   "amphur_id": "8005",
+   "sur_invest": 900,
+   "ins_invest_12": 1450,
+   "ins_invest_34": 1300,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8006": {
+   "amphur_id": "8006",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8007": {
+   "amphur_id": "8007",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8008": {
+   "amphur_id": "8008",
+   "sur_invest": 500,
+   "ins_invest_12": 950,
+   "ins_invest_34": 800,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8009": {
+   "amphur_id": "8009",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8010": {
+   "amphur_id": "8010",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8011": {
+   "amphur_id": "8011",
+   "sur_invest": 800,
+   "ins_invest_12": 1350,
+   "ins_invest_34": 1200,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8012": {
+   "amphur_id": "8012",
+   "sur_invest": 600,
+   "ins_invest_12": 1050,
+   "ins_invest_34": 900,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8013": {
+   "amphur_id": "8013",
+   "sur_invest": 600,
+   "ins_invest_12": 1050,
+   "ins_invest_34": 900,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8014": {
+   "amphur_id": "8014",
+   "sur_invest": 800,
+   "ins_invest_12": 1350,
+   "ins_invest_34": 1200,
+   "ins_trans": 900,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8015": {
+   "amphur_id": "8015",
+   "sur_invest": 1100,
+   "ins_invest_12": 1650,
+   "ins_invest_34": 1500,
+   "ins_trans": 1200,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8016": {
+   "amphur_id": "8016",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8017": {
+   "amphur_id": "8017",
+   "sur_invest": 900,
+   "ins_invest_12": 1450,
+   "ins_invest_34": 1300,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8018": {
+   "amphur_id": "8018",
+   "sur_invest": 900,
+   "ins_invest_12": 1450,
+   "ins_invest_34": 1300,
+   "ins_trans": 1000,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8019": {
+   "amphur_id": "8019",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8020": {
+   "amphur_id": "8020",
+   "sur_invest": 450,
+   "ins_invest_12": 900,
+   "ins_invest_34": 750,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8021": {
+   "amphur_id": "8021",
+   "sur_invest": 600,
+   "ins_invest_12": 1050,
+   "ins_invest_34": 900,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8022": {
+   "amphur_id": "8022",
+   "sur_invest": 700,
+   "ins_invest_12": 1250,
+   "ins_invest_34": 1100,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8023": {
+   "amphur_id": "8023",
+   "sur_invest": 500,
+   "ins_invest_12": 950,
+   "ins_invest_34": 800,
+   "ins_trans": 500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8301": {
+   "amphur_id": "8301",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8302": {
+   "amphur_id": "8302",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "8303": {
+   "amphur_id": "8303",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 650,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9001": {
+   "amphur_id": "9001",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9002": {
+   "amphur_id": "9002",
+   "sur_invest": 1000,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1100,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9003": {
+   "amphur_id": "9003",
+   "sur_invest": 700,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 750,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9004": {
+   "amphur_id": "9004",
+   "sur_invest": 900,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 950,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9005": {
+   "amphur_id": "9005",
+   "sur_invest": 1450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1500,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9006": {
+   "amphur_id": "9006",
+   "sur_invest": 1600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9007": {
+   "amphur_id": "9007",
+   "sur_invest": 1500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9008": {
+   "amphur_id": "9008",
+   "sur_invest": 1200,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 1400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9009": {
+   "amphur_id": "9009",
+   "sur_invest": 650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 650,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9010": {
+   "amphur_id": "9010",
+   "sur_invest": 800,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 850,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9011": {
+   "amphur_id": "9011",
+   "sur_invest": 400,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 350,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9012": {
+   "amphur_id": "9012",
+   "sur_invest": 450,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 400,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9013": {
+   "amphur_id": "9013",
+   "sur_invest": 550,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9014": {
+   "amphur_id": "9014",
+   "sur_invest": 500,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 450,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9015": {
+   "amphur_id": "9015",
+   "sur_invest": 650,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 700,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "9016": {
+   "amphur_id": "9016",
+   "sur_invest": 600,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 550,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": null,
+   "ins_trans_by_team": null
+  },
+  "1506": {
+   "amphur_id": "1506",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": null,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 550
+   },
+   "ins_trans_by_team": {
+    "SEC283": 550
+   }
+  },
+  "1507": {
+   "amphur_id": "1507",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": null,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 550
+   },
+   "ins_trans_by_team": {
+    "SEC283": 550
+   }
+  },
+  "7305": {
+   "amphur_id": "7305",
+   "sur_invest": null,
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": null,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "SEC283": 800
+   },
+   "ins_trans_by_team": {
+    "SEC283": 600
+   }
+  }
+ },
+ "tumbon": {
+  "200708": {
+   "tumbon_id": "200708",
+   "label": "บ่อวิน",
+   "parent_amphur": "2007",
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 600,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 600,
+    "ศรีราชา": 500,
+    "บางละมุง": 600
+   },
+   "ins_trans_by_team": null
+  },
+  "200903": {
+   "tumbon_id": "200903",
+   "label": "พลูตาหลวง",
+   "parent_amphur": "2009",
+   "ins_invest_12": 500,
+   "ins_invest_34": 400,
+   "ins_trans": 800,
+   "ins_photo_12": 50,
+   "sur_invest_by_team": {
+    "เมืองชลบุรี": 1000,
+    "ศรีราชา": 800,
+    "บางละมุง": 600
+   },
+   "ins_trans_by_team": null
+  }
+ },
+ "province": {
+  "10": {
+   "sur_invest": 300
+  },
+  "11": {
+   "sur_invest": 300
+  },
+  "12": {
+   "sur_invest": 300
+  },
+  "13": {
+   "sur_invest": 300
+  }
+ },
+ "teams": {
+  "SEC125": "เมืองชลบุรี",
+  "SEC212": "เมืองชลบุรี",
+  "SEC218": "เมืองชลบุรี",
+  "SEC343": "เมืองชลบุรี",
+  "SEC432": "เมืองชลบุรี",
+  "SEC189": "ศรีราชา",
+  "SEC264": "ศรีราชา",
+  "SEC387": "ศรีราชา",
+  "SEC463": "ศรีราชา",
+  "SEC148": "บางละมุง",
+  "SEC303": "บางละมุง",
+  "SEC356": "บางละมุง",
+  "SEC283": "SEC283"
+ }
+}
