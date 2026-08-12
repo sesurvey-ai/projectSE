@@ -16,6 +16,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'เวลาเข้างานพนักงาน · ประจำจุด', href: '/admin/checkin-board' },
     { label: 'เวลาเข้า–ออกงาน', href: '/admin/attendance' },
     { label: 'ตารางเวรประจำจุด', href: '/admin/duty-roster' },
+    { label: 'เรทค่าตอบแทน', href: '/admin/billing-rates' },
   ],
   callcenter: [
     { label: 'หน้าหลัก', href: '/callcenter' },

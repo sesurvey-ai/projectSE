@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { adminController } from '../controllers/admin.controller';
+import { billingRatesController } from '../controllers/billingRates.controller';
 import { auth } from '../middleware/auth';
 import { requireRole } from '../middleware/role';
 import { validate } from '../middleware/validate';
@@ -65,5 +66,19 @@ router.get('/reviews', adminController.getReviews);
 router.get('/reviews/:id', adminController.getReviewById);
 router.put('/reviews/:id', validate(updateReviewSchema), adminController.updateReview);
 router.delete('/reviews/:id', adminController.deleteReview);
+
+// ── เรทค่าตอบแทน/เรียกเก็บ ──
+// จงใจไม่ผ่าน validate() แบบ zod: ตัวแก้เรทรับคีย์ไม่คงที่ (เรทรายทีมเป็นแมป ชื่อทีมอิสระ)
+// และ zod ในโปรเจกต์นี้ strip คีย์ที่ไม่รู้จักทิ้งเงียบ ๆ — กับตารางเงินคือแก้แล้วไม่เข้าโดยไม่ฟ้อง
+// ฝั่ง service คัดชื่อคอลัมน์จาก whitelist อยู่แล้ว ค่าที่ไม่รู้จักตกไปเอง
+router.get('/billing/overview', billingRatesController.overview);
+router.get('/billing/amphurs', billingRatesController.amphurs);
+router.put('/billing/amphurs/:id', billingRatesController.saveAmphur);
+router.put('/billing/provinces/:id', billingRatesController.saveProvince);
+router.put('/billing/tumbons/:id', billingRatesController.saveTumbon);
+router.post('/billing/teams', billingRatesController.saveTeam);
+router.delete('/billing/teams/:code', billingRatesController.deleteTeam);
+router.put('/billing/settings/:key', billingRatesController.saveSetting);
+router.get('/billing/changes', billingRatesController.changes);
 
 export default router;
