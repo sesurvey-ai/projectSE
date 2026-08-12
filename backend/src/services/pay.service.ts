@@ -170,11 +170,20 @@ export function computePay(rates: ResolvedRates, input: PayInput): PayResult {
 
 import { amphurCode, provinceCode } from './areaCode.service';
 
-/** ช่องเงินฝั่งพนักงานที่ผู้ตรวจกรอกได้ — ชื่อคีย์ตรงกับคอลัมน์ใน survey_pay */
+/** ช่องรายรับฝั่งพนักงาน (บวกเข้ายอดรวม) — ชื่อคีย์ตรงกับคอลัมน์ใน survey_pay */
 export const PAY_MONEY_FIELDS = [
   'service_fee', 'travel_fee', 'photo_fee', 'phone_fee',
   'bail_fee', 'claim_fee', 'daily_fee', 'other_fee',
 ] as const;
+
+/**
+ * หักเงิน — **แยกช่องกับ "ค่าใช้จ่ายอื่นๆ" แล้ว**
+ *
+ * ระบบเดิมยัดสองเรื่องนี้ไว้ช่องเดียวเพราะส่วนขยายแทรกช่องใหม่ลงฟอร์มระบบเก่าไม่ได้
+ * ผลคือกรอกรายจ่ายอื่นจริง ๆ ไม่ได้เลย · เว็บนี้เราคุมเอง จึงแยกให้ถูกความหมาย
+ * เก็บเป็นค่าบวก แล้วลบตอนรวมยอด
+ */
+export const PAY_DEDUCT_FIELD = 'deduct_fee';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -230,6 +239,7 @@ export interface SavePayInput {
   out_of_hours?: boolean; out_of_hours_amt?: number | null;
   special_tumbon?: boolean;
   daily_check?: string | null;
+  deduct_late?: boolean; deduct_docs?: boolean; deduct_reason?: string | null;
   other_reason?: string | null;
   [k: string]: unknown;
 }
@@ -237,23 +247,24 @@ export interface SavePayInput {
 /**
  * บันทึกยอดจ่ายพนักงาน — 1 เคส 1 แถว
  *
- * `other_fee` เป็นช่องหักเงิน **บังคับให้ติดลบเสมอ** (กติกาเดียวกับระบบเดิม) —
- * เผลอกรอกเป็นบวกแล้วยอดรวมจะบวกเพิ่มแทนที่จะหัก
+ * ยอดรวม = รายรับทั้งหมด − หักเงิน
  */
 export async function saveCasePay(caseId: number, input: SavePayInput, userId?: number) {
   const money: Record<string, number | null> = {};
-  for (const f of PAY_MONEY_FIELDS) {
-    const v = num(input[f]);
-    money[f] = v === null ? null : f === 'other_fee' ? -Math.abs(v) : v;
-  }
-  const total = round2(PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0));
+  for (const f of PAY_MONEY_FIELDS) money[f] = num(input[f]);
+  // หักเงินเก็บเป็นค่าบวกเสมอ — กรอกติดลบมาก็แปลงให้ ไม่งั้นลบซ้อนลบกลายเป็นบวก
+  const deduct = num(input[PAY_DEDUCT_FIELD]);
+  money[PAY_DEDUCT_FIELD] = deduct === null ? null : Math.abs(deduct);
+  const total = round2(
+    PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0) - (money[PAY_DEDUCT_FIELD] ?? 0));
   const { suggest } = await getCasePay(caseId);
 
   const r = await db.query(
     `INSERT INTO survey_pay (case_id, service_fee, travel_fee, photo_fee, phone_fee, bail_fee,
         claim_fee, daily_fee, other_fee, other_reason, out_of_area, out_of_hours,
-        special_tumbon, daily_check, total, rate_snapshot, priced_by, priced_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
+        special_tumbon, daily_check, total, rate_snapshot, priced_by,
+        deduct_fee, deduct_late, deduct_docs, deduct_reason, priced_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW())
      ON CONFLICT (case_id) DO UPDATE SET
        service_fee=EXCLUDED.service_fee, travel_fee=EXCLUDED.travel_fee, photo_fee=EXCLUDED.photo_fee,
        phone_fee=EXCLUDED.phone_fee, bail_fee=EXCLUDED.bail_fee, claim_fee=EXCLUDED.claim_fee,
@@ -261,12 +272,16 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
        out_of_area=EXCLUDED.out_of_area, out_of_hours=EXCLUDED.out_of_hours,
        special_tumbon=EXCLUDED.special_tumbon, daily_check=EXCLUDED.daily_check,
        total=EXCLUDED.total, rate_snapshot=EXCLUDED.rate_snapshot,
+       deduct_fee=EXCLUDED.deduct_fee, deduct_late=EXCLUDED.deduct_late,
+       deduct_docs=EXCLUDED.deduct_docs, deduct_reason=EXCLUDED.deduct_reason,
        priced_by=EXCLUDED.priced_by, priced_at=NOW(), updated_at=NOW()
      RETURNING *`,
     [caseId, money.service_fee, money.travel_fee, money.photo_fee, money.phone_fee,
      money.bail_fee, money.claim_fee, money.daily_fee, money.other_fee,
      input.other_reason ?? null, Boolean(input.out_of_area), Boolean(input.out_of_hours),
      Boolean(input.special_tumbon), input.daily_check ?? null, total,
-     JSON.stringify(suggest?.snapshot ?? {}), userId ?? null]);
+     JSON.stringify(suggest?.snapshot ?? {}), userId ?? null,
+     money[PAY_DEDUCT_FIELD], Boolean(input.deduct_late), Boolean(input.deduct_docs),
+     input.deduct_reason ?? null]);
   return r.rows[0];
 }

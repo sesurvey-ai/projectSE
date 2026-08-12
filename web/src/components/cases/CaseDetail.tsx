@@ -179,7 +179,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         for (const k of Object.keys(data)) {
           if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
         }
-        for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
+        for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon', 'deduct_late', 'deduct_docs']) {
+          payBody[f] = fd.has(f);
+        }
+        payBody.deduct_reason = data['deduct_reason'] || null;
+        // หักเงินโดยไม่บอกเหตุผล = พนักงานถามแล้วไม่มีใครตอบได้ — กันไว้ตั้งแต่ตอนบันทึก
+        if (Number(payBody.deduct_fee ?? 0) > 0 && !payBody.deduct_late && !payBody.deduct_docs && !payBody.deduct_reason) {
+          setSaveMsg('มีการหักเงินแต่ยังไม่ได้ระบุเหตุผล');
+          return false;
+        }
         payBody.daily_check = (data['daily_check'] || '') || null;
         const pr = await api.put(`/api/cases/${caseData.id}/pay`, payBody);
         if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
@@ -1124,6 +1132,30 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
                     <td className="px-3 py-2"><input type="text" name="other_fee_detail" defaultValue={ex.other_fee_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
                     <td className="px-3 py-2"><input type="text" name="other_fee_price" defaultValue={ex.other_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_other_fee" defaultValue={String(pay?.saved?.other_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
+                  </tr>
+                  {/* หักเงิน — ระบบเดิมไม่มีแถวนี้ ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" มาใช้
+                      เพราะแทรกช่องใหม่ลงฟอร์มระบบเก่าไม่ได้ · เว็บนี้เราคุมเอง จึงแยกให้ถูกความหมาย */}
+                  <tr className="border-b border-gray-100 bg-rose-50/40">
+                    <td className="px-3 py-2 text-rose-800 font-medium">หักเงิน</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-700">
+                        <label className="flex items-center gap-1">
+                          <input type="checkbox" disabled={d} name="deduct_late" defaultChecked={Boolean(pay?.saved?.deduct_late)} />ส่งช้า
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <input type="checkbox" disabled={d} name="deduct_docs" defaultChecked={Boolean(pay?.saved?.deduct_docs)} />เอกสารไม่ครบ
+                        </label>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="text" disabled={d} name="deduct_reason" placeholder="เหตุผลอื่น"
+                        defaultValue={String(pay?.saved?.deduct_reason ?? '')}
+                        className={`w-full border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="text" disabled={d} name="pay_deduct_fee" defaultValue={String(pay?.saved?.deduct_fee ?? '')}
+                        className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-rose-50 border-rose-300 text-rose-900'}`} />
+                    </td>
                   </tr>
                 </tbody>
               </table>
