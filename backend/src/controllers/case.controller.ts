@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { caseService } from '../services/case.service';
+import * as payService from '../services/pay.service';
 import { sendSuccess } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
 import { parseIsurveyXml } from '../services/xmlImport.service';
@@ -94,6 +95,16 @@ export const caseController = {
     const caseId = parseInt(req.params.id as string);
     const result = await caseService.updateReport(caseId, req.body);
     sendSuccess(res, result);
+  }),
+
+  /** ค่าตอบแทนผู้สำรวจของเคสนี้ — ยอดที่บันทึกไว้ + ยอดที่ระบบแนะนำจากตารางเรท */
+  getPay: asyncHandler(async (req: Request, res: Response) => {
+    sendSuccess(res, await payService.getCasePay(parseInt(req.params.id as string)));
+  }),
+
+  savePay: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    sendSuccess(res, await payService.saveCasePay(caseId, req.body ?? {}, req.user?.id));
   }),
 
   uploadCaseFolder: asyncHandler(async (req: Request, res: Response) => {

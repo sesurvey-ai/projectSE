@@ -165,3 +165,108 @@ export function computePay(rates: ResolvedRates, input: PayInput): PayResult {
     },
   };
 }
+
+// ────────────────── ผูกกับเคสจริง ──────────────────
+
+import { amphurCode, provinceCode } from './areaCode.service';
+
+/** ช่องเงินฝั่งพนักงานที่ผู้ตรวจกรอกได้ — ชื่อคีย์ตรงกับคอลัมน์ใน survey_pay */
+export const PAY_MONEY_FIELDS = [
+  'service_fee', 'travel_fee', 'photo_fee', 'phone_fee',
+  'bail_fee', 'claim_fee', 'daily_fee', 'other_fee',
+] as const;
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * ยอดที่ระบบแนะนำสำหรับเคสนี้ + ยอดที่บันทึกไว้แล้ว
+ *
+ * แยก "แนะนำ" ออกจาก "บันทึกแล้ว" เพราะผู้ตรวจต้องเห็นว่าตัวเองแก้จากค่าที่ระบบคิดไปเท่าไหร่
+ * — ถ้ากลืนเป็นค่าเดียวกันจะไม่มีใครรู้ว่ายอดถูกปรับมือหรือเปล่า
+ */
+export async function getCasePay(caseId: number) {
+  const saved = (await db.query('SELECT * FROM survey_pay WHERE case_id = $1', [caseId])).rows[0] ?? null;
+
+  const r = (await db.query(
+    `SELECT sr.acc_province, sr.acc_district, sr.acc_surveyor, sr.claim_type,
+            (SELECT count(*) FROM survey_photos sp WHERE sp.report_id = sr.id) AS photo_count
+       FROM survey_reports sr WHERE sr.case_id = $1`, [caseId])).rows[0] as
+    | { acc_province?: string; acc_district?: string; acc_surveyor?: string;
+        claim_type?: string; photo_count?: string }
+    | undefined;
+
+  if (!r) return { saved, suggest: null, area: null };
+
+  const province = provinceCode(r.acc_province);
+  const amphur = amphurCode(r.acc_province, r.acc_district);
+  const team = r.acc_surveyor ? await teamOfSurveyor(r.acc_surveyor) : null;
+
+  // ประเภทเคลมในระบบเราเป็นตัวอักษร (F/D/A/C) แต่ตารางเรทคิดตามเลข 1-4 ของระบบเดิม
+  // F = เคลมสด · D = เคลมแห้ง · ที่เหลือถือเป็นกลุ่มติดตาม/อื่น ๆ
+  const mtypeId = ({ F: '1', D: '2', A: '3', C: '4' } as Record<string, string>)[r.claim_type ?? ''] ?? '1';
+
+  const pay = await calcPay({
+    provinceId: province, amphurId: amphur, mtypeId, team,
+    isSE: true,
+    outOfArea: saved?.out_of_area ? Number(saved.out_of_area_amt ?? 0) : null,
+    outOfHours: saved?.out_of_hours ? Number(saved.out_of_hours_amt ?? 0) : null,
+  });
+
+  return {
+    saved,
+    suggest: { service_fee: pay.surInvest, snapshot: pay.snapshot },
+    area: {
+      province_code: province, amphur_code: amphur, team,
+      province_name: r.acc_province ?? null, district_name: r.acc_district ?? null,
+      // แปลงพื้นที่ไม่ได้ = หาเรทไม่เจอ → หน้าเว็บต้องบอกให้ไปแก้ชื่อจังหวัด/อำเภอก่อน
+      resolved: Boolean(amphur || province),
+      photo_count: Number(r.photo_count ?? 0),
+    },
+  };
+}
+
+export interface SavePayInput {
+  out_of_area?: boolean; out_of_area_amt?: number | null;
+  out_of_hours?: boolean; out_of_hours_amt?: number | null;
+  special_tumbon?: boolean;
+  daily_check?: string | null;
+  other_reason?: string | null;
+  [k: string]: unknown;
+}
+
+/**
+ * บันทึกยอดจ่ายพนักงาน — 1 เคส 1 แถว
+ *
+ * `other_fee` เป็นช่องหักเงิน **บังคับให้ติดลบเสมอ** (กติกาเดียวกับระบบเดิม) —
+ * เผลอกรอกเป็นบวกแล้วยอดรวมจะบวกเพิ่มแทนที่จะหัก
+ */
+export async function saveCasePay(caseId: number, input: SavePayInput, userId?: number) {
+  const money: Record<string, number | null> = {};
+  for (const f of PAY_MONEY_FIELDS) {
+    const v = num(input[f]);
+    money[f] = v === null ? null : f === 'other_fee' ? -Math.abs(v) : v;
+  }
+  const total = round2(PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0));
+  const { suggest } = await getCasePay(caseId);
+
+  const r = await db.query(
+    `INSERT INTO survey_pay (case_id, service_fee, travel_fee, photo_fee, phone_fee, bail_fee,
+        claim_fee, daily_fee, other_fee, other_reason, out_of_area, out_of_hours,
+        special_tumbon, daily_check, total, rate_snapshot, priced_by, priced_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW())
+     ON CONFLICT (case_id) DO UPDATE SET
+       service_fee=EXCLUDED.service_fee, travel_fee=EXCLUDED.travel_fee, photo_fee=EXCLUDED.photo_fee,
+       phone_fee=EXCLUDED.phone_fee, bail_fee=EXCLUDED.bail_fee, claim_fee=EXCLUDED.claim_fee,
+       daily_fee=EXCLUDED.daily_fee, other_fee=EXCLUDED.other_fee, other_reason=EXCLUDED.other_reason,
+       out_of_area=EXCLUDED.out_of_area, out_of_hours=EXCLUDED.out_of_hours,
+       special_tumbon=EXCLUDED.special_tumbon, daily_check=EXCLUDED.daily_check,
+       total=EXCLUDED.total, rate_snapshot=EXCLUDED.rate_snapshot,
+       priced_by=EXCLUDED.priced_by, priced_at=NOW(), updated_at=NOW()
+     RETURNING *`,
+    [caseId, money.service_fee, money.travel_fee, money.photo_fee, money.phone_fee,
+     money.bail_fee, money.claim_fee, money.daily_fee, money.other_fee,
+     input.other_reason ?? null, Boolean(input.out_of_area), Boolean(input.out_of_hours),
+     Boolean(input.special_tumbon), input.daily_check ?? null, total,
+     JSON.stringify(suggest?.snapshot ?? {}), userId ?? null]);
+  return r.rows[0];
+}

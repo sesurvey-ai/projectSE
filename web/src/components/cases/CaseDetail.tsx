@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
 import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
@@ -8,6 +8,18 @@ import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import DamageEditor, { DamageItem } from './DamageEditor';
 import { InjuredEditor, PropertyEditor, dropEmptyRecords, RecordItem } from './RecordEditors';
+
+/** ค่าตอบแทนผู้สำรวจของเคส — `suggest` คือยอดที่ระบบคิดจากตารางเรท `saved` คือที่ผู้ตรวจบันทึกจริง
+ *  แยกกันเพื่อให้เห็นว่าผู้ตรวจปรับจากยอดที่ระบบแนะนำไปเท่าไหร่ */
+interface PayData {
+  saved: Record<string, number | string | boolean | null> | null;
+  suggest: { service_fee: number | null; snapshot: Record<string, unknown> } | null;
+  area: {
+    province_code: string | null; amphur_code: string | null; team: string | null;
+    province_name: string | null; district_name: string | null;
+    resolved: boolean; photo_count: number;
+  } | null;
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface CaseDetailProps {
@@ -119,8 +131,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [property, setProperty] = useState<RecordItem[]>(() => toRecords(report?.damaged_property));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — คนละฝั่งเงินกับตาราง survey_expenses ข้างบน
+  const [pay, setPay] = useState<PayData | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const d = !isEditing;
+
+  useEffect(() => {
+    let alive = true;
+    api.get(`/api/cases/${caseData.id}/pay`)
+      .then((r) => { if (alive && r.data?.success) setPay(r.data.data as PayData); })
+      .catch(() => {});   // ยังไม่มีสิทธิ์/ยังไม่มีข้อมูล → ซ่อนบล็อกไปเลย ไม่ต้องรบกวนผู้ตรวจ
+    return () => { alive = false; };
+  }, [caseData.id]);
 
   const handleSave = async (): Promise<boolean> => {
     if (!formRef.current) return false;
@@ -149,6 +171,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         payload.insured_damage = damage.filter((x) => x.part && x.level);
         payload.injured_persons = dropEmptyRecords(injured);
         payload.damaged_property = dropEmptyRecords(property);
+      }
+      // ยอดจ่ายพนักงานอยู่คนละตาราง (survey_pay) → ส่งแยก
+      // ยิงก่อนบันทึกรายงาน เพื่อให้ถ้าพังจะพังทั้งคู่ ไม่เหลือสถานะครึ่ง ๆ
+      if (isEditing) {
+        const payBody: Record<string, unknown> = { other_reason: data['other_fee_detail'] ?? null };
+        for (const k of Object.keys(data)) {
+          if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
+        }
+        for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
+        payBody.daily_check = (data['daily_check'] || '') || null;
+        const pr = await api.put(`/api/cases/${caseData.id}/pay`, payBody);
+        if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
       }
       const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: payload });
       if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
@@ -1036,60 +1070,103 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <div>
               <table className="w-full text-sm table-fixed">
                 <colgroup>
-                  <col style={{ width: '40%' }} />
-                  <col style={{ width: '30%' }} />
-                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '32%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '24%' }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="px-3 py-2 text-left text-gray-600 font-semibold">รายละเอียด</th>
                     <th className="px-3 py-2 text-center text-gray-600 font-semibold">จำนวน</th>
-                    <th className="px-3 py-2 text-center text-gray-600 font-semibold">ราคา/หน่วย</th>
+                    <th className="px-3 py-2 text-center text-gray-600 font-semibold">ราคา/หน่วย<div className="text-[10px] font-normal text-gray-400">เรียกเก็บประกัน</div></th>
+                    {/* ฝั่งจ่ายพนักงาน — ระบบประกันไม่มีช่องนี้ ต้องเก็บที่ระบบเราเท่านั้น */}
+                    <th className="px-3 py-2 text-center text-blue-700 font-semibold">ราคาพนักงาน<div className="text-[10px] font-normal text-blue-400">จ่ายผู้สำรวจ</div></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าบริการ</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="service_fee_count" defaultValue={ex.service_fee_count || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="service_fee_price" defaultValue={ex.service_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="service_fee_price" defaultValue={ex.service_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_service_fee" defaultValue={String(pay?.saved?.service_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="travel_fee_count" defaultValue={ex.travel_fee_count || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">ครั้ง</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="travel_fee_price" defaultValue={ex.travel_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="travel_fee_price" defaultValue={ex.travel_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_travel_fee" defaultValue={String(pay?.saved?.travel_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่ารูปถ่าย</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="photo_fee_count" defaultValue={ex.photo_fee_count || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">รูป</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="photo_fee_price" defaultValue={ex.photo_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="photo_fee_price" defaultValue={ex.photo_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_photo_fee" defaultValue={String(pay?.saved?.photo_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าโทรศัพท์</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="phone_fee" defaultValue={ex.phone_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="phone_fee" defaultValue={ex.phone_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_phone_fee" defaultValue={String(pay?.saved?.phone_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าประกันตัว</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="bail_fee" defaultValue={ex.bail_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="bail_fee" defaultValue={ex.bail_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_bail_fee" defaultValue={String(pay?.saved?.bail_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue={ex.claim_fee_percent || ''} className="w-[50px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px]">%</span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="claim_fee_price" defaultValue={ex.claim_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="claim_fee_price" defaultValue={ex.claim_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_claim_fee" defaultValue={String(pay?.saved?.claim_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 py-2 text-gray-700">ค่าคัดประจำวัน</td>
                     <td className="px-3 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px]"></span><span className="w-[30px]"></span></div></td>
-                    <td className="px-3 py-2"><input type="text" name="daily_record_fee" defaultValue={ex.daily_record_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="daily_record_fee" defaultValue={ex.daily_record_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_daily_fee" defaultValue={String(pay?.saved?.daily_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-3 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
                     <td className="px-3 py-2"><input type="text" name="other_fee_detail" defaultValue={ex.other_fee_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
-                    <td className="px-3 py-2"><input type="text" name="other_fee_price" defaultValue={ex.other_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 py-2"><input type="text" name="other_fee_price" defaultValue={ex.other_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td><td className="px-3 py-2"><input type="text" disabled={d} name="pay_other_fee" defaultValue={String(pay?.saved?.other_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td>
                   </tr>
                 </tbody>
               </table>
+              {/* ── ตัวปรับเรทฝั่งพนักงาน ── ของเดิมอยู่ในส่วนขยายเบราว์เซอร์บนหน้าระบบเก่า */}
+              <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" disabled={d} name="out_of_area" defaultChecked={Boolean(pay?.saved?.out_of_area)} />
+                    <span className="text-gray-700">นอกพื้นที่</span>
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" disabled={d} name="out_of_hours" defaultChecked={Boolean(pay?.saved?.out_of_hours)} />
+                    <span className="text-gray-700">นอกเวลา</span>
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" disabled={d} name="special_tumbon" defaultChecked={Boolean(pay?.saved?.special_tumbon)} />
+                    <span className="text-gray-700">ตำบลพิเศษ</span>
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <span className="text-gray-700">ค่าคัดประจำวัน</span>
+                    <select disabled={d} name="daily_check" defaultValue={String(pay?.saved?.daily_check ?? '')}
+                      className={`border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`}>
+                      <option value="">— ไม่มี —</option>
+                      <option value="ถูก">ถูก</option>
+                      <option value="ผิด">ผิด</option>
+                      <option value="รอผล">รอผล</option>
+                    </select>
+                  </label>
+                </div>
+                {pay?.area && (pay.area.resolved ? (
+                  <div className="mt-2 text-xs text-gray-500">
+                    เรทของ {pay.area.province_name} / {pay.area.district_name}
+                    {pay.area.team ? ` · ทีม${pay.area.team}` : ''}
+                    {pay.suggest?.service_fee != null ? ` · ระบบแนะนำค่าบริการ ${pay.suggest.service_fee} บาท` : ''}
+                    {pay.saved?.total != null ? ` · รวมที่บันทึกไว้ ${pay.saved.total} บาท` : ''}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    แปลงจังหวัด/อำเภอของเคสนี้เป็นรหัสพื้นที่ไม่ได้ — หาเรทอัตโนมัติไม่ได้ กรอกยอดเองได้ตามปกติ
+                  </div>
+                ))}
+              </div>
+
             </div>
           </div>
         </div>

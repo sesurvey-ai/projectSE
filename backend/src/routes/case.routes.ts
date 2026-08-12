@@ -257,4 +257,8 @@ router.put('/:id/survey', auth, requireRole('surveyor'), caseController.updateSu
 router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSchema), reviewController.submitReview);
 router.put('/:id/report', auth, requireRole('checker'), caseController.updateReport);
 
+// ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — เฉพาะผู้ตรวจ ผู้สำรวจไม่เกี่ยวกับการตั้งยอดจ่ายตัวเอง
+router.get('/:id/pay', auth, requireRole('checker', 'admin'), caseController.getPay);
+router.put('/:id/pay', auth, requireRole('checker', 'admin'), caseController.savePay);
+
 export default router;
