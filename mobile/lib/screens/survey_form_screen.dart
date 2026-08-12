@@ -13,6 +13,7 @@ import '../config/api_config.dart';
 import '../services/auth_token.dart';
 import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
+import 'damage_notice_screen.dart';
 import '../data/survey_master.dart'
     show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn;
 import 'package:permission_handler/permission_handler.dart';
@@ -1608,6 +1609,46 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   int _photoCountOf(String cat) => _photoCat.values.where((c) => c == cat).length;
 
+  /// ปุ่มออกใบเอกสารหน้างาน (ใบแจ้งความเสียหาย / ใบติดต่อ) — ใช้ข้อมูลที่กรอกอยู่ตอนนี้
+  /// ไม่ต้องรอส่งงาน เพราะใบนี้ต้องยื่นให้คู่กรณีเซ็นตั้งแต่อยู่หน้างาน
+  Widget _slipButton() => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: OutlinedButton.icon(
+          onPressed: _openSlip,
+          icon: const Icon(Icons.receipt_long_outlined, size: 20),
+          label: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text('ออกใบเอกสารหน้างาน'
+                '${_photoCountOf(_kSlipCat) > 0 ? '  (ออกแล้ว ${_photoCountOf(_kSlipCat)} ใบ)' : ''}'),
+          ),
+        ),
+      );
+
+  static const _kSlipCat = 'ใบแจ้งความเสียหาย';
+
+  /// เปิดหน้าออกใบ แล้วเอารูปใบที่ได้ **เข้ารายการรูปหมวดเดียวกับที่ถ่ายเอง**
+  /// จึงอัปขึ้นเซิร์ฟเวอร์และไหลต่อไปตามท่อรูปเดิมโดยไม่ต้องแก้อะไรเพิ่ม
+  Future<void> _openSlip() async {
+    final folder = await _getCaseFolder();
+    if (!mounted) return;
+    final path = await Navigator.of(context).push<String>(MaterialPageRoute(
+      builder: (_) => DamageNoticeScreen(
+        report: _collectFormData(),
+        operatorName: _accSurveyorCtl.text.trim(),
+        operatorPhone: _accSurveyorPhoneCtl.text.trim(),
+        caseFolder: folder,
+      ),
+    ));
+    if (path == null || !mounted) return;
+    setState(() {
+      _photoPaths.add(path);
+      _photoCat[path] = _kSlipCat;
+    });
+    _autosave();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('เก็บใบเข้าสำนวนแล้ว (หมวดใบแจ้งความเสียหาย)')));
+  }
+
   // sub ใต้หัวข้อ "รูปภาพ"
   Widget _imgSubline() => const Padding(
         padding: EdgeInsets.only(top: 2, bottom: 2),
@@ -2287,6 +2328,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               (v) => _hasInjured = v),
           _hubToggleCard(Icons.category, '8. ทรัพย์สิน', _SView.property, _hasProperty, _property.length, _property, 'ทรัพย์สิน',
               (v) => _hasProperty = v),
+          const SizedBox(height: 8),
+          _slipButton(),
         ],
       ),
     );
