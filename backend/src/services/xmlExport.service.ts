@@ -535,9 +535,13 @@ export function generateSurveyXml(r: Row): string {
    * ⚠️ ของเดิมส่ง**ค่าไม่ตรงกัน** (บล็อกบนมีค่า บล็อกล่างว่าง) → ผลขึ้นกับว่า EMCS อ่านบล็อกไหน
    * ซึ่งยังไม่มีใครรู้ · จึงคำนวณครั้งเดียวแล้วใช้ค่าเดียวกันทั้ง 2 ที่ ให้ผลเหมือนกันไม่ว่าอ่านทางไหน
    *
-   * fallback `notes` = "หมายเหตุเพิ่มเติม" จากแอป — ยกมาจากพฤติกรรมเดิมของบล็อกบน (ไม่เปลี่ยน)
+   * ⛔ **ห้ามใส่ fallback `|| r.notes` กลับมา** (กติกา user 2026-08-12) — `notes` คือ
+   *    "หมายเหตุเพิ่มเติม" ที่ผู้สำรวจจดในแอป **คนละเรื่องกับ "ความเห็นของเซอร์เวย์"**
+   *    ที่เป็นข้อความทางการบนสำนวนของบริษัทประกัน · ไม่มีข้อมูล = ส่งว่าง ให้บอทข้ามไป
+   *    (เคยมี fallback นี้ แต่ซ้ำซ้อนอยู่แล้ว: `xmlImport.service.ts` เขียน `SURV_COMMENT`
+   *     ลง `surveyor_comment` ตรง ๆ อยู่แล้ว การ round-trip ของงาน ISURVEY จึงไม่พึ่ง notes)
    */
-  const survComment = r.surveyor_comment || r.notes;
+  const survComment = r.surveyor_comment;
 
   const report = '<TXN_SURV_REPORT>' +
     el('SURV_JOBNO', r.survey_job_no) +

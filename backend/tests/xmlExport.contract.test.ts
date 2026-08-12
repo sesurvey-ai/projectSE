@@ -237,10 +237,13 @@ console.log('\n── 3 ช่องความเห็น (หน้าค่
           billXml.includes(`<${tag}> </${tag}>`));
   }
 
-  // fallback เดิม: ไม่มี surveyor_comment → ใช้ notes ("หมายเหตุเพิ่มเติม" จากแอป)
-  const fbXml = generateSurveyXml({ ...row, notes: 'หมายเหตุจากแอป' } as never);
-  check('SURV_COMMENT fallback ← notes เมื่อไม่มี surveyor_comment',
-        fbXml.includes('<SURV_COMMENT>หมายเหตุจากแอป</SURV_COMMENT>'));
+  // ⛔ notes ("หมายเหตุเพิ่มเติม" ในแอป) ต้อง **ไม่** ไหลไปเป็นความเห็นเซอร์เวย์ —
+  //    คนละเรื่องกัน (กติกา user 2026-08-12) · เคยมี fallback นี้ ถูกตัดออกแล้ว ห้ามใส่กลับ
+  const nx = generateSurveyXml({ ...row, notes: 'หมายเหตุเพิ่มเติมจากแอป' } as never);
+  check('notes ต้องไม่กลายเป็น SURV_COMMENT (ไม่มี fallback แล้ว)',
+        !nx.includes('หมายเหตุเพิ่มเติมจากแอป'));
+  check('ไม่มี surveyor_comment → SURV_COMMENT ว่าง แม้จะมี notes',
+        (nx.match(/<SURV_COMMENT> <\/SURV_COMMENT>/g) ?? []).length === 2);
 }
 
 // ── การ์ดกันเงิน 2 ฝั่งปนกัน ────────────────────────────────────────────────
