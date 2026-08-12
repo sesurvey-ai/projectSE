@@ -122,36 +122,41 @@ function RecordList({
 }
 
 // ลำดับช่องตามหน้าผู้บาดเจ็บของแอปมือถือ (person_type → ข้อมูลตัว → ที่ทำงาน → การรักษา)
+//
+// ⚠️ `*` = ช่องบังคับ **รายคน/รายชิ้น** ของระบบประกัน (vlidInjPerson / vlidAsset)
+//    ลิสต์ต้องตรงกับ `checkItems()` ในแอปมือถือ (survey_form_screen.dart)
+//    ขาดแม้ช่องเดียว = บันทึก**ทั้งบล็อก**บนระบบประกันไม่ผ่าน และช่องที่ว่างกลายเป็น '-'
+//    ให้หัวหน้าไล่แก้เองทีละช่อง — เดิมหน้านี้ติดดาวไว้ช่องเดียว (ประเภทผู้บาดเจ็บ)
 const INJURED_FIELDS: FieldDef[] = [
   { k: 'person_type', label: 'ประเภทผู้บาดเจ็บ *', options: PERSON_TYPES },
   { k: 'relation', label: 'ความสัมพันธ์', options: RELATIONS },
-  { k: 'gender', label: 'เพศ', options: GENDERS },
-  { k: 'name', label: 'ชื่อ-นามสกุล' },
+  { k: 'gender', label: 'เพศ *', options: GENDERS },
+  { k: 'name', label: 'ชื่อ-นามสกุล *' },
   { k: 'age', label: 'อายุ' },
-  { k: 'cid', label: 'เลขบัตรประชาชน' },
+  { k: 'cid', label: 'เลขบัตรประชาชน *' },
   { k: 'car_reg', label: 'เลขทะเบียนรถ' },
   { k: 'phone', label: 'โทรศัพท์' },
   { k: 'occupation', label: 'อาชีพ' },
   { k: 'work_place', label: 'ทำงานที่' },
   { k: 'position', label: 'ตำแหน่ง' },
   { k: 'income', label: 'รายได้' },
-  { k: 'hospital', label: 'โรงพยาบาล' },
+  { k: 'hospital', label: 'โรงพยาบาล *' },
   { k: 'treat_from', label: 'รักษาตั้งแต่', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
   { k: 'treat_to', label: 'ถึงวันที่', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
   { k: 'treat_cost', label: 'ค่ารักษา' },
   { k: 'wound_level', label: 'ระดับการบาดเจ็บ', options: WOUND_LEVELS },
   { k: 'address', label: 'ที่อยู่', wide: true },
-  { k: 'symptom', label: 'อาการบาดเจ็บ', wide: true },
+  { k: 'symptom', label: 'อาการบาดเจ็บ *', wide: true },
 ];
 
 const PROPERTY_FIELDS: FieldDef[] = [
-  { k: 'item', label: 'รายการทรัพย์สิน' },
-  { k: 'owner_name', label: 'เจ้าของ' },
+  { k: 'item', label: 'รายการทรัพย์สิน *' },
+  { k: 'owner_name', label: 'เจ้าของ *' },
   { k: 'owner_phone', label: 'โทรศัพท์เจ้าของ' },
   { k: 'estimated_cost', label: 'ค่าเสียหายประมาณ' },
   { k: 'owner_address', label: 'ที่อยู่เจ้าของ', wide: true },
-  { k: 'cause', label: 'สาเหตุที่เสียหาย', wide: true },
-  { k: 'detail', label: 'รายละเอียดความเสียหาย', wide: true },
+  { k: 'cause', label: 'สาเหตุที่เสียหาย *', wide: true },
+  { k: 'detail', label: 'รายละเอียดความเสียหาย *', wide: true },
 ];
 
 export function InjuredEditor({ items, onChange }: { items: RecordItem[]; onChange: (n: RecordItem[]) => void }) {
