@@ -151,5 +151,97 @@ check('ติดตามงาน: FLU_TYPE=Y (มีการนัดหม�
 check('ติดตามงาน: FLU_NO <- acc_followup_count', has('FLU_NO', '2'));
 check('ติดตามงาน: FLU_DETAIL <- acc_followup_detail', has('FLU_DETAIL', 'นัดดูรถที่อู่'));
 
+// ── ตารางค่าใช้จ่าย <TXN_SURV_BILL> (ฝั่งเรียกเก็บบริษัทประกัน) ────────────────
+//
+// เดิมบล็อกนี้**ไม่มีเทสคุมเลยแม้แต่ตัวเดียว** ทั้งที่เป็นตัวเลขเงินที่วิ่งเข้าระบบประกัน
+// (ฝั่งจ่ายพนักงานมี pay.replay.test.ts คุมอยู่แล้ว — ฝั่งเรียกเก็บกลับหลวมกว่า)
+//
+// สองเคสที่ต้องล็อก:
+//   1. ไม่มีแถว survey_expenses (หรือ source ถูกกันไว้) → ต้องได้ **0.00 ทุกช่อง**
+//      ไม่ใช่ "ไม่มีบล็อก" — ถ้าวันหน้ามีใครทำให้บล็อกหายไป EMCS importer จะเจอสัญญาคนละแบบ
+//   2. มีครบทั้ง 13 ช่อง → ค่าต้องออกตรงทุก tag
+console.log('\n── ตารางค่าใช้จ่าย (เรียกเก็บประกัน) ──');
+
+const ZERO_MONEY_TAGS = ['SUR_INVEST', 'SUR_TRANS', 'SUR_PHOTO', 'SUR_OTHER',
+  'SUR_TEL', 'SUR_INSURE', 'SUR_CLAIM', 'SUR_DAILY', 'SUR_PERCENT_CLAIM',
+  'FUL_INVEST', 'FUL_TRANS', 'FUL_PHOTO'];
+
+// `row` ด้านบนไม่มีคีย์ค่าใช้จ่ายเลย = เคสที่ถูก withInsurerBill กันไว้ / ยังไม่มีใครกรอกราคา
+check('บิล: บล็อก <TXN_SURV_BILL> ต้องออกเสมอ แม้ไม่มียอด', xml.includes('<TXN_SURV_BILL>'));
+for (const tag of ZERO_MONEY_TAGS) {
+  check(`บิลศูนย์: ${tag} = 0.00`, has(tag, '0.00'));
+}
+for (const tag of ['INVEST_NUM', 'TRANS_NUM', 'PHOTO_NUM']) {
+  check(`บิลศูนย์: ${tag} = 0`, has(tag, '0'));
+}
+
+// เคสมียอดครบ — ค่าชุดนี้เลียนแบบใบจริง (ค่าบริการ 800 · เดินทาง 300 · รูป 5 บาท × 20)
+const billRow: Record<string, unknown> = {
+  ...row,
+  service_fee_count: 1, service_fee_price: 800,
+  travel_fee_count: 1, travel_fee_price: 300,
+  photo_fee_count: 20, photo_fee_price: 5,
+  phone_fee: 50, bail_fee: 0,
+  claim_fee_percent: 0, claim_fee_price: 0,
+  daily_record_fee: 200,
+  other_fee_detail: 'ค่าทางด่วน', other_fee_price: 60,
+};
+const billXml = generateSurveyXml(billRow as never);
+const billHas = (tag: string, val: string) => billXml.includes(`<${tag}>${val}</${tag}>`);
+
+check('บิลเต็ม: SUR_INVEST = 800.00 (ค่าบริการ)', billHas('SUR_INVEST', '800.00'));
+check('บิลเต็ม: SUR_TRANS = 300.00 (ค่าเดินทาง)', billHas('SUR_TRANS', '300.00'));
+check('บิลเต็ม: INVEST_NUM = 1', billHas('INVEST_NUM', '1'));
+check('บิลเต็ม: TRANS_NUM = 1', billHas('TRANS_NUM', '1'));
+check('บิลเต็ม: PHOTO_NUM = 20', billHas('PHOTO_NUM', '20'));
+// สัญญากับฝั่งบอท: SUR_PHOTO = **ยอดรวม** (บอทหารด้วย PHOTO_NUM เอง) ไม่ใช่ราคาต่อรูป
+check('บิลเต็ม: SUR_PHOTO = 100.00 (ยอดรวม 5 × 20 ไม่ใช่ราคาต่อรูป)',
+      billHas('SUR_PHOTO', '100.00'));
+check('บิลเต็ม: SUR_TEL = 50.00 ← phone_fee', billHas('SUR_TEL', '50.00'));
+check('บิลเต็ม: SUR_INSURE = 0.00 ← bail_fee', billHas('SUR_INSURE', '0.00'));
+check('บิลเต็ม: SUR_DAILY = 200.00 ← daily_record_fee', billHas('SUR_DAILY', '200.00'));
+check('บิลเต็ม: SUR_OTHER = 60.00 ← other_fee_price', billHas('SUR_OTHER', '60.00'));
+check('บิลเต็ม: OTHER_DESC ← other_fee_detail', billHas('OTHER_DESC', 'ค่าทางด่วน'));
+// 3 ช่องความเห็นบนหน้าค่าใช้จ่าย EMCS — หัวหน้ากรอกเองทั้งหมด (กติกา user) ห้ามส่งค่าไป
+// el() แทนค่าว่างด้วย "ช่องว่าง 1 ตัว" โดยตั้งใจ (ไม่ใช่ tag เปล่า) → เช็คตามรูปแบบนั้น
+for (const tag of ['ACC_RESULT', 'ACC_COMMENT', 'SURV_COMMENT']) {
+  check(`บิลเต็ม: ${tag} ต้องไม่มีเนื้อหา (หัวหน้ากรอกเองใน EMCS)`,
+        billXml.includes(`<${tag}> </${tag}>`));
+}
+
+// ── การ์ดกันเงิน 2 ฝั่งปนกัน ────────────────────────────────────────────────
+//
+// `survey_expenses` (เรียกเก็บประกัน) กับ `survey_pay` (จ่ายพนักงาน) มีคอลัมน์ชื่อซ้ำกัน
+// เป๊ะ 2 ตัว: phone_fee · bail_fee ซึ่งไปเป็น SUR_TEL / SUR_INSURE พอดี
+// ถ้าวันหน้ามีใครเปลี่ยน withInsurerBill กลับไป `SELECT *` หรือ join ตารางค่าจ้างพนักงาน
+// เข้ามา ค่าจ้างจะกลายเป็นบิลเรียกเก็บประกันโดยไม่มี error ใด ๆ — เทสรันไทม์จับไม่ได้
+// เพราะ withInsurerBill ต้องต่อฐานข้อมูล → ตรวจที่ตัวซอร์สแทน (สไตล์เดียวกับ
+// se-autokey/test_smoke.py) และ**จำกัดขอบเขตเฉพาะตัวฟังก์ชัน** ไม่ใช่ทั้งไฟล์
+// เพื่อไม่ให้พังมั่วเวลามีคนเพิ่มโค้ดที่ไม่เกี่ยวในไฟล์เดียวกัน
+console.log('\n── การ์ด: เงินฝั่งพนักงานต้องไม่หลุดเข้าบิลประกัน ──');
+{
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'services', 'case.service.ts'), 'utf8');
+  const start = src.indexOf('const BILLABLE_SOURCES');
+  const end = src.indexOf('export const caseService');
+  const block = start >= 0 && end > start ? src.slice(start, end) : '';
+  // ตัดคอมเมนต์ออกก่อนตรวจ — คอมเมนต์ของบล็อกนี้**อธิบายเรื่อง survey_pay อยู่แล้ว**
+  // ถ้าไม่ตัด การ์ดจะจับคำอธิบายของตัวเองแล้วแดงตลอด
+  const fn = block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  check('พบบล็อก withInsurerBill ในซอร์ส', block.length > 0,
+        'ถ้าล้มแปลว่าเปลี่ยนชื่อ/ย้ายฟังก์ชัน — อัปเดตเทสนี้ด้วย');
+  check("allow-list มี 'isurvey_xml'", fn.includes("'isurvey_xml'"));
+  check("allow-list มี 'mobile'", fn.includes("'mobile'"));
+  check("allow-list ต้อง**ไม่**มี 'emcs_extract' (ข้อมูลทดสอบ เลขของประกันเอง)",
+        !fn.includes("'emcs_extract'"));
+  check('⛔ ห้ามแตะ survey_pay ในเส้นทางบิลประกัน (คนละฝั่งเงิน)',
+        !fn.includes('survey_pay'));
+  check('⛔ ห้าม SELECT * จาก survey_expenses (phone_fee/bail_fee ชนกับ survey_pay)',
+        !/SELECT\s+\*\s+FROM\s+survey_expenses/i.test(fn));
+}
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed === 0 ? 0 : 1);

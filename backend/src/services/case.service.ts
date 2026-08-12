@@ -64,20 +64,57 @@ const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseU
 };
 
 /**
- * ยอดเงินใน XML มีเฉพาะงานที่นำเข้าจาก ISURVEY:
+ * เติมยอด **ฝั่งเรียกเก็บบริษัทประกัน** (ตาราง `survey_expenses`) ลงในแถวที่จะไปทำ XML
  *
- *  mobile      — แอปมือถือไม่มีหน้า "ค่าใช้จ่าย" (ยังอยู่นอกขอบเขต) จึงไม่มียอดให้ส่ง
- *                หัวหน้ากรอกเองที่หน้าค่าใช้จ่ายของ EMCS แล้วกดส่งงาน
- *                กันไว้ด้วย source ไม่ใช่แค่ "ว่างก็ไม่ส่ง" เผื่อผู้ตรวจเผลอกรอกช่อง
- *                ค่าใช้จ่ายบนหน้าเว็บ — ค่านั้นไม่ควรไหลไปทับของหัวหน้าใน EMCS
- *  isurvey_xml — ไฟล์จากระบบเก่ามียอดที่ "หัวหน้ากรอกไว้แล้ว" ติดมาด้วย → ต้องส่งต่อ
- *                ไม่งั้นข้อมูลของหัวหน้าหายตอนย้ายระบบ
+ * ── ทำไมเมื่อก่อนกรองด้วย `source === 'isurvey_xml'` อย่างเดียว ──────────────
+ * ตอนนั้นเคส mobile **ไม่มีทางมียอดที่ถูกต้องได้เลย** เพราะแอปไม่มีหน้า "ค่าใช้จ่าย"
+ * และหัวหน้าไปกรอกที่หน้าค่าใช้จ่ายของ EMCS เอง → ถ้าเคส mobile มีแถว survey_expenses
+ * ขึ้นมา แปลว่าผู้ตรวจ**เผลอ**กรอกช่องบนเว็บ ส่งต่อไปก็ทับของหัวหน้าใน EMCS
+ *
+ * ── ทำไมกติกานั้นใช้ไม่ได้แล้ว (อย่าเอา `=== 'isurvey_xml'` กลับมา) ───────────
+ * EMCS **ไม่มีช่องเก็บเรทของเรา** → แผนที่ตกลงกันคือ *หัวหน้ากรอกราคาบนเว็บเรา → XML*
+ * ช่อง "ราคา/หน่วย · เรียกเก็บประกัน" บนหน้าตรวจงานจึงกลายเป็น**ที่กรอกราคาอย่างเป็นทางการ**
+ * ของงานมือถือ ไม่ใช่ "ช่องที่เผลอกรอก" อีกต่อไป · เอากติกาเก่ากลับมา = ยอดที่หัวหน้ากรอก
+ * หายเงียบ ๆ (XML ยังออก `<TXN_SURV_BILL>` ครบทุกครั้ง แต่เป็น 0.00 ทั้งบล็อก ไม่มีอะไรฟ้อง)
+ *
+ * ── ทำไมยัง**ต้องมี** gate อยู่ (ห้ามลบทิ้งเฉย ๆ) ────────────────────────────
+ * `emcs_extract` = ไฟล์ที่ `se-autokey/tools/emcs_dump.py` สกัดกลับมาจากหน้าเว็บ EMCS
+ * (ข้อมูลทดสอบ) และ `importFromXml` **เขียนแถว survey_expenses ให้ด้วย** → ตัวเลขรออยู่จริง
+ * ส่งกลับเข้าไปเท่ากับเอาเลขของบริษัทประกันเองยัดกลับไปเป็นบิลใบใหม่ ซึ่งดูสมเหตุสมผล
+ * จนจับไม่ได้ตอนตรวจ
+ *
+ * ── ทำไมเป็น allow-list ไม่ใช่ `!== 'emcs_extract'` ─────────────────────────
+ * `cases.source` เป็น VARCHAR(20) **ไม่มี CHECK constraint** (028_case_source.sql)
+ * deny-list จะ fail **เปิด**: ทางนำเข้าใหม่ที่ใครเพิ่มวันหลัง (หรือ NULL / เคสหาย)
+ * จะกลายเป็น "ส่งเงินจริง" เองเงียบ ๆ · allow-list fail **ปิด** = ได้ 0.00 เหมือนเดิม
  */
-async function withBillIfImported(caseId: number, report: Record<string, unknown>) {
+const BILLABLE_SOURCES = new Set(['isurvey_xml', 'mobile']);
+
+/**
+ * 13 คอลัมน์เงินฝั่งเรียกเก็บประกันที่ `xmlExport.service.ts` อ่านไปทำ `<TXN_SURV_BILL>`
+ *
+ * ⛔ **ระบุชื่อคอลัมน์ ห้าม `SELECT *`** — `survey_expenses` (เรียกเก็บประกัน) กับ
+ *    `survey_pay` (จ่ายพนักงาน) มีคอลัมน์ชื่อซ้ำกันเป๊ะชนิดเดียวกัน 2 ตัว:
+ *    **`phone_fee` · `bail_fee`** ซึ่งเป็นตัวที่ไปเป็น `SUR_TEL` / `SUR_INSURE` พอดี
+ *    ถ้าวันหน้ามีใคร spread แถวค่าจ้างพนักงานเข้ามา มันจะกลายเป็นบิลเรียกเก็บประกัน
+ *    **โดยไม่มี error อะไรเลย** · ระบุชื่อไว้ยังกันคอลัมน์ใหม่ใน migration หน้าหลุดเข้ามาเอง
+ *    และกัน `id`/`created_at` ของ survey_expenses ไปทับของ survey_reports (เดิมต้อง re-pin id)
+ */
+const BILL_COLS = [
+  'service_fee_count', 'service_fee_price',
+  'travel_fee_count', 'travel_fee_price',
+  'photo_fee_count', 'photo_fee_price',
+  'phone_fee', 'bail_fee',
+  'claim_fee_percent', 'claim_fee_price',
+  'daily_record_fee', 'other_fee_detail', 'other_fee_price',
+] as const;
+
+async function withInsurerBill(caseId: number, report: Record<string, unknown>) {
   const src = await db.query('SELECT source FROM cases WHERE id = $1', [caseId]);
-  if (src.rows[0]?.source !== 'isurvey_xml') return report;
-  const exp = await db.query('SELECT * FROM survey_expenses WHERE report_id = $1', [report.id]);
-  return exp.rows.length ? { ...report, ...exp.rows[0], id: report.id } : report;
+  if (!BILLABLE_SOURCES.has(String(src.rows[0]?.source ?? ''))) return report;
+  const exp = await db.query(
+    `SELECT ${BILL_COLS.join(', ')} FROM survey_expenses WHERE report_id = $1`, [report.id]);
+  return exp.rows.length ? { ...report, ...exp.rows[0] } : report;
 }
 
 export const caseService = {
@@ -839,7 +876,7 @@ export const caseService = {
     assertCaseAccess(caseResult.rows[0], user);
     const reportResult = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('ยังไม่มีข้อมูลรายงานสำรวจของเคสนี้');
-    const row = await withBillIfImported(caseId, reportResult.rows[0]);
+    const row = await withInsurerBill(caseId, reportResult.rows[0]);
     // เตือนซ้ำในล็อกฝั่งเซิร์ฟเวอร์ด้วย เพราะบอทดึง XML ผ่านทางนี้ ไม่ได้เห็นแบนเนอร์บนเว็บ
     for (const w of emcsNameWarnings(row)) {
       console.warn(`[EMCS] เคส ${caseId}: ${w.label} มีอักขระ ${w.bad} ที่ EMCS จะล้างค่าทิ้ง — ${w.value}`);
@@ -926,8 +963,9 @@ export const caseService = {
       const c = await client.query(
         // ที่มาต้องมาจากไฟล์ ห้าม hardcode — ไฟล์ที่สกัดกลับจากหน้าเว็บ EMCS
         // (source='emcs_extract') เป็นข้อมูลทดสอบ กติกาต่างกับงานจริงจากระบบเก่า
-        // โดยเฉพาะเรื่องยอดเงิน: withBillIfImported ส่งบิลต่อเข้า EMCS เฉพาะ 'isurvey_xml'
-        // เท่านั้น เคสทดสอบจึงไม่ดันยอดเงินเข้าระบบประกันโดยไม่ตั้งใจ
+        // โดยเฉพาะเรื่องยอดเงิน: withInsurerBill ส่งบิลต่อเข้า EMCS เฉพาะ source ที่อยู่ใน
+        // BILLABLE_SOURCES (isurvey_xml + mobile) — 'emcs_extract' ยังถูกกันไว้เหมือนเดิม
+        // เคสทดสอบจึงไม่ดันยอดเงินของประกันเองกลับเข้าระบบประกันโดยไม่ตั้งใจ
         `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status, source)
          VALUES ($1, $2, $3, $4, 'surveyed', $5) RETURNING *`,
         [parsed.caseFields.customer_name || '(ไม่ระบุชื่อผู้เอาประกัน)',
@@ -957,7 +995,9 @@ export const caseService = {
          VALUES ($1${fields.map((_, i) => `, $${i + 2}`).join('')})`,
         [caseId, ...values]);
 
-      // ยอดเงินจาก ISURVEY — เก็บไว้ให้หัวหน้าดูอ้างอิงบนเว็บ (ไม่ส่งเข้า EMCS ตามกติกา)
+      // ยอดเงินที่ติดมากับไฟล์ (ฝั่งเรียกเก็บประกัน) — เขียนให้ทุกไฟล์ที่ import
+      // แต่จะถูกส่งต่อเข้า EMCS หรือไม่ ตัดสินที่ withInsurerBill ตอน gen XML:
+      // isurvey_xml = ส่งต่อ · emcs_extract = ไม่ส่ง (เลขของประกันเอง เป็นข้อมูลทดสอบ)
       if (parsed.expenses) {
         const rid = await client.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
         const exp = parsed.expenses;
@@ -1040,6 +1080,13 @@ export const caseService = {
 
     // === 3. Update survey_expenses ===
     const expenseFields = ['service_fee_count','service_fee_price','travel_fee_count','travel_fee_price','photo_fee_count','photo_fee_price','phone_fee','bail_fee','claim_fee_percent','claim_fee_price','daily_record_fee','other_fee_detail','other_fee_price'];
+    // "ส่งช่องค่าใช้จ่ายมาไหม" ≠ "กรอกค่าอะไรมาไหม" — ต้องแยกกัน
+    //   ไม่ส่งมาเลย (ทุกช่อง undefined)  = คนละฟอร์ม เช่นมือถือส่งงาน/หน้ารีวิว → **ห้ามแตะแถวเดิม**
+    //   ส่งมาแต่ว่างหมด                  = ผู้ตรวจ**ล้างบิลทิ้ง** → ต้องลบแถวจริง
+    // เดิมใช้เงื่อนไขเดียวคุมทั้ง DELETE และ INSERT → ล้างทุกช่องแล้ว "ไม่มีอะไรเกิดขึ้น"
+    // แถวเก่ารอดมา และตั้งแต่เคส mobile ส่งบิลได้ (withInsurerBill) ยอดที่ผู้ตรวจคิดว่าลบไปแล้ว
+    // จะไหลเข้า XML ต่อ — ล้างบิลเป็นท่าเดียวที่ UI มีให้ทำ จึงห้ามเป็นท่าที่ระบบเมิน
+    const expenseSubmitted = expenseFields.some(f => rd[f] !== undefined);
     const hasExpense = expenseFields.some(f => rd[f] !== undefined && rd[f] !== '');
 
     // ห่อ UPDATE report + DELETE/INSERT expenses ไว้ใน transaction เดียว —
@@ -1055,8 +1102,11 @@ export const caseService = {
         reportUpdated = fields.length;
       }
 
-      if (hasExpense) {
+      if (expenseSubmitted) {
+        // ล้างก่อนเสมอเมื่อฟอร์มค่าใช้จ่ายถูกส่งมา — ถ้าไม่มีค่าเหลือเลยก็จบแค่ลบ (= ล้างบิล)
         await client.query('DELETE FROM survey_expenses WHERE report_id = $1', [reportId]);
+      }
+      if (hasExpense) {
         const eCols: string[] = ['report_id'];
         const eVals: unknown[] = [reportId];
         for (const f of expenseFields) {
@@ -1073,7 +1123,11 @@ export const caseService = {
       }
 
       await client.query('COMMIT');
-      return { message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense };
+      return {
+        message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense,
+        // ผู้ตรวจล้างบิลทิ้ง — แยกจาก "ไม่ได้ยุ่งกับบิล" เพื่อให้เห็นได้จากคำตอบของ API
+        expense_cleared: expenseSubmitted && !hasExpense,
+      };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
