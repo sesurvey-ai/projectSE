@@ -217,8 +217,8 @@ export async function getCasePay(caseId: number) {
   const pay = await calcPay({
     provinceId: province, amphurId: amphur, mtypeId, team,
     isSE: true,
-    outOfArea: saved?.out_of_area ? Number(saved.out_of_area_amt ?? 0) : null,
-    outOfHours: saved?.out_of_hours ? Number(saved.out_of_hours_amt ?? 0) : null,
+    outOfArea: saved?.out_of_area ? Number(saved.out_of_area_amt ?? 50) : null,
+    outOfHours: saved?.out_of_hours ? Number(saved.out_of_hours_amt ?? 100) : null,
   });
 
   return {
@@ -255,8 +255,13 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
   // หักเงินเก็บเป็นค่าบวกเสมอ — กรอกติดลบมาก็แปลงให้ ไม่งั้นลบซ้อนลบกลายเป็นบวก
   const deduct = num(input[PAY_DEDUCT_FIELD]);
   money[PAY_DEDUCT_FIELD] = deduct === null ? null : Math.abs(deduct);
+  // ยอดตัวปรับ — เก็บแยกเพื่อให้ใบเบิกเงินแยกออกว่าจ่ายค่าอะไรไปเท่าไหร่
+  // ติ๊กแต่ไม่ใส่เลข = ใช้ค่าตั้งต้น (นอกพื้นที่ 50 · นอกเวลา 100) ตามระบบเดิม
+  const areaAmt = input.out_of_area ? (num(input.out_of_area_amt) ?? 50) : null;
+  const hoursAmt = input.out_of_hours ? (num(input.out_of_hours_amt) ?? 100) : null;
   const total = round2(
-    PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0) - (money[PAY_DEDUCT_FIELD] ?? 0));
+    PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0)
+    + (areaAmt ?? 0) + (hoursAmt ?? 0) - (money[PAY_DEDUCT_FIELD] ?? 0));
 
   // snapshot ต้องสะท้อน "สิ่งที่กรอกรอบนี้" ไม่ใช่แถวเก่าที่ยังไม่ทันอัปเดต —
   // getCasePay อ่านตัวปรับจากแถวที่บันทึกไว้ก่อนหน้า จึงได้ค่าเก่า/ว่างเสมอในครั้งแรก
@@ -264,8 +269,8 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
   const { suggest } = await getCasePay(caseId);
   const snapshot = {
     ...(suggest?.snapshot ?? {}),
-    out_of_area: input.out_of_area ? true : null,
-    out_of_hours: input.out_of_hours ? true : null,
+    out_of_area: areaAmt,
+    out_of_hours: hoursAmt,
     special_tumbon: input.special_tumbon ? true : null,
     daily_check: input.daily_check ?? null,
     deduct: money[PAY_DEDUCT_FIELD],
@@ -280,8 +285,9 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
     `INSERT INTO survey_pay (case_id, service_fee, travel_fee, photo_fee, phone_fee, bail_fee,
         claim_fee, daily_fee, other_fee, other_reason, out_of_area, out_of_hours,
         special_tumbon, daily_check, total, rate_snapshot, priced_by,
-        deduct_fee, deduct_late, deduct_docs, deduct_reason, priced_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW())
+        deduct_fee, deduct_late, deduct_docs, deduct_reason,
+        out_of_area_amt, out_of_hours_amt, priced_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,NOW(),NOW())
      ON CONFLICT (case_id) DO UPDATE SET
        service_fee=EXCLUDED.service_fee, travel_fee=EXCLUDED.travel_fee, photo_fee=EXCLUDED.photo_fee,
        phone_fee=EXCLUDED.phone_fee, bail_fee=EXCLUDED.bail_fee, claim_fee=EXCLUDED.claim_fee,
@@ -291,6 +297,7 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
        total=EXCLUDED.total, rate_snapshot=EXCLUDED.rate_snapshot,
        deduct_fee=EXCLUDED.deduct_fee, deduct_late=EXCLUDED.deduct_late,
        deduct_docs=EXCLUDED.deduct_docs, deduct_reason=EXCLUDED.deduct_reason,
+       out_of_area_amt=EXCLUDED.out_of_area_amt, out_of_hours_amt=EXCLUDED.out_of_hours_amt,
        priced_by=EXCLUDED.priced_by, priced_at=NOW(), updated_at=NOW()
      RETURNING *`,
     [caseId, money.service_fee, money.travel_fee, money.photo_fee, money.phone_fee,
@@ -299,6 +306,6 @@ export async function saveCasePay(caseId: number, input: SavePayInput, userId?: 
      Boolean(input.special_tumbon), input.daily_check ?? null, total,
      JSON.stringify(snapshot), userId ?? null,
      money[PAY_DEDUCT_FIELD], Boolean(input.deduct_late), Boolean(input.deduct_docs),
-     input.deduct_reason ?? null]);
+     input.deduct_reason ?? null, areaAmt, hoursAmt]);
   return r.rows[0];
 }

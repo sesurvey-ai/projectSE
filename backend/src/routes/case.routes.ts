@@ -236,6 +236,8 @@ router.post('/import-xml', auth, requireRole('callcenter', 'checker', 'admin'),
   uploadXmlZip, caseController.importXml);
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
+// ใบเบิกเงิน (.xlsx) — ต้องอยู่ก่อน '/:id/...' ไม่งั้น 'pay' จะถูกจับเป็น id
+router.get('/pay/export.xlsx', auth, requireRole('checker', 'admin'), caseController.exportPayXlsx);
 router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.getCase);
 router.get('/:id/detail', auth, requireRole('checker', 'surveyor'), caseController.getDetail);
 router.get('/:id/export-xml', auth, requireRole('surveyor', 'checker', 'admin', 'callcenter'), caseController.exportXml);
