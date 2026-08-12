@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "ts-node --transpile-only tests/xmlExport.contract.test.ts && ts-node --transpile-only tests/pay.replay.test.ts"
+    "test": "ts-node --transpile-only tests/xmlExport.contract.test.ts && ts-node --transpile-only tests/areaCode.coverage.test.ts && ts-node --transpile-only tests/pay.replay.test.ts"
   },
   "dependencies": {
     "@google-cloud/vision": "^5.3.7",
