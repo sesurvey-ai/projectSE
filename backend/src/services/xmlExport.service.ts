@@ -525,6 +525,20 @@ export function generateSurveyXml(r: Row): string {
   const assets = parseJsonArr(r.damaged_property);
   const injured = parseJsonArr(r.injured_persons);
 
+  /**
+   * `SURV_COMMENT` ออก **2 ที่** ในไฟล์เดียว — ใน `<TXN_SURV_REPORT>` และใน `<TXN_SURV_BILL>`
+   *
+   * ไม่ใช่บั๊กของเรา: ไฟล์ export จริงของ ISURVEY ทุกใบก็มี 2 ที่เหมือนกัน (ว่างทั้งคู่)
+   * = เป็นรูปแบบของสัญญาไฟล์เอง · และ `se-autokey/tools/emcs_dump.py` แมป**ทั้งสองที่**
+   * ไปที่ control เดียวกัน (`txtSurv_Comment` บนหน้าค่าใช้จ่าย)
+   *
+   * ⚠️ ของเดิมส่ง**ค่าไม่ตรงกัน** (บล็อกบนมีค่า บล็อกล่างว่าง) → ผลขึ้นกับว่า EMCS อ่านบล็อกไหน
+   * ซึ่งยังไม่มีใครรู้ · จึงคำนวณครั้งเดียวแล้วใช้ค่าเดียวกันทั้ง 2 ที่ ให้ผลเหมือนกันไม่ว่าอ่านทางไหน
+   *
+   * fallback `notes` = "หมายเหตุเพิ่มเติม" จากแอป — ยกมาจากพฤติกรรมเดิมของบล็อกบน (ไม่เปลี่ยน)
+   */
+  const survComment = r.surveyor_comment || r.notes;
+
   const report = '<TXN_SURV_REPORT>' +
     el('SURV_JOBNO', r.survey_job_no) +
     el('REF_CLAIM_NO', r.claim_no) +
@@ -570,7 +584,7 @@ export function generateSurveyXml(r: Row): string {
     el('POLICE_DATE', toXmlCE(r.acc_police_date)) +
     el('BOOK_NUMBER', r.acc_police_book_no) +
     el('PRB_NUMBER', r.prb_number) +
-    el('SURV_COMMENT', r.surveyor_comment || r.notes) +
+    el('SURV_COMMENT', survComment) +
     el('ACC_CAUSE_NO', r.acc_fault_opponent_no) +
     // ALC_CHK = "มี/ไม่มีการตรวจแอลกอฮอล์" (EMCS เป็น radio 2 ตัว rdoAlc_Chk_0/_1)
     // ✅ แอปมือถือใช้ dropdown 2 ตัวเลือกที่ป้ายตรงกับ EMCS แล้ว
@@ -642,11 +656,23 @@ export function generateSurveyXml(r: Row): string {
     el('SUR_INSURE', baht(r.bail_fee)) +            // ค่าประกันตัว
     el('SUR_CLAIM', baht(r.claim_fee_price)) +      // ค่าเรียกร้อง
     el('SUR_DAILY', baht(r.daily_record_fee)) +     // ค่าคัดประจำวัน
-    // ⛔ 3 ช่องความเห็นบนหน้า "ค่าใช้จ่าย" ของ EMCS — **หัวหน้ากรอกเองทั้งหมด** (กติกา user)
-    //    ผลการดำเนินงาน (ACC_RESULT) · ความเห็นผู้ตรวจสอบ (ACC_COMMENT) · ความเห็นเซอร์เวย์ (SURV_COMMENT)
-    //    เคยต่อสาย ACC_RESULT ← survey_result ไว้ (0ed4bba) แล้วถอย: ส่งไปเท่ากับเขียนความเห็น
-    //    แทนหัวหน้า. สิ่งที่ผู้สำรวจเขียนคือ "รายละเอียดการเกิดเหตุ" → ACC_DETAIL คนละช่องกัน
-    el('ACC_RESULT', '') + el('ACC_COMMENT', '') + el('SURV_COMMENT', '') + el('INC_VAT', '') +
+    // ── 3 ช่องความเห็นบนหน้า "ค่าใช้จ่าย" ของ EMCS ──────────────────────────────
+    //   ผลการดำเนินงาน (ACC_RESULT) ← survey_result
+    //   ความเห็นผู้ตรวจสอบ (ACC_COMMENT) ← review_comment
+    //   ความเห็นเซอร์เวย์ (SURV_COMMENT) ← surveyor_comment (ดู survComment ด้านบน)
+    //
+    // **เคยส่งค่าว่างทั้ง 3 โดยตั้งใจ** เพราะกติกาตอนนั้น (โหมด 2) คือหัวหน้าไปกรอกเองใน EMCS
+    // ส่งไปเท่ากับเขียนความเห็นแทนหัวหน้า · user เปลี่ยนกติกา 2026-08-12: **ทำงานบนเว็บเราทั้งหมด**
+    // ช่องทั้ง 3 มีอยู่บนหน้าตรวจงานอยู่แล้ว → "ถ้าบน se-survey มีข้อมูล ก็ส่งไปด้วย"
+    //
+    // ไม่มีข้อมูล = ส่งช่องว่าง ซึ่ง `set_textarea` ฝั่งบอทข้ามให้เอง **ไม่ไปลบของเดิมใน EMCS**
+    // (กันเคสที่หัวหน้ากรอกไว้ใน EMCS แล้วบอทมาล้างทิ้ง)
+    //
+    // ⚠️ "รายละเอียดการเกิดเหตุ" เป็น**คนละช่อง** — ไปที่ ACC_DETAIL บนแท็บข้อมูลทั่วไป (ต่อสายแล้ว)
+    el('ACC_RESULT', r.survey_result) +
+    el('ACC_COMMENT', r.review_comment) +
+    el('SURV_COMMENT', survComment) +
+    el('INC_VAT', '') +
     el('SUR_PERCENT_CLAIM', baht(r.claim_fee_percent)) +
     '</TXN_SURV_BILL>';
 

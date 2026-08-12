@@ -202,11 +202,45 @@ check('บิลเต็ม: SUR_INSURE = 0.00 ← bail_fee', billHas('SUR_INSU
 check('บิลเต็ม: SUR_DAILY = 200.00 ← daily_record_fee', billHas('SUR_DAILY', '200.00'));
 check('บิลเต็ม: SUR_OTHER = 60.00 ← other_fee_price', billHas('SUR_OTHER', '60.00'));
 check('บิลเต็ม: OTHER_DESC ← other_fee_detail', billHas('OTHER_DESC', 'ค่าทางด่วน'));
-// 3 ช่องความเห็นบนหน้าค่าใช้จ่าย EMCS — หัวหน้ากรอกเองทั้งหมด (กติกา user) ห้ามส่งค่าไป
+// ── 3 ช่องความเห็นบนหน้าค่าใช้จ่าย EMCS ──────────────────────────────────────
+// กติกา user 2026-08-12: "ถ้าบน se-survey มีข้อมูล บอทก็จะกรอกบน emcs ด้วย"
+// (เดิมส่งค่าว่างทั้ง 3 เพราะหัวหน้ากรอกเองใน EMCS — เปลี่ยนตอนย้ายมาทำงานบนเว็บเราทั้งหมด)
 // el() แทนค่าว่างด้วย "ช่องว่าง 1 ตัว" โดยตั้งใจ (ไม่ใช่ tag เปล่า) → เช็คตามรูปแบบนั้น
-for (const tag of ['ACC_RESULT', 'ACC_COMMENT', 'SURV_COMMENT']) {
-  check(`บิลเต็ม: ${tag} ต้องไม่มีเนื้อหา (หัวหน้ากรอกเองใน EMCS)`,
-        billXml.includes(`<${tag}> </${tag}>`));
+console.log('\n── 3 ช่องความเห็น (หน้าค่าใช้จ่าย EMCS) ──');
+{
+  const commentRow: Record<string, unknown> = {
+    ...row,
+    survey_result: 'สรุปผล:\n- ตรวจสอบแล้ว\n- คู่กรณียอมรับผิด',
+    review_comment: 'ความเห็นผู้ตรวจสอบ: เอกสารครบ',
+    surveyor_comment: 'ความเห็นเซอร์เวย์: ถ่ายรูปครบทุกมุม',
+    notes: 'หมายเหตุที่ไม่ควรถูกใช้เมื่อมี surveyor_comment',
+  };
+  const cx = generateSurveyXml(commentRow as never);
+  const cHas = (t: string, v: string) => cx.includes(`<${t}>${v}</${t}>`);
+
+  check('ACC_RESULT ← survey_result (คงขึ้นบรรทัดใหม่)',
+        cHas('ACC_RESULT', 'สรุปผล:\n- ตรวจสอบแล้ว\n- คู่กรณียอมรับผิด'));
+  check('ACC_COMMENT ← review_comment', cHas('ACC_COMMENT', 'ความเห็นผู้ตรวจสอบ: เอกสารครบ'));
+  check('SURV_COMMENT ← surveyor_comment (ไม่ใช่ notes)',
+        cHas('SURV_COMMENT', 'ความเห็นเซอร์เวย์: ถ่ายรูปครบทุกมุม'));
+
+  // SURV_COMMENT ออก 2 ที่ตามสัญญาไฟล์ (ไฟล์จริงของ ISURVEY ก็ 2 ที่) — **ค่าต้องตรงกัน**
+  // เดิมบล็อกบนมีค่า บล็อกล่างว่าง → ผลขึ้นกับว่า EMCS อ่านบล็อกไหน
+  const survTags = cx.match(/<SURV_COMMENT>[\s\S]*?<\/SURV_COMMENT>/g) ?? [];
+  check('SURV_COMMENT ออก 2 ที่ (ตามสัญญาไฟล์เดิม)', survTags.length === 2,
+        `พบ ${survTags.length}`);
+  check('SURV_COMMENT ทั้ง 2 ที่ค่าตรงกัน', survTags.length === 2 && survTags[0] === survTags[1]);
+
+  // ไม่มีข้อมูล = ส่งว่าง เพื่อให้บอทข้าม ไม่ไปลบของเดิมที่หัวหน้ากรอกไว้ใน EMCS
+  for (const tag of ['ACC_RESULT', 'ACC_COMMENT', 'SURV_COMMENT']) {
+    check(`ไม่มีข้อมูล: ${tag} ส่งว่าง (บอทจะข้าม ไม่ล้างของเดิมใน EMCS)`,
+          billXml.includes(`<${tag}> </${tag}>`));
+  }
+
+  // fallback เดิม: ไม่มี surveyor_comment → ใช้ notes ("หมายเหตุเพิ่มเติม" จากแอป)
+  const fbXml = generateSurveyXml({ ...row, notes: 'หมายเหตุจากแอป' } as never);
+  check('SURV_COMMENT fallback ← notes เมื่อไม่มี surveyor_comment',
+        fbXml.includes('<SURV_COMMENT>หมายเหตุจากแอป</SURV_COMMENT>'));
 }
 
 // ── การ์ดกันเงิน 2 ฝั่งปนกัน ────────────────────────────────────────────────
