@@ -71,6 +71,9 @@ export default function ImportXmlPage() {
   // ผลตรวจจับจากไฟล์ — null = ไฟล์ยังไม่ถูกเลือก หรือคำนำหน้าไม่รู้จัก (ต้องเลือกเอง)
   const [detected, setDetected] = useState<{ value: string; jobNo: string; prefix: string } | null>(null);
   const [detectFailed, setDetectFailed] = useState(false);
+  // ความคืบหน้าอัปโหลด: null = ยังไม่เริ่ม · 0-100 = กำลังส่งไฟล์ · 'server' = ส่งครบแล้ว รอเซิร์ฟเวอร์
+  // zip รูปทั้งเคสหลายสิบ MB ระหว่างส่งหน้าจะนิ่งสนิท ผู้ใช้นึกว่าเบราว์เซอร์ค้างแล้วกดซ้ำ/ปิดหน้า
+  const [progress, setProgress] = useState<number | 'server' | null>(null);
 
   // เลือกไฟล์ XML → อ่านในเบราว์เซอร์เลย (ไม่ต้องส่งขึ้น server ก่อน) แล้วเติมบริษัทให้
   const onPickXml = async (file: File | null) => {
@@ -103,7 +106,7 @@ export default function ImportXmlPage() {
         `แต่คุณเลือก "${เลือก}"\n\nยืนยันใช้ "${เลือก}" ต่อหรือไม่?\n` +
         `(เคสที่เข้าผิดบริษัทในระบบประกันลบไม่ได้)`)) return;
     }
-    setBusy(true); setError(''); setResult(null);
+    setBusy(true); setError(''); setResult(null); setProgress(0);
     try {
       const fd = new FormData();
       fd.append('xml', xmlFile);
@@ -112,20 +115,31 @@ export default function ImportXmlPage() {
       const res = await api.post('/api/cases/import-xml', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 180000,   // zip รูปทั้งเคสอาจใหญ่
+        onUploadProgress: (e) => {
+          // e.total ไม่มีค่าเมื่อเซิร์ฟเวอร์/พร็อกซีไม่บอกขนาด → ไม่โชว์ % มั่ว ให้ไปโหมด "รอเซิร์ฟเวอร์"
+          if (!e.total) { setProgress('server'); return; }
+          const pct = Math.round((e.loaded * 100) / e.total);
+          // ครบ 100% = ไฟล์ออกจากเครื่องหมดแล้ว แต่ยังต้องรอ backend แตก zip + เขียน DB
+          // ค้างที่ 100% เฉย ๆ ดูเหมือนแฮงก์ จึงเปลี่ยนข้อความเป็น "กำลังประมวลผล"
+          setProgress(pct >= 100 ? 'server' : pct);
+        },
       });
       setResult(res.data.data as ImportResult);
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } };
       setError(err.response?.data?.message || 'นำเข้าไม่สำเร็จ');
     } finally {
-      setBusy(false);
+      setBusy(false); setProgress(null);
     }
   };
+
+  const totalBytes = (xmlFile?.size ?? 0) + (zipFile?.size ?? 0);
+  const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
 
   const reset = () => {
     setXmlFile(null); setZipFile(null); setResult(null); setError('');
     // ล้างผลตรวจจับด้วย ไม่งั้นเคสถัดไปจะเห็นข้อความของไฟล์เก่าค้างอยู่
-    setDetected(null); setDetectFailed(false); setInsurer('');
+    setDetected(null); setDetectFailed(false); setInsurer(''); setProgress(null);
     if (xmlRef.current) xmlRef.current.value = '';
     if (zipRef.current) zipRef.current.value = '';
   };
@@ -203,6 +217,35 @@ export default function ImportXmlPage() {
               </p>
             )}
           </div>
+
+          {/* ความคืบหน้า — zip รูปทั้งเคสหลายสิบ MB ถ้าไม่มีอะไรขยับ ผู้ใช้จะนึกว่าเบราว์เซอร์ค้าง
+              แล้วกดซ้ำหรือปิดหน้าไปกลางคัน (กดซ้ำ = เคสซ้ำ เพราะเลขเซอร์เวย์ยังไม่ถูกบันทึกจนกว่าจะจบ) */}
+          {progress !== null && (
+            <div aria-live="polite">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-gray-700 font-medium">
+                  {progress === 'server'
+                    ? 'ส่งไฟล์ครบแล้ว — กำลังแตกไฟล์รูปและสร้างเคส'
+                    : `กำลังอัปโหลด ${progress}%`}
+                </span>
+                <span className="text-gray-500">
+                  {progress === 'server'
+                    ? 'อย่าปิดหน้านี้'
+                    : `${mb(totalBytes * (progress as number) / 100)} / ${mb(totalBytes)} MB`}
+                </span>
+              </div>
+              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                {progress === 'server' ? (
+                  // ไม่รู้ว่าเซิร์ฟเวอร์จะเสร็จเมื่อไหร่ → แถบวิ่งไปมา บอกแค่ว่า "ยังทำงานอยู่"
+                  <div className="h-full w-1/3 bg-blue-600 rounded-full animate-[imp-slide_1.1s_ease-in-out_infinite]" />
+                ) : (
+                  <div className="h-full bg-blue-600 rounded-full transition-[width] duration-200"
+                       style={{ width: `${progress}%` }} />
+                )}
+              </div>
+              <style>{'@keyframes imp-slide{0%{margin-left:0}50%{margin-left:66%}100%{margin-left:0}}'}</style>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded px-4 py-3 text-sm">{error}</div>
