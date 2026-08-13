@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import DamageEditor, { DamageItem } from './DamageEditor';
@@ -352,16 +352,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย <Req /> :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="assured_name" defaultValue={report.assured_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">ประกันประเภท <Req /> :</td>
-                    {/* dropdown ไม่ใช่ช่องพิมพ์ — ปลายทางดึงเฉพาะตัวเลขจากข้อความ
-                        พิมพ์ "ชั้นหนึ่ง" = ส่งค่าว่างเข้าระบบประกันโดยไม่มีอะไรฟ้อง */}
+                    {/* ช่องพิมพ์ ไม่ใช่ dropdown — EMCS เองก็ไม่มีรายการให้เลือก และของจริง
+                        มีมากกว่าที่ลิสต์ไว้ (ใบจริงเขียน "ประเภท 2+ ซ่อมอู่" = รหัส 52)
+                        ตอนส่งออก policyTypeCode แปลงป้ายไทยที่รู้จัก ที่เหลือส่งตามที่กรอก */}
                     <td className="px-4 py-2">
-                      <select disabled={d} name="policy_type" defaultValue={report.policy_type || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        <option>-- ระบุ --</option>
-                        {POLICY_TYPE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                        {report.policy_type && !POLICY_TYPE_OPTIONS.includes(report.policy_type) && (
-                          <option value={report.policy_type}>{report.policy_type} (ค่าเดิม)</option>
-                        )}
-                      </select>
+                      <input type="text" disabled={d} name="policy_type" defaultValue={report.policy_type || ''}
+                        placeholder="เช่น ชั้น 1 หรือ 52"
+                        className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                     </td>
                   </tr>
                   <tr className="border-b border-gray-100">

@@ -16,7 +16,7 @@ import '../widgets/car_damage_diagram.dart';
 import 'damage_notice_screen.dart';
 import '../data/survey_master.dart'
     show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn,
-         kPolicyTypes, kTitles, kRelations, kCarTypeCodeToLabel, kEvCodeToLabel;
+         kTitles, kRelations, kCarTypeCodeToLabel, kEvCodeToLabel;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/form_kit.dart' show kCidField, kPhoneFormatters;
@@ -3085,13 +3085,13 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             formatters: [LengthLimitingTextInputFormatter(200)]),
       ];
 
-  // ประเภทประกัน = dropdown (POL_TYPES) + คงค่าเดิมถ้าไม่อยู่ในลิสต์
-  Widget _policyTypeField() {
-    const base = kPolicyTypes;   // master ที่เดียว (survey_master.dart)
-    final cur = _policyTypeCtl.text.trim();
-    final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
-    return _dd('ประเภทประกัน', cur, items, (v) => setState(() => _policyTypeCtl.text = v ?? ''), req: true, key: ValueKey('pt_$cur'));
-  }
+  // ประเภทประกัน = ช่องพิมพ์อิสระ ไม่ใช่ dropdown
+  // EMCS เองก็ไม่มีรายการให้เลือก (รถประกันเป็นป้ายอ่านอย่างเดียว คู่กรณีเป็นช่องพิมพ์)
+  // และของจริงมีมากกว่าที่ลิสต์ไว้ — ใบแจ้งความเสียหายเขียน "ประเภท 2+ ซ่อมอู่"
+  // ซึ่งไม่ตรงตัวเลือกไหนเลย เคยต้องโชว์เป็น "(ค่าเดิม)" ค้างไว้
+  Widget _policyTypeField() =>
+      _txt(_policyTypeCtl, 'ประเภทประกัน', req: true,
+          formatters: [LengthLimitingTextInputFormatter(50)]);
 
   List<Widget> _secCar() => [
         _row2(

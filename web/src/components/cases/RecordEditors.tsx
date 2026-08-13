@@ -15,7 +15,7 @@
  * รวมสองตัวไว้ไฟล์เดียวเพราะใช้ layout/primitive ชุดเดียวกัน (การ์ดต่อ 1 ระเบียน + ปุ่มลบ + ปุ่มเพิ่ม)
  */
 import React from 'react';
-import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
+import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
 import { districtOptions } from './districtOptions';
 
 export type RecordItem = Record<string, string>;
@@ -250,7 +250,9 @@ const OPPONENT_FIELDS: FieldDef[] = [
   { k: 'insurer', label: 'มีประกันภัยที่ *' },
   { k: 'policy_no', label: 'เลขกรมธรรม์ *' },
   // ปลายทางดึงเฉพาะตัวเลขจากข้อความ — พิมพ์ "ชั้นหนึ่ง" ได้ค่าว่าง
-  { k: 'policy_type', label: 'ประเภทประกัน', options: POLICY_TYPE_OPTIONS },
+  // ช่องพิมพ์ ไม่ใช่ dropdown — บน EMCS ช่องนี้ของคู่กรณีก็เป็นช่องพิมพ์ (txtPolicy_Type)
+  // และของจริงมีนอกลิสต์ เช่น "ประเภท 2+ ซ่อมอู่"
+  { k: 'policy_type', label: 'ประเภทประกัน' },
   { k: 'claim_no', label: 'เลขเคลมคู่กรณี' },
   { k: 'owner_name', label: 'เจ้าของรถ *' },
   { k: 'owner_address', label: 'ที่อยู่เจ้าของ', wide: true },
