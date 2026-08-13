@@ -932,18 +932,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               {op?.kfk === true && (
                                 <span className="inline-block bg-blue-100 text-blue-800 rounded px-2 py-0.5 text-xs font-medium">KFK</span>
                               )}
-                              {/* ช่องบังคับรายคันของระบบประกัน — 4 ใน 7 ช่องนี้เป็น dropdown/วันที่/ตัวเลข
-                                  ใส่ "-" แทนไม่ได้ ขาดแล้วบอทค้างกลางทางที่หน้าคู่กรณี (เจอจริง 2026-08-10)
-                                  ⚠️ หน้านี้แก้คู่กรณีไม่ได้ (แสดงอย่างเดียว) — ต้องให้ผู้สำรวจแก้จากแอป */}
+                              {/* 8 ช่องบังคับรายคัน — สกัดจาก validator จริง vlidOpoCar (ส่วน base
+                                  ก่อน switch = บังคับทุกบริษัท) · ครึ่งหนึ่งเป็น dropdown/วันที่/ตัวเลข
+                                  ที่ใส่ "-" แทนไม่ได้ ขาดแล้วบอทค้างกลางทางที่หน้าคู่กรณี
+                                  ⚠️ ต้องตรงกับ OPPONENT_REQUIRED ใน RecordEditors.tsx */}
                               {(() => {
                                 const need: [string, string][] = [
-                                  ['car_type', 'ประเภทรถ'], ['plate', 'ทะเบียน'], ['province', 'จังหวัด'],
-                                  ['gender', 'เพศผู้ขับขี่'], ['birthdate', 'วันเกิด'], ['age', 'อายุ'],
-                                  ['insurer', 'มีประกันภัยที่'],
+                                  ['owner_name', 'เจ้าของรถ'], ['plate', 'ทะเบียน'], ['province', 'จังหวัด'],
+                                  ['insurer', 'มีประกันภัยที่'], ['policy_no', 'กรมธรรม์'],
+                                  ['birthdate', 'วันเกิด'], ['age', 'อายุ'], ['car_type', 'ประเภทรถ'],
                                 ];
                                 const missing = need.filter(([k]) => !String(op?.[k] ?? '').trim()).map(([, l]) => l);
                                 return missing.length > 0 ? (
-                                  <span className="text-xs text-red-600" title="ระบบประกันบังคับช่องเหล่านี้รายคัน — ขาดแล้วนำเข้าไม่ผ่าน · หน้านี้แก้ไม่ได้ ให้ผู้สำรวจแก้จากแอป">
+                                  <span className="text-xs text-red-600" title="ระบบประกันบังคับช่องเหล่านี้รายคัน — ขาดแล้วนำเข้าไม่ผ่าน · กด &quot;แก้ไขทั้งหมด&quot; เพื่อเติม">
                                     ⚠ ขาดช่องบังคับ: {missing.join(' · ')}
                                   </span>
                                 ) : null;

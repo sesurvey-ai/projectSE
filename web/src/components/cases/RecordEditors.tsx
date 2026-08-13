@@ -222,7 +222,14 @@ export const dropEmptyRecords = (items: RecordItem[]): RecordItem[] =>
 // และ 4 ใน 7 (ประเภทรถ · เพศ · วันเกิด · อายุ) เป็น dropdown/วันที่/ตัวเลข ที่ใส่ "-" แทนไม่ได้
 // → ขาดแล้วบอทค้างกลางทางที่หน้าคู่กรณี ผู้ตรวจต้องโทรตามให้ช่างแก้จากแอปอย่างเดียว
 //
-// `*` = ช่องบังคับรายคัน (ตรงกับ checkItems('6. คู่กรณี') ในแอปมือถือ)
+// `*` = **สกัดจาก validator จริง `vlidOpoCar`** บนหน้า EMCS ที่เซฟไว้ (เคส 000098)
+//   base 8 ช่องบังคับทุกบริษัท: เจ้าของ · ทะเบียน · จังหวัด · มีประกันภัยที่ · กรมธรรม์
+//                              · วันเกิด · อายุ · ประเภทรถ
+//
+// ⚠️ **ต่างจากลิสต์ในแอปมือถือ 3 จุด** (แอปเช็ค 7 ช่อง) — อ้างอิง validator เพราะเป็นตัวที่บล็อกจริง:
+//   · แอป**ไม่เช็ค** "เจ้าของคู่กรณี" + "กรมธรรม์" ทั้งที่ EMCS บังคับทุกบริษัท → ที่นี่ติดดาวแดง
+//   · แอปเช็ค "เพศ" เสมอ แต่ EMCS บังคับเฉพาะ `case '12'` → ที่นี่เป็นดาวส้ม
+//     (แอปเข้มกว่าไม่เสียหาย ข้อมูลมีมาให้อยู่แล้ว — แค่คนละเหตุผล)
 //
 // ⚠️ `province` ทำ 2 หน้าที่ในสคีมาของแอป: จังหวัดป้ายทะเบียน **และ** จังหวัดที่อยู่ผู้ขับขี่
 //    (เป็น parent ของ cascade อำเภอ) — สืบทอดมาจากฝั่งแอป ยังไม่ได้แยก
@@ -235,14 +242,19 @@ const OPPONENT_FIELDS: FieldDef[] = [
   { k: 'reg_year', label: 'ปีจดทะเบียน' },
   { k: 'car_color', label: 'สีรถ', options: CAR_COLOR_OPTIONS },
   { k: 'vin', label: 'เลขตัวถัง' },
+  { k: 'mileage', label: 'เลขไมล์' },
+  { k: 'ev_type', label: 'ประเภทรถไฟฟ้า' },
+  { k: 'estimated_cost', label: 'ค่าเสียหายประมาณ' },
   { k: 'insurer', label: 'มีประกันภัยที่ *' },
-  { k: 'policy_no', label: 'เลขกรมธรรม์' },
+  { k: 'policy_no', label: 'เลขกรมธรรม์ *' },
   { k: 'policy_type', label: 'ประเภทประกัน' },
   { k: 'claim_no', label: 'เลขเคลมคู่กรณี' },
+  { k: 'owner_name', label: 'เจ้าของรถ *' },
+  { k: 'owner_address', label: 'ที่อยู่เจ้าของ', wide: true },
   { k: 'title', label: 'คำนำหน้า', options: TITLES },
   { k: 'first_name', label: 'ชื่อผู้ขับขี่' },
   { k: 'last_name', label: 'นามสกุล' },
-  { k: 'gender', label: 'เพศ *', options: GENDERS },
+  { k: 'gender', label: 'เพศ *(บางบริษัท)', options: GENDERS },
   { k: 'birthdate', label: 'วันเกิด *', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
   { k: 'age', label: 'อายุ *' },
   { k: 'relation', label: 'ความสัมพันธ์', options: RELATIONS },
@@ -250,12 +262,19 @@ const OPPONENT_FIELDS: FieldDef[] = [
   { k: 'cid', label: 'เลขบัตรประชาชน' },
   { k: 'license_no', label: 'เลขใบขับขี่' },
   { k: 'license_type', label: 'ประเภทใบขับขี่', options: LICENSE_TYPES },
+  { k: 'license_start', label: 'ใบขับขี่ ออกให้', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
+  { k: 'license_end', label: 'ใบขับขี่ สิ้นสุด', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
   { k: 'district', label: 'เขต/อำเภอ (ที่อยู่)', optionsFrom: (r) => districtOptions(String(r.province ?? ''), String(r.district ?? '')) },
-  { k: 'address', label: 'ที่อยู่', wide: true },
+  { k: 'address', label: 'ที่อยู่ผู้ขับขี่', wide: true },
 ];
 
 /** คีย์ที่ editor นี้ดูแล — ใช้ตัดสินว่าการ์ด "ว่างทั้งใบ" ไหม โดยไม่นับ damage/kfk */
 const OPPONENT_KEYS = OPPONENT_FIELDS.map((f) => f.k);
+
+/** 8 ช่องที่ `vlidOpoCar` บล็อกทุกบริษัท — ใช้นับป้าย "ยังขาด N ช่องบังคับ" */
+const OPPONENT_REQUIRED = [
+  'owner_name', 'plate', 'province', 'insurer', 'policy_no', 'birthdate', 'age', 'car_type',
+];
 
 export function OpponentEditor({ items, onChange }: {
   items: LooseRecord[]; onChange: (next: LooseRecord[]) => void;
@@ -267,8 +286,7 @@ export function OpponentEditor({ items, onChange }: {
   return (
     <div className="space-y-4">
       {items.map((it, i) => {
-        const missing = ['car_type', 'plate', 'province', 'gender', 'birthdate', 'age', 'insurer']
-          .filter((k) => !String(it[k] ?? '').trim());
+        const missing = OPPONENT_REQUIRED.filter((k) => !String(it[k] ?? '').trim());
         const dmg = Array.isArray(it.damage) ? it.damage.length : 0;
         return (
           <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
