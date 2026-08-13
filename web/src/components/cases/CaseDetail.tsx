@@ -43,6 +43,16 @@ function parseDatetime(val: string | null) {
 }
 function formatCurrency(v: number | null | undefined) { if (v == null) return '-'; return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(v); }
 
+/**
+ * บริษัทประกันที่รับงานจริง — value ต้องตรงกับที่ `resolve_insurer_code` ของบอทรู้จัก
+ * (se-autokey/autokey/insurer_map.py) ไม่งั้นบอทหยุดและฟ้อง ไม่นำเข้ามั่ว
+ * เพิ่มบริษัทใหม่: เติมที่นี่ + หน้า "นำเข้าจากไฟล์ XML" + เช็ครหัสใน insurer_map.py
+ */
+const INSURER_OPTIONS = [
+  'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)',
+  'ไอโออิกรุงเทพประกันภัย',
+];
+
 const CLAIM_TYPE_LABELS: Record<string, string> = { F: 'เคลมสด', D: 'เคลมแห้ง', A: 'งานนัดหมาย', C: 'งานติดตาม' };
 const DAMAGE_LEVEL_COLORS: Record<string, string> = { 'หนัก': 'bg-red-100 text-red-800', 'เบา': 'bg-green-100 text-green-800' };
 
@@ -286,14 +296,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <td className="px-4 py-2 overflow-hidden">
                     <div className="flex items-center gap-1">
                       <select disabled={d} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        {/* เหลือ 2 บริษัทตามงานที่รับจริง (กติกา user 13/08/69) — เดิมลอกมาทั้ง
+                            dropdown ของ EMCS 7 ตัว · เลือกผิดที = เคสไปโผล่ผิดบริษัทในระบบประกัน
+                            ซึ่ง draft ของ EMCS ลบไม่ได้ · เคสเก่าที่ค่าไม่อยู่ใน 2 ตัวนี้ยังเก็บค่าเดิมไว้
+                            (เช่นแบบเขียนสั้น 'ไทยไพบูลย์ประกันภัย' ที่มีอยู่จริงใน DB) ไม่ให้หายตอนกดบันทึก */}
                         <option value="0">-- ระบุ --</option>
-                        <option value="ประกันภัยทดสอบ">ประกันภัยทดสอบ</option>
-                        <option value="บริษัท เดอะ วัน ประกันภัย จำกัด (มหาชน)">บริษัท เดอะ วัน ประกันภัย จำกัด (มหาชน)</option>
-                        <option value="ไอโออิกรุงเทพประกันภัย">ไอโออิกรุงเทพประกันภัย</option>
-                        <option value="ฟอลคอนประกันภัย จำกัด (มหาชน)">ฟอลคอนประกันภัย จำกัด (มหาชน)</option>
-                        <option value="บริษัท อลิอันซ์ อยุธยา ประกันภัย จำกัด (มหาชน)">บริษัท อลิอันซ์ อยุธยา ประกันภัย จำกัด (มหาชน)</option>
-                        <option value="บริษัท เจมาร์ท ประกันภัย จํากัด (มหาชน)">บริษัท เจมาร์ท ประกันภัย จํากัด (มหาชน)</option>
-                        <option value="บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)">บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)</option>
+                        {INSURER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        {report.insurance_company && !INSURER_OPTIONS.includes(report.insurance_company) && (
+                          <option value={report.insurance_company}>{report.insurance_company} (ค่าเดิม)</option>
+                        )}
                       </select>
                       <select disabled={d} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
