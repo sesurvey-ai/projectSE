@@ -15,8 +15,19 @@
  * รวมสองตัวไว้ไฟล์เดียวเพราะใช้ layout/primitive ชุดเดียวกัน (การ์ดต่อ 1 ระเบียน + ปุ่มลบ + ปุ่มเพิ่ม)
  */
 import React from 'react';
+import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, carBrandOptions } from './caseOptions';
+import { districtOptions } from './districtOptions';
 
 export type RecordItem = Record<string, string>;
+
+/**
+ * คู่กรณี 1 คัน — **ไม่ใช่ `RecordItem`** เพราะมีคีย์ที่ไม่ใช่ข้อความปนอยู่:
+ * `damage` (อาเรย์ความเสียหายรายชิ้น) และ `kfk` (บูลีน)
+ * ถ้าแปลงทั้งก้อนเป็นสตริงเหมือนผู้บาดเจ็บ/ทรัพย์สิน ข้อมูลสองตัวนี้จะพัง
+ * (`damage` กลายเป็น "[object Object]") → editor นี้จึงแตะเฉพาะคีย์ที่ตัวเองรู้จัก
+ * คีย์อื่นส่งผ่านไปเฉย ๆ
+ */
+export type LooseRecord = Record<string, unknown>;
 
 /** ประเภทผู้บาดเจ็บ — EMCS ddlPerson_Type (01-05) */
 const PERSON_TYPES = [
@@ -38,6 +49,24 @@ const RELATIONS = [
   'บุตรสะใภ้',
 ];
 const GENDERS = ['ชาย', 'หญิง'];
+/** คำนำหน้า — EMCS ddlDri_Title_ID (sync survey_master.dart kTitles) */
+const TITLES = ['นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.', 'คุณ'];
+/** ประเภทรถคู่กรณี — EMCS ddlCType verbatim (sync survey_master.dart kOpoCarTypes) */
+const OPO_CAR_TYPES = [
+  'เก๋งเอเชีย', 'เก๋งยุโรป', 'รถจักรยานยนต์', 'รถอื่นๆ', 'กระบะ', 'รถตู้', 'รถบรรทุก',
+];
+/** ประเภทใบขับขี่ — EMCS ddlEmcs_License_Type verbatim (sync survey_master.dart kLicenseTypes) */
+const LICENSE_TYPES = [
+  'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ', 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ',
+  'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว', 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว',
+  'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ', 'ใบขับขี่รถยนต์สาธารณะ', 'ใบขับขี่สากล',
+  'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ', 'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี',
+  'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ', 'ใบขับขี่รถยนต์ส่วนบุคคล',
+  'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล', 'ใบขับขี่ขนส่งชนิดที่1', 'ใบขับขี่ขนส่งชนิดที่2',
+  'ใบขับขี่ขนส่งชนิดที่3', 'ใบอนุญาติขับขี่ชนิดที่4', 'ไม่มีใบขับขี่',
+  'ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ', 'ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว',
+  'ใบอนุญาตเป็นผู้ขับรถทุกประเภท', 'อื่นๆ',
+];
 
 const inputCls = 'w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 bg-white';
 
@@ -46,6 +75,8 @@ type FieldDef = {
   label: string;
   /** ไม่ใส่ = ช่องข้อความ */
   options?: string[];
+  /** ตัวเลือกที่ขึ้นกับค่าช่องอื่นในระเบียนเดียวกัน (ยี่ห้อ←ประเภทรถ · อำเภอ←จังหวัด) */
+  optionsFrom?: (rec: LooseRecord) => string[];
   /** กว้างเต็มแถว (ที่อยู่/รายละเอียด) */
   wide?: boolean;
   placeholder?: string;
@@ -184,3 +215,114 @@ export function PropertyEditor({ items, onChange }: { items: RecordItem[]; onCha
 /** ทิ้งแถวที่ว่างทั้งใบ (กดเพิ่มแล้วไม่กรอก) — ส่งไปก็ทำให้บอทนับรายการเพี้ยน */
 export const dropEmptyRecords = (items: RecordItem[]): RecordItem[] =>
   items.filter((it) => Object.values(it).some((v) => String(v ?? '').trim() !== ''));
+
+// ───────────────────────── คู่กรณี ─────────────────────────
+//
+// เดิมหน้าตรวจงาน **แสดงคู่กรณีอย่างเดียว แก้ไม่ได้** ทั้งที่ระบบประกันบังคับ 7 ช่องรายคัน
+// และ 4 ใน 7 (ประเภทรถ · เพศ · วันเกิด · อายุ) เป็น dropdown/วันที่/ตัวเลข ที่ใส่ "-" แทนไม่ได้
+// → ขาดแล้วบอทค้างกลางทางที่หน้าคู่กรณี ผู้ตรวจต้องโทรตามให้ช่างแก้จากแอปอย่างเดียว
+//
+// `*` = ช่องบังคับรายคัน (ตรงกับ checkItems('6. คู่กรณี') ในแอปมือถือ)
+//
+// ⚠️ `province` ทำ 2 หน้าที่ในสคีมาของแอป: จังหวัดป้ายทะเบียน **และ** จังหวัดที่อยู่ผู้ขับขี่
+//    (เป็น parent ของ cascade อำเภอ) — สืบทอดมาจากฝั่งแอป ยังไม่ได้แยก
+const OPPONENT_FIELDS: FieldDef[] = [
+  { k: 'car_type', label: 'ประเภทรถ *', options: OPO_CAR_TYPES },
+  { k: 'plate', label: 'ทะเบียน *' },
+  { k: 'province', label: 'จังหวัด *', options: PROVINCE_OPTIONS },
+  { k: 'car_brand', label: 'ยี่ห้อ', optionsFrom: (r) => carBrandOptions(String(r.car_type ?? ''), String(r.car_brand ?? '')) },
+  { k: 'car_model', label: 'รุ่น' },
+  { k: 'reg_year', label: 'ปีจดทะเบียน' },
+  { k: 'car_color', label: 'สีรถ', options: CAR_COLOR_OPTIONS },
+  { k: 'vin', label: 'เลขตัวถัง' },
+  { k: 'insurer', label: 'มีประกันภัยที่ *' },
+  { k: 'policy_no', label: 'เลขกรมธรรม์' },
+  { k: 'policy_type', label: 'ประเภทประกัน' },
+  { k: 'claim_no', label: 'เลขเคลมคู่กรณี' },
+  { k: 'title', label: 'คำนำหน้า', options: TITLES },
+  { k: 'first_name', label: 'ชื่อผู้ขับขี่' },
+  { k: 'last_name', label: 'นามสกุล' },
+  { k: 'gender', label: 'เพศ *', options: GENDERS },
+  { k: 'birthdate', label: 'วันเกิด *', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
+  { k: 'age', label: 'อายุ *' },
+  { k: 'relation', label: 'ความสัมพันธ์', options: RELATIONS },
+  { k: 'phone', label: 'โทรศัพท์' },
+  { k: 'cid', label: 'เลขบัตรประชาชน' },
+  { k: 'license_no', label: 'เลขใบขับขี่' },
+  { k: 'license_type', label: 'ประเภทใบขับขี่', options: LICENSE_TYPES },
+  { k: 'district', label: 'เขต/อำเภอ (ที่อยู่)', optionsFrom: (r) => districtOptions(String(r.province ?? ''), String(r.district ?? '')) },
+  { k: 'address', label: 'ที่อยู่', wide: true },
+];
+
+/** คีย์ที่ editor นี้ดูแล — ใช้ตัดสินว่าการ์ด "ว่างทั้งใบ" ไหม โดยไม่นับ damage/kfk */
+const OPPONENT_KEYS = OPPONENT_FIELDS.map((f) => f.k);
+
+export function OpponentEditor({ items, onChange }: {
+  items: LooseRecord[]; onChange: (next: LooseRecord[]) => void;
+}) {
+  // spread ของเดิมไว้เสมอ → `damage` / `kfk` / คีย์ที่ยังไม่รู้จัก รอดไปกับการบันทึก
+  const set = (i: number, k: string, v: string) =>
+    onChange(items.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
+
+  return (
+    <div className="space-y-4">
+      {items.map((it, i) => {
+        const missing = ['car_type', 'plate', 'province', 'gender', 'birthdate', 'age', 'insurer']
+          .filter((k) => !String(it[k] ?? '').trim());
+        const dmg = Array.isArray(it.damage) ? it.damage.length : 0;
+        return (
+          <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-gray-700">คู่กรณีคันที่ {i + 1}</span>
+              <label className="flex items-center gap-1 text-xs text-gray-600">
+                <input
+                  type="checkbox" className="w-3.5 h-3.5"
+                  checked={it.kfk === true || it.kfk === 'true'}
+                  onChange={(e) => onChange(items.map((x, idx) => (idx === i ? { ...x, kfk: e.target.checked } : x)))}
+                />
+                KFK
+              </label>
+              {dmg > 0 && (
+                <span className="text-xs text-gray-500" title="แก้รายการความเสียหายของคู่กรณีได้จากแอปเท่านั้น">
+                  ความเสียหาย {dmg} รายการ (แก้ในแอป)
+                </span>
+              )}
+              {missing.length > 0 && (
+                <span className="text-xs text-red-600">⚠ ยังขาด {missing.length} ช่องบังคับ</span>
+              )}
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((_, idx) => idx !== i))}
+                className="ml-auto px-2 py-0.5 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+              >
+                ลบ
+              </button>
+            </div>
+            <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+              {OPPONENT_FIELDS.map((f) => (
+                <Field
+                  key={f.k}
+                  def={f.optionsFrom ? { ...f, options: f.optionsFrom(it) } : f}
+                  value={String(it[f.k] ?? '')}
+                  onChange={(v) => set(i, f.k, v)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange([...items, Object.fromEntries(OPPONENT_KEYS.map((k) => [k, ''])) as LooseRecord])}
+        className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
+      >
+        + เพิ่มคู่กรณี
+      </button>
+    </div>
+  );
+}
+
+/** ทิ้งคันที่ยังไม่กรอกอะไรเลย — ไม่นับ `damage`/`kfk` เพราะการ์ดเปล่าก็มีสองคีย์นี้ติดมาได้ */
+export const dropEmptyOpponents = (items: LooseRecord[]): LooseRecord[] =>
+  items.filter((it) => OPPONENT_KEYS.some((k) => String(it[k] ?? '').trim() !== ''));

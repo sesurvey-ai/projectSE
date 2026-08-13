@@ -7,7 +7,7 @@ import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, 
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import DamageEditor, { DamageItem } from './DamageEditor';
-import { InjuredEditor, PropertyEditor, dropEmptyRecords, RecordItem } from './RecordEditors';
+import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, RecordItem, LooseRecord } from './RecordEditors';
 
 /** ค่าตอบแทนผู้สำรวจของเคส — `suggest` คือยอดที่ระบบคิดจากตารางเรท `saved` คือที่ผู้ตรวจบันทึกจริง
  *  แยกกันเพื่อให้เห็นว่าผู้ตรวจปรับจากยอดที่ระบบแนะนำไปเท่าไหร่ */
@@ -151,6 +151,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       Object.fromEntries(Object.entries(x ?? {}).map(([k, val]) => [k, val == null ? '' : String(val)])));
   const [injured, setInjured] = useState<RecordItem[]>(() => toRecords(report?.injured_persons));
   const [property, setProperty] = useState<RecordItem[]>(() => toRecords(report?.damaged_property));
+  // คู่กรณีเก็บดิบ ไม่ผ่าน toRecords — มี `damage` (อาเรย์) กับ `kfk` (บูลีน) ที่แปลงเป็นสตริงแล้วพัง
+  const [opponents, setOpponents] = useState<LooseRecord[]>(
+    () => (Array.isArray(report?.opposing_parties) ? report.opposing_parties as LooseRecord[] : []));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — คนละฝั่งเงินกับตาราง survey_expenses ข้างบน
@@ -193,6 +196,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         payload.insured_damage = damage.filter((x) => x.part && x.level);
         payload.injured_persons = dropEmptyRecords(injured);
         payload.damaged_property = dropEmptyRecords(property);
+        payload.opposing_parties = dropEmptyOpponents(opponents);
       }
       // ยอดจ่ายพนักงานอยู่คนละตาราง (survey_pay) → ส่งแยก
       // ยิงก่อนบันทึกรายงาน เพื่อให้ถ้าพังจะพังทั้งคู่ ไม่เหลือสถานะครึ่ง ๆ
@@ -908,12 +912,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             const insuredDamage = toArray(report.insured_damage);
             return (
               <>
-                {/* คู่กรณี */}
-                {opposingParties.length > 0 && (
+                {/* คู่กรณี — โชว์เสมอตอนกด "แก้ไข" (ไม่งั้นเคสที่ยังไม่มีคู่กรณีก็เพิ่มไม่ได้) */}
+                {(opposingParties.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: คู่กรณี ({opposingParties.length} คัน)</span>
+                      <span className="font-bold">::: คู่กรณี ({isEditing ? opponents.length : opposingParties.length} คัน)</span>
                     </div>
+                    {isEditing ? (
+                      <div className="p-4"><OpponentEditor items={opponents} onChange={setOpponents} /></div>
+                    ) : (
                     <div className="p-4 space-y-4">
                       {opposingParties.map((op: any, idx: number) => {
                         const dmg = toArray(op?.damage);
@@ -990,6 +997,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         );
                       })}
                     </div>
+                    )}
                   </div>
                 )}
 
