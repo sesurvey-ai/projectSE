@@ -24,6 +24,31 @@ const INSURANCE_COMPANIES = [
   { value: 'ไอโออิกรุงเทพประกันภัย', name: 'ไอโออิ กรุงเทพประกันภัย' },
 ];
 
+/**
+ * เดาบริษัทประกันจากคำนำหน้าเลขเซอร์เวย์ (SURV_JOBNO) ในไฟล์
+ *
+ * เลขเซอร์เวย์เป็นเลขที่ **เราออกเอง** จึงคุมรูปแบบได้ — ต่างจาก INSURERBRID ที่ไฟล์
+ * ของไทยไพบูลย์ปล่อยว่างทุกใบ · ตรวจไฟล์จริง 8 ใบ: SETP 6 ใบ / SEABI 2 ใบ
+ * ไม่มีใบไหนขัดกับเลขเคลม (21BR10A… คู่กับ SETP · ตัวเลขล้วนคู่กับ SEABI) เลยสักใบ
+ * user ยืนยันกติกานี้ 13/08/69
+ *
+ * ⛔ เจอคำนำหน้าที่ไม่รู้จัก = คืน null แล้วปล่อยให้คนเลือกเอง — ห้ามเดา
+ *    เลือกผิด = เคสไปโผล่ผิดบริษัทใน EMCS ซึ่ง draft ลบไม่ได้
+ */
+const INSURER_BY_JOB_PREFIX: Record<string, string> = {
+  SETP: 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)',   // TP = ไทยไพบูลย์
+  SEABI: 'ไอโออิกรุงเทพประกันภัย',                      // ABI = Aioi Bangkok Insurance
+};
+
+function detectInsurer(xmlText: string): { value: string; jobNo: string; prefix: string } | null {
+  const m = /<SURV_JOBNO>\s*([^<\s]+)\s*<\/SURV_JOBNO>/i.exec(xmlText);
+  if (!m) return null;
+  const jobNo = m[1];
+  const prefix = (jobNo.split('-')[0] || '').toUpperCase();
+  const value = INSURER_BY_JOB_PREFIX[prefix];
+  return value ? { value, jobNo, prefix } : null;
+}
+
 type ImportResult = {
   caseId: number;
   assignedTo: number | null;
@@ -43,10 +68,36 @@ export default function ImportXmlPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
+  // ผลตรวจจับจากไฟล์ — null = ไฟล์ยังไม่ถูกเลือก หรือคำนำหน้าไม่รู้จัก (ต้องเลือกเอง)
+  const [detected, setDetected] = useState<{ value: string; jobNo: string; prefix: string } | null>(null);
+  const [detectFailed, setDetectFailed] = useState(false);
+
+  // เลือกไฟล์ XML → อ่านในเบราว์เซอร์เลย (ไม่ต้องส่งขึ้น server ก่อน) แล้วเติมบริษัทให้
+  const onPickXml = async (file: File | null) => {
+    setXmlFile(file); setError(''); setDetected(null); setDetectFailed(false);
+    if (!file) return;
+    try {
+      const hit = detectInsurer(await file.text());
+      if (hit) { setDetected(hit); setInsurer(hit.value); }
+      else { setDetectFailed(true); }
+    } catch {
+      setDetectFailed(true);   // อ่านไฟล์ไม่ได้ = ให้เลือกเอง ไม่ใช่เรื่องคอขาดบาดตาย
+    }
+  };
 
   const submit = async () => {
     if (!xmlFile) { setError('กรุณาเลือกไฟล์ XML ของรายงานสำรวจ'); return; }
     if (!insurer) { setError('กรุณาเลือกบริษัทประกัน — ไฟล์ XML ไม่มีข้อมูลนี้ แต่บอทต้องใช้ตอนนำเข้า EMCS'); return; }
+    // เลือกสวนกับที่ตรวจจับได้ → ถามยืนยันอีกรอบ (ไม่บล็อก เผื่อระบบตรวจผิด)
+    // เคสที่เข้าผิดบริษัทใน EMCS ลบไม่ได้ จังหวะนี้คือจังหวะสุดท้ายที่ทักได้
+    if (detected && insurer !== detected.value) {
+      const เดา = INSURANCE_COMPANIES.find((c) => c.value === detected.value)?.name ?? detected.value;
+      const เลือก = INSURANCE_COMPANIES.find((c) => c.value === insurer)?.name ?? insurer;
+      if (!window.confirm(
+        `เลขเซอร์เวย์ ${detected.jobNo} ขึ้นต้นด้วย ${detected.prefix} ซึ่งเป็นงานของ "${เดา}"\n` +
+        `แต่คุณเลือก "${เลือก}"\n\nยืนยันใช้ "${เลือก}" ต่อหรือไม่?\n` +
+        `(เคสที่เข้าผิดบริษัทในระบบประกันลบไม่ได้)`)) return;
+    }
     setBusy(true); setError(''); setResult(null);
     try {
       const fd = new FormData();
@@ -68,6 +119,8 @@ export default function ImportXmlPage() {
 
   const reset = () => {
     setXmlFile(null); setZipFile(null); setResult(null); setError('');
+    // ล้างผลตรวจจับด้วย ไม่งั้นเคสถัดไปจะเห็นข้อความของไฟล์เก่าค้างอยู่
+    setDetected(null); setDetectFailed(false); setInsurer('');
     if (xmlRef.current) xmlRef.current.value = '';
     if (zipRef.current) zipRef.current.value = '';
   };
@@ -91,7 +144,7 @@ export default function ImportXmlPage() {
             </label>
             <input
               ref={xmlRef} type="file" accept=".xml,.txt"
-              onChange={(e) => { setXmlFile(e.target.files?.[0] ?? null); setError(''); }}
+              onChange={(e) => { void onPickXml(e.target.files?.[0] ?? null); }}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-800 bg-white"
             />
             <p className="text-xs text-gray-500 mt-1">ไฟล์ชื่อประมาณ SURV_REPORT_xxxxxxxx.txt</p>
@@ -127,9 +180,23 @@ export default function ImportXmlPage() {
                 <option key={c.value} value={c.value}>{c.name}</option>
               ))}
             </select>
-            <p className="text-xs text-amber-600 mt-1">
-              ไฟล์ XML ไม่มีชื่อบริษัทประกัน — ต้องเลือกเอง ไม่งั้นบอทนำเข้า EMCS ไม่ได้
-            </p>
+            {detected && insurer === detected.value ? (
+              <p className="text-xs text-green-700 mt-1">
+                เลือกให้อัตโนมัติจากเลขเซอร์เวย์ <span className="font-mono">{detected.jobNo}</span>{' '}
+                (ขึ้นต้น <span className="font-mono">{detected.prefix}</span>) — เปลี่ยนเองได้ถ้าไม่ถูก
+              </p>
+            ) : detected ? (
+              <p className="text-xs text-red-600 mt-1">
+                ไม่ตรงกับที่ตรวจจับได้จากเลขเซอร์เวย์ <span className="font-mono">{detected.jobNo}</span>{' '}
+                — ระบบจะถามยืนยันอีกครั้งก่อนนำเข้า
+              </p>
+            ) : (
+              <p className="text-xs text-amber-600 mt-1">
+                {detectFailed
+                  ? 'อ่านบริษัทจากเลขเซอร์เวย์ในไฟล์ไม่ได้ (คำนำหน้าไม่รู้จัก) — ต้องเลือกเอง'
+                  : 'ไฟล์ XML ไม่มีชื่อบริษัทประกัน — เลือกไฟล์แล้วระบบจะเติมให้จากเลขเซอร์เวย์'}
+              </p>
+            )}
           </div>
 
           {error && (
