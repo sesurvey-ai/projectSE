@@ -990,13 +990,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               {/* ผู้ขับ */}
                               <div className="border-t border-gray-100 pt-2">
                                 <p className="text-xs font-semibold text-gray-500 mb-1.5">ผู้ขับ</p>
+                                {/* เพศ + วันเกิด: วันเกิดเป็นช่องบังคับของระบบประกัน แต่เดิมวิวนี้
+                                    ไม่แสดงเลย ผู้ตรวจจึงไม่เห็นว่าขาดจนบอทไปติดที่ปลายทาง
+                                    (แอปเก็บเพศเป็น 'ชาย'/'หญิง' ส่วนรถประกันเก็บ M/F — รองรับทั้งคู่) */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
                                   <ReadItem label="ชื่อผู้ขับ" value={driverName} />
+                                  <ReadItem label="เพศ" value={op?.gender === 'M' ? 'ชาย' : op?.gender === 'F' ? 'หญิง' : op?.gender} />
+                                  <ReadItem label="วันเกิด" value={op?.birthdate} />
                                   <ReadItem label="ความสัมพันธ์" value={op?.relation} />
                                   <ReadItem label="อายุ" value={op?.age} />
                                   <ReadItem label="โทรศัพท์" value={op?.phone} />
                                   <ReadItem label="เลขบัตรประชาชน" value={op?.cid} />
                                   <ReadItem label="ใบขับขี่เลขที่" value={op?.license_no} />
+                                  <ReadItem label="ประเภทใบขับขี่" value={op?.license_type} />
+                                  <ReadItem label="เลขตัวถัง" value={op?.vin} />
                                 </div>
                               </div>
                               {/* ประกัน */}

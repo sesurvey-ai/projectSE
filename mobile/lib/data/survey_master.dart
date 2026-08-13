@@ -153,6 +153,16 @@ const List<String> kCarColors = [
 ];
 
 // EV — sync EMCS master ddlEvType (verbatim label, ลำดับ BEV/FCEV/HEV/MEV/PHEV) 2026-07-23
+/// รหัส EV → ป้ายสั้นที่ใช้ใน dropdown ของฟอร์ม (ค่าที่ **เก็บลง DB คือรหัส**)
+///
+/// แยกจาก [kEvTypes] ที่เป็นข้อความเต็มของ EMCS โดยตั้งใจ — คนละหน้าที่:
+/// อันนั้นไว้จับคู่ข้อความจาก EMCS/OCR ส่วนอันนี้ไว้ให้คนเลือกแล้วเก็บรหัส
+/// ⚠️ เดิมแมปนี้ประกาศอยู่ในฟอร์มหลัก ทำให้แก้ที่ไฟล์ master แล้วไม่มีผล
+const Map<String, String> kEvCodeToLabel = {
+  '': '-- ระบุ --', 'BEV': 'BEV (100%)', 'HEV': 'HEV',
+  'PHEV': 'PHEV', 'FCEV': 'FCEV', 'MEV': 'MEV ดัดแปลง',
+};
+
 const List<String> kEvTypes = [
   'BEV รถยนต์ไฟฟ้า BEV (100%)',
   'FCEV รถยนต์ไฟฟ้า เซลล์เชื้อเพลิง (FCEV)',

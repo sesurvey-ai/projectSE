@@ -15,7 +15,8 @@ import '../app_icons.dart';
 import '../widgets/car_damage_diagram.dart';
 import 'damage_notice_screen.dart';
 import '../data/survey_master.dart'
-    show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn;
+    show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn,
+         kPolicyTypes, kTitles, kRelations, kCarTypeCodeToLabel, kEvCodeToLabel;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/form_kit.dart' show kCidField, kPhoneFormatters;
@@ -3086,7 +3087,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   // ประเภทประกัน = dropdown (POL_TYPES) + คงค่าเดิมถ้าไม่อยู่ในลิสต์
   Widget _policyTypeField() {
-    const base = ['ชั้น 1', 'ชั้น 2+', 'ชั้น 2', 'ชั้น 3+', 'ชั้น 3', 'พรบ.', 'ไม่พบความคุ้มครอง'];
+    const base = kPolicyTypes;   // master ที่เดียว (survey_master.dart)
     final cur = _policyTypeCtl.text.trim();
     final items = [...base, if (cur.isNotEmpty && !base.contains(cur)) cur];
     return _dd('ประเภทประกัน', cur, items, (v) => setState(() => _policyTypeCtl.text = v ?? ''), req: true, key: ValueKey('pt_$cur'));
@@ -3114,7 +3115,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   // ประเภทรถ = dropdown (ตัวเลือก + ค่าตาม ddlCType จริง)
   Widget _carTypeField() {
-    const labels = {'0': '-- ระบุ --', 'A': 'เก๋งเอเชีย', 'E': 'เก๋งยุโรป', 'M': 'รถจักรยานยนต์', 'O': 'รถอื่นๆ', 'T': 'กระบะ', 'V': 'รถตู้', 'W': 'รถบรรทุก'};
+    const labels = {'0': '-- ระบุ --', ...kCarTypeCodeToLabel};   // master ที่เดียว
     return DropdownButtonFormField<String>(
       initialValue: labels.containsKey(_carType) ? _carType : '0',
       isExpanded: true,
@@ -3140,7 +3141,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   // รถยนต์ไฟฟ้า (EV) = dropdown
   Widget _evTypeField() {
     // '' = ยังไม่ระบุ (โชว์ placeholder เทาจาง) ; เก็บ null = ไม่ใช่ EV เหมือนเดิม
-    const labels = {'': '-- ระบุ --', 'BEV': 'BEV (100%)', 'HEV': 'HEV', 'PHEV': 'PHEV', 'FCEV': 'FCEV', 'MEV': 'MEV ดัดแปลง'};
+    const labels = kEvCodeToLabel;   // master ที่เดียว
     return DropdownButtonFormField<String>(
       initialValue: labels.containsKey(_evType) ? _evType : '',
       isExpanded: true,
@@ -4183,8 +4184,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   // คำนำหน้า — label ภายนอก + dropdown เตี้ย (สูง 48) ให้อยู่แถวเดียว/ตรงกับปุ่มเพศ และแคบลง
   Widget _titleDropdown() {
-    const items = ['0', 'นาย', 'นาง', 'นางสาว', 'ด.ช.', 'ด.ญ.', 'คุณ'];
-    const labels = {'0': '-- ระบุ --', 'นาย': 'นาย', 'นาง': 'นาง', 'นางสาว': 'นางสาว', 'ด.ช.': 'ด.ช.', 'ด.ญ.': 'ด.ญ.', 'คุณ': 'คุณ'};
+    const items = ['0', ...kTitles];   // master ที่เดียว
+    final labels = {'0': '-- ระบุ --', for (final t in kTitles) t: t};
     OutlineInputBorder b(Color c) => OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: c, width: 1.5));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4222,15 +4223,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   Widget _birthdateField() => _dateField(_driverBirthdateCtl, 'วันเกิด', req: true, yearsAhead: 0, defaultYearsAgo: 30);
 
   Widget _relationDropdown() {
-    const rel = [
-      'สามี', 'ภรรยา', 'บุตร', 'บิดา', 'มารดา',
-      'นายจ้าง', 'ลูกจ้าง', 'ผู้เช่า', 'พี่ชาย', 'พี่สาว',
-      'น้องชาย', 'น้องสาว', 'เจ้าของรถ', 'หลาน', 'อา', 'น้า', 'ลุง', 'ป้า',
-      'ญาติ', 'เพื่อน', 'แฟน', 'พนักงาน', 'พี่เขย', 'น้องเขย',
-      'พี่สะใภ้', 'น้องสะใภ้', 'พนักงานผู้เช่า', 'ลุงเขย', 'น้าเขย',
-      'น้าสะใภ้', 'อาเขย', 'อาสะใภ้', 'หุ้นส่วน', 'บุตรหุ้นส่วน',
-      'เจ้าของบริษัท', 'เพื่อนบุตรเจ้าของรถ', 'บุตรเขย', 'หลานเขย', 'บุตรสะใภ้',
-    ];
+    const rel = kRelations;   // master ที่เดียว
     return _dd('ความสัมพันธ์', _driverRelationCtl.text, rel,
         (v) => setState(() => _driverRelationCtl.text = v ?? ''),
         req: true, key: ValueKey('rel_${_driverRelationCtl.text}'));
