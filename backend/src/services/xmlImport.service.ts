@@ -325,6 +325,15 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     // ⛔ ห้ามก๊อป SURV_COMMENT ลง notes อีก — เคยเขียนซ้ำคำต่อคำ (1,281 ตัวอักษรเท่ากันเป๊ะ)
     // "หมายเหตุ" เป็นช่องที่คนของเราเขียนเอง ไม่ใช่สำเนาความเห็นที่ติดมากับไฟล์ของประกัน
     // และฝั่งส่งออกเลิกใช้ notes เป็น fallback ของ SURV_COMMENT ไปแล้ว
+    //
+    // ── อีก 2 ช่องความเห็น อยู่ใน <TXN_SURV_BILL> ไม่ใช่ <TXN_SURV_REPORT> ──
+    // ฝั่งส่งออกเขียนไว้ครบ 3 ช่องแล้ว (ACC_RESULT / ACC_COMMENT / SURV_COMMENT)
+    // แต่ฝั่งนำเข้าอ่านกลับแค่ตัวเดียว → ไฟล์ที่เรา gen เองแล้วนำกลับเข้าระบบ (round-trip
+    // ของ se-autokey โหมดกู้/ซ่อม) ทำ 2 ช่องนี้หายทุกครั้ง
+    // ⚠️ ไฟล์ของ ISURVEY จริงทั้ง 8 ใบที่มี ปล่อย 2 tag นี้ว่างหมด — เติม mapper แล้ว
+    //    ช่องก็ยังว่างอยู่ดี ไม่ใช่บั๊กของเรา ต้นทางเขาไม่ส่งมา (ผู้ตรวจกรอกเองบนเว็บ)
+    survey_result: txt(billBlock, 'ACC_RESULT'),
+    review_comment: txt(billBlock, 'ACC_COMMENT'),
   };
 
   // ── รถประกัน + ผู้ขับขี่ ──
