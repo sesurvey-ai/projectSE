@@ -364,6 +364,11 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     const name = String(report.driver_name || '');
     const t = ['นาย', 'นางสาว', 'นาง', 'ด.ช.', 'ด.ญ.', 'คุณ'].find((x) => name.startsWith(x));
     report.driver_title = t ?? (name ? 'คุณ' : '');
+    // แยกชื่อ-นามสกุลเหมือนที่ทำกับคู่กรณี — มือถือเก็บแยก 2 ช่อง เว็บก็บังคับ 2 ช่องนี้
+    // ถ้าไม่แยก เคสนำเข้าจะขึ้นดอกจันแดงค้างทั้งที่ชื่ออยู่ครบในช่องชื่อเต็ม
+    const bare = (t ? name.slice(t.length) : name).trim().split(/\s+/).filter(Boolean);
+    report.driver_first_name = bare[0] ?? '';
+    report.driver_last_name = bare.slice(1).join(' ');
   } else {
     warnings.push('ไม่พบบล็อกรถประกัน (TYPE=0) ในไฟล์ — ข้อมูลรถ/ผู้ขับขี่จะว่าง');
   }
