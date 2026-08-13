@@ -131,12 +131,45 @@ const ColGroup = () => (
  */
 const Req = ({ when }: { when?: string }) => (
   <span
-    className={when ? 'text-amber-500 ml-0.5' : 'text-red-500 ml-0.5'}
+    className={when ? 'text-amber-500 ml-0.5 req-mark-when' : 'text-red-500 ml-0.5 req-mark'}
     title={when
       ? `บังคับเมื่อ ${when} — ระบบประกันไม่รับถ้าเว้นว่างในกรณีนี้`
       : 'ช่องบังคับของระบบประกัน — เว้นว่างแล้วบันทึกเข้าระบบประกันไม่ผ่าน'}
   >*</span>
 );
+
+/**
+ * ไฮไลต์ "ช่องบังคับที่ยังว่าง" ด้วยกรอบแดง + นับจำนวนไว้โชว์หัวหน้า
+ *
+ * ทำเป็น pass เดียวหลัง render แทนการไปแก้ className ทีละช่อง เพราะหน้านี้มีช่องบังคับ
+ * ~49 ช่องกระจายอยู่ทั่วฟอร์ม และเพิ่มขึ้นเรื่อย ๆ — ผูกกับดอกจันที่มีอยู่แล้วทำให้
+ * ช่องบังคับที่เพิ่มวันหลังได้กรอบแดงเองโดยไม่ต้องมาแก้ที่นี่ซ้ำ
+ *
+ * นับเฉพาะดอกจัน**แดง** (บังคับเสมอ) — ดอกจันเหลืองเป็นแบบมีเงื่อนไข ไฮไลต์แล้วจะหลอก
+ */
+const RING = ['border-red-400', 'ring-1', 'ring-red-300'];
+
+function fieldsOfMark(mark: Element): HTMLElement[] {
+  let n: Element | null = mark;
+  for (let hop = 0; n && hop < 5; hop++) {
+    const row: Element | null = n.parentElement;
+    if (row) {
+      const f = Array.prototype.slice.call(row.querySelectorAll('input,select,textarea')) as HTMLElement[];
+      if (f.length) return f;
+    }
+    n = n.parentElement;
+  }
+  return [];
+}
+
+const isBlank = (el: HTMLElement) => {
+  const v = (el as HTMLInputElement).value ?? '';
+  if (el instanceof HTMLSelectElement) {
+    return !v || v === '0' || /^--/.test(el.options[el.selectedIndex]?.text ?? '');
+  }
+  if ((el as HTMLInputElement).type === 'radio' || (el as HTMLInputElement).type === 'checkbox') return false;
+  return !v.trim();
+};
 
 export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, expenses, onReviewSubmitted }: CaseDetailProps) {
   const ex = expenses || {};
@@ -170,6 +203,33 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [pay, setPay] = useState<PayData | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const d = !isEditing;
+  // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
+  const [missing, setMissing] = useState<string[]>([]);
+
+  // ทาสีกรอบแดงให้ช่องบังคับที่ยังว่าง + นับจำนวน
+  // ทำหลัง render เพราะช่องบังคับกระจายอยู่ ~49 จุด ผูกกับดอกจันที่มีอยู่แล้วดีกว่าไล่แก้ทีละช่อง
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const paint = () => {
+      const names: string[] = [];
+      form.querySelectorAll('.req-mark').forEach((mark) => {
+        fieldsOfMark(mark).forEach((el) => {
+          const blank = isBlank(el);
+          el.classList.toggle('border-gray-300', !blank);
+          RING.forEach((c) => el.classList.toggle(c, blank));
+          const nm = (el as HTMLInputElement).name;
+          if (blank && nm && !names.includes(nm)) names.push(nm);
+        });
+      });
+      setMissing(names);
+    };
+    paint();
+    // พิมพ์/เลือกแล้วกรอบแดงหายทันที ไม่ต้องรอกดบันทึก (ช่องเป็น uncontrolled — React ไม่ re-render)
+    form.addEventListener('input', paint);
+    form.addEventListener('change', paint);
+    return () => { form.removeEventListener('input', paint); form.removeEventListener('change', paint); };
+  }, [report, isEditing, saveMsg]);
 
   useEffect(() => {
     let alive = true;
@@ -243,6 +303,30 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-500">
             <span><span className="text-red-500">*</span> ช่องบังคับของระบบประกัน — เว้นว่างแล้วส่งงานเข้าระบบประกันไม่ผ่าน</span>
             <span><span className="text-amber-500">*</span> บังคับเฉพาะบางกรณี (ชี้เมาส์ที่ดอกจันเพื่อดูเงื่อนไข)</span>
+            <span className="text-gray-400">ช่องบังคับที่ยังว่างจะขึ้นกรอบแดง</span>
+          </div>
+
+          {/* สรุปจำนวนช่องที่ยังขาด — กรอบแดงรายช่องอาจอยู่คนละหมวดห่างกันคนละหน้าจอ
+              ถ้าไม่สรุปไว้บนสุด ผู้ตรวจต้องเลื่อนหาเอง แล้วไปเจอตอนบอทนำเข้าไม่ผ่าน */}
+          {missing.length > 0 ? (
+            <div className="bg-red-50 border border-red-200 rounded px-4 py-2.5 text-sm text-red-800 flex items-center gap-2">
+              <span className="font-semibold">ยังขาดช่องบังคับ {missing.length} ช่อง</span>
+              <span className="text-red-600">— ดูช่องที่มีกรอบแดง เว้นว่างไว้แล้วนำเข้าระบบประกันไม่ผ่าน</span>
+              <button
+                type="button"
+                onClick={() => formRef.current?.querySelector('.' + RING[0])
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className="ml-auto shrink-0 px-3 py-1 text-xs border border-red-300 rounded hover:bg-red-100"
+              >
+                ไปช่องแรกที่ขาด
+              </button>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded px-4 py-2 text-sm text-green-800">
+              ช่องบังคับครบแล้ว
+            </div>
+          )}
+          <div className="hidden">
           </div>
 
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
