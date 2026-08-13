@@ -719,6 +719,25 @@ export const caseService = {
         break; // โฟลเดอร์แรกที่มีอยู่จริง = แหล่งความจริง แม้ว่าง
       }
 
+      // เวลา "สำรวจเสร็จ" (acc_survey_complete_date) — **ระบบเติมให้ ไม่ใช่ให้คนพิมพ์**
+      //
+      // EMCS บังคับช่องนี้ (+ ชั่วโมง/นาที) ทุกบริษัท แต่ไม่มีใครในระบบเราเติมเลย → บอทเขียน
+      // ค่าว่างลงฟอร์มแล้ว btnUpdate ตีกลับ = draft เกิดแล้วแต่หน้าหลักบันทึกไม่ผ่าน (import ค้าง)
+      //
+      // จังหวะที่ถูกที่สุดคือตอนกดส่งงาน = งานสำรวจเสร็จจริง ณ เวลานั้น
+      // รูปแบบ + เวลาไทย ยกจากบล็อก acc_survey_arrive_date ให้ตรงกัน (prod เป็น UTC)
+      // เขียนเฉพาะตอนยังว่าง — ส่งซ้ำ/แก้ทีหลังต้องไม่ขยับเวลาเดิม
+      await client.query(
+        `UPDATE survey_reports
+            SET acc_survey_complete_date =
+                  to_char(n, 'FMDD/FMMM/') || (EXTRACT(YEAR FROM n)::int + 543)
+                  || '|' || to_char(n, 'HH24:MI')
+           FROM (SELECT NOW() AT TIME ZONE 'Asia/Bangkok' AS n) s
+          WHERE case_id = $1
+            AND COALESCE(TRIM(acc_survey_complete_date), '') = ''`,
+        [caseId]
+      );
+
       // guard status ใน UPDATE (idempotent) — ถ้าถูก submit คู่ขนานจน status เปลี่ยนไปแล้ว → 0 rows → rollback
       const st = await client.query(
         `UPDATE cases SET status = 'surveyed' WHERE id = $1 AND status = 'assigned' RETURNING id`,

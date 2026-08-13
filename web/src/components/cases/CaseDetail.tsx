@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import DamageEditor, { DamageItem } from './DamageEditor';
@@ -352,7 +352,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย <Req /> :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="assured_name" defaultValue={report.assured_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2 text-gray-500">ประกันประเภท <Req /> :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_type" defaultValue={report.policy_type || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
+                    {/* dropdown ไม่ใช่ช่องพิมพ์ — ปลายทางดึงเฉพาะตัวเลขจากข้อความ
+                        พิมพ์ "ชั้นหนึ่ง" = ส่งค่าว่างเข้าระบบประกันโดยไม่มีอะไรฟ้อง */}
+                    <td className="px-4 py-2">
+                      <select disabled={d} name="policy_type" defaultValue={report.policy_type || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                        <option>-- ระบุ --</option>
+                        {POLICY_TYPE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                        {report.policy_type && !POLICY_TYPE_OPTIONS.includes(report.policy_type) && (
+                          <option value={report.policy_type}>{report.policy_type} (ค่าเดิม)</option>
+                        )}
+                      </select>
+                    </td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2 text-gray-500">อีเมลผู้เอาประกัน :</td>
@@ -714,9 +724,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท <Req /> :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รถประกันเป็นฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รถประกันเป็นฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รถคู่กรณีเป็นฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
+                      {/* ⚠️ `value` ต้องเป็น **ค่าสั้นชุดเดียวกับแอปมือถือ** (_faultDropdown ที่
+                          survey_form_screen.dart) — ไม่ใช่ป้ายเต็มที่โชว์
+                          เดิมเว็บเขียนป้ายเต็มลง DB ทับค่าของแอป แล้วตรรกะในแอปที่เทียบตรง ๆ
+                          (`_accFault == 'คู่กรณีผิด'`) เลิกทำงาน → แอปไม่บังคับ "คู่กรณีคันที่ +
+                          การเรียกร้อง ≥1" ทั้งที่ EMCS ยังบังคับ · XML แมปได้ทั้ง 2 สำเนียงอยู่แล้ว
+                          จึงไม่กระทบไฟล์ที่ส่งออก แต่ต้องเลิกทำให้ DB มีหลายสำเนียง */}
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายผิด' || report.acc_fault === 'รถประกันฝ่ายผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายถูกและผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด' || report.acc_fault === 'ถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
+                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="คู่กรณีผิด" disabled={d} defaultChecked={report.acc_fault === 'คู่กรณีผิด' || report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
                       <span className="text-gray-500">คู่กรณีคันที่ <Req when="เลือก &quot;รถคู่กรณีเป็นฝ่ายผิด&quot; (ต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)" /></span>
                       <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={report.acc_fault_opponent_no ?? ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
@@ -733,9 +749,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_surveyor" defaultValue={report.acc_surveyor || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <select disabled={d} name="acc_surveyor_branch" className={`w-[70px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        <option>-- ระบุ --</option>
-                      </select>
+                      {/* ถอด <select> "สาขาผู้สำรวจ" ออก — มีตัวเลือกเดียวคือ placeholder
+                          จึงเขียนค่าว่างทับทุกครั้งที่บันทึก · แอปมือถือถอด UI นี้ไปแล้ว
+                          และ XML ใช้ SURVEYBRID จาก env ไม่ได้อ่านคอลัมน์นี้เลย */}
                       <span className="text-gray-500 shrink-0">โทรศัพท์ <Req /> :</span>
                       <input type="text" disabled={d} name="acc_surveyor_phone" defaultValue={report.acc_surveyor_phone || ''} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                     </div>
@@ -743,7 +759,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </tr>
                 {(() => { const cr = parseDatetime(report.acc_customer_report_date); const ins = parseDatetime(report.acc_insurance_notify_date); return (
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน <Req /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_customer_report_date_val" defaultValue={cr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -753,7 +769,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย <Req /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_insurance_notify_date_val" defaultValue={ins.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -767,7 +783,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 ); })()}
                 {(() => { const arr = parseDatetime(report.acc_survey_arrive_date); const comp = parseDatetime(report.acc_survey_complete_date); return (
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) <Req /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_survey_arrive_date_val" defaultValue={arr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -777,7 +793,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ :</td>
+                  <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ <Req /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_survey_complete_date_val" defaultValue={comp.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -837,13 +853,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tr className="border-b border-gray-100">
                   <td className="px-4 py-2 text-gray-500">วันที่ :</td>
                   <td className="px-4 py-2">
+                    {/* วัน+เวลาเก็บรวมกันเป็น "วันที่|HH:mm" — ต้องแตกกลับมาใส่ช่องชั่วโมง/นาที
+                        เดิม hardcode '' ทั้งคู่ → กดบันทึกทีเดียวเวลาที่ช่างกรอกมาหายทันที
+                        (backend เขียนทับ acc_police_date ด้วยวันที่เปล่าเมื่อชั่วโมง/นาทีว่าง) */}
+                    {(() => { const pol = parseDatetime(report.acc_police_date); return (
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_police_date" defaultValue={report.acc_police_date || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_police_hour" defaultValue={''} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_police_date" defaultValue={pol.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_police_minute" defaultValue={''} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
+                    ); })()}
                   </td>
                   <td className="px-4 py-2 text-gray-500">ประจำวันข้อที่ :</td>
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_book_no" defaultValue={report.acc_police_book_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
@@ -891,13 +912,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tr>
                   <td className="px-4 py-2 text-gray-500">วันที่ :</td>
                   <td className="px-4 py-2" colSpan={3}>
+                    {/* เช่นเดียวกับบล็อกตำรวจ — เดิมล้างเวลานัดหมายทิ้งทุกครั้งที่กดบันทึก */}
+                    {(() => { const flu = parseDatetime(report.acc_followup_date); return (
                     <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_followup_date" defaultValue={report.acc_followup_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_followup_hour" defaultValue={''} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_followup_date" defaultValue={flu.date} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_followup_minute" defaultValue={''} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <input type="text" disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
+                    ); })()}
                   </td>
                 </tr>
               </tbody>

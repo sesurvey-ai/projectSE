@@ -2109,7 +2109,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     // server ตีกลับ 400 ทุกครั้งที่ผลคดี = คู่กรณีผิด (เจอจริง 2026-08-07)
     final _oppNo = asInt(_accFaultOpponentNoCtl.text);
     data['acc_fault_opponent_no'] =
-        _accFault == 'คู่กรณีผิด' ? _oppNo?.toString() : null;
+        _faultIs('คู่กรณีผิด') ? _oppNo?.toString() : null;
     return data;
   }
 
@@ -2641,8 +2641,25 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   }
 
   // ══ Validation (Phase 4) ══════════════════════════════════════════
+
+  /// ผลคดีมีหลายสำเนียงใน DB — แอปเก็บค่าสั้น ('คู่กรณีผิด') แต่เว็บเคยเขียนป้ายเต็ม
+  /// ('รถคู่กรณีเป็นฝ่ายผิด') ทับลงไป และของเก่ายังมี 'รถประกันฝ่ายผิด' ค้างอยู่จริง
+  /// เทียบตรง ๆ แล้วเงื่อนไขบังคับจะเงียบหายไปทั้งชุด → normalize ก่อนเทียบเสมอ
+  /// (เว็บแก้ให้ส่งค่าสั้นแล้วเช่นกัน อันนี้เป็นตาข่ายรับของเก่า)
+  bool _faultIs(String canonical) {
+    const alias = <String, List<String>>{
+      'ฝ่ายผิด': ['รถประกันฝ่ายผิด', 'รถประกันเป็นฝ่ายผิด'],
+      'คู่กรณีผิด': ['รถคู่กรณีเป็นฝ่ายผิด'],
+      'ฝ่ายถูกและผิด': ['รถประกันเป็นฝ่ายถูกและผิด', 'ถูกและผิด'],
+      'รอสรุปผลคดี': ['รอผลคดี'],
+      'ไปถึงแล้วไม่พบ': ['ไปถึง แล้วไม่พบ'],
+    };
+    final v = _accFault.trim();
+    return v == canonical || (alias[canonical]?.contains(v) ?? false);
+  }
+
   // ตำรวจจำเป็นเมื่อ: ฝ่ายประมาท="รอสรุปผลคดี" เท่านั้น (มีผู้บาดเจ็บไม่บังคับ)
-  bool _policeRequired() => _accFault == 'รอสรุปผลคดี';
+  bool _policeRequired() => _faultIs('รอสรุปผลคดี');
   // คนไทย = ต้องผ่าน checksum 13 หลัก · ต่างชาติ = ขอแค่ไม่ว่าง (บัตรต่างด้าว/พาสปอร์ต
   // ไม่มีสูตรตรวจ) — user สรุป 2026-08-06
   bool _driverCidValid() {
@@ -2665,6 +2682,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           ['เลขกรมธรรม์', has(_policyNoCtl)],
           ['ประเภทประกัน', has(_policyTypeCtl)],
           ['ผู้เอาประกันภัย', has(_assuredNameCtl)],
+          // EMCS บังคับเลข พ.ร.บ. **เมื่อติ๊ก "มี พ.ร.บ."** เท่านั้น (chkHas_Prb → txtPrb_Number)
+          // ช่องนี้มีจุดแดงในหน้าอยู่แล้วตอนเปิดสวิตช์ แต่ไม่เคยมีใครตรวจ = จุดแดงลอย
+          // และเลขว่าง → XML ตั้ง HAS_PRB จาก "มีเลขไหม" = ติ๊ก "มี พ.ร.บ." หายทั้งใบ
+          ['เลข พ.ร.บ.', !_hasPrb || has(_prbNumberCtl)],
         ]);
       case _SView.s2:
         return miss([
@@ -2701,7 +2722,9 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         ]);
       case _SView.s5:
         final base = miss([
-          ['วัน-เวลาเกิดเหตุ', has(_accDateCtl)],
+          // EMCS บังคับทั้ง "วันที่" และ "ชั่วโมง/นาที" (txtAcc_Date_Hour / txtAcc_Date_Minute)
+          // เดิมตรวจแค่วันที่ → ส่งงานโดยไม่กรอกเวลาได้ แล้วบอทไปตกที่ btnUpdate ของ EMCS
+          ['วัน-เวลาเกิดเหตุ', has(_accDateCtl) && has(_accTimeCtl)],
           ['สถานที่เกิดเหตุ', has(_accPlaceCtl)],
           // จังหวัด/เขต-อำเภอ/ลักษณะความเสียหาย = * บังคับฝั่ง EMCS เหมือนกัน
           ['จังหวัดที่เกิดเหตุ', has(_accProvinceCtl)],
@@ -2716,7 +2739,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         ]);
         // ผลคดี = คู่กรณีผิด → EMCS บังคับ "คู่กรณีคันที่" + ติ๊กการเรียกร้องอย่างน้อย 1 ข้อ
         // (ไม่ครบ = กดบันทึกบน EMCS ไม่ผ่าน หัวหน้าต้องมานั่งเติมเองทุกเคส)
-        if (_accFault == 'คู่กรณีผิด') {
+        if (_faultIs('คู่กรณีผิด')) {
           base.addAll(miss([
             ['คู่กรณีคันที่', has(_accFaultOpponentNoCtl)],
             ['การเรียกร้องค่าเสียหายจากคู่กรณี', _opoClaims.isNotEmpty],
@@ -2776,8 +2799,12 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     // แต่ EMCS บังคับหลายช่องต่อคน/ต่อชิ้น (vlidInjPerson / vlidAsset) ไม่ครบ =
     // กดบันทึกบล็อกนั้นบน EMCS ไม่ผ่าน "ทั้งบล็อก" และช่องที่ว่างจะกลายเป็น '-'
     // ให้หัวหน้าไล่แก้ทีละช่อง — จึงต้องดักตั้งแต่ตอนส่งงาน (เหมือนหมวด 1-5)
+    /// [alsoMissing] = ช่องที่บังคับ**แบบมีเงื่อนไข** (ดูค่าอื่นในระเบียนเดียวกันถึงจะรู้)
+    /// คืนชื่อช่องที่ยังขาดของระเบียนนั้น
     void checkItems(String title, bool has, List<Map<String, dynamic>> items,
-        String noun, Map<String, String> requiredKeys, {String unit = 'คนที่/ชิ้นที่'}) {
+        String noun, Map<String, String> requiredKeys,
+        {String unit = 'คนที่/ชิ้นที่',
+         List<String> Function(Map<String, dynamic>)? alsoMissing}) {
       if (!has || items.isEmpty) return;
       final msgs = <String>[];
       for (var i = 0; i < items.length; i++) {
@@ -2786,7 +2813,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         final miss = requiredKeys.entries
             .where((kv) => (it[kv.key] ?? '').toString().trim().isEmpty)
             .map((kv) => kv.value)
-            .toList();
+            .toList()
+          ..addAll(alsoMissing?.call(it) ?? const []);
         if (miss.isNotEmpty) msgs.add('$noun $unit ${i + 1}: ขาด ${miss.join(", ")}');
       }
       if (msgs.isNotEmpty) (e[title] ??= <String>[]).addAll(msgs);
@@ -2795,15 +2823,30 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     // หมวด 6 เป็นหมวดเดียวที่ไม่เคยตรวจรายคัน — ปล่อยว่างได้ 4 ช่องที่ EMCS บล็อก
     // (เพศ · วันเกิด · อายุ · มีประกันภัยที่ ล้วนเป็นตัวเลือก/วันที่/ตัวเลข ใส่ "-" แทนไม่ได้)
     // เจอจริง 2026-08-10 เคลม 21BR10AVD-6908-000097 — บอทค้างกลางทางที่หน้าคู่กรณี
+    // ⚠️ ลิสต์นี้ต้องตรงกับ `vlidOpoCar` ของ EMCS (สกัดจากหน้าจริงเคส 000098 · ส่วน base
+    //    ก่อน switch = บังคับทุกบริษัท) และตรงกับ OPPONENT_REQUIRED ในเว็บ (RecordEditors.tsx)
+    //    เดิมขาด `owner_name` → บอทต้องยัด '-' แทน สำนวนคู่กรณีของบริษัทประกันเลยได้
+    //    ชื่อเจ้าของรถเป็น "-" ทุกใบ
+    //    (policy_no/claim_no EMCS ก็บังคับ แต่ **ไม่เอามาบังคับที่นี่** เพราะคู่กรณีไม่มีประกัน
+    //     มีจริง — ปล่อยให้บอทใส่ '-' ตามกติกา _dash ต่อไป)
     checkItems('6. คู่กรณี', _hasOpponents, _opponents, 'คู่กรณี', const {
       'car_type': 'ประเภทรถ', 'plate': 'ทะเบียน', 'province': 'จังหวัด',
+      'owner_name': 'เจ้าของรถ',
       'gender': 'เพศผู้ขับขี่', 'birthdate': 'วันเกิด', 'age': 'อายุ',
       'insurer': 'มีประกันภัยที่',
     }, unit: 'คันที่');
     checkItems('7. ผู้บาดเจ็บ', _hasInjured, _injured, 'ผู้บาดเจ็บ', const {
       'person_type': 'ประเภทผู้บาดเจ็บ', 'gender': 'เพศ', 'name': 'ชื่อ-นามสกุล',
       'cid': 'เลขบัตรประชาชน', 'hospital': 'โรงพยาบาล', 'symptom': 'อาการบาดเจ็บ',
-    });
+    },
+      // EMCS (vlidInjPerson) บังคับเลขทะเบียนทุกประเภท **ยกเว้น 'บุคคลภายนอกรถ'** (คนนอกรถไม่มีรถ)
+      // เดิมตรวจแค่ในปุ่ม "บันทึกคนนี้" ของ editor → ระเบียนที่มาจาก draft/นำเข้า XML หลุดด่านนี้
+      alsoMissing: (it) {
+        final pt = (it['person_type'] ?? '').toString().trim();
+        final reg = (it['car_reg'] ?? '').toString().trim();
+        return (pt.isNotEmpty && pt != 'บุคคลภายนอกรถ' && reg.isEmpty)
+            ? const ['เลขทะเบียนรถ'] : const <String>[];
+      });
     checkItems('8. ทรัพย์สิน', _hasProperty, _property, 'ทรัพย์สิน', const {
       'item': 'รายการทรัพย์สิน', 'cause': 'สาเหตุที่เสียหาย',
       'detail': 'รายละเอียดความเสียหาย', 'owner_name': 'ชื่อเจ้าของ',
@@ -3122,7 +3165,10 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     return _dd(
         base.isEmpty ? 'ยี่ห้อ (เลือกประเภทรถก่อน)' : 'ยี่ห้อ', cur, items,
         (v) => setState(() => _carBrandCtl.text = v ?? ''),
-        hint: base.isEmpty ? 'เลือกประเภทรถก่อน' : 'เลือกยี่ห้อ', req: true,
+        // ⚠️ ไม่ใส่ req — EMCS **ไม่ได้บังคับ** ยี่ห้อ (ddlCMFG ไม่อยู่ใน vlidSurvey เลย)
+        //    เดิมมีจุดแดงแต่ _sectionMissing ไม่เคยตรวจ = จุดแดงลอย ทำให้ช่างงงว่าทำไม
+        //    "ครบ N/5" ทั้งที่ยังแดงอยู่ · จุดแดงต้องมีคนตรวจเสมอ ไม่งั้นอย่าใส่
+        hint: base.isEmpty ? 'เลือกประเภทรถก่อน' : 'เลือกยี่ห้อ',
         key: ValueKey('cb_${_carType}_$cur'));
   }
 
@@ -3209,7 +3255,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
         _faultDropdown(),
         // EMCS บังคับ 'คู่กรณีคันที่' + ติ๊กการเรียกร้อง เมื่อผลคดี = คู่กรณีผิด
         // (ไม่กรอก = บอทกรอกให้ไม่ได้ หัวหน้าต้องมาเติมเองบน EMCS ทุกเคส)
-        if (_accFault == 'คู่กรณีผิด')
+        if (_faultIs('คู่กรณีผิด'))
           _numField(_accFaultOpponentNoCtl, 'คู่กรณีคันที่', req: true),
         // EMCS มีช่องจริงทั้งคู่ (txtDri_Order / chkLost_Car) แต่เดิมแอปไม่มีให้กรอก
         _txt(_driverTicketCtl, 'ใบสั่ง (เลขที่ใบสั่งจราจร)'),

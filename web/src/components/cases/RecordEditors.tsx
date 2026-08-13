@@ -15,7 +15,7 @@
  * รวมสองตัวไว้ไฟล์เดียวเพราะใช้ layout/primitive ชุดเดียวกัน (การ์ดต่อ 1 ระเบียน + ปุ่มลบ + ปุ่มเพิ่ม)
  */
 import React from 'react';
-import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, carBrandOptions } from './caseOptions';
+import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
 import { districtOptions } from './districtOptions';
 
 export type RecordItem = Record<string, string>;
@@ -243,11 +243,14 @@ const OPPONENT_FIELDS: FieldDef[] = [
   { k: 'car_color', label: 'สีรถ', options: CAR_COLOR_OPTIONS },
   { k: 'vin', label: 'เลขตัวถัง' },
   { k: 'mileage', label: 'เลขไมล์' },
-  { k: 'ev_type', label: 'ประเภทรถไฟฟ้า' },
+  // ต้องเป็นตัวเลือก ไม่ใช่ช่องพิมพ์ — แอปเก็บ "รหัส" (BEV/HEV/…) และบอทเลือกด้วย
+  // select_by_value แบบตรงตัว พิมพ์เองเพี้ยนนิดเดียว = บอทข้ามช่องนี้เงียบ ๆ
+  { k: 'ev_type', label: 'ประเภทรถไฟฟ้า', options: EV_TYPE_OPTIONS.map((e) => e.value).filter(Boolean) },
   { k: 'estimated_cost', label: 'ค่าเสียหายประมาณ' },
   { k: 'insurer', label: 'มีประกันภัยที่ *' },
   { k: 'policy_no', label: 'เลขกรมธรรม์ *' },
-  { k: 'policy_type', label: 'ประเภทประกัน' },
+  // ปลายทางดึงเฉพาะตัวเลขจากข้อความ — พิมพ์ "ชั้นหนึ่ง" ได้ค่าว่าง
+  { k: 'policy_type', label: 'ประเภทประกัน', options: POLICY_TYPE_OPTIONS },
   { k: 'claim_no', label: 'เลขเคลมคู่กรณี' },
   { k: 'owner_name', label: 'เจ้าของรถ *' },
   { k: 'owner_address', label: 'ที่อยู่เจ้าของ', wide: true },

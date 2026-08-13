@@ -177,6 +177,16 @@ export const ACC_DAMAGE_TYPE_OPTIONS = [
   'ผู้โดยสารประกันตกรถ', 'เสียหายทั้งหมด'
 ];
 
+/**
+ * ประเภทกรมธรรม์ — sync `kPolicyTypes` ในแอป (survey_master.dart)
+ *
+ * ต้องเป็น dropdown ไม่ใช่ช่องพิมพ์: ปลายทาง `policyTypeCode()` ใน xmlExport ดึงเฉพาะ**ตัวเลข**
+ * ออกจากข้อความ — พิมพ์ "ชั้นหนึ่ง" จะได้ค่าว่างส่งเข้าระบบประกันแบบเงียบ ๆ
+ */
+export const POLICY_TYPE_OPTIONS = [
+  'ชั้น 1', 'ชั้น 2+', 'ชั้น 2', 'ชั้น 3+', 'ชั้น 3', 'พรบ.', 'ไม่พบความคุ้มครอง',
+];
+
 export const EV_TYPE_OPTIONS = [
   { value: '0', label: '-- ระบุ --' },
   { value: 'BEV', label: 'BEV รถยนต์ไฟฟ้า BEV (100%)' },

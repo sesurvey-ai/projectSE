@@ -162,10 +162,14 @@ class _OpponentEditorState extends State<OpponentEditor> {
   // หัวหน้าต้องมานั่งเติมเองทุกเคส และบอทค้างรอกลางทาง
   // เจอจริง 2026-08-10 เคลม 21BR10AVD-6908-000097: ขาด เพศ · วันเกิด · อายุ ·
   // มีประกันภัยที่ ครบทั้ง 4 ช่อง (เดิม req: true เป็นแค่จุดแดง กด "บันทึกคันนี้" ผ่านเลย)
+  // ⚠️ ต้องตรงกับ checkItems('6. คู่กรณี') ในฟอร์มหลัก และ OPPONENT_REQUIRED บนเว็บ
+  //    ทั้งหมดอ้าง `vlidOpoCar` ของ EMCS (base ก่อน switch = บังคับทุกบริษัท)
   List<String> _missing() => [
         if (_carType.trim().isEmpty) 'ประเภทรถ',
         if (_ctl('plate').text.trim().isEmpty) 'ทะเบียน',
         if (_province.trim().isEmpty) 'จังหวัด',
+        // เจ้าของรถ (txtOpo_Name) — EMCS บังคับ แต่เดิมไม่มีใครตรวจ บอทเลยยัด '-' ให้ทุกใบ
+        if (_ctl('owner_name').text.trim().isEmpty) 'เจ้าของรถ',
         if (_gender.trim().isEmpty) 'เพศผู้ขับขี่',
         if (_ctl('birthdate').text.trim().isEmpty) 'วันเกิด',
         if (_ctl('age').text.trim().isEmpty) 'อายุ',
