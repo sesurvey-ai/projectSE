@@ -322,7 +322,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     prb_number: txt(rep, 'PRB_NUMBER'),
     risk_code: txt(rep, 'RISK_CODE'),
     surveyor_comment: txt(rep, 'SURV_COMMENT'),
-    notes: txt(rep, 'SURV_COMMENT'),
+    // ⛔ ห้ามก๊อป SURV_COMMENT ลง notes อีก — เคยเขียนซ้ำคำต่อคำ (1,281 ตัวอักษรเท่ากันเป๊ะ)
+    // "หมายเหตุ" เป็นช่องที่คนของเราเขียนเอง ไม่ใช่สำเนาความเห็นที่ติดมากับไฟล์ของประกัน
+    // และฝั่งส่งออกเลิกใช้ notes เป็น fallback ของ SURV_COMMENT ไปแล้ว
   };
 
   // ── รถประกัน + ผู้ขับขี่ ──
@@ -428,6 +430,17 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     };
   });
   report.has_opponents = opponentCars.length > 0;
+
+  // "คู่กรณีคันที่" — EMCS บังคับเมื่อผลคดี = คู่กรณีผิด แต่ไฟล์ ISURVEY แทบไม่เคยส่ง ACC_CAUSE_NO
+  // เติมให้เองได้เฉพาะตอนมีคู่กรณี **คันเดียว** เพราะคำตอบมีทางเดียวคือคันที่ 1
+  // ⛔ มากกว่า 1 คัน ห้ามเดา — ไฟล์ไม่มีอะไรบอกว่าคันไหนผิด ต้องให้ผู้ตรวจเลือกเอง
+  // (เทียบกับ FAULT_BY_CODE['2'] ไม่ใช่สตริงเปล่า — ผลคดีมี 2 สำเนียงใน DB
+  //  'รถคู่กรณีเป็นฝ่ายผิด' กับ 'คู่กรณีผิด' เขียนตรง ๆ แล้วเงื่อนไขจะไม่เคยเป็นจริง)
+  if (!String(report.acc_fault_opponent_no ?? '').trim()
+      && report.acc_fault === FAULT_BY_CODE['2']
+      && opponentCars.length === 1) {
+    report.acc_fault_opponent_no = '1';
+  }
 
   // ── ผู้บาดเจ็บ ──
   report.injured_persons = injBlocks.map((p) => ({

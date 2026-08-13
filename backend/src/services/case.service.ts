@@ -971,9 +971,17 @@ export const caseService = {
     // ผู้สำรวจ: จับจากรหัสใน ACC_SURV ('SE272 นาย ...') — หาไม่เจอก็ปล่อยว่าง ไม่ล้มทั้งงาน
     let assignedTo: number | null = null;
     if (parsed.surveyorCode) {
-      const u = await db.query('SELECT id FROM users WHERE UPPER(code) = $1 LIMIT 1',
+      const u = await db.query('SELECT id, phone FROM users WHERE UPPER(code) = $1 LIMIT 1',
         [parsed.surveyorCode.toUpperCase()]);
-      if (u.rows.length > 0) assignedTo = u.rows[0].id;
+      if (u.rows.length > 0) {
+        assignedTo = u.rows[0].id;
+        // เบอร์ผู้สำรวจภัยเป็นช่องบังคับของ EMCS แต่ไฟล์ ISURVEY ไม่มี tag นี้เลย
+        // เรารู้ว่าเป็นใครแล้ว (จับจากรหัส) จึงหยิบเบอร์จากทะเบียนพนักงานมาเติมให้
+        // ⚠️ ทะเบียนพนักงานยังไม่มีเบอร์เกือบทั้งหมด — ตราบใดที่ยังว่าง บรรทัดนี้ก็ไม่ได้ช่วยอะไร
+        if (!String(report.acc_surveyor_phone ?? '').trim() && u.rows[0].phone) {
+          report.acc_surveyor_phone = String(u.rows[0].phone).trim();
+        }
+      }
     }
 
     const client = await db.getClient();
