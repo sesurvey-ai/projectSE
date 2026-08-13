@@ -68,7 +68,6 @@ const LICENSE_TYPES = [
   'ใบอนุญาตเป็นผู้ขับรถทุกประเภท', 'อื่นๆ',
 ];
 
-const inputCls = 'w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 bg-white';
 
 type FieldDef = {
   k: string;
@@ -82,18 +81,33 @@ type FieldDef = {
   placeholder?: string;
 };
 
+/**
+ * ช่องบังคับที่ยังว่าง = กรอบแดง + พื้นแดง (ชุดเดียวกับฟอร์มหลักในหน้าตรวจงาน)
+ *
+ * "บังคับ" อ่านจากป้ายที่ลงท้ายด้วย ` *` ซึ่งเป็นเครื่องหมายที่ใช้อยู่แล้วในลิสต์ด้านล่าง
+ * → ช่องบังคับที่เพิ่มวันหลังได้สีเองโดยไม่ต้องมาแก้ที่นี่
+ * ⛔ ไม่นับ `*(บางบริษัท)` — บังคับเฉพาะบางบริษัท ทาแดงไว้จะกลายเป็นเตือนหลอกทุกเคส
+ */
+const isRequiredLabel = (label: string) => / \*$/.test(label.trim());
+const REQ_CLS = 'border-red-400 ring-1 ring-red-300 bg-red-50';
+const OK_CLS = 'border-gray-300 bg-white';
+const cls = (def: FieldDef, value: string) =>
+  `w-full border rounded px-2 py-1 text-sm text-gray-800 ${
+    isRequiredLabel(def.label) && !String(value ?? '').trim() ? REQ_CLS : OK_CLS}`;
+
 function Field({ def, value, onChange }: { def: FieldDef; value: string; onChange: (v: string) => void }) {
+  const c = cls(def, value);
   return (
     <div className={def.wide ? 'col-span-2 md:col-span-4' : ''}>
       <label className="block text-xs text-gray-500 mb-0.5">{def.label}</label>
       {def.options ? (
-        <select className={inputCls} value={value} onChange={(e) => onChange(e.target.value)}>
+        <select className={c} value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">-- ระบุ --</option>
           {def.options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
       ) : (
         <input
-          type="text" className={inputCls} value={value} placeholder={def.placeholder}
+          type="text" className={c} value={value} placeholder={def.placeholder}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
