@@ -33,6 +33,7 @@ const PROMPT =
   '- "claim_codes": array of every claim code (like 21BR10AVD-6906-000098; the 3 letters are AVD or ACD)\n' +
   '- "survey_codes": array of every survey number (starts SETP-). If the survey field shows only a placeholder "-" or "รอแจ้ง", return ["-"] or ["รอแจ้ง"].\n' +
   '- "policy_no": the เลขกรมธรรม์ (policy number, e.g. VM3-3100352649-26N10); "" if absent\n' +
+  '- "chassis_no": the เลขตัวถัง / VIN of the insured car (17 chars, letters+digits, e.g. MR0FZ29G901234567); "" if absent\n' +
   '- "incident_location": the สถานที่เกิดเหตุ (accident/incident location as free Thai text, e.g. ถนน/แยก/ตำบล/จังหวัด); "" if absent\n' +
   '- "report_date": the วันที่รับแจ้ง (claim-received date) exactly as printed, Thai Buddhist year (e.g. 02/06/2569); "" if absent\n' +
   '- "report_time": the เวลา (time of the วันที่รับแจ้ง) in 24-hour HH:mm (e.g. 13:21); "" if absent\n\n' +
@@ -45,11 +46,12 @@ const SCHEMA = {
     claim_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
     survey_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
     policy_no: { type: Type.STRING },
+    chassis_no: { type: Type.STRING },
     incident_location: { type: Type.STRING },
     report_date: { type: Type.STRING },
     report_time: { type: Type.STRING },
   },
-  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'incident_location', 'report_date', 'report_time'],
+  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'chassis_no', 'incident_location', 'report_date', 'report_time'],
 };
 
 export type OcrField = {
@@ -70,6 +72,7 @@ export type FlippedResult = {
     survey_no: OcrField;
     survey_no_2: OcrField;
     policy_no: OcrField;
+    chassis_no: OcrField;
     incident_location: OcrField;
     customer_report: OcrField; // "ลูกค้าแจ้ง" — วันที่+เวลารับแจ้ง รวมเป็น "dd/mm/พ.ศ.|HH:mm"
   };
@@ -131,7 +134,7 @@ async function visionText(buf: Buffer): Promise<string> {
   return resp.fullTextAnnotation?.text ?? '';
 }
 
-type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; policy_no?: string; incident_location?: string; report_date?: string; report_time?: string };
+type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string };
 
 // ── Gemini อ่านรูป (หลัก) + retry 429/5xx ──
 async function geminiImageMap(buf: Buffer, tries = 6): Promise<GeminiMap> {
@@ -382,6 +385,10 @@ export async function flippedExtract(imagePath: string): Promise<FlippedResult> 
   const [claim_no, prb_no] = flipClaim(mapped.claim_codes, flat);
   const [survey_no, survey_no_2] = flipSurvey(mapped.survey_codes, flat);
   const policy_no = flipPolicy(mapped.policy_no, flat);
+  // เลขตัวถัง (VIN) — user ระบุว่าเป็น 1 ใน 5 เลขที่ต้องอ่านจริง (2026-08-13)
+  // ใช้ flipPolicy ตัวเดียวกัน: ไม่มี regex บังคับรูปแบบ (VIN ของบางค่ายไม่ครบ 17 ตัว)
+  // แต่ยัง grounded กับข้อความที่ Vision อ่านได้ → อ่านมั่วแล้วได้ confidence low ให้คนตรวจ
+  const chassis_no = flipPolicy(mapped.chassis_no, flat);
   const incident_location = flipText(mapped.incident_location, flat);
   const customer_report = flipReportDate(mapped.report_date, mapped.report_time, flat);
 
@@ -392,6 +399,6 @@ export async function flippedExtract(imagePath: string): Promise<FlippedResult> 
   return {
     image: imagePath.split(/[\\/]/).pop() || imagePath,
     review_needed,
-    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, incident_location, customer_report },
+    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, chassis_no, incident_location, customer_report },
   };
 }

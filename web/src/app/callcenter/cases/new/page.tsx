@@ -9,7 +9,7 @@ import AssignSurveyor from '@/components/cases/AssignSurveyor';
 
 // ป้ายภาษาไทยของ 5 ฟิลด์จาก OCR (flipped) — ใช้ในแบนเนอร์ "ให้ตรวจสอบ"
 const OCR_FIELD_LABELS: Record<string, string> = {
-  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2', policy_no: 'เลขกรมธรรม์', incident_location: 'สถานที่เกิดเหตุ', acc_customer_report_date: 'ลูกค้าแจ้ง (วันที่รับแจ้ง)',
+  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2', policy_no: 'เลขกรมธรรม์', chassis_no: 'เลขตัวถัง', incident_location: 'สถานที่เกิดเหตุ', acc_customer_report_date: 'ลูกค้าแจ้ง (วันที่รับแจ้ง)',
 };
 
 // บริษัทประกันที่รองรับ (เพิ่มบริษัทใหม่ = เพิ่ม entry) — value ต้องตรงกับที่ใช้เช็คเงื่อนไขฟอร์มด้านล่าง

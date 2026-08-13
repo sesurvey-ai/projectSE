@@ -52,6 +52,7 @@ export const ocrController = {
         survey_job_no: result.fields.survey_no,
         survey_job_no_2: result.fields.survey_no_2,   // เลขเซอร์เวย์ งาน 2 — โชว์เมื่อมีค่า
         policy_no: result.fields.policy_no,           // เลขกรมธรรม์
+        chassis_no: result.fields.chassis_no,         // เลขตัวถัง (user ระบุเป็น 1 ใน 5 เลขที่ต้องอ่าน)
         incident_location: result.fields.incident_location, // สถานที่เกิดเหตุ (โชว์บนการ์ดงานมือถือ)
         acc_customer_report_date: result.fields.customer_report, // "ลูกค้าแจ้ง" — วันที่+เวลารับแจ้ง (dd/mm/พ.ศ.|HH:mm) → ไทม์ไลน์งานมือถือ
       };

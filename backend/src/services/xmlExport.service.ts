@@ -604,7 +604,10 @@ export function generateSurveyXml(r: Row): string {
     // ทั้งที่แอปบังคับให้เลือก หนัก/เบา อยู่แล้ว → ค่าที่ช่างเลือกไม่เคยไปถึง EMCS
     el('HEV_CAR', hevCar(r.damage_level)) +
     el('ACC_CRASH_REAR', '') +
-    el('HAS_PRB', r.prb_number ? '1' : '') +
+    // "มี พ.ร.บ." ตัดสินจาก**เลขจริง**เท่านั้น — `-` คือ placeholder ที่ใส่เพื่อผ่านช่องบังคับ
+    // ของ EMCS ไม่ใช่ "มี พ.ร.บ." · เดิมเช็คแค่ truthy → เลข '-' (หรือช่องว่างที่มีแต่ขีด)
+    // จะกลายเป็นติ๊ก "มี พ.ร.บ." ให้บริษัทประกันโดยที่ไม่มีจริง
+    el('HAS_PRB', /[0-9A-Za-zก-๙]/.test(String(r.prb_number ?? '')) ? '1' : '') +
     el('RISK_CODE', r.risk_code) +
     el('LOST_CAR', r.car_lost === true ? '1' : '') +
     el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date, r.acc_insurance_notify_time)) +
