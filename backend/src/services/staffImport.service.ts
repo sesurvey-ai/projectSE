@@ -129,6 +129,14 @@ export async function planImport(buf: Buffer): Promise<ImportPlan> {
 }
 
 export type ApplyOpts = {
+  /**
+   * 'code3' = ใช้เลข 3 ตัวท้ายของรหัสพนักงานเป็นรหัสผ่าน (SE483 → '483')
+   *
+   * ⚠️ อ่อนมากโดยตั้งใจ — username คือรหัสพนักงาน ใครเดา username ได้ก็เดารหัสผ่านได้ทันที
+   *    user ยืนยันใช้ชั่วคราวช่วงตั้งระบบ 14/08/69 และจะเปลี่ยนก่อนใช้งานจริง
+   *    ก่อนเปิดใช้จริงต้องบังคับเปลี่ยนรหัสตอนล็อกอินครั้งแรก
+   */
+  passwordMode?: 'code3' | 'fixed';
   newPassword?: string;
   doCreate?: boolean; doPhone?: boolean; doName?: boolean; doSupervisor?: boolean; doDeactivate?: boolean;
 };
@@ -138,7 +146,8 @@ export async function applyImport(buf: Buffer, opts: ApplyOpts) {
   const plan = await planImport(buf);
   const done = { created: 0, phone: 0, name: 0, supervisor: 0, deactivated: 0 };
 
-  if (opts.doCreate && plan.create.length > 0) {
+  const code3 = opts.passwordMode === 'code3';
+  if (opts.doCreate && plan.create.length > 0 && !code3) {
     // ⛔ ไม่ตั้งรหัสผ่านให้เอง — แอดมินต้องพิมพ์มากับคำสั่ง กันบัญชีใหม่มีรหัสที่เดาได้
     if (!opts.newPassword || opts.newPassword.length < 6) {
       throw new AppError(400, 'ต้องกำหนดรหัสผ่านเริ่มต้น (อย่างน้อย 6 ตัว) สำหรับบัญชีที่จะสร้างใหม่');
@@ -150,8 +159,12 @@ export async function applyImport(buf: Buffer, opts: ApplyOpts) {
     await client.query('BEGIN');
 
     if (opts.doCreate) {
-      const hash = await bcrypt.hash(opts.newPassword as string, 10);
+      const fixedHash = code3 ? null : await bcrypt.hash(opts.newPassword as string, 10);
       for (const c of plan.create) {
+        // เลข 3 ตัวท้ายของรหัส — SE483 → '483' · SEC1207 → '207'
+        const hash = code3
+          ? await bcrypt.hash((c.code.replace(/\D/g, '').slice(-3) || c.code.toLowerCase()), 10)
+          : (fixedHash as string);
         const [first, ...rest] = c.name.replace(TITLE_RE, '').trim().split(/\s+/);
         const dup = await client.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [c.code]);
         if (dup.rows.length > 0) continue;      // มี username ชนอยู่แล้ว — ข้าม ไม่ทับของเดิม

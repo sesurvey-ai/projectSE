@@ -108,6 +108,7 @@ export const adminController = {
       return;
     }
     const result = await applyImport(file.buffer, {
+      passwordMode: String(req.body?.password_mode ?? '') === 'code3' ? 'code3' as const : 'fixed' as const,
       newPassword: String(req.body?.new_password ?? ''),
       doCreate: on('do_create'), doPhone: on('do_phone'), doName: on('do_name'),
       doSupervisor: on('do_supervisor'), doDeactivate: on('do_deactivate'),
