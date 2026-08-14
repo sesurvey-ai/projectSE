@@ -45,6 +45,13 @@ export type ImportPlan = {
 
 const digits = (v: string) => (PHONE_RE.exec(v || '')?.[0] || '').replace(/\D/g, '');
 const bare = (v: string) => (v || '').replace(TITLE_RE, '').replace(/\s+/g, '');
+/**
+ * อักขระล่องหนที่ติดมากับไฟล์ (คนก๊อปวางชื่อมาจากที่อื่น) — NBSP เป็นช่องว่างปกติ ที่เหลือทิ้ง
+ * เจอจริงในไฟล์ 1-8-69: ZWSP หน้าคำว่า นาย ของ SEC232 ทำให้ตัดคำนำหน้าไม่ออก
+ * ชื่อเลยเพี้ยนทั้งคน (first_name ได้ ZWSP+นาย, last_name ได้ ธนิศ ชูระเชตุ)
+ */
+const clean = (v: string) =>
+  v.replace(/\u00a0/g, ' ').replace(/[\u200b-\u200d\u2060\ufeff\u180e]/g, '');
 
 /** อ่านไฟล์ → รายชื่อพนักงาน + ชื่อหัวหน้าของแต่ละคน */
 export async function parseRoster(buf: Buffer): Promise<{ staff: StaffRow[]; supervisors: Map<string, string> }> {
@@ -53,7 +60,7 @@ export async function parseRoster(buf: Buffer): Promise<{ staff: StaffRow[]; sup
   const ws = wb.worksheets[0];
   if (!ws) throw new AppError(400, 'ไฟล์ Excel ไม่มีชีทข้อมูล');
 
-  const cell = (r: number, c: number) => String(ws.getCell(r, c).text ?? '').trim();
+  const cell = (r: number, c: number) => clean(String(ws.getCell(r, c).text ?? '')).trim();
   const staff: StaffRow[] = [];
   const supervisors = new Map<string, string>();   // ชื่อหัวหน้า -> เบอร์
 
@@ -120,8 +127,13 @@ export async function planImport(buf: Buffer): Promise<ImportPlan> {
   }
 
   // อยู่ในระบบ (ยัง active, เป็นผู้สำรวจ, มีรหัส) แต่ไม่มีในไฟล์ = ออกแล้ว → ปิดใช้งาน ไม่ลบ
+  //
+  // ⛔ ยกเว้นคนที่ชื่อไปโผล่เป็น "หัวหน้า" ในไฟล์เดียวกัน — คนที่เลื่อนขั้นจะหลุดจาก
+  //    รายชื่อพนักงานเป็นธรรมดา ไม่ใช่ลาออก เจอจริงในไฟล์ 1-8-69 (SE201, SE254)
+  //    ถ้าไม่กันไว้ ผู้ใช้กดปิดตามแผนแล้วหัวหน้าตัวเองจะล็อกอินไม่ได้
+  const supUserIds = new Set(supId.values());
   for (const u of users.rows) {
-    if (u.code && u.is_active && u.role === 'surveyor' && !inFile.has(u.code)) {
+    if (u.code && u.is_active && u.role === 'surveyor' && !inFile.has(u.code) && !supUserIds.has(u.id)) {
       plan.deactivate.push({ id: u.id, code: u.code, who: `${u.first_name} ${u.last_name}`.trim() });
     }
   }
