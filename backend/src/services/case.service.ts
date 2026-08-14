@@ -55,6 +55,21 @@ const assertSurveyJobNoUnique = async (jobNos: unknown[], excludeCaseId?: number
   }
 };
 
+/**
+ * ประตูอนุมัติ: เคสที่อนุมัติแล้ว (status='reviewed') ห้ามแก้ข้อมูลอีก
+ *
+ * เหตุผล: บอทหยิบเฉพาะเคสที่อนุมัติแล้วไปเข้า EMCS และ (ตั้งแต่เฟส 3) จะกดส่งงานเอง
+ * ซึ่งถอยไม่ได้ · ถ้าแก้ข้อมูลได้หลังอนุมัติ สิ่งที่บอทส่งจะไม่ใช่สิ่งที่คนรับรอง
+ * ปลดล็อกได้ทางเดียวคือให้แอดมินเรียก POST /api/cases/:id/unlock แล้วอนุมัติใหม่
+ */
+const assertNotApproved = async (caseId: number): Promise<void> => {
+  const r = await db.query('SELECT status FROM cases WHERE id = $1', [caseId]);
+  if (r.rows.length === 0) throw new NotFoundError('Case not found');
+  if (r.rows[0].status === 'reviewed') {
+    throw new AppError(423, 'เคสนี้อนุมัติแล้ว — แก้ไม่ได้จนกว่าแอดมินจะปลดล็อก');
+  }
+};
+
 // surveyor เข้าถึงได้เฉพาะเคสที่มอบหมายให้ตัวเอง (กัน IDOR ไล่เลข id อ่าน/ทับเคสคนอื่น)
 // checker/admin/callcenter เข้าถึงได้ทุกเคส (ตรวจงาน/จัดการ)
 const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseUser): void => {
@@ -431,6 +446,9 @@ export const caseService = {
     const own = await db.query('SELECT assigned_to FROM cases WHERE id = $1', [caseId]);
     if (own.rows.length === 0) throw new NotFoundError('Case not found');
     assertCaseAccess(own.rows[0], user);
+    // ⛔ รูปคือส่วนหนึ่งของสิ่งที่บอทส่งเข้า EMCS — endpoint นี้ "ลบรูปเดิมแล้วเขียนใหม่"
+    // ถ้าแอปที่ค้างฟอร์มไว้ยิงเข้ามาหลังหัวหน้าอนุมัติ ชุดรูปที่บอทส่งจะไม่ใช่ชุดที่ถูกรับรอง
+    await assertNotApproved(caseId);
 
     // โฟลเดอร์เก็บรูปผูกกับ case id (immutable) เท่านั้น — เดิมใช้เลขเคลมจาก DB ซึ่งแก้ไขได้
     // → เลขเปลี่ยนระหว่าง upload กับ submit แล้วรูปหลุดจากรายงานทั้งชุดแบบเงียบ (folderName จาก client ไม่ใช้แล้ว)
@@ -1046,6 +1064,10 @@ export const caseService = {
   },
 
   async updateReport(caseId: number, data: Record<string, unknown>) {
+    // ⛔ อนุมัติแล้ว = ล็อก — แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก (POST /api/cases/:id/unlock)
+    // ถ้าปล่อยให้แก้หลังอนุมัติ ลายเซ็นผู้อนุมัติจะไม่ได้รับรองข้อมูลชุดที่บอทหยิบไปจริง
+    await assertNotApproved(caseId);
+
     const reportResult = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
     if (reportResult.rows.length === 0) throw new NotFoundError('Report not found');
     const reportId = reportResult.rows[0].id;

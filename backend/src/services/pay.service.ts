@@ -1,4 +1,5 @@
 import { db } from '../config/database';
+import { AppError } from '../middleware/errorHandler';
 
 /**
  * คิดค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — พอร์ตจาก se-billing `content.js`
@@ -245,11 +246,36 @@ export interface SavePayInput {
 }
 
 /**
+ * ที่มาเดียวที่ "ยอดจ่ายพนักงาน" เกิดขึ้นในระบบเรา — งานที่พนักงานกรอกบนแอป se-survey
+ *
+ * ที่มาอื่น (ปัจจุบันคือ isurvey_xml, emcs_extract) หัวหน้ากรอกยอดไปแล้วที่ระบบต้นทาง
+ * และยอดนั้นถูกบันทึกไว้ที่ se-billing → ฝั่งเรา **ดูอย่างเดียว** (user เคาะ 15/08/69)
+ * ถ้าปล่อยให้แก้ที่นี่ด้วย จะได้ยอดจ่ายพนักงาน 2 ชุดที่ไม่ตรงกันโดยไม่มีใครรู้ว่าชุดไหนถูก
+ *
+ * ตั้งใจเขียนเป็น allowlist: ที่มาใหม่ที่ยังไม่ได้คิดกติกา จะกลายเป็น "แก้ไม่ได้" ไว้ก่อน
+ * (พลาดทางนี้คนกรอกไม่ได้แล้วมาบอกเรา — พลาดอีกทางเงินเพี้ยนเงียบ ๆ)
+ */
+const PAY_EDITABLE_SOURCES = new Set(['mobile']);
+
+async function assertPayEditable(caseId: number): Promise<void> {
+  const r = await db.query('SELECT status, source FROM cases WHERE id = $1', [caseId]);
+  if (r.rows.length === 0) throw new AppError(404, 'ไม่พบเคสนี้');
+  if (r.rows[0].status === 'reviewed') {
+    throw new AppError(423, 'เคสนี้อนุมัติแล้ว — แก้ยอดไม่ได้จนกว่าแอดมินจะปลดล็อก');
+  }
+  if (!PAY_EDITABLE_SOURCES.has(String(r.rows[0].source ?? ''))) {
+    throw new AppError(403,
+      'งานจากระบบเดิมกรอกยอดจ่ายพนักงานที่นี่ไม่ได้ — ยอดถูกบันทึกไว้ที่ se-billing แล้ว หน้านี้ดูอย่างเดียว');
+  }
+}
+
+/**
  * บันทึกยอดจ่ายพนักงาน — 1 เคส 1 แถว
  *
  * ยอดรวม = รายรับทั้งหมด − หักเงิน
  */
 export async function saveCasePay(caseId: number, input: SavePayInput, userId?: number) {
+  await assertPayEditable(caseId);
   const money: Record<string, number | null> = {};
   for (const f of PAY_MONEY_FIELDS) money[f] = num(input[f]);
   // หักเงินเก็บเป็นค่าบวกเสมอ — กรอกติดลบมาก็แปลงให้ ไม่งั้นลบซ้อนลบกลายเป็นบวก

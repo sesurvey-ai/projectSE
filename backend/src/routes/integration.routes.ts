@@ -25,27 +25,61 @@ const integrationAuth = (req: Request, _res: Response, next: NextFunction): void
   next();
 };
 
+/**
+ * ประตูอนุมัติฝั่งบอท — บอทดึง "ข้อมูลไปกรอก EMCS" ได้เฉพาะเคสที่หัวหน้าอนุมัติแล้ว
+ *
+ * เดิมบอทหยิบทั้ง 'surveyed' และ 'reviewed' = อนุมัติหรือไม่ก็เข้า EMCS ได้เท่ากัน
+ * ปุ่ม "อนุมัติ" จึงไม่ได้กั้นอะไรเลย · ตั้งแต่เฟส 3 บอทจะกดส่งงานเองซึ่งถอยไม่ได้
+ * ประตูนี้คือสิ่งเดียวที่กั้นระหว่าง "คนรับรองแล้ว" กับ "งานเข้าคิวบริษัทประกัน"
+ *
+ * กั้นที่ endpoint ข้อมูล (xml/report/photos) ไม่ใช่แค่ที่ list — ถึงบอทจะรู้เลขเคสจากทางอื่น
+ * ก็ยังดึงข้อมูลไปกรอกไม่ได้
+ */
+const assertApproved = async (caseId: number, res: Response): Promise<boolean> => {
+  const { db } = await import('../config/database');
+  const r = await db.query('SELECT status FROM cases WHERE id = $1', [caseId]);
+  if (r.rows.length === 0) {
+    res.status(404).json({ success: false, message: 'case not found' });
+    return false;
+  }
+  if (r.rows[0].status !== 'reviewed') {
+    res.status(403).json({
+      success: false,
+      code: 'NOT_APPROVED',
+      message: `เคส #${caseId} ยังไม่ได้อนุมัติ (สถานะ: ${r.rows[0].status}) — ให้หัวหน้ากดอนุมัติบนเว็บ se-survey ก่อน`,
+    });
+    return false;
+  }
+  return true;
+};
+
 // XML สำหรับ import เข้า EMCS — เนื้อหาเดียวกับ GET /api/cases/:id/export-xml (ฝั่ง user)
 router.get('/cases/:id/export-xml', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
+  if (!(await assertApproved(caseId, res))) return;
   const xml = await caseService.getSurveyXml(caseId); // ไม่ส่ง user = ไม่จำกัดเจ้าของ (เทียบเท่า admin)
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="survey_${caseId}.xml"`);
   res.send(xml);
 }));
 
-// รายการเคสที่พร้อมนำเข้า EMCS (สำรวจแล้ว/ตรวจสอบแล้ว) — webui ของ SE-AutoKey ใช้โชว์ลิสต์ให้เลือก
+// รายการเคสที่พร้อมนำเข้า EMCS — webui ของ SE-AutoKey ใช้โชว์ลิสต์ให้เลือก
+// ⛔ เฉพาะ 'reviewed' (หัวหน้าอนุมัติแล้ว) — เดิมรวม 'surveyed' ด้วย ทำให้อนุมัติหรือไม่ก็เข้า EMCS ได้
 router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Response) => {
   const { db } = await import('../config/database');
   const r = await db.query(
     `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company,
             (u.first_name || ' ' || u.last_name) AS surveyor_name,
             to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at,
+            to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
+            (ck.first_name || ' ' || ck.last_name) AS approved_by,
             c.created_at
        FROM cases c
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
        LEFT JOIN users u ON u.id = c.assigned_to
-      WHERE c.status IN ('surveyed', 'reviewed')
+       LEFT JOIN reviews rv ON rv.case_id = c.id
+       LEFT JOIN users ck ON ck.id = rv.checker_id
+      WHERE c.status = 'reviewed'
       ORDER BY c.created_at DESC
       LIMIT 100`
   );
@@ -57,10 +91,18 @@ router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Re
 router.get('/cases/:id', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
   const { db } = await import('../config/database');
+  // meta ไม่กั้นด้วยการอนุมัติ (บอทใช้เช็คกันซ้ำ/หาเหตุผลก่อนเริ่ม) แต่บอก approved มาด้วย
+  // เพื่อให้ webui ขึ้นเหตุผลได้ตรง ๆ ว่า "ยังไม่อนุมัติ" แทนที่จะไปเจอ 403 ตอนดึงข้อมูล
   const r = await db.query(
     `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company, sr.insurance_branch,
-            to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at, c.emcs_esurvey_no
-       FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id
+            to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at, c.emcs_esurvey_no,
+            (c.status = 'reviewed') AS approved,
+            to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
+            (ck.first_name || ' ' || ck.last_name) AS approved_by
+       FROM cases c
+       LEFT JOIN survey_reports sr ON sr.case_id = c.id
+       LEFT JOIN reviews rv ON rv.case_id = c.id
+       LEFT JOIN users ck ON ck.id = rv.checker_id
       WHERE c.id = $1`, [caseId]
   );
   if (r.rows.length === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
@@ -123,6 +165,7 @@ router.post('/cases/:id/emcs-status', integrationAuth, asyncHandler(async (req: 
 // (fuzzy_select ต้องการชื่อไทย เช่น จังหวัด/ยี่ห้อ/ประเภทรถ — ต่างจาก XML ที่เป็นรหัส EMCS)
 router.get('/cases/:id/report', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
+  if (!(await assertApproved(caseId, res))) return;
   const { db } = await import('../config/database');
   const r = await db.query('SELECT * FROM survey_reports WHERE case_id = $1', [caseId]);
   if (r.rows.length === 0) { res.status(404).json({ success: false, message: 'report not found' }); return; }
@@ -132,6 +175,7 @@ router.get('/cases/:id/report', integrationAuth, asyncHandler(async (req: Reques
 // รายการรูปของเคส (survey_photos ที่ผูกกับ report) — SE-AutoKey ใช้โหลดไปอัปเข้า EMCS
 router.get('/cases/:id/photos', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
   const caseId = parseInt(req.params.id as string);
+  if (!(await assertApproved(caseId, res))) return;
   const { db } = await import('../config/database');
   const r = await db.query(
     `SELECT sp.file_path, sp.category FROM survey_photos sp

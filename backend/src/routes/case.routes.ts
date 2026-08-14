@@ -257,6 +257,8 @@ router.get('/:id/arrival', auth, requireRole('surveyor', 'checker'), caseControl
 router.post('/:id/survey', auth, requireRole('surveyor'), validate(submitSurveySchema), caseController.submitSurvey);
 router.put('/:id/survey', auth, requireRole('surveyor'), caseController.updateSurvey);
 router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSchema), reviewController.submitReview);
+// ปลดล็อกเคสที่อนุมัติแล้ว — **แอดมินเท่านั้น** ผู้ตรวจปลดเองไม่ได้ ไม่งั้นการล็อกก็ไม่มีความหมาย
+router.post('/:id/unlock', auth, requireRole('admin'), reviewController.unlock);
 router.put('/:id/report', auth, requireRole('checker'), caseController.updateReport);
 
 // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — เฉพาะผู้ตรวจ ผู้สำรวจไม่เกี่ยวกับการตั้งยอดจ่ายตัวเอง

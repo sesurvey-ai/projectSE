@@ -6,6 +6,7 @@ import ReviewForm from '@/components/review/ReviewForm';
 import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import DamageEditor, { DamageItem } from './DamageEditor';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, RecordItem, LooseRecord } from './RecordEditors';
 
@@ -205,7 +206,21 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — คนละฝั่งเงินกับตาราง survey_expenses ข้างบน
   const [pay, setPay] = useState<PayData | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const d = !isEditing;
+  const { user } = useAuth();
+  /**
+   * ประตูอนุมัติ (user เคาะ 15/08/69) — อนุมัติแล้ว = ล็อกทั้งหน้า แก้ต่อไม่ได้
+   * เพราะบอทหยิบเฉพาะเคสที่อนุมัติแล้วไปเข้า EMCS และจะกดส่งงานเองในเฟสถัดไป
+   * ถ้าแก้ได้หลังอนุมัติ สิ่งที่บอทส่งจะไม่ใช่สิ่งที่หัวหน้ารับรอง
+   */
+  const approved = Boolean(review) || caseData?.status === 'reviewed';
+  const isAdmin = user?.role === 'admin';
+  /**
+   * ยอดจ่ายพนักงานกรอกได้เฉพาะงานที่เกิดบนแอป se-survey
+   * งานจากระบบเดิม หัวหน้ากรอกยอดไปแล้วที่ ISURVEY และยอดถูกเก็บที่ se-billing → ที่นี่ดูอย่างเดียว
+   * (backend บังคับซ้ำอีกชั้นที่ pay.service.ts — ที่นี่แค่ไม่ให้กรอกลม ๆ แล้วเซฟไม่ผ่าน)
+   */
+  const payEditable = String(caseData?.source ?? 'mobile') === 'mobile';
+  const d = !isEditing || !payEditable;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
 
@@ -276,7 +291,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       }
       // ยอดจ่ายพนักงานอยู่คนละตาราง (survey_pay) → ส่งแยก
       // ยิงก่อนบันทึกรายงาน เพื่อให้ถ้าพังจะพังทั้งคู่ ไม่เหลือสถานะครึ่ง ๆ
-      if (isEditing) {
+      // ⛔ งานจากระบบเดิมต้องไม่ยิง — backend ตอบ 403 แล้วการบันทึกทั้งหน้าจะล้มทั้งที่ผู้ตรวจ
+      //    แค่มาแก้ฟิลด์ปกติ (ยอดฝั่งนั้นเป็นของ se-billing ไม่ใช่ของเรา)
+      if (isEditing && payEditable) {
         const payBody: Record<string, unknown> = { other_reason: data['other_fee_detail'] ?? null };
         for (const k of Object.keys(data)) {
           if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
@@ -303,6 +320,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
   return (
     <form ref={formRef} onSubmit={(e) => e.preventDefault()} className="space-y-6">
+      {/* อนุมัติแล้ว = ปิดทั้งชุดด้วย <fieldset disabled> — ครอบทุกช่องในหน้าทีเดียว
+          ไม่ต้องไล่ใส่ disabled ทีละช่อง (มี ~200 ช่อง พลาดช่องเดียวก็รั่ว)
+          แถบปุ่มอยู่ *นอก* fieldset เพื่อให้แอดมินยังกด "ปลดล็อก" ได้ตอนถูกล็อก */}
+      <fieldset disabled={approved} className="min-w-0 border-0 p-0 m-0 space-y-6">
       {report && (
         <>
           {/* คำอธิบายดอกจัน — จุดแดงชุดเดียวกับที่ผู้สำรวจเห็นบนแอป (อิงตัวตรวจของระบบประกัน) */}
@@ -1425,11 +1446,43 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </div>
         </div>
         </div>
-        {/* คอลัมน์ขวา — ปุ่มแก้ไข + อนุมัติ */}
-        <div className="w-1/2 flex flex-col items-end justify-end gap-3">
-          {saveMsg && (
-            <div className={`px-4 py-2 rounded text-sm ${saveMsg.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{saveMsg}</div>
-          )}
+      </div>
+      </fieldset>
+
+      {/* แถบปุ่ม — นอก <fieldset> โดยตั้งใจ ไม่งั้นตอนล็อกจะกดปลดล็อกไม่ได้ */}
+      <div className="flex flex-col items-end gap-3">
+        {saveMsg && (
+          <div className={`px-4 py-2 rounded text-sm ${saveMsg.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{saveMsg}</div>
+        )}
+        {approved ? (
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">อนุมัติแล้ว · ล็อก</span>
+            <span className="text-sm text-gray-600">
+              {review?.checker_name ? `โดย ${review.checker_name}` : ''}
+              {review?.reviewed_at ? ` · ${String(review.reviewed_at).slice(0, 16).replace('T', ' ')}` : ''}
+              {' — บอทจะยกเข้า EMCS ให้ · แก้ต่อไม่ได้'}
+            </span>
+            {isAdmin ? (
+              <button type="button" disabled={saving} onClick={async () => {
+                // ปลดล็อกแล้วต้องอนุมัติใหม่ — ถามก่อนเพราะเป็นการถอนลายเซ็นของคนอื่น
+                if (!window.confirm('ปลดล็อกเคสนี้ให้กลับไปแก้ได้?\nผู้ตรวจจะต้องกดอนุมัติใหม่อีกครั้ง')) return;
+                setSaving(true); setSaveMsg('');
+                try {
+                  await api.post(`/api/cases/${caseData.id}/unlock`, {});
+                  setSaveMsg('ปลดล็อกสำเร็จ');
+                  onReviewSubmitted();
+                } catch (e) {
+                  const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                  setSaveMsg('ปลดล็อกไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+                } finally { setSaving(false); }
+              }} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:bg-amber-300 disabled:cursor-not-allowed transition">
+                ปลดล็อก
+              </button>
+            ) : (
+              <span className="text-xs text-gray-500">ต้องให้แอดมินปลดล็อกก่อนจึงจะแก้ได้</span>
+            )}
+          </div>
+        ) : (
           <div className="flex gap-3">
             {!isEditing && (
               <button type="button" onClick={() => setIsEditing(true)} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">แก้ไขทั้งหมด</button>
@@ -1440,29 +1493,24 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <button type="button" onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
               {saving ? 'กำลังบันทึก...' : 'บันทึก'}
             </button>
-            {!review && (
-              <button type="button" onClick={async () => {
-                const ok = await handleSave();
-                if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
-                try {
-                  await api.post(`/api/cases/${caseData.id}/review`, {});
-                  setSaveMsg('อนุมัติสำเร็จ');
-                  onReviewSubmitted();
-                } catch (e) {
-                  const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-                  setSaveMsg('อนุมัติไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
-                }
-              }} disabled={saving} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
-                อนุมัติ
-              </button>
-            )}
+            <button type="button" onClick={async () => {
+              // อนุมัติ = ล็อกเคส ถอยเองไม่ได้ ต้องให้แอดมินปลด — ถามก่อนเสมอ
+              if (!window.confirm('อนุมัติเคสนี้?\nอนุมัติแล้วจะล็อก แก้เองไม่ได้ ต้องให้แอดมินปลดล็อก\nและบอทจะยกเคสนี้เข้า EMCS')) return;
+              const ok = await handleSave();
+              if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
+              try {
+                await api.post(`/api/cases/${caseData.id}/review`, {});
+                setSaveMsg('อนุมัติสำเร็จ');
+                onReviewSubmitted();
+              } catch (e) {
+                const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                setSaveMsg('อนุมัติไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+              }
+            }} disabled={saving} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
+              อนุมัติ
+            </button>
           </div>
-          {review && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">ตรวจสอบแล้ว</span>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </form>
   );

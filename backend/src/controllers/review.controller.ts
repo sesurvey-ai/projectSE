@@ -9,4 +9,12 @@ export const reviewController = {
     const result = await reviewService.submitReview(caseId, req.user!.id, req.body);
     sendSuccess(res, result);
   }),
+
+  // ปลดล็อกเคสที่อนุมัติแล้ว — แอดมินเท่านั้น (บังคับที่ route) · ปลดแล้วต้องอนุมัติใหม่
+  unlock: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : undefined;
+    const result = await reviewService.unlock(caseId, req.user!.id, reason);
+    sendSuccess(res, result);
+  }),
 };
