@@ -77,7 +77,7 @@ export const adminService = {
       db.query(
         // app_version = เวอร์ชันแอปล่าสุดที่เครื่องคนนี้ยิงเข้ามา (soft mode ไม่บล็อก)
         // ไว้ไล่ดูว่าใครยังไม่อัป APK — แจกด้วยมือ ไม่มีทางรู้จากที่อื่น
-        `SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at,
+        `SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, phone, created_at,
                 app_version, to_char(app_version_at, 'YYYY-MM-DD HH24:MI') AS app_version_at
          FROM users ${where} ORDER BY id ASC LIMIT $${idx} OFFSET $${idx + 1}`,
         [...params, limit, offset]
@@ -96,29 +96,30 @@ export const adminService = {
 
   async getUserById(id: number) {
     const result = await db.query(
-      'SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at FROM users WHERE id = $1',
+      'SELECT id, username, code, first_name, last_name, role, supervisor_id, is_active, phone, created_at FROM users WHERE id = $1',
       [id]
     );
     if (result.rows.length === 0) throw new NotFoundError('User not found');
     return result.rows[0];
   },
 
-  async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number; code?: string }) {
+  async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number; code?: string; phone?: string }) {
     // เทียบแบบไม่สนตัวพิมพ์ — login ใช้ LOWER(username) จึงห้ามมีชื่อซ้ำต่างเคส (เช่น SE408 กับ se408)
     const existing = await db.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [data.username]);
     if (existing.rows.length > 0) throw new AppError(409, 'Username already exists');
 
     const hash = await bcrypt.hash(data.password, 10);
     const result = await db.query(
-      `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id, code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at`,
-      [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null, data.code || null]
+      `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id, code, phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, phone, created_at`,
+      [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null,
+       data.code || null, data.phone || null]
     );
     return result.rows[0];
   },
 
-  async updateUser(id: number, data: { first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string; code?: string | null }) {
+  async updateUser(id: number, data: { first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string; code?: string | null; phone?: string | null }) {
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -129,6 +130,7 @@ export const adminService = {
     if (data.supervisor_id !== undefined) { fields.push(`supervisor_id = $${idx++}`); params.push(data.supervisor_id); }
     if (data.is_active !== undefined) { fields.push(`is_active = $${idx++}`); params.push(data.is_active); }
     if (data.code !== undefined) { fields.push(`code = $${idx++}`); params.push(data.code || null); }
+    if (data.phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(data.phone || null); }
     if (data.password) {
       const hash = await bcrypt.hash(data.password, 10);
       fields.push(`password_hash = $${idx++}`);
@@ -140,7 +142,7 @@ export const adminService = {
     params.push(id);
     const result = await db.query(
       `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}
-       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, created_at`,
+       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, phone, created_at`,
       params
     );
     if (result.rows.length === 0) throw new NotFoundError('User not found');

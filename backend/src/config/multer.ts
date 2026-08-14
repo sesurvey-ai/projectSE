@@ -60,3 +60,14 @@ export const uploadXmlZip = multer({
     cb(new Error('รับเฉพาะไฟล์ .xml/.txt (รายงาน) และ .zip (รูป)'));
   },
 }).fields([{ name: 'xml', maxCount: 1 }, { name: 'zip', maxCount: 1 }]);
+
+// ทะเบียนพนักงาน (.xlsx) จากฝ่ายบุคคล — เก็บใน memory ให้ exceljs อ่านตรง ๆ ไม่ต้องลงดิสก์
+// (ไฟล์เล็ก ไม่กี่สิบ KB และเป็นข้อมูลพนักงาน ไม่ควรทิ้งไว้บนเซิร์ฟเวอร์)
+export const uploadXlsx = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (/\.xlsx$/i.test(file.originalname || '')) { cb(null, true); return; }
+    cb(new Error('รับเฉพาะไฟล์ .xlsx'));
+  },
+}).single('file');

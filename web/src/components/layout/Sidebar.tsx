@@ -9,6 +9,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
   admin: [
     { label: 'แดชบอร์ด', href: '/admin' },
     { label: 'จัดการผู้ใช้', href: '/admin/users' },
+    { label: 'ทะเบียนพนักงานสำรวจ', href: '/admin/staff' },
     { label: 'จัดการเคส', href: '/admin/cases' },
     { label: 'จัดการรีวิว', href: '/admin/reviews' },
     { label: 'รายงานการโทร', href: '/admin/call-consult' },
