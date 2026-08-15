@@ -215,7 +215,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const approved = Boolean(review) || caseData?.status === 'reviewed';
   const isAdmin = user?.role === 'admin';
   /**
-   * ยอดจ่ายพนักงานกรอกได้เฉพาะงานที่เกิดบนแอป se-survey
+   * ยอดจ่ายพนักงานกรอกได้เฉพาะ "งานที่เกิดในระบบ se-survey"
+   * (source='mobile' ซึ่งเป็นค่าเริ่มต้น — ครอบทั้งงานจากแอปและงานที่ callcenter สร้างบนเว็บ)
+   *
    * งานจากระบบเดิม หัวหน้ากรอกยอดไปแล้วที่ ISURVEY และยอดถูกเก็บที่ se-billing → ที่นี่ดูอย่างเดียว
    * (backend บังคับซ้ำอีกชั้นที่ pay.service.ts — ที่นี่แค่ไม่ให้กรอกลม ๆ แล้วเซฟไม่ผ่าน)
    */
@@ -1330,7 +1332,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <th className="px-3 py-2 text-left text-gray-600 font-semibold">รายละเอียด</th>
                     <th className="px-3 py-2 text-center text-gray-600 font-semibold">จำนวน</th>
                     {/* ฝั่งจ่ายพนักงาน — ระบบประกันไม่มีช่องนี้ ต้องเก็บที่ระบบเราเท่านั้น */}
-                    <th className="px-3 py-2 text-center text-blue-700 font-semibold">ราคาพนักงาน<div className="text-[10px] font-normal text-blue-400">จ่ายผู้สำรวจ</div></th>
+                    <th className="px-3 py-2 text-center text-blue-700 font-semibold">ราคาพนักงาน<div className={`text-[10px] font-normal ${payEditable ? 'text-blue-400' : 'text-gray-400'}`}>
+                      {payEditable ? 'จ่ายผู้สำรวจ' : 'งานระบบเดิม — ยอดอยู่ที่ se-billing'}
+                    </div></th>
                     <th className="px-3 py-2 text-center text-gray-600 font-semibold">ราคาประกัน<div className="text-[10px] font-normal text-gray-400">เรียกเก็บประกัน</div></th>
                   </tr>
                 </thead>
