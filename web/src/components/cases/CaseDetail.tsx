@@ -243,7 +243,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * เพราะบอทหยิบเฉพาะเคสที่อนุมัติแล้วไปเข้า EMCS และจะกดส่งงานเองในเฟสถัดไป
    * ถ้าแก้ได้หลังอนุมัติ สิ่งที่บอทส่งจะไม่ใช่สิ่งที่หัวหน้ารับรอง
    */
-  const approved = Boolean(review) || caseData?.status === 'reviewed';
+  // ⛔ ห้ามใช้ "มีใบอนุมัติอยู่" เป็นตัวชี้ขาด — ตอนปลดล็อก ใบยังอยู่ แค่เปลี่ยนเป็น 'pending'
+  //    (reviews มี 1 แถวต่อเคส ใช้ซ้ำเมื่ออนุมัติใหม่) เช็คแบบเดิมทำให้ปลดล็อกแล้วหน้ายังล็อกอยู่
+  //    แก้อะไรไม่ได้เลย — เจอจริง 15/08/69 เคส #141
+  const approved = caseData?.status === 'reviewed' || review?.status === 'approved';
   const isAdmin = user?.role === 'admin';
   /**
    * ยอดจ่ายพนักงานกรอกได้เฉพาะ "งานที่เกิดในระบบ se-survey"
