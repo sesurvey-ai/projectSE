@@ -159,12 +159,37 @@ const HL_CLS = {
   amber: 'border-amber-400 ring-1 ring-amber-200 bg-amber-50',
 } as const;
 
+/**
+ * ดอกจัน 1 ตัว คุม "ช่องของมันเอง" เท่านั้น
+ *
+ * ⛔ เดิมถอยขึ้นไปจนถึง <tr> แล้วคว้าทุก input ในแถว — แต่เลย์เอาต์หน้านี้ยัด 2-3 คู่
+ *    ป้าย/ช่อง ไว้ในแถวเดียว เช่น
+ *      <td>ผู้แจ้ง</td><td>[ช่อง]</td><td>ผู้สำรวจภัย *</td><td>[ช่อง]</td>
+ *    ดอกจันของ "ผู้สำรวจภัย" จึงไปทาแดงให้ "ผู้แจ้ง" ที่ไม่ได้บังคับด้วย
+ *    ตอนเป็นแค่กรอบแดงก็แค่เตือนหลอก · พอเอาไปบล็อกปุ่มอนุมัติ = อนุมัติไม่ได้
+ *    ทั้งที่ข้อมูลครบ (เจอจริง 15/08/69 เคส #141 ขึ้นแดง 2 ช่อง ทั้งที่ไม่ขาดอะไร)
+ */
 function fieldsOfMark(mark: Element): HTMLElement[] {
+  const q = (el: Element): HTMLElement[] =>
+    Array.prototype.slice.call(el.querySelectorAll('input,select,textarea')) as HTMLElement[];
+  const cell = mark.closest('td');
+  if (cell) {
+    const own = q(cell);          // ป้ายกับช่องอยู่ช่องตารางเดียวกัน
+    if (own.length) return own;
+    let sib = cell.nextElementSibling;   // เลย์เอาต์ปกติ: ป้ายอยู่ td ก่อนหน้าช่อง
+    for (let i = 0; sib && i < 2; i++) {
+      const f = q(sib);
+      if (f.length) return f;
+      sib = sib.nextElementSibling;
+    }
+    return [];                    // อยู่ในตารางแต่หาช่องไม่เจอ — อย่าเดาไปทั้งแถว
+  }
+  // บล็อกที่ไม่ได้ใช้ตาราง — ถอยขึ้นหาแถบที่ครอบใกล้สุดที่มีช่อง (พฤติกรรมเดิม)
   let n: Element | null = mark;
   for (let hop = 0; n && hop < 5; hop++) {
     const row: Element | null = n.parentElement;
     if (row) {
-      const f = Array.prototype.slice.call(row.querySelectorAll('input,select,textarea')) as HTMLElement[];
+      const f = q(row);
       if (f.length) return f;
     }
     n = n.parentElement;
