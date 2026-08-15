@@ -225,6 +225,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const d = !isEditing || !payEditable;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
+  /**
+   * "การเรียกร้องค่าเสียหายจากคู่กรณี" — ช่องเดียวในฟอร์มที่ **บังคับแบบมีเงื่อนไข**
+   *
+   * กติกาของ EMCS เอง (สกัดจาก vlidSurvey ของเขา):
+   *   if (rdoAcc_Cause01.checked)  → ต้องติ๊กอย่างน้อย 1 ใน 5 ข้อ
+   *   rdoAcc_Cause01 = "รถคู่กรณีเป็นฝ่ายผิด" · ผลคดีอีก 6 ตัวไม่บังคับ · ไม่แยกตามบริษัท
+   *
+   * ตัวไฮไลต์ทั่วไปทำช่องแบบนี้ไม่ได้ (มันดูดอกจันแดง = บังคับเสมอ และ isBlank มองข้าม
+   * checkbox เพราะเป็นกลุ่ม ไม่ใช่ช่องเดี่ยว) จึงคุมสีของทั้งกลุ่มแยกตรงนี้
+   *   แดง  = บังคับตอนนี้และยังไม่ติ๊ก  ·  เหลือง = ยังไม่บังคับแต่ยังว่าง  ·  ติ๊กแล้ว = ปกติ
+   */
+  const [claimHl, setClaimHl] = useState<'red' | 'amber' | 'none'>('none');
 
   // ทาสีกรอบแดงให้ช่องบังคับที่ยังว่าง + นับจำนวน
   // ทำหลัง render เพราะช่องบังคับกระจายอยู่ ~49 จุด ผูกกับดอกจันที่มีอยู่แล้วดีกว่าไล่แก้ทีละช่อง
@@ -246,6 +258,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         });
       });
       setMissing(names);
+
+      // ── กลุ่ม checkbox "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
+      // ค่า radio "คู่กรณีผิด" ตรงกับ rdoAcc_Cause01 ของ EMCS ที่เป็นตัวเปิดเงื่อนไข
+      const fault = (form.querySelector('input[name="acc_fault"]:checked') as HTMLInputElement | null)?.value ?? '';
+      const ticked = form.querySelectorAll('input[name="acc_claim_opponent"]:checked').length > 0;
+      setClaimHl(ticked ? 'none' : fault === 'คู่กรณีผิด' ? 'red' : 'amber');
     };
     paint();
     // พิมพ์/เลือกแล้วกรอบแดงหายทันที ไม่ต้องรอกดบันทึก (ช่องเป็น uncontrolled — React ไม่ re-render)
@@ -936,9 +954,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี <Req when="เลือก &quot;รถคู่กรณีเป็นฝ่ายผิด&quot; — ต้องติ๊กอย่างน้อย 1 ข้อ" /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี{' '}
+                    <span
+                      className={`ml-0.5 ${claimHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
+                      title={claimHl === 'red'
+                        ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับให้ติ๊กอย่างน้อย 1 ข้อ เว้นว่างแล้วบันทึกไม่ผ่าน'
+                        : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด — ผลคดีอื่นไม่บังคับ'}
+                    >*</span> :</td>
                   <td className="px-4 py-2 text-gray-800" colSpan={3}>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {/* กรอบ+พื้นหลังคุมทั้งกลุ่ม ไม่ใช่รายช่อง — checkbox เดี่ยว ๆ เล็กเกินกว่าจะเห็นสี
+                        border ใสตอนปกติ เพื่อไม่ให้ layout ขยับตอนเปลี่ยนสี */}
+                    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded px-2 py-1 border ${
+                      claimHl === 'red' ? 'border-red-400 ring-1 ring-red-300 bg-red-50'
+                        : claimHl === 'amber' ? 'border-amber-400 ring-1 ring-amber-200 bg-amber-50'
+                          : 'border-transparent'}`}>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="คัดประจำวัน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับหลักฐานจากคู่กรณีผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บันทึกยอมรับผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
