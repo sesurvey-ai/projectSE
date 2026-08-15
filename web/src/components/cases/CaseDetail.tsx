@@ -152,6 +152,12 @@ const RING = ['border-red-400', 'ring-1', 'ring-red-300', 'bg-red-50'];
 // พื้นหลังเดิมของช่อง (bg-white ตอนแก้ได้ / bg-gray-100 ตอนล็อก) — ต้องถอดออกตอนทาแดง
 // ไม่งั้นชนกันเองแล้วแล้วแต่ลำดับใน CSS ว่าใครชนะ (ไม่ใช่ลำดับใน class attribute)
 const BG_ORIG = ['bg-white', 'bg-gray-100'];
+// สีเตือนของช่องบังคับ**แบบมีเงื่อนไข** — แดง = บังคับตอนนี้ · เหลือง = ยังไม่บังคับแต่ยังว่าง
+// เขียนเป็นสตริงเต็มทั้งชุด (ห้ามต่อสตริงเอง) ไม่งั้น Tailwind ไม่ผลิต class ให้ตอน build
+const HL_CLS = {
+  red: 'border-red-400 ring-1 ring-red-300 bg-red-50',
+  amber: 'border-amber-400 ring-1 ring-amber-200 bg-amber-50',
+} as const;
 
 function fieldsOfMark(mark: Element): HTMLElement[] {
   let n: Element | null = mark;
@@ -237,6 +243,32 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *   แดง  = บังคับตอนนี้และยังไม่ติ๊ก  ·  เหลือง = ยังไม่บังคับแต่ยังว่าง  ·  ติ๊กแล้ว = ปกติ
    */
   const [claimHl, setClaimHl] = useState<'red' | 'amber' | 'none'>('none');
+  /**
+   * อีก 2 กติกาที่ EMCS ผูกไว้กับบล็อกเดียวกัน (สกัดจาก vlidSurvey ของเขา)
+   *   1. ผลคดี = คู่กรณีผิด → บังคับ "คู่กรณีคันที่" (txtAcc_Cause_No) ด้วย
+   *   2. ติ๊ก "รับเงินจำนวน" (chkOpo_Result_4) → บังคับช่องเงินทั้งคู่ และ
+   *      "รับเงินจำนวน" ต้อง ≤ "จากจำนวนเงินเรียกร้องทั้งหมด" ไม่งั้น EMCS เด้ง alert
+   */
+  const [oppNoHl, setOppNoHl] = useState<'red' | 'amber' | 'none'>('none');
+  const [payHl, setPayHl] = useState<'red' | 'none'>('none');
+  const [payOver, setPayOver] = useState(false);
+  /**
+   * เหตุผลที่ยังกดอนุมัติไม่ได้
+   *
+   * อนุมัติ = ล็อกเคส + บอทหยิบไปเข้า EMCS ทันที · ปล่อยให้อนุมัติทั้งที่ช่องบังคับยังว่าง
+   * แปลว่าบอทจะไปตายที่หน้า EMCS แล้วเสียเที่ยว (เจอจริง 15/08/69 เคลม -001860:
+   * บันทึกหน้าหลักไม่ผ่านเพราะไม่ได้ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี")
+   * ดักที่นี่ถูกกว่า — ผู้ตรวจยังเปิดหน้าอยู่ แก้ได้เลย
+   *
+   * นับเฉพาะ "แดง" (บังคับจริงตอนนี้) — เหลืองคือยังไม่บังคับ ไม่บล็อก
+   */
+  const approvalBlockers = [
+    ...(missing.length > 0 ? [`ช่องบังคับยังว่าง ${missing.length} ช่อง`] : []),
+    ...(claimHl === 'red' ? ['ยังไม่ได้ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี"'] : []),
+    ...(oppNoHl === 'red' ? ['ยังไม่ได้กรอก "คู่กรณีคันที่"'] : []),
+    ...(payHl === 'red' ? ['ติ๊ก "รับเงินจำนวน" แล้วแต่ยังไม่กรอกยอด'] : []),
+    ...(payOver ? ['"รับเงินจำนวน" มากกว่ายอดเรียกร้องทั้งหมด'] : []),
+  ];
 
   // ทาสีกรอบแดงให้ช่องบังคับที่ยังว่าง + นับจำนวน
   // ทำหลัง render เพราะช่องบังคับกระจายอยู่ ~49 จุด ผูกกับดอกจันที่มีอยู่แล้วดีกว่าไล่แก้ทีละช่อง
@@ -259,11 +291,29 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       });
       setMissing(names);
 
-      // ── กลุ่ม checkbox "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
+      // ── บล็อก "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
       // ค่า radio "คู่กรณีผิด" ตรงกับ rdoAcc_Cause01 ของ EMCS ที่เป็นตัวเปิดเงื่อนไข
-      const fault = (form.querySelector('input[name="acc_fault"]:checked') as HTMLInputElement | null)?.value ?? '';
-      const ticked = form.querySelectorAll('input[name="acc_claim_opponent"]:checked').length > 0;
-      setClaimHl(ticked ? 'none' : fault === 'คู่กรณีผิด' ? 'red' : 'amber');
+      const val = (sel: string) =>
+        String((form.querySelector(sel) as HTMLInputElement | null)?.value ?? '').trim();
+      const fault = val('input[name="acc_fault"]:checked');
+      const oppFault = fault === 'คู่กรณีผิด';
+
+      const ticks = Array.prototype.map.call(
+        form.querySelectorAll('input[name="acc_claim_opponent"]:checked'),
+        (el) => (el as HTMLInputElement).value) as string[];
+      setClaimHl(ticks.length > 0 ? 'none' : oppFault ? 'red' : 'amber');
+
+      // "คู่กรณีคันที่" — EMCS บังคับในเงื่อนไขเดียวกันเป๊ะ ใช้สีชุดเดียวกัน
+      const oppNoBlank = !val('input[name="acc_fault_opponent_no"]');
+      setOppNoHl(!oppNoBlank ? 'none' : oppFault ? 'red' : 'amber');
+
+      // ช่องเงิน — บังคับเมื่อ "ติ๊กรับเงินจำนวน" เท่านั้น (ไม่เกี่ยวกับผลคดี)
+      // ไม่ทาเหลืองตอนไม่บังคับ เพราะเคสส่วนใหญ่ไม่มีการรับเงิน จะกลายเป็นเตือนหลอกทุกใบ
+      const moneyTick = ticks.some((v) => v.includes('รับเงิน'));
+      const amt = val('input[name="acc_claim_amount"]').replace(/,/g, '');
+      const total = val('input[name="acc_claim_total_amount"]').replace(/,/g, '');
+      setPayHl(moneyTick && (!amt || !total) ? 'red' : 'none');
+      setPayOver(Boolean(moneyTick && amt && total && Number(amt) > Number(total)));
     };
     paint();
     // พิมพ์/เลือกแล้วกรอบแดงหายทันที ไม่ต้องรอกดบันทึก (ช่องเป็น uncontrolled — React ไม่ re-render)
@@ -872,8 +922,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายผิด' || report.acc_fault === 'รถประกันฝ่ายผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายถูกและผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด' || report.acc_fault === 'ถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="คู่กรณีผิด" disabled={d} defaultChecked={report.acc_fault === 'คู่กรณีผิด' || report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
-                      <span className="text-gray-500">คู่กรณีคันที่ <Req when="เลือก &quot;รถคู่กรณีเป็นฝ่ายผิด&quot; (ต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)" /></span>
-                      <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={report.acc_fault_opponent_no ?? ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <span className="text-gray-500">คู่กรณีคันที่{' '}
+                        <span className={`ml-0.5 ${oppNoHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
+                          title={oppNoHl === 'red'
+                            ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับช่องนี้ (และต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)'
+                            : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด'}>*</span></span>
+                      <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={report.acc_fault_opponent_no ?? ''}
+                        className={`w-[40px] border rounded px-2 py-1 text-gray-800 text-sm text-center ${
+                          oppNoHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS[oppNoHl]}`} />
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รอสรุปผลคดี" disabled={d} defaultChecked={report.acc_fault === 'รอสรุปผลคดี'} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
                       <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ยกเลิกการเคลม" disabled={d} defaultChecked={report.acc_fault === 'ยกเลิกการเคลม'} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
@@ -965,19 +1021,27 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     {/* กรอบ+พื้นหลังคุมทั้งกลุ่ม ไม่ใช่รายช่อง — checkbox เดี่ยว ๆ เล็กเกินกว่าจะเห็นสี
                         border ใสตอนปกติ เพื่อไม่ให้ layout ขยับตอนเปลี่ยนสี */}
                     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded px-2 py-1 border ${
-                      claimHl === 'red' ? 'border-red-400 ring-1 ring-red-300 bg-red-50'
-                        : claimHl === 'amber' ? 'border-amber-400 ring-1 ring-amber-200 bg-amber-50'
-                          : 'border-transparent'}`}>
+                      claimHl === 'none' ? 'border-transparent' : HL_CLS[claimHl]}`}>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="คัดประจำวัน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับหลักฐานจากคู่กรณีผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บันทึกยอมรับผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บัตรติดต่อ" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
                       <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
-                      <input type="text" name="acc_claim_amount" disabled={d} defaultValue={report.acc_claim_amount != null ? Number(report.acc_claim_amount).toFixed(2) : ''} className={`w-[100px] ml-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      {/* ติ๊ก "รับเงินจำนวน" เมื่อไหร่ ช่องเงินคู่นี้บังคับทันที (กติกา EMCS) */}
+                      <input type="text" name="acc_claim_amount" disabled={d} defaultValue={report.acc_claim_amount != null ? Number(report.acc_claim_amount).toFixed(2) : ''}
+                        className={`w-[100px] ml-1 border rounded px-2 py-1 text-gray-800 text-sm ${
+                          payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
                       <span className="text-gray-500">บาท</span>
                       <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
-                      <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={report.acc_claim_total_amount != null ? Number(report.acc_claim_total_amount).toFixed(2) : ''} className={`w-[100px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={report.acc_claim_total_amount != null ? Number(report.acc_claim_total_amount).toFixed(2) : ''}
+                        className={`w-[100px] border rounded px-2 py-1 text-gray-800 text-sm ${
+                          payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
                       <span className="text-gray-500">บาท</span>
+                      {payOver && (
+                        <span className="w-full text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                          ⚠ &quot;รับเงินจำนวน&quot; มากกว่า &quot;จากจำนวนเงินเรียกร้องทั้งหมด&quot; — ระบบประกันจะไม่ยอมให้บันทึก
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1527,6 +1591,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               {saving ? 'กำลังบันทึก...' : 'บันทึก'}
             </button>
             <button type="button" onClick={async () => {
+              // กันไว้อีกชั้นเผื่อสถานะยังไม่ทันอัปเดต (ปุ่มถูก disable อยู่แล้วตามปกติ)
+              if (approvalBlockers.length > 0) {
+                setSaveMsg('อนุมัติไม่ได้ — ' + approvalBlockers.join(' · '));
+                return;
+              }
               // อนุมัติ = ล็อกเคส ถอยเองไม่ได้ ต้องให้แอดมินปลด — ถามก่อนเสมอ
               if (!window.confirm('อนุมัติเคสนี้?\nอนุมัติแล้วจะล็อก แก้เองไม่ได้ ต้องให้แอดมินปลดล็อก\nและบอทจะยกเคสนี้เข้า EMCS')) return;
               const ok = await handleSave();
@@ -1539,9 +1608,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
                 setSaveMsg('อนุมัติไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
               }
-            }} disabled={saving} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
+            }} disabled={saving || approvalBlockers.length > 0}
+              title={approvalBlockers.length > 0 ? 'อนุมัติไม่ได้ — ' + approvalBlockers.join(' · ') : ''}
+              className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
               อนุมัติ
             </button>
+          </div>
+        )}
+        {/* บอกเหตุผลที่กดไม่ได้ — ปุ่มเทาเฉย ๆ ไม่บอกอะไร ผู้ตรวจจะเดาไม่ออกว่าขาดอะไร */}
+        {!approved && approvalBlockers.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded px-4 py-2 text-sm text-amber-900 max-w-xl">
+            <span className="font-semibold">ยังอนุมัติไม่ได้</span> — {approvalBlockers.join(' · ')}
+            <div className="text-xs text-amber-700 mt-0.5">
+              อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว
+            </div>
           </div>
         )}
       </div>
