@@ -58,15 +58,21 @@ export const reviewService = {
   /**
    * ปลดล็อกเคสที่อนุมัติแล้วให้กลับไปแก้ได้ (แอดมินเท่านั้น — บังคับที่ชั้น route)
    *
-   * ⛔ ปลดล็อกเคสที่เข้า EMCS ไปแล้วไม่ได้ — draft บน EMCS ลบไม่ได้ ปลดแล้วแก้ที่นี่
-   *    ข้อมูล 2 ที่จะไม่ตรงกันโดยไม่มีใครรู้ ต้องไปแก้ที่ EMCS ตรง ๆ
+   * ⛔ ปลดล็อกไม่ได้เมื่อ **ส่งงานให้บริษัทประกันแล้ว** (emcs_submitted_at) — ตรงนั้นถอยไม่ได้
+   *    แก้ข้อมูลฝั่งเราทีหลังก็ได้แค่ข้อมูล 2 ที่ไม่ตรงกันโดยไม่มีใครรู้
+   *
+   * ✅ แต่ "มี draft บน EMCS แล้ว" (emcs_imported_at) ปลดล็อกได้ — draft ยังไม่ถึงมือประกัน
+   *    และการแก้ข้อมูลแล้วให้บอทเข้าไปซ่อม draft เดิมคือขั้นตอนปกติที่ออกแบบไว้
+   *    (--sesurvey-fill-existing) · เดิมกันตรงนี้ไว้ด้วย ทำให้เคสที่ draft ยังไม่สมบูรณ์
+   *    ติดตาย แก้อะไรไม่ได้เลย (เจอจริง 15/08/69 เคส #141)
    */
   async unlock(caseId: number, adminId: number, reason?: string) {
-    const c = await db.query('SELECT status, emcs_imported_at FROM cases WHERE id = $1', [caseId]);
+    const c = await db.query(
+      'SELECT status, emcs_imported_at, emcs_submitted_at FROM cases WHERE id = $1', [caseId]);
     if (c.rows.length === 0) throw new NotFoundError('Case not found');
     if (c.rows[0].status !== 'reviewed') throw new ForbiddenError('เคสนี้ยังไม่ได้อนุมัติ ไม่ต้องปลดล็อก');
-    if (c.rows[0].emcs_imported_at) {
-      throw new ForbiddenError('เคสนี้เข้า EMCS ไปแล้ว ปลดล็อกไม่ได้ — แก้ที่ EMCS โดยตรง');
+    if (c.rows[0].emcs_submitted_at) {
+      throw new ForbiddenError('เคสนี้ส่งงานให้บริษัทประกันไปแล้ว ปลดล็อกไม่ได้ — แก้ที่ EMCS โดยตรง');
     }
 
     const client = await db.getClient();
