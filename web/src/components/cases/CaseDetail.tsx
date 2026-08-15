@@ -278,6 +278,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [payHl, setPayHl] = useState<'red' | 'none'>('none');
   const [payOver, setPayOver] = useState(false);
   /**
+   * ลำดับเวลา — กฎอีกชนิดที่ระบบประกันตรวจ และเราไม่เคยตรวจเลย
+   *
+   * เจอจริง 15/08/69 เคส #141 (มาจากแอปมือถือ ผ่านการอนุมัติมาแล้ว):
+   *   เกิดเหตุ 16:00 · ถึงที่เกิดเหตุ 15:50  → ไปถึงก่อนเกิดเหตุ 10 นาที
+   * ระบบประกันตีกลับ 3 ข้อรวด ทั้งที่ช่องบังคับครบหมด — ตรวจ "ช่องว่าง" อย่างเดียวไม่พอ
+   */
+  const [timeErrs, setTimeErrs] = useState<string[]>([]);
+  /**
+   * งานจากแอปมือถือไม่มียอดเงินติดมา — หัวหน้าต้องกรอกบนเว็บก่อนอนุมัติ
+   * (งานจากระบบเดิมมียอดมาแล้ว ไม่ต้องเช็ค) · user ย้ำ 15/08/69
+   */
+  const [moneyMissing, setMoneyMissing] = useState<string[]>([]);
+  /**
    * เหตุผลที่ยังกดอนุมัติไม่ได้
    *
    * อนุมัติ = ล็อกเคส + บอทหยิบไปเข้า EMCS ทันที · ปล่อยให้อนุมัติทั้งที่ช่องบังคับยังว่าง
@@ -293,6 +306,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     ...(oppNoHl === 'red' ? ['ยังไม่ได้กรอก "คู่กรณีคันที่"'] : []),
     ...(payHl === 'red' ? ['ติ๊ก "รับเงินจำนวน" แล้วแต่ยังไม่กรอกยอด'] : []),
     ...(payOver ? ['"รับเงินจำนวน" มากกว่ายอดเรียกร้องทั้งหมด'] : []),
+    ...timeErrs,
+    ...moneyMissing,
   ];
 
   // ทาสีกรอบแดงให้ช่องบังคับที่ยังว่าง + นับจำนวน
@@ -339,13 +354,45 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const total = val('input[name="acc_claim_total_amount"]').replace(/,/g, '');
       setPayHl(moneyTick && (!amt || !total) ? 'red' : 'none');
       setPayOver(Boolean(moneyTick && amt && total && Number(amt) > Number(total)));
+
+      // ── ลำดับเวลา (กติกาของระบบประกัน) ──
+      // วันที่บนฟอร์มเป็น พ.ศ. รูปแบบ วว/ดด/ปปปป — อ่านไม่ออกก็ข้าม ไม่เดา
+      const stamp = (dn: string, hn: string, mn: string): number | null => {
+        const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(val(`input[name="${dn}"]`));
+        if (!m) return null;
+        const h = Number(val(`input[name="${hn}"]`) || 0);
+        const mi = Number(val(`input[name="${mn}"]`) || 0);
+        return new Date(Number(m[3]) - 543, Number(m[2]) - 1, Number(m[1]), h, mi).getTime();
+      };
+      const tAcc = stamp('acc_date', 'acc_time_hour', 'acc_time_minute');
+      const tCus = stamp('acc_customer_report_date_val', 'acc_customer_report_hour', 'acc_customer_report_minute');
+      const tIns = stamp('acc_insurance_notify_date_val', 'acc_insurance_notify_hour', 'acc_insurance_notify_minute');
+      const tArr = stamp('acc_survey_arrive_date_val', 'acc_survey_arrive_hour', 'acc_survey_arrive_minute');
+      const tFin = stamp('acc_survey_complete_date_val', 'acc_survey_complete_hour', 'acc_survey_complete_minute');
+      const before = (a: number | null, b: number | null) => a !== null && b !== null && a < b;
+      const te: string[] = [];
+      if (before(tArr, tAcc)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "เวลาเกิดเหตุ"');
+      if (before(tArr, tCus)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "ลูกค้าแจ้ง บ.ประกัน"');
+      if (before(tArr, tIns)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "บ.ประกันแจ้งสำรวจภัย"');
+      // ข้อนี้ยังไม่เคยเห็นระบบประกันฟ้อง แต่เป็นไปไม่ได้ทางตรรกะ — ปล่อยผ่านก็เสียเที่ยวอยู่ดี
+      if (before(tFin, tArr)) te.push('"สำรวจภัยเสร็จ" อยู่ก่อน "ถึงที่เกิดเหตุ"');
+      setTimeErrs(te);
+
+      // ── ยอดเงินของงานจากแอปมือถือ ──
+      const mm: string[] = [];
+      if (payEditable) {
+        if (pay && !(Number(pay.saved?.total ?? 0) > 0)) mm.push('ยังไม่ได้กรอก "ราคาพนักงาน"');
+        if (!val('input[name="service_fee_price"]')) mm.push('ยังไม่ได้กรอก "ราคาประกัน" (ค่าบริการ)');
+      }
+      setMoneyMissing(mm);
     };
     paint();
     // พิมพ์/เลือกแล้วกรอบแดงหายทันที ไม่ต้องรอกดบันทึก (ช่องเป็น uncontrolled — React ไม่ re-render)
     form.addEventListener('input', paint);
     form.addEventListener('change', paint);
     return () => { form.removeEventListener('input', paint); form.removeEventListener('change', paint); };
-  }, [report, isEditing, saveMsg]);
+    // pay โหลดทีหลัง (async) — ไม่ใส่ไว้ ตัวเช็ค "ยังไม่กรอกราคาพนักงาน" จะค้างที่ผลก่อนโหลด
+  }, [report, isEditing, saveMsg, pay, payEditable]);
 
   useEffect(() => {
     let alive = true;
@@ -430,6 +477,23 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* สรุปจำนวนช่องที่ยังขาด — กรอบแดงรายช่องอาจอยู่คนละหมวดห่างกันคนละหน้าจอ
               ถ้าไม่สรุปไว้บนสุด ผู้ตรวจต้องเลื่อนหาเอง แล้วไปเจอตอนบอทนำเข้าไม่ผ่าน */}
+          {/* ลำดับเวลาผิด — ต่างจากช่องว่างตรงที่ "มองด้วยตาไม่เห็น" แต่ละช่องดูปกติหมด
+              ต้องเอามาเทียบกันถึงจะรู้ ถ้าไม่สรุปไว้บนสุดก็ไม่มีทางสังเกตเจอ */}
+          {timeErrs.length > 0 && (
+            <div className="bg-red-50 border border-red-300 rounded px-4 py-2.5 text-sm text-red-800">
+              <span className="font-semibold">ลำดับเวลาไม่ถูกต้อง {timeErrs.length} จุด</span>
+              <span className="text-red-600"> — ระบบประกันไม่รับ ต้องแก้ก่อนอนุมัติ</span>
+              <ul className="mt-1 ml-4 list-disc text-red-700">
+                {timeErrs.map((e) => <li key={e}>{e}</li>)}
+              </ul>
+            </div>
+          )}
+          {moneyMissing.length > 0 && (
+            <div className="bg-amber-50 border border-amber-300 rounded px-4 py-2 text-sm text-amber-900">
+              <span className="font-semibold">งานจากแอปมือถือ — ยังไม่ได้กรอกยอดเงิน</span>
+              <span className="text-amber-700"> · {moneyMissing.join(' · ')}</span>
+            </div>
+          )}
           {missing.length > 0 ? (
             <div className="bg-red-50 border border-red-200 rounded px-4 py-2.5 text-sm text-red-800 flex items-center gap-2">
               <span className="font-semibold">ยังขาดช่องบังคับ {missing.length} ช่อง</span>
