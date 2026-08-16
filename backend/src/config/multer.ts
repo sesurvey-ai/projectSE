@@ -61,6 +61,18 @@ export const uploadXmlZip = multer({
   },
 }).fields([{ name: 'xml', maxCount: 1 }, { name: 'zip', maxCount: 1 }]);
 
+// zip รูปอย่างเดียว — se-autokey ส่งรูปที่ดึงจาก ISURVEY ตามหลังการสร้างเคส
+// (แยก request จากตัวสร้างเคสโดยตั้งใจ: เคสสร้างสำเร็จแล้วรูปพลาด ยังตามอัปซ้ำได้
+//  ไม่ต้องสร้างเคสใหม่ทั้งใบ — และรูปทั้งเคสหลายสิบ MB ไม่ควรถ่วง request ที่สร้างเคส)
+export const uploadZipOnly = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 200 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (/\.zip$/i.test(file.originalname || '')) { cb(null, true); return; }
+    cb(new Error('รับเฉพาะไฟล์ .zip (รูป)'));
+  },
+}).single('zip');
+
 // ทะเบียนพนักงาน (.xlsx) จากฝ่ายบุคคล — เก็บใน memory ให้ exceljs อ่านตรง ๆ ไม่ต้องลงดิสก์
 // (ไฟล์เล็ก ไม่กี่สิบ KB และเป็นข้อมูลพนักงาน ไม่ควรทิ้งไว้บนเซิร์ฟเวอร์)
 export const uploadXlsx = multer({

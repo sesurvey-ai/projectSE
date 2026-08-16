@@ -20,6 +20,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   // service token สำหรับเครื่องมือภายใน (se-autokey ดึง XML/รูป) — ไม่ตั้ง = ปิด integration routes
   INTEGRATION_TOKEN: z.string().min(24).optional(),
+  // เจ้าของเคสที่ se-autokey สร้างผ่าน integration (cases.created_by เป็น NOT NULL)
+  // ไม่ตั้ง = ใช้แอดมิน id น้อยสุดที่ยังเปิดใช้งาน
+  INTEGRATION_CREATED_BY: z.coerce.number().int().positive().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./src/uploads'),

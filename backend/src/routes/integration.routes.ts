@@ -4,11 +4,18 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { UnauthorizedError } from '../middleware/errorHandler';
 import { env } from '../config/env';
 import { caseService } from '../services/case.service';
+import { uploadZipOnly } from '../config/multer';
 
 // ── routes สำหรับเครื่องมือภายใน (se-autokey) — auth ด้วย service token ไม่ผูกบัญชีพนักงาน ──
 // เปิดใช้โดยตั้ง env INTEGRATION_TOKEN (ยาว ≥24 ตัว); ไม่ตั้ง = ทุก route ตอบ 401
-// ขอบเขตจงใจให้แคบ: อ่าน XML ของเคสอย่างเดียว (ไว้ import เข้า EMCS) — ห้ามเอา token นี้ไป
-// เปิด route เขียนข้อมูล
+//
+// ขอบเขตของ token นี้ (อัปเดต 16/08/69 — เดิมเป็น "อ่านอย่างเดียว"):
+//   อ่าน   — XML / รายงาน / รูป ของเคสที่ **อนุมัติแล้ว** เท่านั้น (assertApproved)
+//   เขียน  — ปักธงสถานะ EMCS (emcs-imported, emcs-status)
+//          — **สร้างเคสจากงาน ISURVEY ที่ยัง "รอตรวจข้อมูล"** (POST /cases/import + photos-zip)
+//
+// เคสที่สร้างทางนี้เกิดเป็น status='surveyed' เสมอ — **เข้าประตูอนุมัติเหมือนงานอื่นทุกอย่าง**
+// token นี้สร้างงานให้คนตรวจได้ แต่ไม่มีทางทำให้งานผ่านการอนุมัติเองได้
 
 const router = Router();
 
@@ -52,6 +59,128 @@ const assertApproved = async (caseId: number, res: Response): Promise<boolean> =
   }
   return true;
 };
+
+/**
+ * คีย์ที่ยอมรับใน `expenses` — ต้องตรงกับ `bill` ที่ `parseIsurveyXml` สร้าง
+ *
+ * ⛔ **ห้ามเอาออก** — `importFromXml` เอาคีย์ของ object นี้ไปต่อเป็นชื่อคอลัมน์ใน
+ * `INSERT INTO survey_expenses (${keys})` ตรง ๆ · ตอนที่มีแต่ทาง XML คีย์มาจากโค้ดเราเอง
+ * จึงปลอดภัย แต่ทางนี้คีย์มาจากข้างนอก = ช่องทาง SQL injection ถ้าไม่กรอง
+ */
+const EXPENSE_KEYS = new Set([
+  'service_fee_count', 'service_fee_price',
+  'travel_fee_count', 'travel_fee_price',
+  'photo_fee_count', 'photo_fee_price',
+  'phone_fee', 'bail_fee',
+  'claim_fee_percent', 'claim_fee_price',
+  'daily_record_fee', 'other_fee_price',
+]);
+
+/** เจ้าของเคสที่สร้างผ่าน integration — cases.created_by เป็น NOT NULL จึงต้องมีคนจริง */
+const resolveIntegrationUser = async (): Promise<number> => {
+  if (env.INTEGRATION_CREATED_BY) return env.INTEGRATION_CREATED_BY;
+  const { db } = await import('../config/database');
+  const r = await db.query(
+    "SELECT id FROM users WHERE role = 'admin' AND is_active = true ORDER BY id LIMIT 1");
+  if (r.rows.length === 0) {
+    throw new Error('ไม่มีบัญชีแอดมินที่เปิดใช้งาน — ตั้ง env INTEGRATION_CREATED_BY เป็น id ของผู้ใช้ที่จะเป็นเจ้าของเคส');
+  }
+  return r.rows[0].id;
+};
+
+/**
+ * สร้างเคสจากงาน ISURVEY ที่ยังเป็นสถานะ "รอตรวจข้อมูล" (se-autokey เป็นคนดึงมา)
+ *
+ * รับโครง `XmlImportResult` มาเป็น JSON แล้วส่งเข้า `importFromXml` **ตัวเดียวกับ**
+ * ที่หน้าอัปโหลด XML ใช้ — เส้นทางสร้างเคสจึงมีเส้นเดียว ไม่ต้องดูแล 2 ทาง
+ * ตัวแปลง ISURVEY → โครงนี้ อยู่ฝั่ง Python (`autokey/isurvey_to_sesurvey.py`)
+ * เพราะความรู้เรื่องรหัส/แท็บของ ISURVEY ทั้งหมดอยู่ที่นั่นอยู่แล้ว
+ *
+ * เลขเซอร์เวย์ซ้ำ → 409 จาก assertSurveyJobNoUnique (กันดึงงานเดิมซ้ำอัตโนมัติ)
+ */
+router.post('/cases/import', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  const insuranceCompany = String(b.insurance_company ?? '').trim();
+  if (!insuranceCompany) {
+    res.status(400).json({ success: false, message: 'ต้องระบุ insurance_company — บอทใช้เลือกบริษัทตอนนำเข้า EMCS' });
+    return;
+  }
+  const report = b.report;
+  if (!report || typeof report !== 'object' || Array.isArray(report)) {
+    res.status(400).json({ success: false, message: 'ต้องมี report เป็น object (คีย์ = ชื่อคอลัมน์ survey_reports)' });
+    return;
+  }
+  // ทางนี้เปิดไว้ให้เส้น "ดึงสด" เท่านั้น — ไม่ให้ผู้เรียกอ้างที่มาอื่นเพื่อเปลี่ยนกติกาเงิน
+  // (isurvey_xml/mobile/emcs_extract คนละกติกาเรื่องยอด ดู BILLABLE_SOURCES + PAY_EDITABLE_SOURCES)
+  const source = String(b.source ?? 'isurvey_live');
+  if (source !== 'isurvey_live') {
+    res.status(400).json({ success: false, message: `ทางนี้รับเฉพาะ source='isurvey_live' (ได้รับ '${source}')` });
+    return;
+  }
+
+  const rawExp = (b.expenses ?? null) as Record<string, unknown> | null;
+  let expenses: Record<string, number | null> | null = null;
+  if (rawExp && typeof rawExp === 'object' && !Array.isArray(rawExp)) {
+    const bad = Object.keys(rawExp).filter((k) => !EXPENSE_KEYS.has(k));
+    if (bad.length) {
+      res.status(400).json({ success: false, message: `expenses มีคีย์ที่ไม่รู้จัก: ${bad.join(', ')}` });
+      return;
+    }
+    const clean: Record<string, number | null> = {};
+    for (const [k, v] of Object.entries(rawExp)) {
+      const n = v === null || v === '' ? null : Number(v);
+      if (n !== null && !Number.isFinite(n)) {
+        res.status(400).json({ success: false, message: `expenses.${k} ไม่ใช่ตัวเลข` });
+        return;
+      }
+      clean[k] = n;
+    }
+    // ว่างทั้งก้อน = ถือว่าไม่มียอด (ตรงกับ hasMoney ของฝั่ง XML) ไม่ต้องเขียนแถวเปล่า
+    expenses = Object.values(clean).some((v) => (v ?? 0) > 0) ? clean : null;
+  }
+
+  const cf = (b.caseFields ?? {}) as Record<string, unknown>;
+  const warnings = Array.isArray(b.warnings) ? b.warnings.map(String) : [];
+  const result = await caseService.importFromXml({
+    caseFields: {
+      customer_name: String(cf.customer_name ?? ''),
+      incident_location: String(cf.incident_location ?? ''),
+    },
+    report: report as Record<string, unknown>,
+    expenses,
+    surveyorCode: String(b.surveyorCode ?? '').toUpperCase(),
+    warnings,
+    source: 'isurvey_live',
+  }, { insuranceCompany, createdBy: await resolveIntegrationUser() });
+
+  res.json({ success: true, data: { ...result, warnings, hasMoney: expenses !== null } });
+}));
+
+/**
+ * อัปรูปเข้าเคสที่สร้างทาง /cases/import — เรียกซ้ำได้ (รูปที่มีแล้วถูกข้าม)
+ *
+ * ⛔ ห้ามแตะเคสที่อนุมัติแล้ว — ถ้าเปลี่ยนรูปหลังอนุมัติได้ ประตูอนุมัติก็ไม่มีความหมาย
+ *    (สิ่งที่บอทส่งเข้า EMCS จะไม่ใช่สิ่งที่หัวหน้ารับรอง)
+ * ⛔ เฉพาะเคส source='isurvey_live' — งานมือถือรูปมาจากแอป ห้ามทางนี้ไปเติม
+ */
+router.post('/cases/:id/photos-zip', integrationAuth, uploadZipOnly,
+  asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const { db } = await import('../config/database');
+    const c = await db.query('SELECT status, source FROM cases WHERE id = $1', [caseId]);
+    if (c.rows.length === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
+    if (c.rows[0].status === 'reviewed') {
+      res.status(423).json({ success: false, message: `เคส #${caseId} อนุมัติแล้ว — เพิ่มรูปไม่ได้จนกว่าแอดมินจะปลดล็อก` });
+      return;
+    }
+    if (c.rows[0].source !== 'isurvey_live') {
+      res.status(403).json({ success: false, message: `ทางนี้ใช้ได้เฉพาะเคสที่ดึงจาก ISURVEY (source='${c.rows[0].source}')` });
+      return;
+    }
+    if (!req.file) { res.status(400).json({ success: false, message: 'ต้องแนบไฟล์ zip ในฟิลด์ชื่อ zip' }); return; }
+    const photos = await caseService.importPhotoZip(caseId, req.file.buffer, { skipExisting: true });
+    res.json({ success: true, data: photos });
+  }));
 
 // XML สำหรับ import เข้า EMCS — เนื้อหาเดียวกับ GET /api/cases/:id/export-xml (ฝั่ง user)
 router.get('/cases/:id/export-xml', integrationAuth, asyncHandler(async (req: Request, res: Response) => {

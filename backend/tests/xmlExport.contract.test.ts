@@ -272,6 +272,9 @@ console.log('\n── การ์ด: เงินฝั่งพนักง�
         'ถ้าล้มแปลว่าเปลี่ยนชื่อ/ย้ายฟังก์ชัน — อัปเดตเทสนี้ด้วย');
   check("allow-list มี 'isurvey_xml'", fn.includes("'isurvey_xml'"));
   check("allow-list มี 'mobile'", fn.includes("'mobile'"));
+  // ดึงสดจาก ISURVEY ตอน "รอตรวจข้อมูล" — หัวหน้ากรอกยอดบนเว็บเรา ยอดต้องไหลเข้า EMCS
+  // ตกลิสต์นี้เมื่อไหร่ = บิลกลายเป็น 0.00 ทั้งบล็อกโดยไม่มี error อะไรฟ้อง
+  check("allow-list มี 'isurvey_live'", fn.includes("'isurvey_live'"));
   check("allow-list ต้อง**ไม่**มี 'emcs_extract' (ข้อมูลทดสอบ เลขของประกันเอง)",
         !fn.includes("'emcs_extract'"));
   check('⛔ ห้ามแตะ survey_pay ในเส้นทางบิลประกัน (คนละฝั่งเงิน)',

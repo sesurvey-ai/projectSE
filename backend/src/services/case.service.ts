@@ -102,8 +102,11 @@ const assertCaseAccess = (caseData: { assigned_to: number | null }, user?: CaseU
  * `cases.source` เป็น VARCHAR(20) **ไม่มี CHECK constraint** (028_case_source.sql)
  * deny-list จะ fail **เปิด**: ทางนำเข้าใหม่ที่ใครเพิ่มวันหลัง (หรือ NULL / เคสหาย)
  * จะกลายเป็น "ส่งเงินจริง" เองเงียบ ๆ · allow-list fail **ปิด** = ได้ 0.00 เหมือนเดิม
+ *
+ * `isurvey_live` (16/08/69) = งานที่ดึงจาก ISURVEY ตอนยังเป็น "รอตรวจข้อมูล" แล้วหัวหน้า
+ * ตรวจ+กรอกยอดบนเว็บเรา → ยอดที่กรอกต้องไหลเข้า EMCS เหมือนงานมือถือ **ต้องอยู่ในลิสต์นี้**
  */
-const BILLABLE_SOURCES = new Set(['isurvey_xml', 'mobile']);
+const BILLABLE_SOURCES = new Set(['isurvey_xml', 'mobile', 'isurvey_live']);
 
 /**
  * 13 คอลัมน์เงินฝั่งเรียกเก็บประกันที่ `xmlExport.service.ts` อ่านไปทำ `<TXN_SURV_BILL>`
@@ -926,13 +929,31 @@ export const caseService = {
    * โครงสร้างใน zip: PICTURES/<หมวด>/... — หมวดตรงกับที่ se-autokey ใช้ (autokey/images.py)
    * เก็บลง path เดียวกับรูปจากมือถือ (uploads/case_<id>/job_<id>/) บอทจึงดึงผ่าน API เดิมได้
    */
-  async importPhotoZip(caseId: number, zipBuffer: Buffer) {
+  /**
+   * แตก zip รูปเข้าเคส
+   *
+   * `skipExisting` — สำหรับ **ดึงรูปซ้ำจากต้นทางเดิม** (ISURVEY ทยอยอัปรูปหลังช่างส่งงาน:
+   * ตอนสถานะ "รอตรวจข้อมูล" มักมี 1–5 รูป พอ "จบงาน" กลายเป็น 20–40 — วัดจริง 16/08/69)
+   * โหมดปกติเจอชื่อซ้ำจะเปลี่ยนเป็น `_2` ซึ่งถูกสำหรับ zip ที่คนอัปเอง (ชื่อชนข้ามหมวดได้)
+   * แต่ผิดสำหรับการดึงซ้ำ — จะได้รูปเดิมซ้ำทุกรอบ · โหมดนี้ข้ามชื่อที่มีอยู่แล้วไปเลย
+   */
+  async importPhotoZip(caseId: number, zipBuffer: Buffer, opts: { skipExisting?: boolean } = {}) {
     const AdmZip = (await import('adm-zip')).default;
     const fs = await import('fs');
     const pathMod = await import('path');
     const rid = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
     if (rid.rows.length === 0) throw new NotFoundError('Report not found');
     const reportId = rid.rows[0].id;
+
+    // ชื่อไฟล์ที่เคสนี้มีอยู่แล้ว — ใช้เฉพาะโหมดดึงซ้ำ (อ่านจาก DB ไม่ใช่ดิสก์
+    // เพราะไฟล์ที่ไม่มีแถวใน survey_photos จะไม่มีใครเห็นอยู่แล้ว ถือว่ายังไม่มี)
+    const existing = new Set<string>();
+    if (opts.skipExisting) {
+      const cur = await db.query(
+        'SELECT file_path FROM survey_photos WHERE report_id = $1', [reportId]);
+      for (const r of cur.rows) existing.add(String(r.file_path).split('/').pop() ?? '');
+    }
+    let skipped = 0;
 
     // หมวดใน zip → ป้ายประเภทรูปของ EMCS (ชุดเดียวกับ autokey/images.py ZIP_CAT_TO_EMCS)
     const CAT: Record<string, string> = {
@@ -951,6 +972,7 @@ export const caseService = {
       const parts = e.entryName.split('/');
       const base = parts[parts.length - 1];
       if (!base || !IMG.test(base)) continue;             // ข้าม PDF/ไฟล์อื่น
+      if (opts.skipExisting && existing.has(base)) { skipped++; continue; }
       const cat = CAT[(parts[1] || '').toUpperCase()] ?? 'รูปประกอบ';
       // กันชื่อชนกันข้ามหมวด (zip ของพอร์ทัลตั้งชื่อซ้ำได้) — ไม่ทับไฟล์เดิม
       let name = base;
@@ -965,7 +987,7 @@ export const caseService = {
       added++;
       perCat[cat] = (perCat[cat] ?? 0) + 1;
     }
-    return { added, perCat };
+    return { added, perCat, skipped };
   },
 
   /**
@@ -1009,7 +1031,7 @@ export const caseService = {
         // ที่มาต้องมาจากไฟล์ ห้าม hardcode — ไฟล์ที่สกัดกลับจากหน้าเว็บ EMCS
         // (source='emcs_extract') เป็นข้อมูลทดสอบ กติกาต่างกับงานจริงจากระบบเก่า
         // โดยเฉพาะเรื่องยอดเงิน: withInsurerBill ส่งบิลต่อเข้า EMCS เฉพาะ source ที่อยู่ใน
-        // BILLABLE_SOURCES (isurvey_xml + mobile) — 'emcs_extract' ยังถูกกันไว้เหมือนเดิม
+        // BILLABLE_SOURCES (isurvey_xml + mobile + isurvey_live) — 'emcs_extract' ยังถูกกันไว้
         // เคสทดสอบจึงไม่ดันยอดเงินของประกันเองกลับเข้าระบบประกันโดยไม่ตั้งใจ
         `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status, source)
          VALUES ($1, $2, $3, $4, 'surveyed', $5) RETURNING *`,
@@ -1042,7 +1064,7 @@ export const caseService = {
 
       // ยอดเงินที่ติดมากับไฟล์ (ฝั่งเรียกเก็บประกัน) — เขียนให้ทุกไฟล์ที่ import
       // แต่จะถูกส่งต่อเข้า EMCS หรือไม่ ตัดสินที่ withInsurerBill ตอน gen XML:
-      // isurvey_xml = ส่งต่อ · emcs_extract = ไม่ส่ง (เลขของประกันเอง เป็นข้อมูลทดสอบ)
+      // isurvey_xml / isurvey_live = ส่งต่อ · emcs_extract = ไม่ส่ง (เลขของประกันเอง ข้อมูลทดสอบ)
       if (parsed.expenses) {
         const rid = await client.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
         const exp = parsed.expenses;

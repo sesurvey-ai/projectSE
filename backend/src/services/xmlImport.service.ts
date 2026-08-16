@@ -231,8 +231,11 @@ export interface XmlImportResult {
    *                  และมียอดเงินที่หัวหน้ากรอกไว้แล้ว ต้องส่งต่อเข้า EMCS
    *   'emcs_extract' สกัดกลับจากหน้าเว็บ EMCS ด้วย tools/emcs_dump.py → **ข้อมูลทดสอบเท่านั้น**
    *                  ข้อมูลครบเพราะผู้ใช้กรอกและตรวจแล้ว แต่ไม่ใช่งานใหม่ ห้ามนับเป็นงาน ISURVEY
+   *   'isurvey_live' ดึงสดจาก ISURVEY ตอนสถานะยังเป็น "รอตรวจข้อมูล" (ก่อนหัวหน้าตรวจ)
+   *                  → **การตรวจและกรอกยอดเกิดขึ้นที่นี่** ยอดจึงแก้ได้ ต่างจาก isurvey_xml
+   *                  ที่ปิดงานบน ISURVEY ไปแล้วและยอดอยู่ที่ se-billing (ดูอย่างเดียว)
    */
-  source: 'isurvey_xml' | 'emcs_extract';
+  source: 'isurvey_xml' | 'emcs_extract' | 'isurvey_live';
 }
 
 /** ไฟล์ที่ emcs_dump.py สร้าง จะประทับตรานี้ไว้บรรทัดบนสุด */

@@ -254,8 +254,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *
    * งานจากระบบเดิม หัวหน้ากรอกยอดไปแล้วที่ ISURVEY และยอดถูกเก็บที่ se-billing → ที่นี่ดูอย่างเดียว
    * (backend บังคับซ้ำอีกชั้นที่ pay.service.ts — ที่นี่แค่ไม่ให้กรอกลม ๆ แล้วเซฟไม่ผ่าน)
+   *
+   * `isurvey_live` = ดึงจาก ISURVEY ตอนยังเป็น "รอตรวจข้อมูล" คือก่อนหัวหน้ากรอกยอด
+   * → ยอดยังไม่มีที่ไหนเลย ต้องกรอกที่นี่ · ลิสต์นี้ต้องตรงกับ PAY_EDITABLE_SOURCES ฝั่ง backend
    */
-  const payEditable = String(caseData?.source ?? 'mobile') === 'mobile';
+  const payEditable = ['mobile', 'isurvey_live'].includes(String(caseData?.source ?? 'mobile'));
   const d = !isEditing || !payEditable;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);

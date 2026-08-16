@@ -253,10 +253,15 @@ export interface SavePayInput {
  * และยอดนั้นถูกบันทึกไว้ที่ se-billing → ฝั่งเรา **ดูอย่างเดียว** (user เคาะ 15/08/69)
  * ถ้าปล่อยให้แก้ที่นี่ด้วย จะได้ยอดจ่ายพนักงาน 2 ชุดที่ไม่ตรงกันโดยไม่มีใครรู้ว่าชุดไหนถูก
  *
+ * ⚠️ `isurvey_live` **แก้ได้** ทั้งที่ชื่อขึ้นต้นด้วย isurvey — ไม่ใช่ความพลาด
+ * เส้นนี้ดึงงานมาตอน ISURVEY ยังเป็น "รอตรวจข้อมูล" คือ**ก่อน**หัวหน้าจะกรอกยอด
+ * (ยิงดูจริง 16/08/69: ยอดยังว่างใน 2 จาก 3 เคสที่สุ่ม) → se-billing ยังไม่มีตัวเลข
+ * ให้ดู การกรอกยอดคืองานที่กำลังย้ายมาทำที่นี่พอดี ต่างจาก isurvey_xml ที่ปิดงานไปแล้ว
+ *
  * ตั้งใจเขียนเป็น allowlist: ที่มาใหม่ที่ยังไม่ได้คิดกติกา จะกลายเป็น "แก้ไม่ได้" ไว้ก่อน
  * (พลาดทางนี้คนกรอกไม่ได้แล้วมาบอกเรา — พลาดอีกทางเงินเพี้ยนเงียบ ๆ)
  */
-const PAY_EDITABLE_SOURCES = new Set(['mobile']);
+const PAY_EDITABLE_SOURCES = new Set(['mobile', 'isurvey_live']);
 
 async function assertPayEditable(caseId: number): Promise<void> {
   const r = await db.query('SELECT status, source FROM cases WHERE id = $1', [caseId]);
