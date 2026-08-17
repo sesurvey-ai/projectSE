@@ -160,6 +160,12 @@ const BG_ORIG = ['bg-white', 'bg-gray-100'];
  * ต้องตรงกับ `emcsNameWarnings()` ฝั่ง backend (xmlExport.service.ts)
  * ⚠️ "ผู้เอาประกัน" (assured_name) **ไม่มี** ตัวกรองนี้ — ตรวจแล้ว ไม่ต้องใส่
  */
+/** ตัด placeholder ของ dropdown ('0' / '-- ระบุ --' / '-- เขต --') ออกจากสรุป — ไม่ใช่ค่าจริง */
+const noPh = (v: unknown) => {
+  const s = String(v ?? '').trim();
+  return s === '0' || s.startsWith('--') ? '' : s;
+};
+
 /** 1 บรรทัดสรุป — เทาจาง = ยังไม่มีข้อมูล (กติกาเดียวกับดีไซน์ใหม่) */
 function Sum({ l, v }: { l: string; v?: unknown }) {
   const s = String(v ?? '').trim();
@@ -1365,6 +1371,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </div>
 
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
+          <div data-section="acc" className="space-y-2">
+          <SectionBar title="อุบัติเหตุ" open={secOpen('acc')} gap={(gapSec ?? []).includes('acc')} onToggle={() => secToggle('acc')}>
+            <Sum l="สถานที่เกิดเหตุ" v={[report.acc_place, noPh(accDist), noPh(accProv)].filter(Boolean).join(' · ')} />
+            <Sum l="ลักษณะการเกิดเหตุ" v={noPh(report.acc_cause)} />
+            <Sum l="ลักษณะความเสียหาย" v={noPh(report.acc_damage_type)} />
+            <Sum l="ฝ่ายประมาท" v={[report.acc_fault, report.acc_fault_opponent_no ? `คันที่ ${report.acc_fault_opponent_no}` : ''].filter(Boolean).join(' · ')} />
+            <Sum l="ผู้แจ้ง" v={report.acc_reporter} />
+            <Sum l="ผู้สำรวจภัย" v={[report.acc_surveyor, report.acc_surveyor_phone].filter(Boolean).join(' · ')} />
+          </SectionBar>
+          <div className={secOpen('acc') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar */}
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1457,7 +1473,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </table>
           </div>
 
+          </div>
+          </div>
+
           {/* คู่กรณี + ตำรวจ + ติดตามงาน — แบบตาราง */}
+          <div data-section="claim" className="space-y-2">
+          <SectionBar title="การเรียกร้องค่าเสียหายจากคู่กรณี" open={secOpen('claim')} gap={(gapSec ?? []).includes('claim')} onToggle={() => secToggle('claim')}>
+            <Sum l="การเรียกร้อง" v={toArray(report.acc_claim_opponent).join(' · ')
+              || String(report.acc_claim_opponent ?? '').split(',').filter(Boolean).join(' · ')} />
+            <Sum l="รับเงินจำนวน" v={report.acc_claim_amount} />
+            <Sum l="จากยอดเรียกร้องทั้งหมด" v={report.acc_claim_total_amount} />
+          </SectionBar>
+          <div className={secOpen('claim') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1500,6 +1527,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          </div>
           </div>
 
           {/* พนักงานสอบสวน + แอลกอฮอล์ — แบบตาราง */}
