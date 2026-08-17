@@ -56,17 +56,44 @@ console.log('\n── หน้าตรวจเคส: ล็อกเฉพ�
 check('ช่องทั่วไปไม่ถูกล็อกด้วยกติกาเรื่องเงิน', /const d = false;/.test(src));
 check('มีธงแยกสำหรับช่องยอดจ่ายพนักงาน', /const dPay = !payEditable;/.test(src));
 
-const PAY_NAME = /name="(?:pay_[a-z_]+|out_of_area|out_of_hours|special_tumbon|daily_check|deduct_late|deduct_docs|deduct_reason|other_reason)"/;
-const payLines = src.split('\n').filter((l) => PAY_NAME.test(l) && /disabled=\{/.test(l));
+// หักเงินแยกออกจากยอดรายรับ: เป็นกติกาของ se-survey เอง ระบบเดิมไม่มีช่องนี้และ
+// se-billing ไม่มีที่เก็บ → ล็อกตามที่มาของงานคือล็อกผิดฝั่ง (user เคาะ 17/08/69 เคส #149)
+const DEDUCT_NAME = /name="(?:pay_deduct_fee|deduct_late|deduct_docs|deduct_reason)"/;
+const PAY_NAME = /name="(?:pay_[a-z_]+|out_of_area|out_of_hours|special_tumbon|daily_check|other_reason)"/;
+
+const payLines = src.split('\n')
+  .filter((l) => PAY_NAME.test(l) && !DEDUCT_NAME.test(l) && /disabled=\{/.test(l));
 const payWrong = payLines.filter((l) => !/disabled=\{dPay\}/.test(l));
-check('ช่องยอดเงินทุกช่องใช้ธง dPay',
-      payLines.length >= 16 && payWrong.length === 0,
+check('ช่องยอดรายรับทุกช่องใช้ธง dPay',
+      payLines.length >= 10 && payWrong.length === 0,
       `${payLines.length} ช่อง${payWrong.length ? ` · ผิด ${payWrong.length}` : ''}`);
+
+const deductLines = src.split('\n').filter((l) => DEDUCT_NAME.test(l) && /disabled=\{/.test(l));
+const deductWrong = deductLines.filter((l) => !/disabled=\{dDeduct\}/.test(l));
+check('ช่องหักเงินกรอกได้ทุกที่มาของงาน (ใช้ธง dDeduct)',
+      deductLines.length === 4 && deductWrong.length === 0,
+      `${deductLines.length} ช่อง${deductWrong.length ? ` · ยังล็อกอยู่ ${deductWrong.length}` : ''}`);
 
 const generalWrong = src.split('\n')
   .filter((l) => /disabled=\{dPay\}/.test(l) && !PAY_NAME.test(l));
 check('ไม่มีช่องทั่วไปหลุดไปใช้ธงเงิน', generalWrong.length === 0,
       generalWrong.length ? `${generalWrong.length} บรรทัด` : '');
+
+/**
+ * ── ตัวทาสีกรอบแดงต้องไม่ setState กลางทางที่ event กำลังไหล ──
+ *
+ * `<form>` เป็น ancestor ของทุกช่อง ส่วน React ดัก event ไว้ที่ `document` (เหนือ form)
+ * ผูก paint กับ 'input' ตรง ๆ = re-render ก่อน React ได้เห็น event → React เขียนค่าเดิม
+ * ทับช่อง controlled → พอถึงคิว React ค่าไม่เปลี่ยน จึง**ไม่ยิง onChange เลย**
+ * ผลคือคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน/ความเสียหาย + 5 dropdown cascade พิมพ์ไม่เข้าถาวร
+ * (เจอจริง 17/08/69 เคส #149 — ช่อง uncontrolled ไม่โดน เลยดูเหมือนพังแค่บางช่อง)
+ */
+console.log('\n── หน้าตรวจเคส: ตัวทาสีกรอบแดงต้องไม่ทับค่าที่กำลังพิมพ์ ──');
+check('ไม่ผูก paint กับ event ตรง ๆ',
+      !/addEventListener\('(?:input|change)',\s*paint\)/.test(src));
+check('หน่วง paint ออกไปหลัง event ไหลจบ (requestAnimationFrame)',
+      /requestAnimationFrame\(paint\)/.test(src) && /cancelAnimationFrame\(raf\)/.test(src));
+check('เลิก re-render ทิ้งเปล่าเมื่อรายการเท่าเดิม', /const setList = /.test(src));
 
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

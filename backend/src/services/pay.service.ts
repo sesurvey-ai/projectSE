@@ -263,16 +263,22 @@ export interface SavePayInput {
  */
 const PAY_EDITABLE_SOURCES = new Set(['mobile', 'isurvey_live']);
 
-async function assertPayEditable(caseId: number): Promise<void> {
+/**
+ * `full` = กรอกยอดได้ทั้งใบ · `deduct-only` = ได้เฉพาะ 4 ช่องหักเงิน
+ *
+ * "หักเงิน" เป็นกติกาของ se-survey เอง ระบบเดิมไม่มีช่องนี้และ se-billing ไม่มีที่เก็บ
+ * → ปิดทั้งใบทำให้หัวหน้าหักเงินงานระบบเดิมไม่ได้เลย (user เจอจริง 17/08/69 เคส #149)
+ * ส่วนยอด**รายรับ** ยังปิดเหมือนเดิม เพราะมีเจ้าของอยู่ที่ se-billing แล้ว
+ */
+type PayEditMode = 'full' | 'deduct-only';
+
+async function assertPayEditable(caseId: number): Promise<PayEditMode> {
   const r = await db.query('SELECT status, source FROM cases WHERE id = $1', [caseId]);
   if (r.rows.length === 0) throw new AppError(404, 'ไม่พบเคสนี้');
   if (r.rows[0].status === 'reviewed') {
     throw new AppError(423, 'เคสนี้อนุมัติแล้ว — แก้ยอดไม่ได้จนกว่าแอดมินจะปลดล็อก');
   }
-  if (!PAY_EDITABLE_SOURCES.has(String(r.rows[0].source ?? ''))) {
-    throw new AppError(403,
-      'งานจากระบบเดิมกรอกยอดจ่ายพนักงานที่นี่ไม่ได้ — ยอดถูกบันทึกไว้ที่ se-billing แล้ว หน้านี้ดูอย่างเดียว');
-  }
+  return PAY_EDITABLE_SOURCES.has(String(r.rows[0].source ?? '')) ? 'full' : 'deduct-only';
 }
 
 /**
@@ -281,12 +287,29 @@ async function assertPayEditable(caseId: number): Promise<void> {
  * ยอดรวม = รายรับทั้งหมด − หักเงิน
  */
 export async function saveCasePay(caseId: number, input: SavePayInput, userId?: number) {
-  await assertPayEditable(caseId);
+  const mode = await assertPayEditable(caseId);
   const money: Record<string, number | null> = {};
   for (const f of PAY_MONEY_FIELDS) money[f] = num(input[f]);
   // หักเงินเก็บเป็นค่าบวกเสมอ — กรอกติดลบมาก็แปลงให้ ไม่งั้นลบซ้อนลบกลายเป็นบวก
   const deduct = num(input[PAY_DEDUCT_FIELD]);
   money[PAY_DEDUCT_FIELD] = deduct === null ? null : Math.abs(deduct);
+
+  // ── งานระบบเดิม: เขียนแค่ 4 ช่องหักเงิน ไม่แตะยอดรายรับและไม่คิด total ──
+  // total ปล่อยว่างโดยตั้งใจ: ยอดรายรับอยู่ที่ se-billing เราไม่รู้ฐาน จะคิดรวมก็ได้ยอดลวง
+  if (mode === 'deduct-only') {
+    const r = await db.query(
+      `INSERT INTO survey_pay (case_id, deduct_fee, deduct_late, deduct_docs, deduct_reason,
+          priced_by, priced_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())
+       ON CONFLICT (case_id) DO UPDATE SET
+         deduct_fee=EXCLUDED.deduct_fee, deduct_late=EXCLUDED.deduct_late,
+         deduct_docs=EXCLUDED.deduct_docs, deduct_reason=EXCLUDED.deduct_reason,
+         priced_by=EXCLUDED.priced_by, priced_at=NOW(), updated_at=NOW()
+       RETURNING *`,
+      [caseId, money[PAY_DEDUCT_FIELD], Boolean(input.deduct_late), Boolean(input.deduct_docs),
+       input.deduct_reason ?? null, userId ?? null]);
+    return r.rows[0];
+  }
   // ยอดตัวปรับ — เก็บแยกเพื่อให้ใบเบิกเงินแยกออกว่าจ่ายค่าอะไรไปเท่าไหร่
   // ติ๊กแต่ไม่ใส่เลข = ใช้ค่าตั้งต้น (นอกพื้นที่ 50 · นอกเวลา 100) ตามระบบเดิม
   const areaAmt = input.out_of_area ? (num(input.out_of_area_amt) ?? 50) : null;

@@ -300,6 +300,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const d = false;
   const dPay = !payEditable;
+  /**
+   * "หักเงิน" กรอกได้ทุกที่มาของงาน — ต่างจากยอดรายรับ (user เคาะ 17/08/69)
+   *
+   * เหตุผล: หักเงินเป็นกติกาของ **เราเอง** ไม่ได้มาจากระบบเดิมและไม่มีที่เก็บใน se-billing
+   * (ระบบเดิมไม่มีแถวนี้ด้วยซ้ำ — ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" ดูคอมเมนต์ตรงตารางข้างล่าง)
+   * ล็อกตาม `payEditable` จึงเป็นการล็อกผิดฝั่ง หัวหน้าหักเงินงานระบบเดิมไม่ได้เลย
+   *
+   * ยอด**รายรับ** 16 ช่องยังล็อกเหมือนเดิม — ยอดพวกนั้นมีเจ้าของอยู่ที่ se-billing แล้ว
+   */
+  const dDeduct = false;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
   /**
@@ -361,6 +371,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
+    // อาเรย์ใหม่ทุกครั้ง = re-render ทุกครั้งแม้เนื้อหาเท่าเดิม (หน้านี้มี ~200 ช่อง)
+    const setList = (set: (u: (prev: string[]) => string[]) => void, next: string[]) =>
+      set((prev) => (prev.length === next.length && prev.every((v, i) => v === next[i]) ? prev : next));
     const paint = () => {
       const names: string[] = [];
       form.querySelectorAll('.req-mark').forEach((mark) => {
@@ -375,7 +388,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           if (blank && nm && !names.includes(nm)) names.push(nm);
         });
       });
-      setMissing(names);
+      setList(setMissing, names);
 
       // ── บล็อก "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
       // ค่า radio "คู่กรณีผิด" ตรงกับ rdoAcc_Cause01 ของ EMCS ที่เป็นตัวเปิดเงื่อนไข
@@ -422,7 +435,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (before(tArr, tIns)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "บ.ประกันแจ้งสำรวจภัย"');
       // ข้อนี้ยังไม่เคยเห็นระบบประกันฟ้อง แต่เป็นไปไม่ได้ทางตรรกะ — ปล่อยผ่านก็เสียเที่ยวอยู่ดี
       if (before(tFin, tArr)) te.push('"สำรวจภัยเสร็จ" อยู่ก่อน "ถึงที่เกิดเหตุ"');
-      setTimeErrs(te);
+      setList(setTimeErrs, te);
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
       const mm: string[] = [];
@@ -430,13 +443,35 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         if (pay && !(Number(pay.saved?.total ?? 0) > 0)) mm.push('ยังไม่ได้กรอก "ราคาพนักงาน"');
         if (!val('input[name="service_fee_price"]')) mm.push('ยังไม่ได้กรอก "ราคาประกัน" (ค่าบริการ)');
       }
-      setMoneyMissing(mm);
+      setList(setMoneyMissing, mm);
     };
     paint();
-    // พิมพ์/เลือกแล้วกรอบแดงหายทันที ไม่ต้องรอกดบันทึก (ช่องเป็น uncontrolled — React ไม่ re-render)
-    form.addEventListener('input', paint);
-    form.addEventListener('change', paint);
-    return () => { form.removeEventListener('input', paint); form.removeEventListener('change', paint); };
+    /**
+     * ⛔ ห้ามผูก `paint` กับ event ตรง ๆ — ต้องหน่วงออกไปนอกจังหวะที่ event กำลังไหล
+     *
+     * `<form>` เป็น ancestor ของทุกช่อง ส่วน React (Next.js App Router) ดัก event ไว้ที่
+     * `document` ซึ่งอยู่ **เหนือ** form ขึ้นไป → ลำดับจริงคือ  ช่อง → form(paint) → document(React)
+     *
+     * paint เรียก setState ที่ทำให้ re-render ทันทีกลางคัน · ตอน re-render React เขียนค่า
+     * `value` ของช่อง **controlled** กลับเป็นค่าใน state ซึ่งยังเป็นค่าเก่า (onChange ยังไม่ทำงาน
+     * เพราะ event ยังไปไม่ถึง React!) → พอ event ไหลถึง React ค่ากับตัวจำเท่ากันพอดี
+     * → React สรุปว่า "ไม่มีอะไรเปลี่ยน" **ไม่ยิง onChange เลย** = พิมพ์/เลือกไม่เข้าถาวร
+     *
+     * กระทบเฉพาะช่อง controlled: คู่กรณี · ผู้บาดเจ็บ · ทรัพย์สิน · ความเสียหาย และ 5 dropdown
+     * cascade (ประเภทรถ · จังหวัด-เขต ที่เกิดเหตุ · จังหวัด-เขต ผู้ขับขี่)
+     * ช่องทั่วไปเป็น uncontrolled จึงรอด — เลยดูเหมือน "บางช่องพิมพ์ไม่ได้" (เจอจริง 17/08/69 เคส #149)
+     *
+     * rAF = รอให้ event ไหลจบก่อนค่อย setState · กรอบแดงยังอัปเดตทันตาเหมือนเดิม
+     */
+    let raf = 0;
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(paint); };
+    form.addEventListener('input', schedule);
+    form.addEventListener('change', schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      form.removeEventListener('input', schedule);
+      form.removeEventListener('change', schedule);
+    };
     // pay โหลดทีหลัง (async) — ไม่ใส่ไว้ ตัวเช็ค "ยังไม่กรอกราคาพนักงาน" จะค้างที่ผลก่อนโหลด
   }, [report, isEditing, saveMsg, pay, payEditable]);
 
@@ -479,25 +514,31 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       }
       // ยอดจ่ายพนักงานอยู่คนละตาราง (survey_pay) → ส่งแยก
       // ยิงก่อนบันทึกรายงาน เพื่อให้ถ้าพังจะพังทั้งคู่ ไม่เหลือสถานะครึ่ง ๆ
-      // ⛔ งานจากระบบเดิมต้องไม่ยิง — backend ตอบ 403 แล้วการบันทึกทั้งหน้าจะล้มทั้งที่ผู้ตรวจ
-      //    แค่มาแก้ฟิลด์ปกติ (ยอดฝั่งนั้นเป็นของ se-billing ไม่ใช่ของเรา)
-      if (isEditing && payEditable) {
-        const payBody: Record<string, unknown> = { other_reason: data['other_fee_detail'] ?? null };
-        for (const k of Object.keys(data)) {
-          if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
+      // งานจากระบบเดิมส่งได้เฉพาะ "หักเงิน" — ยอดรายรับเป็นของ se-billing ไม่ใช่ของเรา
+      // (backend บังคับกติกาเดียวกันอีกชั้นที่ pay.service.ts และจะเขียนแค่ 4 คอลัมน์หักเงิน)
+      if (isEditing) {
+        const payBody: Record<string, unknown> = {
+          deduct_fee: String(data['pay_deduct_fee'] ?? '').replace(/,/g, '') || null,
+          deduct_late: fd.has('deduct_late'),
+          deduct_docs: fd.has('deduct_docs'),
+          deduct_reason: data['deduct_reason'] || null,
+        };
+        if (payEditable) {
+          payBody.other_reason = data['other_fee_detail'] ?? null;
+          for (const k of Object.keys(data)) {
+            if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
+          }
+          for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
+          payBody.daily_check = (data['daily_check'] || '') || null;
         }
-        for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon', 'deduct_late', 'deduct_docs']) {
-          payBody[f] = fd.has(f);
+        // ⛔ ไม่บังคับให้ระบุเหตุผลตอนหักเงิน (user เคาะ 17/08/69) — เดิมบล็อกการบันทึกทั้งหน้า
+        // งานระบบเดิมที่ไม่มีการหักเงินเลย ไม่ต้องยิง — กันไม่ให้เกิดแถว survey_pay เปล่า ๆ
+        const anyDeduct = (o: Record<string, unknown> | null | undefined) =>
+          Boolean(o?.deduct_fee) || Boolean(o?.deduct_late) || Boolean(o?.deduct_docs) || Boolean(o?.deduct_reason);
+        if (payEditable || anyDeduct(payBody) || anyDeduct(pay?.saved)) {
+          const pr = await api.put(`/api/cases/${caseData.id}/pay`, payBody);
+          if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
         }
-        payBody.deduct_reason = data['deduct_reason'] || null;
-        // หักเงินโดยไม่บอกเหตุผล = พนักงานถามแล้วไม่มีใครตอบได้ — กันไว้ตั้งแต่ตอนบันทึก
-        if (Number(payBody.deduct_fee ?? 0) > 0 && !payBody.deduct_late && !payBody.deduct_docs && !payBody.deduct_reason) {
-          setSaveMsg('มีการหักเงินแต่ยังไม่ได้ระบุเหตุผล');
-          return false;
-        }
-        payBody.daily_check = (data['daily_check'] || '') || null;
-        const pr = await api.put(`/api/cases/${caseData.id}/pay`, payBody);
-        if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
       }
       const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: payload });
       if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
@@ -1617,22 +1658,22 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-700">
                         <label className="flex items-center gap-1">
-                          <input type="checkbox" disabled={dPay} name="deduct_late" defaultChecked={Boolean(pay?.saved?.deduct_late)} />ส่งช้า
+                          <input type="checkbox" disabled={dDeduct} name="deduct_late" defaultChecked={Boolean(pay?.saved?.deduct_late)} />ส่งช้า
                         </label>
                         <label className="flex items-center gap-1">
-                          <input type="checkbox" disabled={dPay} name="deduct_docs" defaultChecked={Boolean(pay?.saved?.deduct_docs)} />เอกสารไม่ครบ
+                          <input type="checkbox" disabled={dDeduct} name="deduct_docs" defaultChecked={Boolean(pay?.saved?.deduct_docs)} />เอกสารไม่ครบ
                         </label>
                       </div>
                     </td>
                     {/* สลับให้ตรงกับแถวอื่น: คอลัมน์ 3 = ฝั่งพนักงาน · คอลัมน์ 4 = ฝั่งเรียกเก็บประกัน */}
                     <td className="px-3 py-2">
-                      <input type="text" disabled={dPay} name="pay_deduct_fee" defaultValue={String(pay?.saved?.deduct_fee ?? '')}
-                        className={`w-full border rounded px-2 py-1 text-sm text-right ${d ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-rose-50 border-rose-300 text-rose-900'}`} />
+                      <input type="text" disabled={dDeduct} name="pay_deduct_fee" defaultValue={String(pay?.saved?.deduct_fee ?? '')}
+                        className={`w-full border rounded px-2 py-1 text-sm text-right ${dDeduct ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-rose-50 border-rose-300 text-rose-900'}`} />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="text" disabled={dPay} name="deduct_reason" placeholder="เหตุผลอื่น"
+                      <input type="text" disabled={dDeduct} name="deduct_reason" placeholder="เหตุผลอื่น"
                         defaultValue={String(pay?.saved?.deduct_reason ?? '')}
-                        className={`w-full border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`} />
+                        className={`w-full border rounded px-2 py-1 text-sm ${dDeduct ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`} />
                     </td>
                   </tr>
                 </tbody>
