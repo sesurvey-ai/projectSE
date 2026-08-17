@@ -49,5 +49,24 @@ check('ตัวหาช่องอ่าน data-req-of เป็นทาง
 check('ตัวหาช่องรับ form เข้ามาเพื่อค้นด้วยชื่อช่อง',
       /function fieldsOfMark\(mark: Element, form\?: HTMLFormElement \| null\)/.test(src));
 
+// ── การล็อกช่อง: "ยอดจ่ายพนักงาน" เท่านั้นที่ล็อกตามที่มาของงาน ──
+// เดิม `d = !isEditing || !payEditable` ผูกอยู่กับ 116 ช่องที่ไม่เกี่ยวกับเงิน
+// ผลคือ **งานจากระบบเก่าแก้อะไรไม่ได้เลยทั้งหน้า** (เจอจริง 17/08/69 เคส #149)
+console.log('\n── หน้าตรวจเคส: ล็อกเฉพาะช่องยอดเงิน ไม่ใช่ทั้งฟอร์ม ──');
+check('ช่องทั่วไปไม่ถูกล็อกด้วยกติกาเรื่องเงิน', /const d = false;/.test(src));
+check('มีธงแยกสำหรับช่องยอดจ่ายพนักงาน', /const dPay = !payEditable;/.test(src));
+
+const PAY_NAME = /name="(?:pay_[a-z_]+|out_of_area|out_of_hours|special_tumbon|daily_check|deduct_late|deduct_docs|deduct_reason|other_reason)"/;
+const payLines = src.split('\n').filter((l) => PAY_NAME.test(l) && /disabled=\{/.test(l));
+const payWrong = payLines.filter((l) => !/disabled=\{dPay\}/.test(l));
+check('ช่องยอดเงินทุกช่องใช้ธง dPay',
+      payLines.length >= 16 && payWrong.length === 0,
+      `${payLines.length} ช่อง${payWrong.length ? ` · ผิด ${payWrong.length}` : ''}`);
+
+const generalWrong = src.split('\n')
+  .filter((l) => /disabled=\{dPay\}/.test(l) && !PAY_NAME.test(l));
+check('ไม่มีช่องทั่วไปหลุดไปใช้ธงเงิน', generalWrong.length === 0,
+      generalWrong.length ? `${generalWrong.length} บรรทัด` : '');
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);
