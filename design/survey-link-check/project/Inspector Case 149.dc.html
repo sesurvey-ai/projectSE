@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; }
+  body { background:#eceef1; font-family: Arial, Helvetica, "Noto Sans Thai", sans-serif; color:#171717; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:#2563eb; text-decoration:none; }
+  a:hover { color:#1d4ed8; text-decoration:underline; }
+  input, select, textarea, button { font-family:inherit; }
+</style>
+</helmet>
+
+<section style="padding:56px 56px 96px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6b7280">รอบที่ 1</span>
+    <h1 style="margin:0;font-size:22px;font-weight:700;color:#171717">หน้าตรวจเคสของผู้ตรวจสอบ — เทียบของเดิมกับหน้าเพื่อการตัดสินใจ</h1>
+    <span style="font-size:13px;color:#6b7280"><a href="#1a">1a</a> คือหน้าปัจจุบันตามโค้ดจริง · <a href="#1b">1b</a> คือข้อเสนอใหม่ · ข้อมูลเคส #149 เป็นตัวอย่าง</span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+    <!-- ══════════════════ 1a — RECREATION ══════════════════ -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 8px;border-radius:12px;background:#171717;color:#fff;font-size:12px;font-weight:700;font-family:'Geist Mono',monospace">1a</span>
+        <span style="font-size:15px;font-weight:600;color:#171717">ปัจจุบัน — /inspector/cases/149</span>
+        <span style="font-size:13px;color:#6b7280">ฟอร์มเดียวยาว 11 การ์ด · ปุ่มตัดสินใจอยู่ล่างสุด</span>
+      </div>
+
+      <div style="width:1280px;background:#fff;border:1px solid #d8dbdf;border-radius:10px;overflow:hidden;box-shadow:0 12px 32px -12px rgba(16,24,40,.28)">
+        <div style="display:flex;min-height:900px">
+
+          <!-- Sidebar -->
+          <aside style="width:256px;flex:none;background:#1f2937;color:#fff;display:flex;flex-direction:column">
+            <div style="padding:20px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <div>
+                <h1 style="margin:0;font-size:20px;font-weight:700;line-height:1.4">ระบบตรวจสอบ</h1>
+                <p style="margin:4px 0 0;color:#9ca3af;font-size:12px">SE Survey System</p>
+              </div>
+              <div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:#9ca3af;flex:none">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+              </div>
+            </div>
+            <nav style="flex:1;padding:16px;display:flex;flex-direction:column;gap:4px">
+              <span style="display:block;padding:10px 16px;border-radius:8px;font-size:14px;background:#2563eb;color:#fff">รายการงาน</span>
+              <span style="display:block;padding:10px 16px;border-radius:8px;font-size:14px;color:#d1d5db">นำเข้าจากไฟล์ XML</span>
+            </nav>
+          </aside>
+
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <!-- Header -->
+            <header style="background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 24px;display:flex;align-items:center;justify-content:space-between">
+              <h2 style="margin:0;font-size:18px;font-weight:600;color:#374151">แผงควบคุม</h2>
+              <div style="display:flex;align-items:center;gap:16px">
+                <div style="text-align:right">
+                  <p style="margin:0;font-size:14px;font-weight:500;color:#374151">ปิยะ ตรวจสอบ</p>
+                  <span style="display:inline-block;margin-top:2px;font-size:12px;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:9999px">เจ้าหน้าที่ตรวจสอบ</span>
+                </div>
+                <button style="padding:6px 12px;font-size:14px;background:#ef4444;color:#fff;border:0;border-radius:8px;cursor:pointer">ออกจากระบบ</button>
+              </div>
+            </header>
+
+            <!-- Main -->
+            <main style="flex:1;padding:24px;background:#f9fafb;display:flex;flex-direction:column;gap:24px">
+
+              <div style="display:flex;align-items:center;gap:16px">
+                <span style="color:#6b7280;font-size:14px">&larr; กลับ</span>
+                <h2 style="margin:0;font-size:24px;font-weight:700;color:#1f2937">รายละเอียดเคส #149</h2>
+                <button style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#059669;color:#fff;font-size:14px;font-weight:500;border:0;border-radius:8px;cursor:pointer">⬇ ดาวน์โหลด XML (นำเข้าประกัน)</button>
+              </div>
+
+              <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 20px;font-size:12px;color:#6b7280">
+                <span><span style="color:#ef4444">*</span> ช่องบังคับของระบบประกัน — เว้นว่างแล้วส่งงานเข้าระบบประกันไม่ผ่าน</span>
+                <span><span style="color:#f59e0b">*</span> บังคับเฉพาะบางกรณี (ชี้เมาส์ที่ดอกจันเพื่อดูเงื่อนไข)</span>
+                <span style="color:#9ca3af">ช่องบังคับที่ยังว่างจะขึ้นกรอบแดง</span>
+              </div>
+
+              <div style="border-radius:8px;border:1px solid #fcd34d;background:#fffbeb;padding:12px 16px">
+                <p style="margin:0;font-size:14px;font-weight:600;color:#78350f">⚠️ ชื่อ 1 รายการมีอักขระที่ EMCS ไม่รับ</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#92400e;line-height:1.6">EMCS จะ<strong>ลบข้อความทั้งช่องทิ้ง</strong>ทันทีที่มีคนคลิกเข้า-ออกช่องนั้น (ไม่ใช่แค่ตัดอักขระ) แก้ที่นี่ก่อนส่งเข้า EMCS — ใช้ได้เฉพาะตัวอักษร ตัวเลข เว้นวรรค จุด และขีดกลาง</p>
+                <ul style="margin:8px 0 0;padding-left:18px">
+                  <li style="font-size:12px;color:#78350f"><span style="font-weight:500">เจ้าของรถคู่กรณีคันที่ 1</span><span style="margin:0 4px;color:#b45309">—</span><span style="border-radius:4px;background:#fff;padding:2px 4px;font-family:'Geist Mono',monospace">นายวิชัย สุขสม (เจ้าของ)</span><span style="margin-left:4px;color:#b45309">(อักขระที่มีปัญหา: <strong>( )</strong>)</span></li>
+                </ul>
+              </div>
+
+              <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;padding:10px 16px;font-size:14px;color:#991b1b">
+                <span style="font-weight:600">ลำดับเวลาไม่ถูกต้อง 1 จุด</span><span style="color:#dc2626"> — ระบบประกันไม่รับ ต้องแก้ก่อนอนุมัติ</span>
+                <ul style="margin:4px 0 0;padding-left:20px;color:#b91c1c"><li>"ถึงที่เกิดเหตุ" อยู่ก่อน "เวลาเกิดเหตุ"</li></ul>
+              </div>
+
+              <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:4px;padding:8px 16px;font-size:14px;color:#78350f">
+                <span style="font-weight:600">งานจากแอปมือถือ — ยังไม่ได้กรอกยอดเงิน</span><span style="color:#b45309"> · ยังไม่ได้กรอก "ราคาพนักงาน"</span>
+              </div>
+
+              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:10px 16px;font-size:14px;color:#991b1b;display:flex;align-items:center;gap:8px">
+                <span style="font-weight:600">ยังขาดช่องบังคับ 3 ช่อง</span>
+                <span style="color:#dc2626">— ดูช่องที่มีกรอบแดง เว้นว่างไว้แล้วนำเข้าระบบประกันไม่ผ่าน</span>
+                <button style="margin-left:auto;flex:none;padding:4px 12px;font-size:12px;border:1px solid #fca5a5;border-radius:4px;background:transparent;color:#991b1b;cursor:pointer">ไปช่องแรกที่ขาด</button>
+              </div>
+
+              <!-- Card: รายละเอียดรถยนต์ (header + บริษัท) -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;font-size:14px">
+                  <span style="font-weight:700">::: รายละเอียดรถยนต์</span>
+                  <span style="margin-left:auto;font-weight:700">ประเภทเคลม :</span>
+                  <span style="color:#f87171">*</span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #fff;background:#fff;box-shadow:inset 0 0 0 2px #0174BE;flex:none"></span><span style="font-weight:600">เคลมสด</span></span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.5);flex:none"></span><span style="opacity:.7">เคลมแห้ง</span></span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.5);flex:none"></span><span style="opacity:.7">งานนัดหมาย</span></span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.5);flex:none"></span><span style="opacity:.7">งานติดตาม</span></span>
+                  <span style="font-weight:700;margin-left:16px">รถเสียหาย :</span>
+                  <span style="color:#f87171">*</span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.5);flex:none"></span><span style="opacity:.7">หนัก</span></span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #fff;background:#fff;box-shadow:inset 0 0 0 2px #0174BE;flex:none"></span><span style="font-weight:600">เบา</span></span>
+                  <span style="display:flex;align-items:center;gap:6px;margin-left:8px"><span style="width:16px;height:16px;border-radius:4px;border:2px solid rgba(255,255,255,.5);flex:none"></span><span style="opacity:.7">รถหาย</span></span>
+                </div>
+                <table style="width:100%;font-size:14px;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">บริษัทผู้จัดเรื่อง :</td>
+                      <td style="padding:8px 16px;font-weight:500;color:#1f2937">บริษัท เอส.อี. เซอร์เวย์ จำกัด</td>
+                      <td style="padding:8px 16px;color:#6b7280">วันที่ :</td>
+                      <td style="padding:8px 16px;color:#1f2937">15/08/2569</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ที่อยู่ :</td>
+                      <td style="padding:8px 16px;color:#1f2937">88/12 ถ.รามคำแหง แขวงหัวหมาก เขตบางกะปิ กรุงเทพฯ 10240</td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">เบอร์โทรศัพท์/เบอร์ Fax</td>
+                      <td style="padding:8px 16px;color:#1f2937">02-374-1188</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">บริษัทประกัน :</td>
+                      <td style="padding:8px 16px;overflow:hidden">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <select disabled="disabled" style="min-width:0;flex:1;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>ไอโออิกรุงเทพประกันภัย</option></select>
+                          <select disabled="disabled" style="width:90px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>กรุงเทพ</option></select>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280">เลขเรื่องเซอร์เวย์ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="SEABI-110260301037" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">เลขที่รับแจ้ง :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="AB69-004512" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">เลขที่เคลม :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="-001860" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: กรมธรรม์ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">กรมธรรม์(พรบ.) :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <label style="display:flex;align-items:center;gap:4px;color:#6b7280;flex:none"><input type="checkbox" disabled="disabled" defaultChecked="true" style="width:14px;height:14px"> มี (พรบ.)</label>
+                          <input type="text" disabled="disabled" value="P-2569-887411" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280">กรมธรรม์เลขที่ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="AI-6900125478" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ชื่อผู้ขับขี่ตามกรมธรรม์ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="ระบุชื่อผู้ขับขี่" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">วันที่เริ่มต้น :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="01/03/2569" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">วันที่สิ้นสุด :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="01/03/2570" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ผู้เอาประกันภัย <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #f87171;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fef2f2;font-size:14px;box-shadow:0 0 0 1px #fca5a5"></td>
+                      <td style="padding:8px 16px;color:#6b7280">ประกันประเภท <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="ชั้น 1" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">อีเมลผู้เอาประกัน :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">รหัสภัยยานยนต์ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="110" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ค่าเสียหายส่วนแรก :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="0.00" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 16px;color:#6b7280">ซ่อมที่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="อู่ ป.เจริญยนต์ บางกะปิ" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: รายละเอียดรถยนต์ (ตัวรถ) -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">หมายเลขทะเบียน <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="4กท-8821" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">จังหวัด <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>กรุงเทพมหานคร</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ประเภทรถ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>เก๋งเอเชีย</option></select></td>
+                      <td style="padding:8px 16px;color:#6b7280">ยี่ห้อ :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>TOYOTA</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">รุ่น :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="YARIS ATIV" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">สีรถ :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>ขาว</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ปีจดทะเบียนรถ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="2565" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ประเภทรถยนต์ไฟฟ้า :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>-- ระบุ --</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">หมายเลขแบตเตอรี่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">วันเริ่มใช้แบตเตอรี่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">หมายเลขเครื่องชาร์จ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">หมายเลขตัวถัง :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="MR2B29F30N1234567" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">หมายเลข Model :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="NSP151" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">หมายเลขเครื่อง :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="2NR-1234567" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">หมายเลข กม. :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="48,120" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: ข้อมูลผู้ขับขี่ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ผู้ขับขี่รถประกันภัย <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <label style="display:flex;align-items:center;gap:4px;color:#6b7280;flex:none"><input type="radio" disabled="disabled" defaultChecked="true" style="width:14px;height:14px"> ชาย</label>
+                          <label style="display:flex;align-items:center;gap:4px;color:#6b7280;flex:none"><input type="radio" disabled="disabled" style="width:14px;height:14px"> หญิง</label>
+                          <select disabled="disabled" style="flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>นาย</option></select>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px" colspan="2">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="color:#6b7280;flex:none">ชื่อ</span>
+                          <input type="text" disabled="disabled" value="สมชาย" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <span style="color:#6b7280;flex:none">นามสกุล</span>
+                          <input type="text" disabled="disabled" value="ใจดี" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">วันเกิด <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input type="text" disabled="disabled" value="12/04/2531" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <span style="color:#6b7280;flex:none">อายุ <span style="color:#ef4444">*</span></span>
+                          <input type="text" disabled="disabled" value="38" style="width:60px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ความสัมพันธ์กับเจ้าของรถ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>เจ้าของรถ</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">ที่อยู่ปัจจุบัน <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px" colspan="3">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input type="text" disabled="disabled" value="221/45 ซ.ลาดพร้าว 71 แขวงคลองเจ้าคุณสิงห์" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <select disabled="disabled" style="width:100px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>กรุงเทพมหานคร</option></select>
+                          <select disabled="disabled" style="width:100px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>วังทองหลาง</option></select>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">โทรศัพท์ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #f87171;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fef2f2;font-size:14px;box-shadow:0 0 0 1px #fca5a5"></td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">บัตรประชาชนเลขที่ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input type="text" disabled="disabled" value="1102700456789" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <select disabled="disabled" style="width:92px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>คนไทย</option></select>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ใบอนุญาตขับขี่เลขที่ <span style="color:#f59e0b;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="65104412233" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ประเภท :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ</option></select></td>
+                      <td style="padding:8px 16px;color:#6b7280">ออกให้ที่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="ขนส่งจตุจักร" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">ออกให้วันที่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="20/06/2565" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">หมดอายุวันที่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="20/06/2570" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ใบสั่ง :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ความเสียหายรถประกันภัย <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <button disabled="disabled" style="padding:4px 12px;border:1px solid #9ca3af;border-radius:4px;background:#e5e7eb;color:#374151;font-size:14px;white-space:nowrap">ข้อมูลความเสียหาย</button>
+                          <button disabled="disabled" style="padding:4px 12px;border:1px solid #9ca3af;border-radius:4px;background:#e5e7eb;color:#374151;font-size:14px;white-space:nowrap">พิมพ์ข้อมูลความเสียหาย</button>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px" colspan="2"><textarea disabled="disabled" rows="2" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;resize:none">กันชนหน้าแตก ไฟหน้าขวาร้าว ฝากระโปรงยุบ</textarea></td>
+                    </tr>
+                    <tr style="background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ความเสียหายประมาณ :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input type="text" disabled="disabled" value="24500.00" style="width:150px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <span style="color:#6b7280">บาท</span>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px" colspan="2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: รายละเอียดอุบัติเหตุ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: รายละเอียดอุบัติเหตุ</span></div>
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">วันที่เกิดเหตุและเวลาประมาณ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px" colspan="3">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input type="text" disabled="disabled" value="15/08/2569" style="width:130px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="16" style="width:40px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="00" style="width:40px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">สถานที่เกิดเหตุ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="แยกลำสาลี ถ.รามคำแหง" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px" colspan="2">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <select disabled="disabled" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>กรุงเทพมหานคร</option></select>
+                          <select disabled="disabled" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>บางกะปิ</option></select>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">ลักษณะการเกิดเหตุ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>ชนกับรถอื่น</option></select></td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ลักษณะความเสียหาย <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>เสียหายบางส่วน</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;vertical-align:top">รายละเอียดการเกิดเหตุ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px" colspan="3"><textarea disabled="disabled" rows="4" style="width:100%;min-height:80px;border:1px solid #f87171;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fef2f2;font-size:14px;box-shadow:0 0 0 1px #fca5a5;resize:none"></textarea></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">ฝ่ายประมาท <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px" colspan="3">
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;color:#374151">
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> รถประกันเป็นฝ่ายผิด</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> รถประกันเป็นฝ่ายถูกและผิด</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" defaultChecked="true" style="width:14px;height:14px"> รถคู่กรณีเป็นฝ่ายผิด</label>
+                          <span style="color:#6b7280">คู่กรณีคันที่ <span style="color:#dc2626;font-weight:700">*</span></span>
+                          <input type="text" disabled="disabled" value="1" style="width:40px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> ประมาทร่วม</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> รอสรุปผลคดี</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> ยกเลิกการเคลม</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> ไปถึงแล้วไม่พบ</label>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280">ผู้แจ้ง :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="สมชาย ใจดี" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">ผู้สำรวจภัย <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="สมศักดิ์ พงษ์เจริญ" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <span style="color:#6b7280;flex:none">โทรศัพท์ <span style="color:#ef4444">*</span> :</span>
+                          <input type="text" disabled="disabled" value="0812345678" style="width:80px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="15/08/2569" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="16" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="12" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="15/08/2569" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="16" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="18" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr style="background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="15/08/2569" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="15" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="50" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280">วันที่สำรวจภัยเสร็จ <span style="color:#ef4444;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="15/08/2569" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="17" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="05" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: การเรียกร้องค่าเสียหายจากคู่กรณี -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr>
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap;vertical-align:top">การเรียกร้องค่าเสียหายจากคู่กรณี <span style="color:#dc2626;font-weight:700;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px;color:#1f2937" colspan="3">
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;border-radius:4px;padding:4px 8px;border:1px solid #f87171;background:#fef2f2;box-shadow:0 0 0 1px #fca5a5">
+                          <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled" style="width:14px;height:14px"> คัดประจำวัน</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled" style="width:14px;height:14px"> รับหลักฐานจากคู่กรณีผิด</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled" style="width:14px;height:14px"> บันทึกยอมรับผิด</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled" style="width:14px;height:14px"> บัตรติดต่อ</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled" style="width:14px;height:14px"> รับเงินจำนวน</label>
+                          <input type="text" disabled="disabled" value="" style="width:100px;margin-left:4px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <span style="color:#6b7280">บาท</span>
+                          <span style="margin-left:8px;color:#6b7280">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
+                          <input type="text" disabled="disabled" value="" style="width:100px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <span style="color:#6b7280">บาท</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+
+              <!-- Card: พนักงานสอบสวน + แอลกอฮอล์ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ชื่อพนักงานสอบสวน <span style="color:#f59e0b;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="ร.ต.อ. ธนากร แสงทอง" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                      <td style="padding:8px 16px;color:#6b7280">สถานีตำรวจ <span style="color:#f59e0b;margin-left:2px">*</span> :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="สน.หัวหมาก" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ความเห็นพนักงานสอบสวน :</td>
+                      <td style="padding:8px 16px" colspan="3"><input type="text" disabled="disabled" value="คู่กรณีขับรถออกจากซอยโดยประมาท" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">วันที่ :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="15/08/2569" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="18" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="30" style="width:35px;flex:none;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280">ประจำวันข้อที่ :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="12" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr style="background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">ผลการตรวจแอลกอฮอล์ :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:12px;color:#374151">
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" defaultChecked="true" style="width:14px;height:14px"> ไม่มีการตรวจแอลกอฮอล์</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> มีการตรวจแอลกอฮอล์</label>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280">ระบุผล :</td>
+                      <td style="padding:8px 16px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: การติดตามงาน -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <table style="width:100%;table-layout:fixed;border-collapse:collapse">
+                  <tbody><tr style="height:0"><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td><td style="width:16%;padding:0;border:0"></td><td style="width:34%;padding:0;border:0"></td></tr>
+                    <tr style="border-bottom:1px solid #f3f4f6">
+                      <td style="padding:8px 16px;color:#6b7280">การติดตามงาน :</td>
+                      <td style="padding:8px 16px">
+                        <div style="display:flex;align-items:center;gap:12px;color:#374151">
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" defaultChecked="true" style="width:14px;height:14px"> ไม่มีการนัดหมาย</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> รอการนัดหมาย</label>
+                          <label style="display:flex;align-items:center;gap:4px"><input type="radio" disabled="disabled" style="width:14px;height:14px"> มีการนัดหมาย</label>
+                        </div>
+                      </td>
+                      <td style="padding:8px 16px;color:#6b7280">ครั้งที่นัดหมาย :</td>
+                      <td style="padding:8px 16px"><select disabled="disabled" style="width:60px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"><option>1</option></select></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                      <td style="padding:8px 16px;color:#6b7280;white-space:nowrap">รายละเอียดการนัดหมาย :</td>
+                      <td style="padding:8px 16px" colspan="3"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px"></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 16px;color:#6b7280">วันที่ :</td>
+                      <td style="padding:8px 16px" colspan="3">
+                        <div style="display:flex;align-items:center;gap:4px">
+                          <input type="text" disabled="disabled" value="" style="width:130px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px">
+                          <input type="text" disabled="disabled" value="" style="width:35px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาฬิกา :</span>
+                          <input type="text" disabled="disabled" value="" style="width:35px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#f3f4f6;font-size:14px;text-align:center">
+                          <span style="color:#6b7280;flex:none">นาที</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Card: คู่กรณี -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: คู่กรณี (1 คัน)</span></div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+                  <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+                    <div style="background:#f9fafb;padding:6px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span style="font-size:14px;font-weight:600;color:#374151">คู่กรณีคันที่ 1</span>
+                      <span style="font-size:12px;color:#dc2626">⚠ ขาดช่องบังคับ: วันเกิด · อายุ</span>
+                    </div>
+                    <div style="padding:12px;display:flex;flex-direction:column;gap:12px">
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280">เจ้าของ / รถ</p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px">
+                          <div><span style="font-size:12px;color:#6b7280">เจ้าของรถ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">นายวิชัย สุขสม (เจ้าของ)</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ทะเบียน</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">2ขค-4417 นนทบุรี</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ประเภทรถ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เก๋งเอเชีย</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ยี่ห้อ / รุ่น</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">HONDA CITY</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">สีรถ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เทา</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ที่อยู่เจ้าของ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">55/9 ม.3 ต.บางรักน้อย อ.เมืองนนทบุรี จ.นนทบุรี</p></div>
+                        </div>
+                      </div>
+                      <div style="border-top:1px solid #f3f4f6;padding-top:8px">
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280">ผู้ขับ</p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px">
+                          <div><span style="font-size:12px;color:#6b7280">ชื่อผู้ขับ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">นายวิชัย สุขสม</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">เพศ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ชาย</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">วันเกิด</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">-</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ความสัมพันธ์</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เจ้าของรถ</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">อายุ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">-</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">โทรศัพท์</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">0891112233</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">เลขบัตรประชาชน</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">3102000112233</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ใบขับขี่เลขที่</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">64203311445</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ประเภทใบขับขี่</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">เลขตัวถัง</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">MRHGM6640NT012345</p></div>
+                        </div>
+                      </div>
+                      <div style="border-top:1px solid #f3f4f6;padding-top:8px">
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280">ประกัน</p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px">
+                          <div><span style="font-size:12px;color:#6b7280">บริษัทประกัน</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">วิริยะประกันภัย</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">กรมธรรม์เลขที่</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">06-2569-114772</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">เลขที่เคลม</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">V69-778211</p></div>
+                          <div><span style="font-size:12px;color:#6b7280">ประเภทประกัน</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ชั้น 1</p></div>
+                        </div>
+                      </div>
+                      <div style="border-top:1px solid #f3f4f6;padding-top:8px">
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280">ความเสียหาย</p>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">
+                          <span style="display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;border-radius:4px;padding:2px 8px;font-size:12px">กันชนหลัง ทั้งหมด · กลาง</span>
+                          <span style="display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;border-radius:4px;padding:2px 8px;font-size:12px">ไฟท้าย ขวา · ต่ำ</span>
+                        </div>
+                        <div style="margin-top:8px"><div><span style="font-size:12px;color:#6b7280">ค่าเสียหายประมาณ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">฿18,000.00</p></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card: ผู้บาดเจ็บ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: ผู้บาดเจ็บ (1 คน)</span></div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+                  <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+                    <div style="background:#f9fafb;padding:6px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span style="font-size:14px;font-weight:600;color:#374151">ผู้บาดเจ็บคนที่ 1</span>
+                      <span style="font-size:12px;color:#6b7280">ผู้โดยสารรถคู่กรณี</span>
+                      <span style="display:inline-block;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:500;background:#dcfce7;color:#166534">เล็กน้อย</span>
+                    </div>
+                    <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px">
+                      <div><span style="font-size:12px;color:#6b7280">ชื่อ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">น.ส.ปราณี ทองมา (หญิง)</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ความสัมพันธ์</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ผู้โดยสาร</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">อายุ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">29</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขบัตรประชาชน</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">1409900556677</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขทะเบียนรถ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">2ขค-4417</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">อาชีพ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">พนักงานบริษัท</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ทำงานที่</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">บจก. สยามพลาสติก</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ตำแหน่ง</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ธุรการ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รายได้</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">18,000</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โทรศัพท์</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">0955667788</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โรงพยาบาล</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">รพ.เวชธานี</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ระยะเวลารักษา</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 – 16/08/2569</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ค่ารักษา</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">฿3,200.00</p></div>
+                      <div style="grid-column:span 4"><div><span style="font-size:12px;color:#6b7280">อาการ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ฟกช้ำบริเวณหัวเข่าขวา ไม่มีกระดูกหัก</p></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card: ทรัพย์สินเสียหาย -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: ทรัพย์สินเสียหาย (1 ชิ้น)</span></div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+                  <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+                    <div style="background:#f9fafb;padding:6px 12px;border-bottom:1px solid #e5e7eb">
+                      <span style="font-size:14px;font-weight:600;color:#374151">รายการที่ 1</span>
+                    </div>
+                    <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px">
+                      <div><span style="font-size:12px;color:#6b7280">ทรัพย์สิน</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เสาไฟฟ้าริมทาง</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เจ้าของ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">การไฟฟ้านครหลวง เขตบางกะปิ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โทรศัพท์เจ้าของ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">02-348-5000</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ค่าเสียหายประมาณ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">฿6,500.00</p></div>
+                      <div style="grid-column:span 4"><div><span style="font-size:12px;color:#6b7280">ที่อยู่เจ้าของ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">1192 ถ.รามคำแหง แขวงหัวหมาก เขตบางกะปิ กทม.</p></div></div>
+                      <div style="grid-column:span 2"><div><span style="font-size:12px;color:#6b7280">สาเหตุ</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">รถคู่กรณีเสียหลักชน</p></div></div>
+                      <div style="grid-column:span 2"><div><span style="font-size:12px;color:#6b7280">รายละเอียด</span><p style="margin:0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เสาไฟเอน โคมไฟแตก 1 จุด</p></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card: ความเสียหายรถประกัน -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden;font-size:14px">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: ความเสียหายรถประกัน</span></div>
+                <div style="padding:16px;display:flex;flex-wrap:wrap;gap:6px">
+                  <span style="display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;border-radius:4px;padding:2px 8px;font-size:12px">กันชนหน้า ทั้งหมด · สูง</span>
+                  <span style="display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;border-radius:4px;padding:2px 8px;font-size:12px">ไฟหน้า ขวา · กลาง</span>
+                  <span style="display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;border-radius:4px;padding:2px 8px;font-size:12px">ฝากระโปรงหน้า ทั้งหมด · กลาง</span>
+                </div>
+              </div>
+
+              <!-- Card: รูปภาพ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: รูปภาพ</span></div>
+                <div style="padding:16px">
+                  <div style="margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;padding:8px 12px">
+                    <span style="font-size:14px;font-weight:500;color:#374151">เพิ่มรูป :</span>
+                    <select style="border-radius:4px;border:1px solid #d1d5db;background:#fff;padding:4px 8px;font-size:14px;color:#1f2937"><option>รูปรถประกัน</option><option>รูปรถคู่กรณี</option><option>รูปผู้บาดเจ็บ</option><option>รูปทรัพย์สิน</option><option>รูปแผนที่เกิดเหตุ</option><option>รูปประกอบ</option></select>
+                    <span style="font-size:14px;color:#374151">เลือกไฟล์  ไม่ได้เลือกไฟล์ใด</span>
+                    <button style="border-radius:8px;background:#93c5fd;padding:6px 16px;font-size:14px;font-weight:500;color:#fff;border:0">อัปโหลด</button>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:16px">
+                    <div>
+                      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">รูปรถประกัน (8)</p>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                      </div>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">รูปรถคู่กรณี (4)</p>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div>
+                      </div>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">รูปแผนที่เกิดเหตุ (1)</p>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+                        <div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">แผนที่</div>
+                      </div>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">รูปผู้บาดเจ็บ (2)</p>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div><div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div></div>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">รูปทรัพย์สิน (1)</p>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div></div>
+                    </div>
+                    <div>
+                      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">รูปประกอบ (3)</p>
+                      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div><div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div><div style="aspect-ratio:4/3;border-radius:4px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px);display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:10px;color:#9ca3af">รูปถ่าย</div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card: การตรวจสอบ -->
+              <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden">
+                <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px"><span style="font-weight:700">::: การตรวจสอบ</span></div>
+                <div style="padding:16px">
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px">
+                    <div>
+                      <label style="display:block;font-size:14px;color:#6b7280;margin-bottom:4px">ผลการดำเนินงาน</label>
+                      <textarea rows="6" style="width:100%;min-height:150px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fff;font-size:14px;resize:none">สำรวจภัยที่จุดเกิดเหตุ ถ่ายภาพครบ คู่กรณียอมรับผิด</textarea>
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:14px;color:#6b7280;margin-bottom:4px">ความเห็นของผู้ตรวจสอบ</label>
+                      <textarea rows="6" style="width:100%;min-height:150px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fff;font-size:14px;resize:none"></textarea>
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:14px;color:#6b7280;margin-bottom:4px">ความเห็นของเซอร์เวย์</label>
+                      <textarea rows="6" style="width:100%;min-height:150px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fff;font-size:14px;resize:none"></textarea>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:14px;color:#6b7280;margin-bottom:4px">หมายเหตุเพิ่มเติม <span style="font-size:12px;color:#9ca3af">(ผู้สำรวจจดจากหน้างาน · ไม่ส่งเข้าระบบประกัน)</span></label>
+                    <textarea rows="2" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;color:#1f2937;background:#fff;font-size:14px;resize:none">รถคู่กรณีขับออกจากซอยโดยไม่ดูทาง</textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card: ค่าใช้จ่าย -->
+              <div style="display:flex;gap:24px">
+                <div style="width:50%">
+                  <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);overflow:hidden">
+                    <div style="background:linear-gradient(to right,#0174BE,#4988C4);color:#fff;padding:8px 16px;font-size:14px;display:flex;align-items:center;justify-content:space-between">
+                      <span style="font-weight:700">::: ค่าใช้จ่าย</span>
+                      <span style="display:flex;align-items:center;gap:8px"><span style="font-size:14px">ครั้งที่</span><span style="background:#fff;color:#1f2937;border-radius:4px;padding:2px 10px;font-size:14px;font-weight:700">1</span></span>
+                    </div>
+                    <div style="padding:16px">
+                      <table style="width:100%;font-size:14px;table-layout:fixed;border-collapse:collapse">
+                                                <thead>
+                          <tr style="border-bottom:1px solid #e5e7eb">
+                            <th style="width:32%;padding:8px 12px;text-align:left;color:#4b5563;font-weight:600">รายละเอียด</th>
+                            <th style="width:20%;padding:8px 12px;text-align:center;color:#4b5563;font-weight:600">จำนวน</th>
+                            <th style="width:24%;padding:8px 12px;text-align:center;color:#1d4ed8;font-weight:600">ราคาพนักงาน<div style="font-size:10px;font-weight:400;color:#60a5fa">จ่ายผู้สำรวจ</div></th>
+                            <th style="width:24%;padding:8px 12px;text-align:center;color:#4b5563;font-weight:600">ราคาประกัน<div style="font-size:10px;font-weight:400;color:#9ca3af">เรียกเก็บประกัน</div></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style="border-bottom:1px solid #f3f4f6">
+                            <td style="padding:8px 12px;color:#374151">ค่าบริการ</td>
+                            <td style="padding:8px 12px"><div style="display:flex;align-items:center;justify-content:center;gap:4px"><input type="text" value="1" style="width:50px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:center;color:#1f2937"><span style="color:#6b7280;width:30px">ครั้ง</span></div></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="1200" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                            <td style="padding:8px 12px;color:#374151">ค่าเดินทาง/ค่าพาหนะ</td>
+                            <td style="padding:8px 12px"><div style="display:flex;align-items:center;justify-content:center;gap:4px"><input type="text" value="1" style="width:50px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:center;color:#1f2937"><span style="color:#6b7280;width:30px">ครั้ง</span></div></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="300" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6">
+                            <td style="padding:8px 12px;color:#374151">ค่ารูปถ่าย</td>
+                            <td style="padding:8px 12px"><div style="display:flex;align-items:center;justify-content:center;gap:4px"><input type="text" value="19" style="width:50px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:center;color:#1f2937"><span style="color:#6b7280;width:30px">รูป</span></div></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="190" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                            <td style="padding:8px 12px;color:#374151">ค่าโทรศัพท์</td>
+                            <td style="padding:8px 12px"></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6">
+                            <td style="padding:8px 12px;color:#374151">ค่าประกันตัว</td>
+                            <td style="padding:8px 12px"></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6;background:#f9fafb">
+                            <td style="padding:8px 12px;color:#374151">ค่าเรียกร้อง</td>
+                            <td style="padding:8px 12px"><div style="display:flex;align-items:center;justify-content:center;gap:4px"><input type="text" value="" style="width:50px;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:center;color:#1f2937"><span style="color:#6b7280;width:30px">%</span></div></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6">
+                            <td style="padding:8px 12px;color:#374151">ค่าคัดประจำวัน</td>
+                            <td style="padding:8px 12px"></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="background:#f9fafb">
+                            <td style="padding:8px 12px;color:#374151">ค่าใช้จ่ายอื่นๆ</td>
+                            <td style="padding:8px 12px"><input type="text" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#fff;font-size:14px;text-align:right;color:#1f2937"></td>
+                          </tr>
+                          <tr style="border-bottom:1px solid #f3f4f6;background:rgba(255,241,242,.4)">
+                            <td style="padding:8px 12px;color:#9f1239;font-weight:500">หักเงิน</td>
+                            <td style="padding:8px 12px">
+                              <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12px;color:#374151">
+                                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled">ส่งช้า</label>
+                                <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" disabled="disabled">เอกสารไม่ครบ</label>
+                              </div>
+                            </td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" value="" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;text-align:right;color:#1f2937"></td>
+                            <td style="padding:8px 12px"><input type="text" disabled="disabled" placeholder="เหตุผลอื่น" style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;background:#f3f4f6;font-size:14px;color:#1f2937"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div style="margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px;font-size:14px">
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px">
+                          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" disabled="disabled"><span style="color:#374151">นอกพื้นที่</span></label>
+                          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" disabled="disabled"><span style="color:#374151">นอกเวลา</span></label>
+                          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" disabled="disabled"><span style="color:#374151">ตำบลพิเศษ</span></label>
+                          <label style="display:flex;align-items:center;gap:6px"><span style="color:#374151">ค่าคัดประจำวัน</span><select disabled="disabled" style="border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;font-size:14px;background:#f3f4f6;color:#1f2937"><option>— ไม่มี —</option></select></label>
+                        </div>
+                        <div style="margin-top:8px;font-size:12px;color:#6b7280">เรทของ กรุงเทพมหานคร / บางกะปิ · ทีมA · ระบบแนะนำค่าบริการ 800 บาท</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ปุ่ม -->
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+                <div style="display:flex;gap:12px">
+                  <button style="padding:10px 24px;background:#2563eb;color:#fff;border:0;border-radius:8px;font-weight:500;font-size:14px;cursor:pointer">แก้ไขทั้งหมด</button>
+                  <button style="padding:10px 24px;background:#16a34a;color:#fff;border:0;border-radius:8px;font-weight:500;font-size:14px;cursor:pointer">บันทึก</button>
+                  <button disabled="disabled" style="padding:10px 24px;background:#d8b4fe;color:#fff;border:0;border-radius:8px;font-weight:500;font-size:14px;cursor:not-allowed">อนุมัติ</button>
+                </div>
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:8px 16px;font-size:14px;color:#78350f;max-width:576px">
+                  <span style="font-weight:600">ยังอนุมัติไม่ได้</span> — ช่องบังคับยังว่าง 3 ช่อง · "ถึงที่เกิดเหตุ" อยู่ก่อน "เวลาเกิดเหตุ" · ยังไม่ได้กรอก "ราคาพนักงาน"
+                  <div style="font-size:12px;color:#b45309;margin-top:2px">อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว</div>
+                </div>
+              </div>
+
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ 1b — DECISION VIEW ══════════════════ -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 8px;border-radius:12px;background:#0174BE;color:#fff;font-size:12px;font-weight:700;font-family:'Geist Mono',monospace">1b</span>
+        <span style="font-size:15px;font-weight:600;color:#171717">ใหม่ — โหมดตัดสินใจ</span>
+        <span style="font-size:13px;color:#6b7280">คลิกรายการใน "สิ่งที่ค้าง" เพื่อทดลองเคลียร์ทีละข้อ</span>
+      </div>
+
+      <div style="width:1440px;background:#fff;border:1px solid #d8dbdf;border-radius:10px;overflow:hidden;box-shadow:0 12px 32px -12px rgba(16,24,40,.28)">
+        <div style="display:flex;min-height:900px">
+
+          <aside style="width:256px;flex:none;background:#1f2937;color:#fff;display:flex;flex-direction:column">
+            <div style="padding:20px;border-bottom:1px solid #374151">
+              <h1 style="margin:0;font-size:20px;font-weight:700;line-height:1.4">ระบบตรวจสอบ</h1>
+              <p style="margin:4px 0 0;color:#9ca3af;font-size:12px">SE Survey System</p>
+            </div>
+            <nav style="flex:1;padding:16px;display:flex;flex-direction:column;gap:4px">
+              <span style="display:block;padding:10px 16px;border-radius:8px;font-size:14px;background:#2563eb;color:#fff">รายการงาน</span>
+              <span style="display:block;padding:10px 16px;border-radius:8px;font-size:14px;color:#d1d5db">นำเข้าจากไฟล์ XML</span>
+            </nav>
+            <div style="padding:16px;border-top:1px solid #374151">
+              <p style="margin:0 0 8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6b7280">คิวตรวจวันนี้</p>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="display:flex;justify-content:space-between;font-size:13px;color:#d1d5db"><span>รอตรวจ</span><span style="font-family:'Geist Mono',monospace">12</span></span>
+                <span style="display:flex;justify-content:space-between;font-size:13px;color:#d1d5db"><span>ติดปัญหา</span><span style="font-family:'Geist Mono',monospace;color:#fca5a5">4</span></span>
+                <span style="display:flex;justify-content:space-between;font-size:13px;color:#d1d5db"><span>อนุมัติแล้ววันนี้</span><span style="font-family:'Geist Mono',monospace;color:#86efac">27</span></span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+            <!-- Case bar -->
+            <header style="background:#fff;border-bottom:1px solid #e5e7eb;padding:14px 24px;display:flex;align-items:center;gap:20px">
+              <span style="color:#6b7280;font-size:14px">&larr;</span>
+              <div style="display:flex;align-items:baseline;gap:12px;min-width:0">
+                <h2 style="margin:0;font-size:22px;font-weight:700;color:#111827;font-family:'Geist Mono',monospace">#149</h2>
+                <span style="font-size:15px;font-weight:600;color:#1f2937">4กท-8821</span>
+                <span style="font-size:14px;color:#6b7280">TOYOTA YARIS ATIV ขาว</span>
+                <span style="width:1px;height:16px;background:#e5e7eb"></span>
+                <span style="font-size:14px;color:#6b7280">เคลม <span style="font-family:'Geist Mono',monospace;color:#374151">-001860</span></span>
+                <span style="font-size:14px;color:#6b7280">ไอโออิกรุงเทพประกันภัย</span>
+              </div>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+                <span style="font-size:13px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:3px 10px;border-radius:9999px">รอตรวจ · จากแอปมือถือ</span>
+                <button style="padding:7px 14px;font-size:13px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;cursor:pointer" style-hover="background:#f9fafb">เปิดฟอร์มเต็ม</button>
+                <button style="padding:7px 14px;font-size:13px;background:#059669;color:#fff;border:0;border-radius:8px;cursor:pointer" style-hover="background:#047857">⬇ XML</button>
+              </div>
+            </header>
+
+            <div style="flex:1;display:flex;align-items:flex-start;background:#f4f6f8">
+
+              <!-- MAIN COLUMN -->
+              <div style="flex:1;min-width:0;padding:20px;display:flex;flex-direction:column;gap:16px">
+
+                <!-- ลำดับเวลา -->
+                <sc-if value="{{ showTimeline }}" hint-placeholder-val="{{ true }}">
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px">
+                  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#111827">ลำดับเวลา</h3>
+                    <span style="font-size:12px;color:#6b7280">ระบบประกันตรวจลำดับนี้ — สลับกันเมื่อไหร่ตีกลับทันที</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;align-items:start">
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-right:12px">
+                      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#0174BE;flex:none"></span><span style="flex:1;height:2px;background:#dbe3ea"></span></div>
+                      <span style="font-size:12px;color:#6b7280">เกิดเหตุ</span>
+                      <span style="font-size:17px;font-weight:600;color:#111827;font-family:'Geist Mono',monospace">16:00</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-right:12px">
+                      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#0174BE;flex:none"></span><span style="flex:1;height:2px;background:#dbe3ea"></span></div>
+                      <span style="font-size:12px;color:#6b7280">ลูกค้าแจ้ง บ.ประกัน</span>
+                      <span style="font-size:17px;font-weight:600;color:#111827;font-family:'Geist Mono',monospace">16:12</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-right:12px">
+                      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#0174BE;flex:none"></span><span style="flex:1;height:2px;background:#e11d48"></span></div>
+                      <span style="font-size:12px;color:#6b7280">บ.ประกันแจ้งสำรวจภัย</span>
+                      <span style="font-size:17px;font-weight:600;color:#111827;font-family:'Geist Mono',monospace">16:18</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-right:12px">
+                      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#e11d48;flex:none"></span><span style="flex:1;height:2px;background:#dbe3ea"></span></div>
+                      <span style="font-size:12px;color:#e11d48;font-weight:600">ถึงที่เกิดเหตุ</span>
+                      <span style="font-size:17px;font-weight:700;color:#e11d48;font-family:'Geist Mono',monospace">15:50</span>
+                      <span style="font-size:11px;color:#e11d48;line-height:1.4">ย้อนหลังกว่าเวลาเกิดเหตุ 10 นาที</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#0174BE;flex:none"></span></div>
+                      <span style="font-size:12px;color:#6b7280">สำรวจภัยเสร็จ</span>
+                      <span style="font-size:17px;font-weight:600;color:#111827;font-family:'Geist Mono',monospace">17:05</span>
+                    </div>
+                  </div>
+                </div>
+                </sc-if>
+
+                <!-- หลักฐาน -->
+                <sc-if value="{{ showPhotos }}" hint-placeholder-val="{{ true }}">
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px">
+                  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#111827">หลักฐานภาพ</h3>
+                    <span style="font-size:12px;color:#6b7280">19 รูป · ครบทั้ง 6 หมวด</span>
+                    <button style="margin-left:auto;padding:5px 12px;font-size:12px;background:#fff;border:1px solid #d1d5db;border-radius:6px;color:#374151;cursor:pointer" style-hover="background:#f9fafb">เพิ่มรูป</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#374151">รูปรถประกัน <span style="color:#9ca3af;font-weight:400">8</span></p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div></div>
+                      </div>
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#374151">รูปรถคู่กรณี <span style="color:#9ca3af;font-weight:400">4</span></p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div></div>
+                      </div>
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#374151">รูปผู้บาดเจ็บ <span style="color:#9ca3af;font-weight:400">2</span></p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div></div>
+                      </div>
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#374151">รูปทรัพย์สิน <span style="color:#9ca3af;font-weight:400">1</span></p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div></div>
+                      </div>
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#374151">รูปแผนที่เกิดเหตุ <span style="color:#9ca3af;font-weight:400">1</span></p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div></div>
+                      </div>
+                      <div>
+                        <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#374151">รูปประกอบ <span style="color:#9ca3af;font-weight:400">3</span></p>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div><div style="aspect-ratio:4/3;border-radius:5px;border:1px solid #e5e7eb;background:repeating-linear-gradient(45deg,#eef1f4 0 8px,#e4e8ed 8px 16px)"></div></div>
+                      </div>
+                    </div>
+                </div>
+                </sc-if>
+
+                <!-- ข้อมูลที่ต้องตรวจ -->
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;display:flex;align-items:baseline;gap:10px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#111827">ข้อมูลเคสทั้งหมด</h3>
+                    <span style="font-size:12px;color:#6b7280">ทุกช่องของรายงานสำรวจ · ช่องบังคับที่ยังว่างแสดงเป็นช่องกรอกสีแดง — แก้ได้ตรงนี้เลย</span>
+                    <span style="margin-left:auto;font-size:12px;color:#9ca3af">เทาจาง = ไม่มีข้อมูล</span>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">บริษัท · เคลม</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">ประเภทเคลม</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เคลมสด</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รถเสียหาย</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เบา</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รถหาย</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ไม่</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">วันที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">บริษัทผู้จัดเรื่อง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">บริษัท เอส.อี. เซอร์เวย์ จำกัด</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เบอร์โทรศัพท์ / Fax</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">02-374-1188</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">บริษัทประกัน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ไอโออิกรุงเทพประกันภัย · กรุงเทพ</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ที่อยู่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">88/12 ถ.รามคำแหง แขวงหัวหมาก เขตบางกะปิ กรุงเทพฯ 10240</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขเรื่องเซอร์เวย์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">SEABI-110260301037</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขที่รับแจ้ง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">AB69-004512</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขที่เคลม</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">-001860</p></div></div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;background:#fafbfc">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">กรมธรรม์</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">กรมธรรม์เลขที่ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">AI-6900125478</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ประกันประเภท *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ชั้น 1</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">กรมธรรม์ (พรบ.)</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">มี · P-2569-887411</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">คุ้มครอง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">01/03/2569 – 01/03/2570</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#e11d48;font-weight:600">ผู้เอาประกันภัย · บังคับ</span><input type="text" placeholder="ยังไม่ได้กรอก" style="margin-top:2px;width:100%;border:1px solid #f43f5e;border-radius:6px;padding:6px 10px;font-size:14px;color:#1f2937;background:#fff1f2;box-shadow:0 0 0 3px rgba(244,63,94,.12)"></div>
+                      <div><span style="font-size:12px;color:#6b7280">ชื่อผู้ขับขี่ตามกรมธรรม์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ระบุชื่อผู้ขับขี่</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">อีเมลผู้เอาประกัน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รหัสภัยยานยนต์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">110</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ค่าเสียหายส่วนแรก</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">0.00</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ซ่อมที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">อู่ ป.เจริญยนต์ บางกะปิ</p></div></div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">รถประกัน</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลขทะเบียน *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">4กท-8821</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">จังหวัด *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">กรุงเทพมหานคร</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ประเภทรถ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เก๋งเอเชีย</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ยี่ห้อ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">TOYOTA</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รุ่น</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">YARIS ATIV</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">สีรถ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ขาว</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ปีจดทะเบียนรถ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">2565</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ประเภทรถยนต์ไฟฟ้า</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">— ไม่ระบุ —</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลขแบตเตอรี่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">วันเริ่มใช้แบตเตอรี่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลขเครื่องชาร์จ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลข Model</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">NSP151</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลขตัวถัง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">MR2B29F30N1234567</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลขเครื่อง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">2NR-1234567</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">หมายเลข กม.</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">48,120</p></div></div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;background:#fafbfc">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">ผู้ขับขี่รถประกัน</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">ผู้ขับขี่ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">นาย สมชาย ใจดี · ชาย</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">วันเกิด *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">12/04/2531</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">อายุ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">38</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ความสัมพันธ์กับเจ้าของรถ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เจ้าของรถ</p></div>
+                      <div style="grid-column:span 3"><span style="font-size:12px;color:#6b7280">ที่อยู่ปัจจุบัน *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">221/45 ซ.ลาดพร้าว 71 แขวงคลองเจ้าคุณสิงห์ · วังทองหลาง กรุงเทพมหานคร</p></div>
+                      <div style="grid-column:span 1"><span style="font-size:12px;color:#e11d48;font-weight:600">โทรศัพท์ · บังคับ</span><input type="text" placeholder="ยังไม่ได้กรอก" style="margin-top:2px;width:100%;border:1px solid #f43f5e;border-radius:6px;padding:6px 10px;font-size:14px;color:#1f2937;background:#fff1f2;box-shadow:0 0 0 3px rgba(244,63,94,.12)"></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">บัตรประชาชนเลขที่ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">1102700456789 · คนไทย</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ใบอนุญาตขับขี่เลขที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">65104412233</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ใบสั่ง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ประเภทใบขับขี่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ออกให้ที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ขนส่งจตุจักร</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ออกให้ / หมดอายุ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">20/06/2565 – 20/06/2570</p></div>
+                      <div style="grid-column:span 3"><span style="font-size:12px;color:#6b7280">ความเสียหายรถประกันภัย *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">กันชนหน้าแตก ไฟหน้าขวาร้าว ฝากระโปรงยุบ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ความเสียหายประมาณ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">24,500.00 บาท</p></div></div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">อุบัติเหตุ</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">วันที่เกิดเหตุและเวลา *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 · 16:00 น.</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ลักษณะการเกิดเหตุ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ชนกับรถอื่น</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ลักษณะความเสียหาย *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เสียหายบางส่วน</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ฝ่ายประมาท *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">รถคู่กรณีเป็นฝ่ายผิด · คันที่ 1</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">สถานที่เกิดเหตุ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">แยกลำสาลี ถ.รามคำแหง · บางกะปิ กรุงเทพมหานคร</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ผู้แจ้ง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">สมชาย ใจดี</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ผู้สำรวจภัย *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">สมศักดิ์ พงษ์เจริญ · 0812345678</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ลูกค้าแจ้ง บ.ประกัน *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 16:12</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">บ.ประกันแจ้งสำรวจภัย *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 16:18</p></div>
+                      <div><span style="font-size:12px;color:#e11d48;font-weight:600">ถึงที่เกิดเหตุ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:700;color:#e11d48">15/08/2569 15:50</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">สำรวจภัยเสร็จ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 17:05</p></div>
+                      <div style="grid-column:span 4"><span style="font-size:12px;color:#e11d48;font-weight:600">รายละเอียดการเกิดเหตุ · บังคับ</span><input type="text" placeholder="ยังไม่ได้กรอก — ต้องเขียนเป็นความ ระบบประกันอ่านช่องนี้" style="margin-top:2px;width:100%;border:1px solid #f43f5e;border-radius:6px;padding:6px 10px;font-size:14px;color:#1f2937;background:#fff1f2;box-shadow:0 0 0 3px rgba(244,63,94,.12)"></div>
+                      <div style="grid-column:span 4">
+                        <span style="font-size:12px;color:#b45309;font-weight:600">การเรียกร้องค่าเสียหายจากคู่กรณี · บังคับเพราะคู่กรณีเป็นฝ่ายผิด</span>
+                        <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;border:1px solid #fcd34d;background:#fffbeb;border-radius:6px;padding:8px 10px">
+                          <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#374151;background:#fff;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 10px;cursor:pointer"><input type="checkbox" style="margin:0"> คัดประจำวัน</label>
+                          <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#374151;background:#fff;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 10px;cursor:pointer"><input type="checkbox" style="margin:0"> รับหลักฐานจากคู่กรณีผิด</label>
+                          <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#374151;background:#fff;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 10px;cursor:pointer"><input type="checkbox" style="margin:0"> บันทึกยอมรับผิด</label>
+                          <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#374151;background:#fff;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 10px;cursor:pointer"><input type="checkbox" style="margin:0"> บัตรติดต่อ</label>
+                          <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#374151;background:#fff;border:1px solid #e5e7eb;border-radius:9999px;padding:3px 10px;cursor:pointer"><input type="checkbox" style="margin:0"> รับเงินจำนวน</label>
+                          <input type="text" placeholder="0.00" style="width:110px;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:13px;text-align:right;background:#fff;color:#1f2937">
+                          <span style="font-size:12px;color:#6b7280">บาท จากยอดเรียกร้องทั้งหมด</span>
+                          <input type="text" placeholder="0.00" style="width:110px;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:13px;text-align:right;background:#fff;color:#1f2937">
+                          <span style="font-size:12px;color:#6b7280">บาท</span>
+                        </div>
+                      </div></div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;background:#fafbfc">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">คดี · ตำรวจ · ติดตามงาน</p>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">ชื่อพนักงานสอบสวน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ร.ต.อ. ธนากร แสงทอง</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">สถานีตำรวจ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">สน.หัวหมาก</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">วันที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 18:30</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ประจำวันข้อที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">12</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ความเห็นพนักงานสอบสวน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">คู่กรณีขับรถออกจากซอยโดยประมาท</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ผลการตรวจแอลกอฮอล์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ไม่มีการตรวจแอลกอฮอล์</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ระบุผล</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">การติดตามงาน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ไม่มีการนัดหมาย</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ครั้งที่นัดหมาย</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">1</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รายละเอียดการนัดหมาย</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">วันที่นัดหมาย</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#c4c9d0">—</p></div></div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">คู่กรณี · 1 คัน</p>
+                    <div style="border:1px solid #eef1f4;border-radius:8px;overflow:hidden">
+                      <div style="background:#fafbfc;padding:7px 12px;border-bottom:1px solid #eef1f4;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-size:13px;font-weight:700;color:#374151">คันที่ 1 · 2ขค-4417 นนทบุรี</span>
+                        <span style="font-size:12px;color:#e11d48">⚠ ขาดช่องบังคับ: วันเกิด · อายุ</span>
+                      </div>
+                      <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">เจ้าของรถ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">นายวิชัย สุขสม (เจ้าของ)</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ทะเบียน *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">2ขค-4417</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">จังหวัด *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">นนทบุรี</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ประเภทรถ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เก๋งเอเชีย</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ยี่ห้อ / รุ่น</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">HONDA CITY</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">สีรถ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เทา</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ที่อยู่เจ้าของ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">55/9 ม.3 ต.บางรักน้อย อ.เมืองนนทบุรี จ.นนทบุรี</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ชื่อผู้ขับ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">นายวิชัย สุขสม</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เพศ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ชาย</p></div>
+                      <div style="grid-column:span 1"><span style="font-size:12px;color:#e11d48;font-weight:600">วันเกิด · บังคับ</span><input type="text" placeholder="ยังไม่ได้กรอก" style="margin-top:2px;width:100%;border:1px solid #f43f5e;border-radius:6px;padding:6px 10px;font-size:14px;color:#1f2937;background:#fff1f2;box-shadow:0 0 0 3px rgba(244,63,94,.12)"></div>
+                      <div style="grid-column:span 1"><span style="font-size:12px;color:#e11d48;font-weight:600">อายุ · บังคับ</span><input type="text" placeholder="ยังไม่ได้กรอก" style="margin-top:2px;width:100%;border:1px solid #f43f5e;border-radius:6px;padding:6px 10px;font-size:14px;color:#1f2937;background:#fff1f2;box-shadow:0 0 0 3px rgba(244,63,94,.12)"></div>
+                      <div><span style="font-size:12px;color:#6b7280">ความสัมพันธ์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เจ้าของรถ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โทรศัพท์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">0891112233</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขบัตรประชาชน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">3102000112233</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขตัวถัง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">MRHGM6640NT012345</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ใบขับขี่เลขที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">64203311445</p></div>
+                      <div style="grid-column:span 3"><span style="font-size:12px;color:#6b7280">ประเภทใบขับขี่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">บริษัทประกัน *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">วิริยะประกันภัย</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">กรมธรรม์เลขที่ *</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">06-2569-114772</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขที่เคลม</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">V69-778211</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ประเภทประกัน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ชั้น 1</p></div>
+                      <div style="grid-column:span 3"><span style="font-size:12px;color:#6b7280">ความเสียหาย</span><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"><span style="background:#eef2f6;border:1px solid #dde3ea;color:#374151;border-radius:5px;padding:3px 9px;font-size:12px">กันชนหลัง ทั้งหมด · กลาง</span><span style="background:#eef2f6;border:1px solid #dde3ea;color:#374151;border-radius:5px;padding:3px 9px;font-size:12px">ไฟท้าย ขวา · ต่ำ</span></div></div>
+                      <div><span style="font-size:12px;color:#6b7280">ค่าเสียหายประมาณ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">฿18,000.00</p></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;background:#fafbfc">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">ผู้บาดเจ็บ · 1 คน</p>
+                    <div style="border:1px solid #eef1f4;border-radius:8px;overflow:hidden;background:#fff">
+                      <div style="background:#fafbfc;padding:7px 12px;border-bottom:1px solid #eef1f4;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-size:13px;font-weight:700;color:#374151">คนที่ 1 · น.ส.ปราณี ทองมา</span>
+                        <span style="font-size:12px;color:#6b7280">ผู้โดยสารรถคู่กรณี</span>
+                        <span style="margin-left:auto;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:600;background:#dcfce7;color:#166534">เล็กน้อย</span>
+                      </div>
+                      <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">ชื่อ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">น.ส.ปราณี ทองมา (หญิง)</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ความสัมพันธ์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ผู้โดยสาร</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">อายุ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">29</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขบัตรประชาชน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;font-family:'Geist Mono',monospace">1409900556677</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เลขทะเบียนรถ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">2ขค-4417</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">อาชีพ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">พนักงานบริษัท</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ทำงานที่</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">บจก. สยามพลาสติก</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ตำแหน่ง</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ธุรการ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รายได้</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">18,000</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โทรศัพท์</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">0955667788</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โรงพยาบาล</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">รพ.เวชธานี</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ค่ารักษา</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">฿3,200.00</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ระยะเวลารักษา</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">15/08/2569 – 16/08/2569</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">อาการ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">ฟกช้ำบริเวณหัวเข่าขวา ไม่มีกระดูกหัก</p></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">ทรัพย์สินเสียหาย · 1 ชิ้น</p>
+                    <div style="border:1px solid #eef1f4;border-radius:8px;overflow:hidden">
+                      <div style="background:#fafbfc;padding:7px 12px;border-bottom:1px solid #eef1f4">
+                        <span style="font-size:13px;font-weight:700;color:#374151">รายการที่ 1 · เสาไฟฟ้าริมทาง</span>
+                      </div>
+                      <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px 20px">
+                      <div><span style="font-size:12px;color:#6b7280">ทรัพย์สิน</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เสาไฟฟ้าริมทาง</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">เจ้าของ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">การไฟฟ้านครหลวง เขตบางกะปิ</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">โทรศัพท์เจ้าของ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">02-348-5000</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">ค่าเสียหายประมาณ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">฿6,500.00</p></div>
+                      <div style="grid-column:span 2"><span style="font-size:12px;color:#6b7280">ที่อยู่เจ้าของ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">1192 ถ.รามคำแหง แขวงหัวหมาก เขตบางกะปิ กทม.</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">สาเหตุ</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">รถคู่กรณีเสียหลักชน</p></div>
+                      <div><span style="font-size:12px;color:#6b7280">รายละเอียด</span><p style="margin:2px 0 0;font-size:14px;font-weight:500;color:#1f2937;overflow-wrap:break-word">เสาไฟเอน โคมไฟแตก 1 จุด</p></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="padding:14px 18px;background:#fafbfc">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">ความเสียหายรถประกัน</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                      <span style="background:#eef2f6;border:1px solid #dde3ea;color:#374151;border-radius:5px;padding:3px 9px;font-size:12px">กันชนหน้า ทั้งหมด · สูง</span>
+                      <span style="background:#eef2f6;border:1px solid #dde3ea;color:#374151;border-radius:5px;padding:3px 9px;font-size:12px">ไฟหน้า ขวา · กลาง</span>
+                      <span style="background:#eef2f6;border:1px solid #dde3ea;color:#374151;border-radius:5px;padding:3px 9px;font-size:12px">ฝากระโปรงหน้า ทั้งหมด · กลาง</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- การตรวจสอบ -->
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px">
+                  <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:#111827">การตรวจสอบ</h3>
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+                    <div>
+                      <label style="display:block;font-size:12px;color:#6b7280;margin-bottom:4px">ผลการดำเนินงาน</label>
+                      <textarea rows="4" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;color:#1f2937;background:#fff;resize:vertical;font-family:inherit">สำรวจภัยที่จุดเกิดเหตุ ถ่ายภาพครบ คู่กรณียอมรับผิด</textarea>
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;color:#6b7280;margin-bottom:4px">ความเห็นของเซอร์เวย์</label>
+                      <textarea rows="4" placeholder="—" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;color:#1f2937;background:#fff;resize:vertical;font-family:inherit"></textarea>
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;color:#6b7280;margin-bottom:4px">หมายเหตุเพิ่มเติม <span style="color:#9ca3af">(ไม่ส่งเข้าระบบประกัน)</span></label>
+                      <textarea rows="4" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;color:#1f2937;background:#fff;resize:vertical;font-family:inherit">รถคู่กรณีขับออกจากซอยโดยไม่ดูทาง</textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ยอดเงิน -->
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+                  <div style="padding:14px 18px;border-bottom:1px solid #f1f3f5;display:flex;align-items:baseline;gap:10px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#111827">ยอดเงิน</h3>
+                    <span style="font-size:12px;color:#6b7280">ครั้งที่ 1 · เรท กรุงเทพมหานคร / บางกะปิ · ทีม A</span>
+                  </div>
+                  <table style="width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed">
+                                        <thead>
+                      <tr style="background:#fafbfc;border-bottom:1px solid #eef1f4">
+                        <th style="width:34%;padding:8px 18px;text-align:left;color:#6b7280;font-weight:600;font-size:12px">รายการ</th>
+                        <th style="width:14%;padding:8px 12px;text-align:center;color:#6b7280;font-weight:600;font-size:12px">จำนวน</th>
+                        <th style="width:26%;padding:8px 12px;text-align:right;color:#1d4ed8;font-weight:600;font-size:12px">จ่ายผู้สำรวจ</th>
+                        <th style="width:26%;padding:8px 18px;text-align:right;color:#374151;font-weight:600;font-size:12px">เรียกเก็บประกัน</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid #f5f7f9">
+                        <td style="padding:7px 18px;color:#374151">ค่าบริการ</td>
+                        <td style="padding:7px 12px;text-align:center;color:#6b7280">1 ครั้ง</td>
+                        <td style="padding:7px 12px;text-align:right"><input type="text" placeholder="800" style="width:100px;text-align:right;border:1px solid #f43f5e;border-radius:6px;padding:4px 8px;font-size:14px;background:#fff1f2;color:#1f2937;box-shadow:0 0 0 3px rgba(244,63,94,.12)"></td>
+                        <td style="padding:7px 18px;text-align:right;color:#111827;font-family:'Geist Mono',monospace">1,200.00</td>
+                      </tr>
+                      <tr style="border-bottom:1px solid #f5f7f9">
+                        <td style="padding:7px 18px;color:#374151">ค่าเดินทาง/ค่าพาหนะ</td>
+                        <td style="padding:7px 12px;text-align:center;color:#6b7280">1 ครั้ง</td>
+                        <td style="padding:7px 12px;text-align:right"><input type="text" value="200" style="width:100px;text-align:right;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:14px;background:#fff;color:#1f2937"></td>
+                        <td style="padding:7px 18px;text-align:right;color:#111827;font-family:'Geist Mono',monospace">300.00</td>
+                      </tr>
+                      <tr style="border-bottom:1px solid #f5f7f9">
+                        <td style="padding:7px 18px;color:#374151">ค่ารูปถ่าย</td>
+                        <td style="padding:7px 12px;text-align:center;color:#6b7280">19 รูป</td>
+                        <td style="padding:7px 12px;text-align:right"><input type="text" value="95" style="width:100px;text-align:right;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:14px;background:#fff;color:#1f2937"></td>
+                        <td style="padding:7px 18px;text-align:right;color:#111827;font-family:'Geist Mono',monospace">190.00</td>
+                      </tr>
+                      <tr style="border-bottom:1px solid #f5f7f9">
+                        <td style="padding:7px 18px;color:#9f1239">หักเงิน
+                          <span style="margin-left:8px;display:inline-flex;gap:8px;font-size:12px;color:#6b7280">
+                            <label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" style="margin:0">ส่งช้า</label>
+                            <label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" style="margin:0">เอกสารไม่ครบ</label>
+                          </span>
+                        </td>
+                        <td style="padding:7px 12px"></td>
+                        <td style="padding:7px 12px;text-align:right"><input type="text" value="0" style="width:100px;text-align:right;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:14px;background:#fff;color:#9f1239"></td>
+                        <td style="padding:7px 18px"></td>
+                      </tr>
+                      <tr style="background:#fafbfc">
+                        <td style="padding:10px 18px;font-weight:700;color:#111827">รวม</td>
+                        <td style="padding:10px 12px"></td>
+                        <td style="padding:10px 12px;text-align:right;font-weight:700;color:#1d4ed8;font-family:'Geist Mono',monospace">295.00</td>
+                        <td style="padding:10px 18px;text-align:right;font-weight:700;color:#111827;font-family:'Geist Mono',monospace">1,690.00</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div style="padding:10px 18px;border-top:1px solid #f1f3f5;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;font-size:13px;color:#374151">
+                    <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" style="margin:0">นอกพื้นที่</label>
+                    <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" style="margin:0">นอกเวลา</label>
+                    <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" style="margin:0">ตำบลพิเศษ</label>
+                    <span style="margin-left:auto;font-size:12px;color:#6b7280">ระบบแนะนำค่าบริการ <strong style="color:#1d4ed8">800</strong> บาท — ยังไม่ได้กรอก</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- DECISION RAIL -->
+              <div style="width:400px;flex:none;padding:20px 20px 20px 0">
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px -6px rgba(16,24,40,.14)">
+
+                  <sc-if value="{{ isBlocked }}" hint-placeholder-val="{{ true }}">
+                    <div style="background:#fff7ed;border-bottom:1px solid #fed7aa;padding:16px 18px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#ea580c;flex:none"></span>
+                        <span style="font-size:16px;font-weight:700;color:#9a3412">ยังอนุมัติไม่ได้</span>
+                        <span style="margin-left:auto;font-size:13px;color:#9a3412;font-family:'Geist Mono',monospace">{{ remainingText }}</span>
+                      </div>
+                      <p style="margin:6px 0 0;font-size:12px;color:#c2410c;line-height:1.5">อนุมัติแล้วเคสจะถูกล็อกและบอทจะยกเข้าระบบประกันทันที — เคลียร์ให้ครบก่อน ไม่งั้นไปตกที่นั่นแล้วเสียเที่ยว</p>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}">
+                    <div style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:16px 18px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#16a34a;flex:none"></span>
+                        <span style="font-size:16px;font-weight:700;color:#166534">พร้อมอนุมัติ</span>
+                      </div>
+                      <p style="margin:6px 0 0;font-size:12px;color:#15803d;line-height:1.5">ผ่านทุกกติกาที่ระบบประกันตรวจ — ช่องบังคับครบ ลำดับเวลาถูกต้อง ยอดเงินกรอกแล้ว</p>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ isApproved }}" hint-placeholder-val="{{ false }}">
+                    <div style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:16px 18px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#16a34a;flex:none"></span>
+                        <span style="font-size:16px;font-weight:700;color:#166534">อนุมัติแล้ว · ล็อก</span>
+                      </div>
+                      <p style="margin:6px 0 0;font-size:12px;color:#15803d;line-height:1.5">โดย ปิยะ ตรวจสอบ · บอทจะยกเข้าระบบประกันให้ — แก้ต่อไม่ได้ ต้องให้แอดมินปลดล็อก</p>
+                      <button onClick="{{ reset }}" style="margin-top:10px;padding:6px 12px;font-size:12px;background:#fff;border:1px solid #bbf7d0;border-radius:6px;color:#166534;cursor:pointer">เริ่มสาธิตใหม่</button>
+                    </div>
+                  </sc-if>
+
+                  <div style="padding:14px 18px">
+                    <p style="margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">สิ่งที่ค้าง</p>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <sc-for list="{{ blockers }}" as="b" hint-placeholder-count="5">
+                        <sc-if value="{{ b.pending }}" hint-placeholder-val="{{ true }}">
+                          <div onClick="{{ b.toggle }}" style="display:flex;gap:10px;align-items:flex-start;border:1px solid #fed7aa;background:#fffbf5;border-radius:8px;padding:9px 11px;cursor:pointer" style-hover="background:#fff7ed;border-color:#fdba74">
+                            <span style="width:16px;height:16px;border-radius:4px;border:1.5px solid #fb923c;flex:none;margin-top:1px"></span>
+                            <div style="min-width:0">
+                              <p style="margin:0;font-size:13px;font-weight:600;color:#7c2d12;line-height:1.4">{{ b.label }}</p>
+                              <p style="margin:2px 0 0;font-size:11.5px;color:#b45309;line-height:1.45">{{ b.detail }}</p>
+                            </div>
+                            <span style="margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#c2410c;flex:none;padding-top:2px">{{ b.kind }}</span>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ b.done }}" hint-placeholder-val="{{ false }}">
+                          <div onClick="{{ b.toggle }}" style="display:flex;gap:10px;align-items:flex-start;border:1px solid #e5e7eb;background:#fafbfc;border-radius:8px;padding:9px 11px;cursor:pointer" style-hover="background:#f4f6f8">
+                            <span style="width:16px;height:16px;border-radius:4px;background:#16a34a;flex:none;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;line-height:1">✓</span>
+                            <div style="min-width:0">
+                              <p style="margin:0;font-size:13px;font-weight:500;color:#9ca3af;text-decoration:line-through;line-height:1.4">{{ b.label }}</p>
+                            </div>
+                            <span style="margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;flex:none;padding-top:2px">แก้แล้ว</span>
+                          </div>
+                        </sc-if>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <div style="padding:0 18px 14px">
+                    <p style="margin:0 0 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;font-weight:700">ความเห็นผู้ตรวจสอบ</p>
+                    <textarea rows="3" placeholder="สรุปสั้น ๆ ว่าตรวจอะไรแล้ว — จะติดไปกับเคสและอ่านได้ตอนสอบย้อนหลัง" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;color:#1f2937;background:#fff;resize:vertical;font-family:inherit"></textarea>
+                  </div>
+
+                  <div style="padding:14px 18px;border-top:1px solid #f1f3f5;background:#fafbfc;display:flex;flex-direction:column;gap:8px">
+                    <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ approve }}" style="width:100%;padding:11px 16px;background:#7c3aed;color:#fff;border:0;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:#6d28d9">อนุมัติและส่งเข้าระบบประกัน</button>
+                    </sc-if>
+                    <sc-if value="{{ isBlocked }}" hint-placeholder-val="{{ true }}">
+                      <button disabled="disabled" style="width:100%;padding:11px 16px;background:#e9d5ff;color:#fff;border:0;border-radius:8px;font-size:15px;font-weight:600;cursor:not-allowed">อนุมัติและส่งเข้าระบบประกัน</button>
+                    </sc-if>
+                    <div style="display:flex;gap:8px">
+                      <button style="flex:1;padding:9px 12px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#f4f6f8">บันทึกร่าง</button>
+                      <button style="flex:1;padding:9px 12px;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#fef2f2">ตีกลับให้ผู้สำรวจ</button>
+                    </div>
+                    <p style="margin:2px 0 0;font-size:11px;color:#9ca3af;line-height:1.5">ตีกลับ = ส่งแจ้งเตือนถึงผู้สำรวจพร้อมรายการที่ค้าง ไม่ต้องโทรตาม</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showTimeline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;หน้าตัดสินใจ (1b)&quot;},&quot;showPhotoEvidence&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;หน้าตัดสินใจ (1b)&quot;},&quot;strictTimeOrder&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;หน้าตัดสินใจ (1b)&quot;},&quot;startResolved&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;หน้าตัดสินใจ (1b)&quot;}}">
+class Component extends DCLogic {
+  state = { done: {}, approved: false };
+
+  items() {
+    const strict = this.props.strictTimeOrder !== false;
+    return [
+      { id: 'f1', kind: 'ช่องบังคับ', label: 'ผู้เอาประกันภัย ยังว่าง', detail: 'อยู่ในกลุ่ม “กรมธรรม์” — ระบบประกันไม่รับถ้าเว้นว่าง' },
+      { id: 'f2', kind: 'ช่องบังคับ', label: 'โทรศัพท์ผู้ขับขี่ ยังว่าง', detail: 'อยู่ในกลุ่ม “ผู้ขับขี่”' },
+      { id: 'f3', kind: 'ช่องบังคับ', label: 'รายละเอียดการเกิดเหตุ ยังว่าง', detail: 'อยู่ในกลุ่ม “อุบัติเหตุ” — ต้องเขียนเป็นความ' },
+      { id: 'c1', kind: 'เงื่อนไข', label: 'ยังไม่ได้ติ๊กการเรียกร้องจากคู่กรณี', detail: 'บังคับเพราะผลคดี = รถคู่กรณีเป็นฝ่ายผิด · ติ๊กอย่างน้อย 1 ข้อ' },
+      { id: 'o1', kind: 'คู่กรณี', label: 'คู่กรณีคันที่ 1 ขาดช่องบังคับ', detail: 'วันเกิด · อายุ — บอทค้างกลางทางที่หน้าคู่กรณีถ้าไม่มี' },
+      { id: 'n1', kind: 'อักขระ', label: 'ชื่อเจ้าของรถคู่กรณีมีวงเล็บ', detail: 'EMCS ลบข้อความทั้งช่องทิ้งเมื่อคลิกโดน — ใช้ได้เฉพาะตัวอักษร ตัวเลข เว้นวรรค จุด ขีดกลาง' },
+      ...(strict ? [{ id: 't1', kind: 'ลำดับเวลา', label: '“ถึงที่เกิดเหตุ” อยู่ก่อน “เวลาเกิดเหตุ”', detail: '15:50 ย้อนหลังกว่า 16:00 อยู่ 10 นาที — แต่ละช่องดูปกติ ต้องเทียบกันถึงเห็น' }] : []),
+      { id: 'm1', kind: 'ยอดเงิน', label: 'ยังไม่ได้กรอก “ราคาพนักงาน”', detail: 'งานจากแอปมือถือไม่มียอดติดมา · ระบบแนะนำ 800 บาท' },
+    ];
+  }
+
+  componentDidMount() {
+    if (this.props.startResolved) {
+      const done = {};
+      this.items().forEach((b) => { done[b.id] = true; });
+      this.setState({ done });
+    }
+  }
+
+  renderVals() {
+    const { done, approved } = this.state;
+    const list = this.items();
+    const remaining = list.filter((b) => !done[b.id]).length;
+    return {
+      showTimeline: this.props.showTimeline !== false,
+      showPhotos: this.props.showPhotoEvidence !== false,
+      blockers: list.map((b) => ({
+        ...b,
+        pending: !done[b.id],
+        done: !!done[b.id],
+        toggle: () => this.setState((s) => ({ done: { ...s.done, [b.id]: !s.done[b.id] } })),
+      })),
+      remainingText: remaining + ' ข้อ',
+      isBlocked: remaining > 0 && !approved,
+      isReady: remaining === 0 && !approved,
+      isApproved: approved,
+      approve: () => this.setState({ approved: true }),
+      reset: () => this.setState({ approved: false, done: {} }),
+    };
+  }
+}
+</script>
+</body>
+</html>

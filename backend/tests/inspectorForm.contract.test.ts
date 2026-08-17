@@ -112,5 +112,23 @@ check('หน่วง paint ออกไปหลัง event ไหลจบ (
       /requestAnimationFrame\(paint\)/.test(src) && /cancelAnimationFrame\(raf\)/.test(src));
 check('เลิก re-render ทิ้งเปล่าเมื่อรายการเท่าเดิม', /const setList = /.test(src));
 
+/**
+ * ── โหมดสรุป: ยุบหมวดต้องซ่อนด้วย CSS ห้ามถอดออกจาก DOM ──
+ *
+ * หน้านี้บันทึกด้วย `new FormData(form)` — ช่องที่ไม่อยู่ใน DOM จะไม่ถูกส่งไป
+ * ฝั่ง survey_reports ไม่เป็นไร (updateReport อัปเดตเฉพาะคีย์ที่ส่งมา) แต่
+ * **survey_pay เป็น upsert ทั้งแถว** ยอดที่ไม่ได้ส่งจะกลายเป็น NULL เงียบ ๆ
+ * ยุบหมวดค่าใช้จ่ายด้วยการ unmount = ยอดจ่ายพนักงานหายทั้งแถวตอนกดบันทึก
+ */
+console.log('\n── หน้าตรวจเคส: ยุบหมวดต้องไม่ทำให้ค่าหายตอนบันทึก ──');
+const secIds = Array.from(src.matchAll(/data-section="([a-z_]+)"/g), (m) => m[1]);
+const secHides = src.match(/secOpen\('[a-z_]+'\) \? '' : 'hidden'/g) ?? [];
+check('ทุกหมวดที่ยุบได้ ซ่อนด้วย class ไม่ใช่ถอดออกจาก DOM',
+      secIds.length > 0 && secIds.length === secHides.length,
+      `${secIds.length} หมวด · ซ่อนแบบ CSS ${secHides.length}`);
+check('ไม่มีหมวดไหนใช้ && เรนเดอร์ตามเงื่อนไข (= ถอดออกจาก DOM)',
+      !/secOpen\([^)]*\)\s*&&/.test(src));
+check('หมวดยอดเงินไม่ถูกทำให้ยุบได้', !secIds.includes('money') && !secIds.includes('pay'));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

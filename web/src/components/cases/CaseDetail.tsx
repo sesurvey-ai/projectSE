@@ -160,6 +160,63 @@ const BG_ORIG = ['bg-white', 'bg-gray-100'];
  * ต้องตรงกับ `emcsNameWarnings()` ฝั่ง backend (xmlExport.service.ts)
  * ⚠️ "ผู้เอาประกัน" (assured_name) **ไม่มี** ตัวกรองนี้ — ตรวจแล้ว ไม่ต้องใส่
  */
+/** 1 บรรทัดสรุป — เทาจาง = ยังไม่มีข้อมูล (กติกาเดียวกับดีไซน์ใหม่) */
+function Sum({ l, v }: { l: string; v?: unknown }) {
+  const s = String(v ?? '').trim();
+  return (
+    <div className="flex gap-2 min-w-0">
+      <span className="text-gray-400 shrink-0">{l}</span>
+      <span className={`truncate ${s ? 'text-gray-800' : 'text-gray-300'}`}>{s || '—'}</span>
+    </div>
+  );
+}
+
+/**
+ * แถบหัวหมวด + โหมดสรุป
+ *
+ * หมวดที่กรอกครบแล้วยุบเหลือสรุปอ่านอย่างเดียว ผู้ตรวจจะเห็นแต่ "สิ่งที่ต้องทำ"
+ * ไม่ต้องเลื่อนผ่านกล่องกรอกที่กรอกครบแล้ว ~200 ช่อง (user เคาะ 17/08/69)
+ *
+ * ⛔ ตัวฟอร์มจริงถูกซ่อนด้วย CSS เท่านั้น (ดู `hidden` ฝั่งผู้เรียก) **ห้ามถอดออกจาก DOM**
+ *    หน้านี้บันทึกด้วย FormData และตาราง survey_pay เป็น upsert ทั้งแถว
+ *    ช่องที่หายไปจาก DOM = ค่าเดิมถูกเขียนทับเป็นว่างโดยไม่มีอะไรฟ้อง
+ */
+function SectionBar({ title, open, gap, onToggle, children }: {
+  title: string; open: boolean; gap: boolean; onToggle: () => void; children?: React.ReactNode;
+}) {
+  return (
+    <div className={`rounded-lg border ${gap ? 'border-red-200' : 'border-gray-200'} bg-white overflow-hidden`}>
+      <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 border-b border-gray-100">
+        <span className="text-sm font-semibold text-gray-700">{title}</span>
+        {gap && <span className="text-[11px] font-medium text-red-700 bg-red-50 border border-red-200 rounded px-1.5">ยังกรอกไม่ครบ</span>}
+        <button type="button" onClick={onToggle}
+          className="ml-auto text-xs text-blue-700 hover:text-blue-900 hover:underline">
+          {open ? '▲ ยุบ' : '▼ เปิดฟอร์มเต็ม'}
+        </button>
+      </div>
+      {!open && (
+        <div className="px-4 py-2.5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** รหัสประเภทรถ → ชื่อ (ต้องตรงกับ <option> ของช่อง car_type) — ใช้ตอนยุบหมวดเป็นสรุป */
+const CAR_TYPE_LABEL: Record<string, string> = {
+  A: 'เก๋งเอเชีย', E: 'เก๋งยุโรป', M: 'รถจักรยานยนต์',
+  T: 'กระบะ', V: 'รถตู้', W: 'รถบรรทุก',
+};
+
+/** ชื่อจังหวะในลำดับเวลา — ใช้ทั้งการ์ดลำดับเวลาและข้อความ "ยังอนุมัติไม่ได้" */
+const TL_LABEL: Record<string, string> = {
+  acc_date: 'เกิดเหตุ',
+  acc_customer_report_date_val: 'ลูกค้าแจ้ง บ.ประกัน',
+  acc_insurance_notify_date_val: 'บ.ประกันแจ้งสำรวจภัย',
+  acc_survey_arrive_date_val: 'ถึงที่เกิดเหตุ',
+  acc_survey_complete_date_val: 'สำรวจภัยเสร็จ',
+};
 const EMCS_NAME_FIELDS = [
   'acc_reporter', 'acc_surveyor', 'acc_police_name',
   'driver_name', 'driver_first_name', 'driver_last_name',
@@ -322,6 +379,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
   /**
+   * โหมดสรุป — หมวดไหนกรอกครบแล้วยุบเหลือสรุป ผู้ตรวจเห็นแต่สิ่งที่ต้องทำ
+   * `gapSec === null` = ยังไม่ได้ตรวจรอบแรก → กางไว้ก่อน (ดีกว่าซ่อนของที่ยังไม่รู้ว่าครบไหม)
+   * ผู้ใช้กดเองเมื่อไหร่ ค่าที่กดจะชนะกติกาอัตโนมัติเสมอ
+   */
+  const [openSec, setOpenSec] = useState<Record<string, boolean>>({});
+  const [gapSec, setGapSec] = useState<string[] | null>(null);
+  const secOpen = (id: string) => openSec[id] ?? (gapSec === null || gapSec.includes(id));
+  const secToggle = (id: string) => setOpenSec((p) => ({ ...p, [id]: !secOpen(id) }));
+  /**
    * "การเรียกร้องค่าเสียหายจากคู่กรณี" — ช่องเดียวในฟอร์มที่ **บังคับแบบมีเงื่อนไข**
    *
    * กติกาของ EMCS เอง (สกัดจาก vlidSurvey ของเขา):
@@ -349,7 +415,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *   เกิดเหตุ 16:00 · ถึงที่เกิดเหตุ 15:50  → ไปถึงก่อนเกิดเหตุ 10 นาที
    * ระบบประกันตีกลับ 3 ข้อรวด ทั้งที่ช่องบังคับครบหมด — ตรวจ "ช่องว่าง" อย่างเดียวไม่พอ
    */
-  const [timeErrs, setTimeErrs] = useState<string[]>([]);
+  const [timeErrs, setTimeErrs] = useState<{ at: string; msg: string }[]>([]);
   /**
    * งานจากแอปมือถือไม่มียอดเงินติดมา — หัวหน้าต้องกรอกบนเว็บก่อนอนุมัติ
    * (งานจากระบบเดิมมียอดมาแล้ว ไม่ต้องเช็ค) · user ย้ำ 15/08/69
@@ -371,7 +437,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     ...(oppNoHl === 'red' ? ['ยังไม่ได้กรอก "คู่กรณีคันที่"'] : []),
     ...(payHl === 'red' ? ['ติ๊ก "รับเงินจำนวน" แล้วแต่ยังไม่กรอกยอด'] : []),
     ...(payOver ? ['"รับเงินจำนวน" มากกว่ายอดเรียกร้องทั้งหมด'] : []),
-    ...timeErrs,
+    ...timeErrs.map((e) => `"${TL_LABEL[e.at] ?? e.at}" ${e.msg}`),
     ...moneyMissing,
   ];
 
@@ -380,21 +446,21 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * ชื่อช่องต้องตรงกับที่ `updateReport` ฝั่ง backend ประกอบกลับเป็น "วันที่|ชม:นาที"
    * และตรงกับชื่อที่ตัวตรวจลำดับเวลา (stamp() ใน paint) อ่าน — แก้ที่นี่ต้องแก้ทั้ง 3 ที่
    */
-  const tl = (date: string, hour: string, min: string, label: string,
+  const tl = (date: string, hour: string, min: string,
               v: { date: string; hour: string; minute: string }) =>
-    ({ date, hour, min, label, v, keys: [date, hour, min] });
+    ({ date, hour, min, label: TL_LABEL[date], v, keys: [date, hour, min] });
   const accT = String(report?.acc_time ?? '').split(':');
   const TIMELINE = report ? [
-    tl('acc_date', 'acc_time_hour', 'acc_time_minute', 'เกิดเหตุ',
+    tl('acc_date', 'acc_time_hour', 'acc_time_minute',
        { date: report.acc_date || '', hour: accT[0] || '', minute: accT[1] || '' }),
     tl('acc_customer_report_date_val', 'acc_customer_report_hour', 'acc_customer_report_minute',
-       'ลูกค้าแจ้ง บ.ประกัน', parseDatetime(report.acc_customer_report_date)),
+       parseDatetime(report.acc_customer_report_date)),
     tl('acc_insurance_notify_date_val', 'acc_insurance_notify_hour', 'acc_insurance_notify_minute',
-       'บ.ประกันแจ้งสำรวจภัย', parseDatetime(report.acc_insurance_notify_date)),
+       parseDatetime(report.acc_insurance_notify_date)),
     tl('acc_survey_arrive_date_val', 'acc_survey_arrive_hour', 'acc_survey_arrive_minute',
-       'ถึงที่เกิดเหตุ', parseDatetime(report.acc_survey_arrive_date)),
+       parseDatetime(report.acc_survey_arrive_date)),
     tl('acc_survey_complete_date_val', 'acc_survey_complete_hour', 'acc_survey_complete_minute',
-       'สำรวจภัยเสร็จ', parseDatetime(report.acc_survey_complete_date)),
+       parseDatetime(report.acc_survey_complete_date)),
   ] : [];
 
   // ทาสีกรอบแดงให้ช่องบังคับที่ยังว่าง + นับจำนวน
@@ -403,8 +469,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     const form = formRef.current;
     if (!form) return;
     // อาเรย์ใหม่ทุกครั้ง = re-render ทุกครั้งแม้เนื้อหาเท่าเดิม (หน้านี้มี ~200 ช่อง)
-    const setList = (set: (u: (prev: string[]) => string[]) => void, next: string[]) =>
-      set((prev) => (prev.length === next.length && prev.every((v, i) => v === next[i]) ? prev : next));
+    const setList = <T,>(set: (u: (prev: T[]) => T[]) => void, next: T[]) =>
+      set((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     const paint = () => {
       const names: string[] = [];
       form.querySelectorAll('.req-mark').forEach((mark) => {
@@ -439,6 +505,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       }
 
       setList(setMissing, names);
+      // หมวดไหนยังมีช่องแดงอยู่ — ใช้ตัดสินว่าจะกางหรือยุบหมวดนั้น
+      const gs: string[] = [];
+      form.querySelectorAll('[data-section]').forEach((s) => {
+        if (s.querySelector('.' + RING[0])) gs.push(s.getAttribute('data-section') || '');
+      });
+      setList(setGapSec as (u: (p: string[]) => string[]) => void, gs);
 
       // ── บล็อก "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
       // ค่า radio "คู่กรณีผิด" ตรงกับ rdoAcc_Cause01 ของ EMCS ที่เป็นตัวเปิดเงื่อนไข
@@ -479,12 +551,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const tArr = stamp('acc_survey_arrive_date_val', 'acc_survey_arrive_hour', 'acc_survey_arrive_minute');
       const tFin = stamp('acc_survey_complete_date_val', 'acc_survey_complete_hour', 'acc_survey_complete_minute');
       const before = (a: number | null, b: number | null) => a !== null && b !== null && a < b;
-      const te: string[] = [];
-      if (before(tArr, tAcc)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "เวลาเกิดเหตุ"');
-      if (before(tArr, tCus)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "ลูกค้าแจ้ง บ.ประกัน"');
-      if (before(tArr, tIns)) te.push('"ถึงที่เกิดเหตุ" อยู่ก่อน "บ.ประกันแจ้งสำรวจภัย"');
+      // `at` = ช่องที่ผิด — เอาไว้แปะข้อความเตือนใต้จังหวะนั้นในการ์ดลำดับเวลา
+      // (เดิมมีแต่ข้อความรวมบนหัวหน้า ตัวช่องได้แค่กรอบแดง ไม่บอกว่าผิดยังไง
+      //  ต้องเลื่อนขึ้นไปอ่านแล้วเลื่อนกลับลงมาแก้ — user เคาะ 17/08/69 ให้ย้ายมาไว้ที่จุด)
+      const te: { at: string; msg: string }[] = [];
+      const ARR = 'acc_survey_arrive_date_val';
+      if (before(tArr, tAcc)) te.push({ at: ARR, msg: 'ย้อนหลังกว่าเวลาเกิดเหตุ' });
+      if (before(tArr, tCus)) te.push({ at: ARR, msg: 'ย้อนหลังกว่าเวลาที่ลูกค้าแจ้ง บ.ประกัน' });
+      if (before(tArr, tIns)) te.push({ at: ARR, msg: 'ย้อนหลังกว่าเวลาที่ บ.ประกันแจ้งสำรวจภัย' });
       // ข้อนี้ยังไม่เคยเห็นระบบประกันฟ้อง แต่เป็นไปไม่ได้ทางตรรกะ — ปล่อยผ่านก็เสียเที่ยวอยู่ดี
-      if (before(tFin, tArr)) te.push('"สำรวจภัยเสร็จ" อยู่ก่อน "ถึงที่เกิดเหตุ"');
+      if (before(tFin, tArr)) te.push({ at: 'acc_survey_complete_date_val', msg: 'ย้อนหลังกว่าเวลาที่ถึงที่เกิดเหตุ' });
       setList(setTimeErrs, te);
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
@@ -732,13 +808,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               ถ้าไม่สรุปไว้บนสุด ผู้ตรวจต้องเลื่อนหาเอง แล้วไปเจอตอนบอทนำเข้าไม่ผ่าน */}
           {/* ลำดับเวลาผิด — ต่างจากช่องว่างตรงที่ "มองด้วยตาไม่เห็น" แต่ละช่องดูปกติหมด
               ต้องเอามาเทียบกันถึงจะรู้ ถ้าไม่สรุปไว้บนสุดก็ไม่มีทางสังเกตเจอ */}
+          {/* สรุปสั้น ๆ พอให้รู้ว่ามีปัญหา — รายละเอียดไปอ่านที่จังหวะนั้นในการ์ดลำดับเวลา */}
           {timeErrs.length > 0 && (
-            <div className="bg-red-50 border border-red-300 rounded px-4 py-2.5 text-sm text-red-800">
+            <div className="bg-red-50 border border-red-300 rounded px-4 py-2 text-sm text-red-800">
               <span className="font-semibold">ลำดับเวลาไม่ถูกต้อง {timeErrs.length} จุด</span>
-              <span className="text-red-600"> — ระบบประกันไม่รับ ต้องแก้ก่อนอนุมัติ</span>
-              <ul className="mt-1 ml-4 list-disc text-red-700">
-                {timeErrs.map((e) => <li key={e}>{e}</li>)}
-              </ul>
+              <span className="text-red-600"> — ระบบประกันไม่รับ ดูรายละเอียดที่การ์ด "ลำดับเวลา" ด้านล่าง</span>
             </div>
           )}
           {moneyMissing.length > 0 && (
@@ -769,6 +843,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </div>
 
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
+          <div data-section="biz" className="space-y-2">
+          <SectionBar title="บริษัท · เคลม" open={secOpen('biz')} gap={(gapSec ?? []).includes('biz')} onToggle={() => secToggle('biz')}>
+            <Sum l="ประเภทเคลม" v={CLAIM_TYPE_LABELS[report.claim_type as string]} />
+            <Sum l="รถเสียหาย" v={report.damage_level} />
+            <Sum l="บริษัทประกัน" v={report.insurance_company} />
+            <Sum l="เลขเรื่องเซอร์เวย์" v={report.survey_job_no} />
+            <Sum l="เลขที่รับแจ้ง" v={report.claim_ref_no} />
+            <Sum l="เลขที่เคลม" v={report.claim_no} />
+          </SectionBar>
+          <div className={secOpen('biz') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -854,7 +938,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </table>
           </div>
 
+          </div>
+          </div>
+
           {/* กรมธรรม์ — แบบตาราง */}
+          <div data-section="policy" className="space-y-2">
+          <SectionBar title="กรมธรรม์" open={secOpen('policy')} gap={(gapSec ?? []).includes('policy')} onToggle={() => secToggle('policy')}>
+            <Sum l="กรมธรรม์เลขที่" v={report.policy_no} />
+            <Sum l="ประกันประเภท" v={report.policy_type} />
+            <Sum l="เริ่ม–สิ้นสุด" v={[report.policy_start, report.policy_end].filter(Boolean).join(' – ')} />
+            <Sum l="กรมธรรม์ (พรบ.)" v={report.prb_number} />
+            <Sum l="ค่าเสียหายส่วนแรก" v={report.deductible} />
+            <Sum l="ซ่อมที่" v={report.repair_shop} />
+          </SectionBar>
+          <div className={secOpen('policy') ? '' : 'hidden'}>
           {(
             <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
               <table className="w-full table-fixed">
@@ -917,7 +1014,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </div>
           )}
 
+          </div>
+          </div>
+
           {/* รายละเอียดรถยนต์ — แบบตาราง */}
+          <div data-section="car" className="space-y-2">
+          <SectionBar title="รถประกัน" open={secOpen('car')} gap={(gapSec ?? []).includes('car')} onToggle={() => secToggle('car')}>
+            <Sum l="ทะเบียน" v={[report.license_plate, report.car_province].filter(Boolean).join(' ')} />
+            <Sum l="ประเภทรถ" v={CAR_TYPE_LABEL[String(report.car_type ?? '')] ?? report.car_type} />
+            <Sum l="ยี่ห้อ / รุ่น" v={[report.car_brand, report.car_model].filter(Boolean).join(' ')} />
+            <Sum l="สีรถ" v={report.car_color} />
+            <Sum l="ปีจดทะเบียน" v={report.car_reg_year} />
+            <Sum l="เลขตัวถัง" v={report.chassis_no} />
+          </SectionBar>
+          <div className={secOpen('car') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1002,7 +1112,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </table>
           </div>
 
+          </div>
+          </div>
+
           {/* ข้อมูลผู้ขับขี่ — แบบตาราง */}
+          <div data-section="driver" className="space-y-2">
+          <SectionBar title="ผู้ขับขี่รถประกัน" open={secOpen('driver')} gap={(gapSec ?? []).includes('driver')} onToggle={() => secToggle('driver')}>
+            <Sum l="ผู้ขับขี่" v={[report.driver_title, report.driver_first_name || report.driver_name, report.driver_last_name].filter(Boolean).join(' ')} />
+            <Sum l="อายุ" v={report.driver_age} />
+            <Sum l="ความสัมพันธ์" v={report.driver_relation} />
+            <Sum l="โทรศัพท์" v={report.driver_phone} />
+            <Sum l="บัตรประชาชน" v={report.driver_id_card} />
+            <Sum l="ใบขับขี่" v={report.driver_license_no} />
+          </SectionBar>
+          <div className={secOpen('driver') ? '' : 'hidden'}>
           {(
             <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
               <table className="w-full table-fixed">
@@ -1194,6 +1317,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </div>
           )}
 
+          </div>
+          </div>
+
           {/* ===== ลำดับเวลา — 5 จังหวะของงาน เรียงซ้าย→ขวา =====
               เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
               (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
@@ -1209,6 +1335,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-3 gap-y-4">
               {TIMELINE.map((n, i) => {
                 const gap = n.keys.some((k) => missing.includes(k));
+                const errs = timeErrs.filter((e) => e.at === n.date);
                 return (
                   <div key={n.date} className="relative min-w-0">
                     {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง */}
@@ -1227,6 +1354,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <input type="text" disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
                         className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                     </div>
+                    {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
+                    {errs.map((e) => (
+                      <div key={e.msg} className="mt-1 text-[11px] leading-tight text-red-600">⚠ {e.msg}</div>
+                    ))}
                   </div>
                 );
               })}
@@ -1372,6 +1503,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </div>
 
           {/* พนักงานสอบสวน + แอลกอฮอล์ — แบบตาราง */}
+          <div data-section="police" className="space-y-2">
+          <SectionBar title="คดี · ตำรวจ" open={secOpen('police')} gap={(gapSec ?? []).includes('police')} onToggle={() => secToggle('police')}>
+            <Sum l="พนักงานสอบสวน" v={report.acc_police_name} />
+            <Sum l="สถานีตำรวจ" v={report.acc_police_station} />
+            <Sum l="ประจำวันข้อที่" v={report.acc_police_book_no} />
+            <Sum l="ผลตรวจแอลกอฮอล์" v={report.acc_alcohol_test} />
+          </SectionBar>
+          <div className={secOpen('police') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1420,7 +1559,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </table>
           </div>
 
+          </div>
+          </div>
+
           {/* การติดตามงาน — แบบตาราง */}
+          <div data-section="followup" className="space-y-2">
+          <SectionBar title="การติดตามงาน" open={secOpen('followup')} gap={(gapSec ?? []).includes('followup')} onToggle={() => secToggle('followup')}>
+            <Sum l="การติดตามงาน" v={report.acc_followup} />
+            <Sum l="ครั้งที่นัดหมาย" v={report.acc_followup_count} />
+            <Sum l="รายละเอียด" v={report.acc_followup_detail} />
+          </SectionBar>
+          <div className={secOpen('followup') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1462,6 +1611,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          </div>
           </div>
 
           {/* ===== Phase 3: คู่กรณี / ผู้บาดเจ็บ / ทรัพย์สินเสียหาย / แผนภาพความเสียหายรถประกัน (read-only) ===== */}
