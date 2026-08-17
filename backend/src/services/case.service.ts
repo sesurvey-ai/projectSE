@@ -782,14 +782,36 @@ export const caseService = {
     return result.rows[0];
   },
 
+  /**
+   * รายการงานของหน้า "ตรวจสอบ"
+   *
+   * คืนของที่หน้าลิสต์ต้องใช้ **คัดงานได้โดยไม่ต้องเปิดทีละเคส**:
+   *  - `import_warnings` เรื่องที่ต้องเติมก่อนอนุมัติ (เก็บตอนนำเข้า — migration 040)
+   *  - `photo_count` รูปน้อยผิดปกติ = ต้องไปตามรูปก่อน (งานจากระบบเก่าทยอยอัปรูป)
+   *  - `pay_total` / `has_insurer_bill` ยอด 2 ฝั่งกรอกครบหรือยัง
+   *  - `review_status` / `approved_by` / `unlocked_count` แยก "รอตรวจ" กับ "อนุมัติแล้ว"
+   *    ออกจากกันได้จริง (เดิม 2 สถานะปนกันมาในลิสต์เดียว) และเห็นเคสที่ถูกปลดล็อกซ้ำ ๆ
+   *
+   * ⛔ นับรูปด้วย subquery ไม่ใช่ JOIN — join แล้วแถวเคสจะซ้ำตามจำนวนรูป
+   */
   async getForReview() {
     const result = await db.query(
       `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
-              sr.claim_no, sr.survey_job_no, sr.claim_ref_no,
+              u.code AS surveyor_code,
+              sr.claim_no, sr.survey_job_no, sr.claim_ref_no, sr.license_plate,
+              rv.status AS review_status, rv.unlocked_count,
+              to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
+              (ck.first_name || ' ' || ck.last_name) AS approved_by,
+              (SELECT COUNT(*) FROM survey_photos sp WHERE sp.report_id = sr.id) AS photo_count,
+              (SELECT sp2.total FROM survey_pay sp2 WHERE sp2.case_id = c.id) AS pay_total,
+              (SELECT se.service_fee_price IS NOT NULL
+                 FROM survey_expenses se WHERE se.report_id = sr.id) AS has_insurer_bill,
               ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
        FROM cases c
        LEFT JOIN users u ON c.assigned_to = u.id
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
+       LEFT JOIN reviews rv ON rv.case_id = c.id
+       LEFT JOIN users ck ON ck.id = rv.checker_id
        WHERE c.status IN ('surveyed', 'reviewed')
        ORDER BY c.created_at DESC`
     );
@@ -1099,11 +1121,15 @@ export const caseService = {
         // โดยเฉพาะเรื่องยอดเงิน: withInsurerBill ส่งบิลต่อเข้า EMCS เฉพาะ source ที่อยู่ใน
         // BILLABLE_SOURCES (isurvey_xml + mobile + isurvey_live) — 'emcs_extract' ยังถูกกันไว้
         // เคสทดสอบจึงไม่ดันยอดเงินของประกันเองกลับเข้าระบบประกันโดยไม่ตั้งใจ
-        `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status, source)
-         VALUES ($1, $2, $3, $4, 'surveyed', $5) RETURNING *`,
+        `INSERT INTO cases (customer_name, incident_location, created_by, assigned_to, status, source,
+                            import_warnings)
+         VALUES ($1, $2, $3, $4, 'surveyed', $5, $6) RETURNING *`,
         [parsed.caseFields.customer_name || '(ไม่ระบุชื่อผู้เอาประกัน)',
          parsed.caseFields.incident_location || '(ไม่ระบุสถานที่)',
-         opts.createdBy, assignedTo, parsed.source]);
+         opts.createdBy, assignedTo, parsed.source,
+         // เก็บคำเตือนไว้กับเคส — เดิมส่งกลับให้หน้าจอที่กดนำเข้าครั้งเดียวแล้วหายไป
+         // คนที่มาเปิดรายการงานทีหลังจึงไม่รู้เลยว่าเคสไหนข้อมูลไม่ครบ
+         parsed.warnings?.length ? JSON.stringify(parsed.warnings) : null]);
       const caseId = c.rows[0].id;
 
       // เขียนเฉพาะคอลัมน์ที่มีจริง (ใช้ allowlist ชุดเดียวกับ updateReport) — กัน SQL พัง
