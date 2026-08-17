@@ -72,6 +72,24 @@ export default function PhotoGallery(
 ) {
   const [selected, setSelected] = useState<Photo | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  /** ลบรูปทีละใบ — ถามยืนยันก่อนเพราะกดแล้วไฟล์หายจริง ไม่มีถังขยะให้กู้ */
+  const removePhoto = async (p: Photo) => {
+    if (!caseId) return;
+    if (!window.confirm('ลบรูปนี้ออกจากเคส?\n\nลบแล้วกู้คืนไม่ได้ — ถ้าเป็นรูปจากระบบเดิม ดึงใหม่ได้จากโปรแกรมผู้ตรวจ')) return;
+    setDeleting(p.id);
+    try {
+      await api.delete(`/api/cases/${caseId}/photos/${p.id}`);
+      if (selected?.id === p.id) setSelected(null);
+      onUploaded?.();          // โหลดเคสใหม่ทั้งก้อน — รายการรูปมาจากพ่อ ไม่ได้เก็บ state เอง
+    } catch (e) {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      window.alert(err.response?.status === 423
+        ? 'เคสนี้อนุมัติแล้ว — ลบรูปไม่ได้จนกว่าแอดมินจะปลดล็อก'
+        : (err.response?.data?.message || 'ลบรูปไม่สำเร็จ'));
+    } finally { setDeleting(null); }
+  };
 
   // แถบเพิ่มรูปต้องอยู่**นอก** early-return ของ "ไม่มีรูปภาพ" — เคสที่ต้นทางยังไม่ส่งรูปมาเลย
   // คือเคสที่ต้องเพิ่มรูปมากที่สุด แต่เดิมจะไม่เห็นปุ่มเพราะจอว่าง
@@ -106,8 +124,17 @@ export default function PhotoGallery(
             </div>
             <div className="flex gap-4 overflow-x-auto pb-3">
               {g.items.map((p) => (
-                <div key={p.id} className="cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => setSelected(p)}>
+                <div key={p.id} className="group relative cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => setSelected(p)}>
                   <img src={getSrc(p)} alt={catLabel(p.category)} className="w-full h-48 object-cover" />
+                  {/* ปุ่มลบโผล่ตอนชี้เมาส์ — ไม่โชว์ตลอดเพราะกดโดนง่ายตอนไล่ดูรูปเร็ว ๆ */}
+                  {caseId ? (
+                    <button type="button" title="ลบรูปนี้"
+                      onClick={(e) => { e.stopPropagation(); void removePhoto(p); }}
+                      disabled={deleting === p.id}
+                      className="absolute top-1.5 right-1.5 hidden group-hover:flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white text-lg leading-none hover:bg-red-600 disabled:opacity-50">
+                      {deleting === p.id ? '…' : '×'}
+                    </button>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -139,6 +166,15 @@ export default function PhotoGallery(
               <img src={getSrc(selected)} alt={`รูปภาพ ${selected.id}`} className="w-full h-auto max-h-[65vh] object-contain rounded-lg transition-transform duration-200" style={{ transform: `scale(${zoom})` }} />
               <div className="text-center text-white text-sm mt-2">
                 <span className="font-semibold">{catLabel(selected.category)}</span> · {idx + 1} / {photos.length}
+                {/* ลบจากจอเต็มด้วย — เคสรูป 40 ใบ คนไล่ดูทีละใบแล้วเจอรูปเสีย
+                    ต้องลบได้ตรงนั้น ไม่ต้องจำว่าเป็นใบที่เท่าไหร่แล้วไปหาใน thumbnail */}
+                {caseId ? (
+                  <button type="button" onClick={() => { void removePhoto(selected); }}
+                    disabled={deleting === selected.id}
+                    className="ml-3 rounded bg-red-600/80 px-2 py-0.5 text-xs hover:bg-red-600 disabled:opacity-50">
+                    {deleting === selected.id ? 'กำลังลบ...' : 'ลบรูปนี้'}
+                  </button>
+                ) : null}
               </div>
             </div>
             {hasNext && (

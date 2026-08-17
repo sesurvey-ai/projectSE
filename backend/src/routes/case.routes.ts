@@ -264,6 +264,8 @@ router.put('/:id/report', auth, requireRole('checker'), caseController.updateRep
 // ของแอปมือถือที่เป็น "ล้างแล้วเขียนใหม่" ตามโมเดล sync — ใช้ผิดตัวคือรูปทั้งเคสหาย)
 router.post('/:id/photos', auth, requireRole('checker', 'admin'),
   uploadCasePhotos, caseController.addPhotos);
+router.delete('/:id/photos/:photoId', auth, requireRole('checker', 'admin'),
+  caseController.deletePhoto);
 
 // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — เฉพาะผู้ตรวจ ผู้สำรวจไม่เกี่ยวกับการตั้งยอดจ่ายตัวเอง
 router.get('/:id/pay', auth, requireRole('checker', 'admin'), caseController.getPay);

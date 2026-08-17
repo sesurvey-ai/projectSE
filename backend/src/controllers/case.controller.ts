@@ -65,6 +65,15 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  /** ผู้ตรวจสอบลบรูปออกจากเคส (ก่อนอนุมัติเท่านั้น) */
+  deletePhoto: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const photoId = parseInt(req.params.photoId as string);
+    if (!Number.isFinite(photoId)) throw new AppError(400, 'photoId ไม่ถูกต้อง');
+    const result = await caseService.deleteCasePhoto(caseId, photoId);
+    sendSuccess(res, result);
+  }),
+
   getDetail: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const detail = await caseService.getDetail(caseId, req.user);

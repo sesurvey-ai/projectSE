@@ -966,6 +966,36 @@ export const caseService = {
   },
 
   /**
+   * ผู้ตรวจสอบลบรูปออกจากเคส — ลบทั้งแถวใน DB และไฟล์บนดิสก์
+   *
+   * ลบได้ทุกรูปของเคส (ไม่ใช่เฉพาะที่อัปจากเว็บ) เพราะคนที่รับผิดชอบว่า "อะไรจะถูกส่ง
+   * เข้าระบบประกัน" คือผู้ตรวจสอบ — รูปเบลอ/รูปซ้ำ/รูปผิดเคส ต้องเอาออกได้
+   * แต่ลบได้ **ก่อนอนุมัติ** เท่านั้น หลังอนุมัติชุดรูปถือว่าถูกรับรองไปแล้ว
+   */
+  async deleteCasePhoto(caseId: number, photoId: number) {
+    const fs = await import('fs');
+    const pathMod = await import('path');
+    await assertNotApproved(caseId);
+    // ผูก photo กับ case ใน query เดียว — กันลบรูปของเคสอื่นด้วยการเดา id
+    const r = await db.query(
+      `SELECT sp.id, sp.file_path FROM survey_photos sp
+         JOIN survey_reports sr ON sp.report_id = sr.id
+        WHERE sp.id = $1 AND sr.case_id = $2`, [photoId, caseId]);
+    if (r.rows.length === 0) throw new NotFoundError('ไม่พบรูปนี้ในเคส');
+
+    await db.query('DELETE FROM survey_photos WHERE id = $1', [photoId]);
+    // ไฟล์ลบไม่ได้ก็ไม่ล้มทั้งงาน — แถวหายแล้วรูปก็ไม่โผล่ที่ไหนอีก (ไฟล์ค้างดีกว่าลบพลาด)
+    try {
+      const full = pathMod.default.resolve(env.UPLOAD_DIR, String(r.rows[0].file_path));
+      const root = pathMod.default.resolve(env.UPLOAD_DIR);
+      if (full.startsWith(root + pathMod.default.sep) && fs.default.existsSync(full)) {
+        fs.default.unlinkSync(full);
+      }
+    } catch { /* ไฟล์หายอยู่แล้ว/ลบไม่ได้ — ข้าม */ }
+    return { deleted: photoId };
+  },
+
+  /**
    * แตก zip รูปเข้าเคส
    *
    * `skipExisting` — สำหรับ **ดึงรูปซ้ำจากต้นทางเดิม** (ISURVEY ทยอยอัปรูปหลังช่างส่งงาน:
