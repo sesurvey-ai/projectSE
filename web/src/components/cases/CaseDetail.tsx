@@ -1647,6 +1647,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             return (
               <>
                 {/* คู่กรณี — โชว์เสมอตอนกด "แก้ไข" (ไม่งั้นเคสที่ยังไม่มีคู่กรณีก็เพิ่มไม่ได้) */}
+                <div data-section="opp" className="space-y-2">
+                <SectionBar title={`คู่กรณี · ${opponents.length} คัน`} open={secOpen('opp')} gap={(gapSec ?? []).includes('opp')} onToggle={() => secToggle('opp')}>
+                  {opponents.length === 0
+                    ? <Sum l="คู่กรณี" v="" />
+                    : opponents.map((o, i) => (
+                      <Sum key={i} l={`คันที่ ${i + 1}`}
+                           v={[o.plate, o.province, o.owner_name].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')} />
+                    ))}
+                </SectionBar>
+                <div className={secOpen('opp') ? '' : 'hidden'}>
                 {(opposingParties.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1743,7 +1753,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </div>
                 )}
 
+                </div>
+                </div>
+
                 {/* ผู้บาดเจ็บ — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอตอนแก้ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
+                <div data-section="inj" className="space-y-2">
+                <SectionBar title={`ผู้บาดเจ็บ · ${injured.length} คน`} open={secOpen('inj')} gap={(gapSec ?? []).includes('inj')} onToggle={() => secToggle('inj')}>
+                  {injured.length === 0
+                    ? <Sum l="ผู้บาดเจ็บ" v="" />
+                    : injured.map((p, i) => (
+                      <Sum key={i} l={`คนที่ ${i + 1}`}
+                           v={[p.name, p.person_type, p.symptom].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')} />
+                    ))}
+                </SectionBar>
+                <div className={secOpen('inj') ? '' : 'hidden'}>
                 {(injuredPersons.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1795,7 +1818,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </div>
                 )}
 
+                </div>
+                </div>
+
                 {/* ทรัพย์สินเสียหาย — แก้ได้ตอนกด "แก้ไข" */}
+                <div data-section="prop" className="space-y-2">
+                <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} open={secOpen('prop')} gap={(gapSec ?? []).includes('prop')} onToggle={() => secToggle('prop')}>
+                  {property.length === 0
+                    ? <Sum l="ทรัพย์สินเสียหาย" v="" />
+                    : property.map((it, i) => (
+                      <Sum key={i} l={`รายการที่ ${i + 1}`}
+                           v={[it.item, it.owner_name].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')} />
+                    ))}
+                </SectionBar>
+                <div className={secOpen('prop') ? '' : 'hidden'}>
                 {(damagedProperty.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1833,6 +1869,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 )}
 
                 {/* ความเสียหายรถประกัน — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
+                </div>
+                </div>
+
+                <div data-section="dmg" className="space-y-2">
+                <SectionBar title="ความเสียหายรถประกัน" open={secOpen('dmg')} gap={(gapSec ?? []).includes('dmg')} onToggle={() => secToggle('dmg')}>
+                  {damage.length === 0
+                    ? <Sum l="ความเสียหาย" v="" />
+                    : damage.map((x, i) => (
+                      <Sum key={i} l={`จุดที่ ${i + 1}`}
+                           v={[x.part, x.level].map((y) => String(y ?? '').trim()).filter(Boolean).join(' · ')} />
+                    ))}
+                </SectionBar>
+                <div className={secOpen('dmg') ? '' : 'hidden'}>
                 {(insuredDamage.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1845,6 +1894,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </div>
                   </div>
                 )}
+                </div>
+                </div>
               </>
             );
           })()}
