@@ -17,6 +17,7 @@
 import React from 'react';
 import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
 import { districtOptions } from './districtOptions';
+import { insurerOptions } from './insurerOptions';
 
 export type RecordItem = Record<string, string>;
 
@@ -91,15 +92,39 @@ type FieldDef = {
 const isRequiredLabel = (label: string) => / \*$/.test(label.trim());
 const REQ_CLS = 'border-red-400 ring-1 ring-red-300 bg-red-50';
 const OK_CLS = 'border-gray-300 bg-white';
-const cls = (def: FieldDef, value: string) =>
+
+/**
+ * ช่อง "ชื่อคน" ของ EMCS มีตัวกรองอักขระติดอยู่ (TextboxValidate.js: `/([ a-zA-Z0-9ก-์.-])/`)
+ * เจออักขระนอกลิสต์ — **วงเล็บก็อยู่นอกลิสต์** — EMCS จะ *ล้างค่าทั้งช่องทิ้ง* ตอนคนคลิก
+ * เข้า-ออกช่องนั้น ไม่ใช่แค่ตัดตัวอักษร → ชื่อหายไปทั้งชื่อโดยไม่มีใครรู้
+ * ต้องตรงกับ EMCS_NAME_OK ใน backend/src/services/xmlExport.service.ts
+ */
+const EMCS_NAME_OK = /^[ a-zA-Z0-9ก-์.-]*$/;
+const NAME_KEYS = new Set(['owner_name', 'first_name', 'last_name', 'name']);
+
+/** อักขระในชื่อที่ EMCS ไม่รับ (คืนค่าว่าง = ไม่มีปัญหา) — ใช้ร่วมกับ CaseDetail */
+export const emcsBadChars = (v: string) => {
+  const s = String(v ?? '');
+  if (!s.trim()) return '';
+  const bad = Array.from(new Set(s.split('').filter((c) => !EMCS_NAME_OK.test(c))));
+  return bad.join(' ');
+};
+
+const badNameChars = (k: string, v: string) => (NAME_KEYS.has(k) ? emcsBadChars(v) : '');
+
+const cls = (def: FieldDef, value: string, bad: string) =>
   `w-full border rounded px-2 py-1 text-sm text-gray-800 ${
-    isRequiredLabel(def.label) && !String(value ?? '').trim() ? REQ_CLS : OK_CLS}`;
+    bad || (isRequiredLabel(def.label) && !String(value ?? '').trim()) ? REQ_CLS : OK_CLS}`;
 
 function Field({ def, value, onChange }: { def: FieldDef; value: string; onChange: (v: string) => void }) {
-  const c = cls(def, value);
+  const bad = badNameChars(def.k, String(value ?? ''));
+  const c = cls(def, value, bad);
   return (
     <div className={def.wide ? 'col-span-2 md:col-span-4' : ''}>
-      <label className="block text-xs text-gray-500 mb-0.5">{def.label}</label>
+      <label className="block text-xs text-gray-500 mb-0.5">
+        {def.label}
+        {bad && <span className="ml-1 text-red-600 font-medium">· EMCS ไม่รับ {bad}</span>}
+      </label>
       {def.options ? (
         <select className={c} value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">-- ระบุ --</option>
@@ -108,6 +133,7 @@ function Field({ def, value, onChange }: { def: FieldDef; value: string; onChang
       ) : (
         <input
           type="text" className={c} value={value} placeholder={def.placeholder}
+          title={bad ? `EMCS จะล้างชื่อทั้งช่องทิ้งเพราะมีอักขระ: ${bad}` : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
@@ -261,7 +287,9 @@ const OPPONENT_FIELDS: FieldDef[] = [
   // select_by_value แบบตรงตัว พิมพ์เองเพี้ยนนิดเดียว = บอทข้ามช่องนี้เงียบ ๆ
   { k: 'ev_type', label: 'ประเภทรถไฟฟ้า', options: EV_TYPE_OPTIONS.map((e) => e.value).filter(Boolean) },
   { k: 'estimated_cost', label: 'ค่าเสียหายประมาณ' },
-  { k: 'insurer', label: 'มีประกันภัยที่ *' },
+  // dropdown ไม่ใช่ช่องพิมพ์ — บน EMCS ช่องนี้คือ ddlHave_Insurance และบอทเลือกด้วย
+  // fuzzy_select · สะกดเองเพี้ยนนิดเดียว บอทข้ามช่องนี้เงียบ ๆ (ดู insurerOptions.ts)
+  { k: 'insurer', label: 'มีประกันภัยที่ *', optionsFrom: (r) => insurerOptions(String(r.insurer ?? '')) },
   { k: 'policy_no', label: 'เลขกรมธรรม์ *' },
   // ปลายทางดึงเฉพาะตัวเลขจากข้อความ — พิมพ์ "ชั้นหนึ่ง" ได้ค่าว่าง
   // ช่องพิมพ์ ไม่ใช่ dropdown — บน EMCS ช่องนี้ของคู่กรณีก็เป็นช่องพิมพ์ (txtPolicy_Type)

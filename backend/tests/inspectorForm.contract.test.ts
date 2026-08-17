@@ -28,12 +28,29 @@ const src = fs.readFileSync(
 const reqs = src.match(/<Req\b[^/>]*/g) ?? [];
 check('พบดอกจันในฟอร์ม', reqs.length > 0, `${reqs.length} ตัว`);
 
-const unbound = reqs.filter((r) => !/\bof="/.test(r));
+/**
+ * การ์ด "ลำดับเวลา" วาด 5 จังหวะจากตาราง `tl(...)` แทนที่จะเขียน JSX ซ้ำ 5 ชุด
+ * ดอกจันของมันจึงเป็น `of={n.keys.join(',')}` ไม่ใช่สตริงตรง ๆ — ตรวจแยกตรงนี้
+ * เพื่อไม่ต้องผ่อนกฎ "ดอกจันต้องผูกช่อง" ให้หลวมลงทั้งไฟล์
+ */
+const tlRows = Array.from(src.matchAll(/\btl\('([a-z_0-9]+)',\s*'([a-z_0-9]+)',\s*'([a-z_0-9]+)'/g));
+const tlNames = tlRows.flatMap((m) => [m[1], m[2], m[3]]);
+check('การ์ดลำดับเวลามีครบ 5 จังหวะ', tlRows.length === 5, `${tlRows.length} จังหวะ · ${tlNames.length} ช่อง`);
+check('ช่องในการ์ดลำดับเวลาผูกชื่อจากตารางเดียวกัน',
+      /name=\{n\.date\}/.test(src) && /name=\{n\.hour\}/.test(src) && /name=\{n\.min\}/.test(src));
+check('ดอกจันของลำดับเวลาคุมทั้ง 3 ช่องของจังหวะนั้น', /<Req of=\{n\.keys\.join\(','\)\} \/>/.test(src));
+
+// ผ่อนให้เฉพาะดอกจันของลำดับเวลาเท่านั้น — ตัวอื่นยังต้องเป็นสตริงตรง ๆ
+const TL_REQ = /\bof=\{n\.keys\.join\(','\)\}/;
+const unbound = reqs.filter((r) => !/\bof="/.test(r) && !TL_REQ.test(r));
 check('ดอกจันทุกตัวประกาศช่องที่ตัวเองคุม (of=)',
       unbound.length === 0,
       unbound.length ? `ยังไม่ผูก ${unbound.length} ตัว` : `${reqs.length} ตัว`);
 
-const namesInFile = new Set(Array.from(src.matchAll(/name="([a-zA-Z_0-9]+)"/g), (m) => m[1]));
+const namesInFile = new Set([
+  ...Array.from(src.matchAll(/name="([a-zA-Z_0-9]+)"/g), (m) => m[1]),
+  ...tlNames,
+]);
 const targets = new Set<string>();
 for (const r of reqs) {
   const m = /\bof="([^"]+)"/.exec(r);

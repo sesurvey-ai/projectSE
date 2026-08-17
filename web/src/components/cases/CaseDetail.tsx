@@ -8,7 +8,7 @@ import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import DamageEditor, { DamageItem } from './DamageEditor';
-import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, RecordItem, LooseRecord } from './RecordEditors';
+import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
 
 /** ค่าตอบแทนผู้สำรวจของเคส — `suggest` คือยอดที่ระบบคิดจากตารางเรท `saved` คือที่ผู้ตรวจบันทึกจริง
  *  แยกกันเพื่อให้เห็นว่าผู้ตรวจปรับจากยอดที่ระบบแนะนำไปเท่าไหร่ */
@@ -155,6 +155,15 @@ const RING = ['border-red-400', 'ring-1', 'ring-red-300', 'bg-red-50'];
 // พื้นหลังเดิมของช่อง (bg-white ตอนแก้ได้ / bg-gray-100 ตอนล็อก) — ต้องถอดออกตอนทาแดง
 // ไม่งั้นชนกันเองแล้วแล้วแต่ลำดับใน CSS ว่าใครชนะ (ไม่ใช่ลำดับใน class attribute)
 const BG_ORIG = ['bg-white', 'bg-gray-100'];
+/**
+ * ช่อง "ชื่อคน" ในฟอร์มหลักที่ EMCS มีตัวกรองอักขระติดอยู่
+ * ต้องตรงกับ `emcsNameWarnings()` ฝั่ง backend (xmlExport.service.ts)
+ * ⚠️ "ผู้เอาประกัน" (assured_name) **ไม่มี** ตัวกรองนี้ — ตรวจแล้ว ไม่ต้องใส่
+ */
+const EMCS_NAME_FIELDS = [
+  'acc_reporter', 'acc_surveyor', 'acc_police_name',
+  'driver_name', 'driver_first_name', 'driver_last_name',
+];
 // สีเตือนของช่องบังคับ**แบบมีเงื่อนไข** — แดง = บังคับตอนนี้ · เหลือง = ยังไม่บังคับแต่ยังว่าง
 // เขียนเป็นสตริงเต็มทั้งชุด (ห้ามต่อสตริงเอง) ไม่งั้น Tailwind ไม่ผลิต class ให้ตอน build
 const HL_CLS = {
@@ -366,6 +375,28 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     ...moneyMissing,
   ];
 
+  /**
+   * 5 จังหวะของงาน เรียงตามลำดับที่ต้องเป็นจริง — ใช้วาดการ์ด "ลำดับเวลา"
+   * ชื่อช่องต้องตรงกับที่ `updateReport` ฝั่ง backend ประกอบกลับเป็น "วันที่|ชม:นาที"
+   * และตรงกับชื่อที่ตัวตรวจลำดับเวลา (stamp() ใน paint) อ่าน — แก้ที่นี่ต้องแก้ทั้ง 3 ที่
+   */
+  const tl = (date: string, hour: string, min: string, label: string,
+              v: { date: string; hour: string; minute: string }) =>
+    ({ date, hour, min, label, v, keys: [date, hour, min] });
+  const accT = String(report?.acc_time ?? '').split(':');
+  const TIMELINE = report ? [
+    tl('acc_date', 'acc_time_hour', 'acc_time_minute', 'เกิดเหตุ',
+       { date: report.acc_date || '', hour: accT[0] || '', minute: accT[1] || '' }),
+    tl('acc_customer_report_date_val', 'acc_customer_report_hour', 'acc_customer_report_minute',
+       'ลูกค้าแจ้ง บ.ประกัน', parseDatetime(report.acc_customer_report_date)),
+    tl('acc_insurance_notify_date_val', 'acc_insurance_notify_hour', 'acc_insurance_notify_minute',
+       'บ.ประกันแจ้งสำรวจภัย', parseDatetime(report.acc_insurance_notify_date)),
+    tl('acc_survey_arrive_date_val', 'acc_survey_arrive_hour', 'acc_survey_arrive_minute',
+       'ถึงที่เกิดเหตุ', parseDatetime(report.acc_survey_arrive_date)),
+    tl('acc_survey_complete_date_val', 'acc_survey_complete_hour', 'acc_survey_complete_minute',
+       'สำรวจภัยเสร็จ', parseDatetime(report.acc_survey_complete_date)),
+  ] : [];
+
   // ทาสีกรอบแดงให้ช่องบังคับที่ยังว่าง + นับจำนวน
   // ทำหลัง render เพราะช่องบังคับกระจายอยู่ ~49 จุด ผูกกับดอกจันที่มีอยู่แล้วดีกว่าไล่แก้ทีละช่อง
   useEffect(() => {
@@ -388,6 +419,25 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           if (blank && nm && !names.includes(nm)) names.push(nm);
         });
       });
+      /**
+       * ── ชื่อที่มีอักขระ EMCS ไม่รับ (วงเล็บ ทับ ฯลฯ) → ทาแดงที่ช่องเลย ──
+       * เดิมเตือนเป็นแถบเหลืองบนหัวหน้าอย่างเดียว ซึ่งคำนวณตอนโหลดหน้า แก้แล้วไม่หาย
+       * และไม่บอกว่าอยู่ช่องไหนในบรรดา ~200 ช่อง (user เคาะ 17/08/69 ให้มาโชว์ที่ช่อง)
+       * EMCS ไม่ได้แค่ตัดอักขระ — มัน **ล้างชื่อทั้งช่องทิ้ง** ตอนคนคลิกเข้า-ออก
+       */
+      for (const nm of EMCS_NAME_FIELDS) {
+        const el = form.querySelector(`[name="${nm}"]`) as HTMLInputElement | null;
+        if (!el) continue;
+        const bad = emcsBadChars(el.value ?? '');
+        el.title = bad ? `EMCS จะล้างชื่อทั้งช่องทิ้งเพราะมีอักขระ: ${bad}` : '';
+        // ช่องที่ทาแดงเพราะ "ว่าง" อยู่แล้ว ปล่อยให้ตัวเดิมคุมไป อย่าทับกัน
+        if (names.includes(nm)) continue;
+        if (!el.dataset.bg0) el.dataset.bg0 = BG_ORIG.find((c) => el.classList.contains(c)) || 'bg-white';
+        el.classList.toggle('border-gray-300', !bad);
+        el.classList.toggle(el.dataset.bg0, !bad);
+        RING.forEach((c) => el.classList.toggle(c, Boolean(bad)));
+      }
+
       setList(setMissing, names);
 
       // ── บล็อก "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
@@ -547,8 +597,124 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     finally { setSaving(false); }
   };
 
+  /**
+   * แถบปุ่ม — เดิมอยู่ท้ายหน้า ต้องเลื่อนผ่าน ~200 ช่องกว่าจะถึง
+   * ตอนนี้ย้ายไปอยู่ในแถบหัวเคสที่ติดขอบบน กดบันทึกได้จากทุกจุดของหน้า
+   * ⛔ ต้องอยู่ **นอก** <fieldset disabled> ไม่งั้นตอนล็อกจะกดปลดล็อกไม่ได้
+   */
+  const actionBar = approved ? (
+    <div className="flex items-center gap-2 flex-wrap justify-end">
+      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">อนุมัติแล้ว · ล็อก</span>
+      <span className="text-xs text-gray-600 hidden lg:inline">
+        {review?.checker_name ? `โดย ${review.checker_name}` : ''}
+        {review?.reviewed_at ? ` · ${String(review.reviewed_at).slice(0, 16).replace('T', ' ')}` : ''}
+      </span>
+      {isAdmin ? (
+        <button type="button" disabled={saving} onClick={async () => {
+          // ปลดล็อกแล้วต้องอนุมัติใหม่ — ถามก่อนเพราะเป็นการถอนลายเซ็นของคนอื่น
+          if (!window.confirm('ปลดล็อกเคสนี้ให้กลับไปแก้ได้?\nผู้ตรวจจะต้องกดอนุมัติใหม่อีกครั้ง')) return;
+          setSaving(true); setSaveMsg('');
+          try {
+            await api.post(`/api/cases/${caseData.id}/unlock`, {});
+            setSaveMsg('ปลดล็อกสำเร็จ');
+            onReviewSubmitted();
+          } catch (e) {
+            const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            setSaveMsg('ปลดล็อกไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+          } finally { setSaving(false); }
+        }} className="px-4 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:bg-amber-300 disabled:cursor-not-allowed transition">
+          ปลดล็อก
+        </button>
+      ) : (
+        <span className="text-xs text-gray-500">ต้องให้แอดมินปลดล็อกก่อน</span>
+      )}
+    </div>
+  ) : (
+    // ทุกช่องพิมพ์ได้ตลอด จึงไม่มีปุ่ม "แก้ไขทั้งหมด" / "ยกเลิก" อีกแล้ว
+    <div className="flex items-center gap-2">
+      {approvalBlockers.length > 0 && (
+        <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 whitespace-nowrap">
+          ยังอนุมัติไม่ได้ {approvalBlockers.length} ข้อ
+        </span>
+      )}
+      <button type="button" onClick={handleSave} disabled={saving} className="px-5 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
+        {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+      </button>
+      <button type="button" onClick={async () => {
+        // กันไว้อีกชั้นเผื่อสถานะยังไม่ทันอัปเดต (ปุ่มถูก disable อยู่แล้วตามปกติ)
+        if (approvalBlockers.length > 0) {
+          setSaveMsg('อนุมัติไม่ได้ — ' + approvalBlockers.join(' · '));
+          return;
+        }
+        // อนุมัติ = ล็อกเคส ถอยเองไม่ได้ ต้องให้แอดมินปลด — ถามก่อนเสมอ
+        if (!window.confirm('อนุมัติเคสนี้?\nอนุมัติแล้วจะล็อก แก้เองไม่ได้ ต้องให้แอดมินปลดล็อก\nและบอทจะยกเคสนี้เข้า EMCS')) return;
+        const ok = await handleSave();
+        if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
+        try {
+          await api.post(`/api/cases/${caseData.id}/review`, {});
+          setSaveMsg('อนุมัติสำเร็จ');
+          onReviewSubmitted();
+        } catch (e) {
+          const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          setSaveMsg('อนุมัติไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+        }
+      }} disabled={saving || approvalBlockers.length > 0}
+        title={approvalBlockers.length > 0 ? 'อนุมัติไม่ได้ — ' + approvalBlockers.join(' · ') : ''}
+        className="px-5 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
+        อนุมัติ
+      </button>
+    </div>
+  );
+
+  /** นับรูปแยกหมวด — ป้ายเดียวกับที่ PhotoGallery จัดกลุ่ม (ไม่ระบุหมวด = โหลดมาจากภายนอก) */
+  const photoCats = (() => {
+    const m = new Map<string, number>();
+    for (const p of photos ?? []) {
+      const c = (p as { category?: string | null })?.category?.trim() || 'ไม่ระบุหมวด';
+      m.set(c, (m.get(c) ?? 0) + 1);
+    }
+    return Array.from(m, ([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n);
+  })();
+
+  /** ป้ายบอกที่มาของงาน — ชุดเดียวกับหน้ารายการงาน กติกาเงินต่างกันตามที่มา */
+  const SRC_BADGE: Record<string, { t: string; c: string }> = {
+    mobile: { t: 'แอปมือถือ', c: 'bg-emerald-100 text-emerald-800' },
+    isurvey_live: { t: 'ระบบเก่า (สด)', c: 'bg-sky-100 text-sky-800' },
+    isurvey_xml: { t: 'ไฟล์ XML', c: 'bg-violet-100 text-violet-800' },
+    emcs_extract: { t: 'ดึงจาก EMCS', c: 'bg-slate-200 text-slate-700' },
+  };
+  const src = SRC_BADGE[String(caseData?.source ?? 'mobile')]
+    ?? { t: String(caseData?.source ?? '-'), c: 'bg-gray-100 text-gray-700' };
+
   return (
     <form ref={formRef} onSubmit={(e) => e.preventDefault()} className="space-y-6">
+      {/* ── แถบหัวเคส (ติดขอบบน) ── ตัวระบุเคส + สถานะ + ปุ่ม อยู่ครบในบรรทัดเดียว
+          หน้านี้ยาวมาก เลื่อนไปไหนก็ยังเห็นว่ากำลังตรวจเคลมไหน และกดบันทึกได้ทันที */}
+      <div className="sticky top-0 z-20 -mx-1 px-1 pt-1 pb-2 bg-gray-50/95 backdrop-blur-sm">
+        <div className="bg-white rounded-lg shadow border border-gray-200 px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-xs text-gray-400 shrink-0">เคลม</span>
+            <span className="font-bold text-gray-900 truncate">{report?.claim_no || '—'}</span>
+          </div>
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-xs text-gray-400 shrink-0">เซอร์เวย์</span>
+            <span className="font-medium text-gray-700 truncate">{report?.survey_job_no || '—'}</span>
+          </div>
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-xs text-gray-400 shrink-0">ทะเบียน</span>
+            <span className="font-medium text-gray-700 truncate">{report?.license_plate || '—'}</span>
+          </div>
+          <span className="text-sm text-gray-500 truncate hidden md:inline">{report?.insurance_company || '—'}</span>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ${src.c}`}>{src.t}</span>
+          <div className="ml-auto flex items-center gap-3">
+            {saveMsg && (
+              <span className={`px-3 py-1 rounded text-xs ${saveMsg.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{saveMsg}</span>
+            )}
+            {actionBar}
+          </div>
+        </div>
+      </div>
+
       {/* อนุมัติแล้ว = ปิดทั้งชุดด้วย <fieldset disabled> — ครอบทุกช่องในหน้าทีเดียว
           ไม่ต้องไล่ใส่ disabled ทีละช่อง (มี ~200 ช่อง พลาดช่องเดียวก็รั่ว)
           แถบปุ่มอยู่ *นอก* fieldset เพื่อให้แอดมินยังกด "ปลดล็อก" ได้ตอนถูกล็อก */}
@@ -1028,6 +1194,45 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </div>
           )}
 
+          {/* ===== ลำดับเวลา — 5 จังหวะของงาน เรียงซ้าย→ขวา =====
+              เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
+              (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
+              ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
+          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-bold">::: ลำดับเวลา</span>
+              <span className="text-xs text-white/75">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
+              {timeErrs.length > 0 && (
+                <span className="ml-auto text-xs font-semibold bg-red-500 rounded px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
+              )}
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-3 gap-y-4">
+              {TIMELINE.map((n, i) => {
+                const gap = n.keys.some((k) => missing.includes(k));
+                return (
+                  <div key={n.date} className="relative min-w-0">
+                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง */}
+                    {i > 0 && <div className="hidden xl:block absolute -left-[14px] top-[11px] w-[14px] border-t-2 border-gray-200" />}
+                    <div className="flex items-start gap-1.5 mb-1.5">
+                      <span className={`mt-[1px] w-[20px] h-[20px] shrink-0 rounded-full text-[11px] font-bold flex items-center justify-center ${
+                        gap ? 'bg-red-100 text-red-700 ring-1 ring-red-300' : 'bg-blue-100 text-blue-700'}`}>{i + 1}</span>
+                      <span className="text-xs text-gray-600 leading-tight">{n.label} <Req of={n.keys.join(',')} /></span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
+                        className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <input type="text" disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
+                        className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      <span className="text-gray-400 shrink-0">:</span>
+                      <input type="text" disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
+                        className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar */}
@@ -1037,18 +1242,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <table className="w-full table-fixed">
               <ColGroup />
               <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ <Req of="acc_date,acc_time_hour,acc_time_minute" /> :</td>
-                  <td className="px-4 py-2" colSpan={3}>
-                    <div className="flex items-center gap-2">
-                      <input type="text" disabled={d} name="acc_date" defaultValue={report.acc_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_time_hour" defaultValue={report.acc_time ? report.acc_time.split(':')[0] : ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_time_minute" defaultValue={report.acc_time ? report.acc_time.split(':')[1] : ''} className={`w-[40px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                  </td>
-                </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   {/* สถานที่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 (จังหวัด/อำเภอ = ตัวที่บอทใช้หาเรทด้วย) */}
                   <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ <Req of="acc_place,acc_province,acc_district" /> :</td>
@@ -1128,54 +1321,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </div>
                   </td>
                 </tr>
-                {(() => { const cr = parseDatetime(report.acc_customer_report_date); const ins = parseDatetime(report.acc_insurance_notify_date); return (
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน <Req of="acc_customer_report_date_val,acc_customer_report_hour,acc_customer_report_minute" /> :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_customer_report_date_val" defaultValue={cr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_customer_report_hour" defaultValue={cr.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_customer_report_minute" defaultValue={cr.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย <Req of="acc_insurance_notify_date_val,acc_insurance_notify_hour,acc_insurance_notify_minute" /> :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_insurance_notify_date_val" defaultValue={ins.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_insurance_notify_hour" defaultValue={ins.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_insurance_notify_minute" defaultValue={ins.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                  </td>
-                </tr>
-                ); })()}
-                {(() => { const arr = parseDatetime(report.acc_survey_arrive_date); const comp = parseDatetime(report.acc_survey_complete_date); return (
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) <Req of="acc_survey_arrive_date_val,acc_survey_arrive_hour,acc_survey_arrive_minute" /> :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_survey_arrive_date_val" defaultValue={arr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_survey_arrive_hour" defaultValue={arr.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_survey_arrive_minute" defaultValue={arr.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ <Req of="acc_survey_complete_date_val,acc_survey_complete_hour,acc_survey_complete_minute" /> :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_survey_complete_date_val" defaultValue={comp.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_survey_complete_hour" defaultValue={comp.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_survey_complete_minute" defaultValue={comp.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                  </td>
-                </tr>
-                ); })()}
+                {/* 4 จังหวะเวลาที่เคยอยู่ตรงนี้ ย้ายขึ้นไปการ์ด "ลำดับเวลา" ด้านบนแล้ว */}
               </tbody>
             </table>
           </div>
@@ -1532,10 +1678,24 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         </>
       )}
 
-      {/* รูปภาพ */}
+      {/* ── การ์ดรูปหลักฐาน ── จำนวนรูปบอกอะไรได้เยอะ เอามาไว้บนหัวการ์ดเลย
+          งานที่ดึงจากระบบเก่าตอน "รอตรวจข้อมูล" รูปยังทยอยขึ้น (วัดจริง: 1–5 ใบ
+          ตอนนั้น เทียบกับ 22–41 ใบตอนจบงาน) → ต้องเห็นตัวเลขก่อนกดอนุมัติ
+          ไม่งั้นบอทยกเข้า EMCS ด้วยรูป 3 ใบแล้วต้องตามแก้ทีหลัง */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-          <span className="font-bold">::: รูปภาพ</span>
+        <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-bold">::: รูปหลักฐาน</span>
+          <span className="bg-white/20 rounded px-2 py-0.5 text-xs font-semibold">{photos?.length ?? 0} ใบ</span>
+          {photoCats.length > 0 && (
+            <span className="text-xs text-white/75 truncate">
+              {photoCats.map((c) => `${c.name} ${c.n}`).join(' · ')}
+            </span>
+          )}
+          {(photos?.length ?? 0) < 8 && (
+            <span className="ml-auto text-xs font-semibold bg-amber-400 text-amber-950 rounded px-2 py-0.5">
+              รูปน้อยผิดปกติ — เช็กว่าช่างส่งครบหรือยัง
+            </span>
+          )}
         </div>
         <div className="p-4">
           {/* onReviewSubmitted = โหลดเคสใหม่ทั้งก้อน — ใช้ซ้ำเพื่อให้รูปที่เพิ่งอัปโผล่ทันที
@@ -1653,8 +1813,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   {/* หักเงิน — ระบบเดิมไม่มีแถวนี้ ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" มาใช้
                       เพราะแทรกช่องใหม่ลงฟอร์มระบบเก่าไม่ได้ · เว็บนี้เราคุมเอง จึงแยกให้ถูกความหมาย */}
-                  <tr className="border-b border-gray-100 bg-rose-50/40">
-                    <td className="px-3 py-2 text-rose-800 font-medium">หักเงิน</td>
+                  {/* สีกลาง ๆ ไม่ใช่สีเตือน — หักเงินไม่ใช่ช่องบังคับ (user เคาะ 17/08/69)
+                      สีแดงบนหน้านี้สงวนไว้ให้ "ยังกรอกไม่ครบ" อย่างเดียว จะได้ไม่เตือนหลอก */}
+                  <tr className="border-b border-gray-100">
+                    <td className="px-3 py-2 text-gray-700">หักเงิน</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-700">
                         <label className="flex items-center gap-1">
@@ -1668,7 +1830,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     {/* สลับให้ตรงกับแถวอื่น: คอลัมน์ 3 = ฝั่งพนักงาน · คอลัมน์ 4 = ฝั่งเรียกเก็บประกัน */}
                     <td className="px-3 py-2">
                       <input type="text" disabled={dDeduct} name="pay_deduct_fee" defaultValue={String(pay?.saved?.deduct_fee ?? '')}
-                        className={`w-full border rounded px-2 py-1 text-sm text-right ${dDeduct ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-rose-50 border-rose-300 text-rose-900'}`} />
+                        className={`w-full border rounded px-2 py-1 text-sm text-right ${dDeduct ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`} />
                     </td>
                     <td className="px-3 py-2">
                       <input type="text" disabled={dDeduct} name="deduct_reason" placeholder="เหตุผลอื่น"
@@ -1725,80 +1887,21 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>
       </fieldset>
 
-      {/* แถบปุ่ม — นอก <fieldset> โดยตั้งใจ ไม่งั้นตอนล็อกจะกดปลดล็อกไม่ได้ */}
-      <div className="flex flex-col items-end gap-3">
-        {saveMsg && (
-          <div className={`px-4 py-2 rounded text-sm ${saveMsg.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{saveMsg}</div>
-        )}
-        {approved ? (
-          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">อนุมัติแล้ว · ล็อก</span>
-            <span className="text-sm text-gray-600">
-              {review?.checker_name ? `โดย ${review.checker_name}` : ''}
-              {review?.reviewed_at ? ` · ${String(review.reviewed_at).slice(0, 16).replace('T', ' ')}` : ''}
-              {' — บอทจะยกเข้า EMCS ให้ · แก้ต่อไม่ได้'}
-            </span>
-            {isAdmin ? (
-              <button type="button" disabled={saving} onClick={async () => {
-                // ปลดล็อกแล้วต้องอนุมัติใหม่ — ถามก่อนเพราะเป็นการถอนลายเซ็นของคนอื่น
-                if (!window.confirm('ปลดล็อกเคสนี้ให้กลับไปแก้ได้?\nผู้ตรวจจะต้องกดอนุมัติใหม่อีกครั้ง')) return;
-                setSaving(true); setSaveMsg('');
-                try {
-                  await api.post(`/api/cases/${caseData.id}/unlock`, {});
-                  setSaveMsg('ปลดล็อกสำเร็จ');
-                  onReviewSubmitted();
-                } catch (e) {
-                  const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-                  setSaveMsg('ปลดล็อกไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
-                } finally { setSaving(false); }
-              }} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:bg-amber-300 disabled:cursor-not-allowed transition">
-                ปลดล็อก
-              </button>
-            ) : (
-              <span className="text-xs text-gray-500">ต้องให้แอดมินปลดล็อกก่อนจึงจะแก้ได้</span>
-            )}
+      {/* ปุ่มย้ายขึ้นไปแถบหัวเคสแล้ว — ตรงนี้เหลือรายละเอียดว่า "ขาดอะไรบ้าง"
+          ปุ่มเทาเฉย ๆ ไม่บอกอะไร ผู้ตรวจจะเดาไม่ออกว่าต้องเติมตรงไหน */}
+      {!approved && approvalBlockers.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded px-4 py-2 text-sm text-amber-900">
+          <span className="font-semibold">ยังอนุมัติไม่ได้</span> — {approvalBlockers.join(' · ')}
+          <div className="text-xs text-amber-700 mt-0.5">
+            อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว
           </div>
-        ) : (
-          // ทุกช่องพิมพ์ได้ตลอด จึงไม่มีปุ่ม "แก้ไขทั้งหมด" / "ยกเลิก" อีกแล้ว
-          <div className="flex gap-3">
-            <button type="button" onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
-              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-            </button>
-            <button type="button" onClick={async () => {
-              // กันไว้อีกชั้นเผื่อสถานะยังไม่ทันอัปเดต (ปุ่มถูก disable อยู่แล้วตามปกติ)
-              if (approvalBlockers.length > 0) {
-                setSaveMsg('อนุมัติไม่ได้ — ' + approvalBlockers.join(' · '));
-                return;
-              }
-              // อนุมัติ = ล็อกเคส ถอยเองไม่ได้ ต้องให้แอดมินปลด — ถามก่อนเสมอ
-              if (!window.confirm('อนุมัติเคสนี้?\nอนุมัติแล้วจะล็อก แก้เองไม่ได้ ต้องให้แอดมินปลดล็อก\nและบอทจะยกเคสนี้เข้า EMCS')) return;
-              const ok = await handleSave();
-              if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
-              try {
-                await api.post(`/api/cases/${caseData.id}/review`, {});
-                setSaveMsg('อนุมัติสำเร็จ');
-                onReviewSubmitted();
-              } catch (e) {
-                const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-                setSaveMsg('อนุมัติไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
-              }
-            }} disabled={saving || approvalBlockers.length > 0}
-              title={approvalBlockers.length > 0 ? 'อนุมัติไม่ได้ — ' + approvalBlockers.join(' · ') : ''}
-              className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed transition">
-              อนุมัติ
-            </button>
-          </div>
-        )}
-        {/* บอกเหตุผลที่กดไม่ได้ — ปุ่มเทาเฉย ๆ ไม่บอกอะไร ผู้ตรวจจะเดาไม่ออกว่าขาดอะไร */}
-        {!approved && approvalBlockers.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded px-4 py-2 text-sm text-amber-900 max-w-xl">
-            <span className="font-semibold">ยังอนุมัติไม่ได้</span> — {approvalBlockers.join(' · ')}
-            <div className="text-xs text-amber-700 mt-0.5">
-              อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      {approved && (
+        <div className="bg-green-50 border border-green-200 rounded px-4 py-2 text-sm text-green-800">
+          อนุมัติแล้ว — บอทจะยกเข้า EMCS ให้ · แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก
+        </div>
+      )}
     </form>
   );
 }
