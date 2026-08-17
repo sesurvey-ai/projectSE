@@ -1534,11 +1534,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* พนักงานสอบสวน + แอลกอฮอล์ — แบบตาราง */}
           <div data-section="police" className="space-y-2">
-          <SectionBar title="คดี · ตำรวจ" open={secOpen('police')} gap={(gapSec ?? []).includes('police')} onToggle={() => secToggle('police')}>
+          <SectionBar title="คดี · ตำรวจ · ติดตามงาน" open={secOpen('police')} gap={(gapSec ?? []).includes('police')} onToggle={() => secToggle('police')}>
             <Sum l="พนักงานสอบสวน" v={report.acc_police_name} />
             <Sum l="สถานีตำรวจ" v={report.acc_police_station} />
             <Sum l="ประจำวันข้อที่" v={report.acc_police_book_no} />
-            <Sum l="ผลตรวจแอลกอฮอล์" v={report.acc_alcohol_test} />
+            <Sum l="ผลตรวจแอลกอฮอล์" v={[report.acc_alcohol_test, report.acc_alcohol_result].filter(Boolean).join(' · ')} />
+            <Sum l="การติดตามงาน" v={[report.acc_followup, report.acc_followup_count ? `ครั้งที่ ${report.acc_followup_count}` : ''].filter(Boolean).join(' · ')} />
+            <Sum l="รายละเอียดนัดหมาย" v={report.acc_followup_detail} />
           </SectionBar>
           <div className={secOpen('police') ? '' : 'hidden'}>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
@@ -1589,17 +1591,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </table>
           </div>
 
-          </div>
-          </div>
-
-          {/* การติดตามงาน — แบบตาราง */}
-          <div data-section="followup" className="space-y-2">
-          <SectionBar title="การติดตามงาน" open={secOpen('followup')} gap={(gapSec ?? []).includes('followup')} onToggle={() => secToggle('followup')}>
-            <Sum l="การติดตามงาน" v={report.acc_followup} />
-            <Sum l="ครั้งที่นัดหมาย" v={report.acc_followup_count} />
-            <Sum l="รายละเอียด" v={report.acc_followup_detail} />
-          </SectionBar>
-          <div className={secOpen('followup') ? '' : 'hidden'}>
+          {/* การติดตามงาน — รวมอยู่ในหมวด "คดี · ตำรวจ · ติดตามงาน" เดียวกันตามดีไซน์ใหม่ */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1888,6 +1880,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>
 
       {/* การตรวจสอบ — กรอกได้เลยไม่ต้องกดแก้ไข */}
+      <div data-section="review" className="space-y-2">
+      <SectionBar title="การตรวจสอบ" open={secOpen('review')} gap={(gapSec ?? []).includes('review')} onToggle={() => secToggle('review')}>
+        <Sum l="ผลการดำเนินงาน" v={report?.survey_result} />
+        <Sum l="ความเห็นของเซอร์เวย์" v={report?.surveyor_comment || review?.surveyor_comment} />
+        <Sum l="ความเห็นของผู้ตรวจสอบ" v={report?.review_comment || review?.comment} />
+        <Sum l="หมายเหตุเพิ่มเติม" v={report?.notes} />
+      </SectionBar>
+      <div className={secOpen('review') ? '' : 'hidden'}>
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
           <span className="font-bold">::: การตรวจสอบ</span>
@@ -1918,6 +1918,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <textarea name="notes" defaultValue={report?.notes || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" rows={2} />
           </div>
         </div>
+      </div>
+
+      </div>
       </div>
 
       {/* ค่าใช้จ่าย + ปุ่มอนุมัติ — กรอกได้เลยไม่ต้องกดแก้ไข */}
