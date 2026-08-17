@@ -130,8 +130,11 @@ const ColGroup = () => (
  * `when` = เงื่อนไขที่ทำให้ช่องนี้บังคับ (ไม่ได้บังคับตลอด) — ฟอร์มนี้เป็น uncontrolled
  * จึงไม่ไล่ตามค่าที่พิมพ์แบบ real-time แต่บอกเงื่อนไขไว้ให้อ่านแทน
  */
-const Req = ({ when }: { when?: string }) => (
+const Req = ({ when, of }: { when?: string; of?: string }) => (
   <span
+    // `of` = ชื่อช่อง (name=) ที่ดอกจันตัวนี้คุม — คั่นด้วย , ถ้าคุมหลายช่อง
+    // ⛔ ต้องใส่ทุกตัว: ไม่ใส่แล้วจะตกไปใช้วิธีเดาจากตำแหน่ง DOM ซึ่งพังทันทีที่เปลี่ยนเลย์เอาต์
+    data-req-of={of}
     className={when ? 'text-amber-500 ml-0.5 req-mark-when' : 'text-red-500 ml-0.5 req-mark'}
     title={when
       ? `บังคับเมื่อ ${when} — ระบบประกันไม่รับถ้าเว้นว่างในกรณีนี้`
@@ -169,9 +172,23 @@ const HL_CLS = {
  *    ตอนเป็นแค่กรอบแดงก็แค่เตือนหลอก · พอเอาไปบล็อกปุ่มอนุมัติ = อนุมัติไม่ได้
  *    ทั้งที่ข้อมูลครบ (เจอจริง 15/08/69 เคส #141 ขึ้นแดง 2 ช่อง ทั้งที่ไม่ขาดอะไร)
  */
-function fieldsOfMark(mark: Element): HTMLElement[] {
+function fieldsOfMark(mark: Element, form?: HTMLFormElement | null): HTMLElement[] {
   const q = (el: Element): HTMLElement[] =>
     Array.prototype.slice.call(el.querySelectorAll('input,select,textarea')) as HTMLElement[];
+
+  // ── ทางหลัก: ดอกจันบอกเองว่าคุมช่องไหน ──
+  // ผูกด้วยชื่อช่องแทนตำแหน่งใน DOM — ย้ายเลย์เอาต์/เปลี่ยนตารางเป็นการ์ดแล้วยังถูกเสมอ
+  // (วิธีเดาจากตำแหน่งข้างล่างเคยทำให้ดอกจันไปทาแดงช่องข้าง ๆ จนกดอนุมัติไม่ได้ — เคส #141)
+  const of = mark.getAttribute('data-req-of');
+  if (of && form) {
+    const out: HTMLElement[] = [];
+    for (const name of of.split(',').map((s) => s.trim()).filter(Boolean)) {
+      const els = form.querySelectorAll(`[name="${name}"]`);
+      for (const el of Array.prototype.slice.call(els) as HTMLElement[]) out.push(el);
+    }
+    return out;
+  }
+
   const cell = mark.closest('td');
   if (cell) {
     const own = q(cell);          // ป้ายกับช่องอยู่ช่องตารางเดียวกัน
@@ -216,7 +233,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [accDist, setAccDist] = useState<string>(report.acc_district || '-- เขต --');
   const [driverProv, setDriverProv] = useState<string>(report.driver_province || '0');
   const [driverDist, setDriverDist] = useState<string>(report.driver_district || '-- เขต --');
-  const [isEditing, setIsEditing] = useState(false);
+  /**
+   * ทุกช่องพิมพ์ได้ทันที ไม่ต้องกด "แก้ไขทั้งหมด" ก่อน (user เคาะ 17/08/69)
+   *
+   * เดิมหน้าเปิดมาเป็นโหมดอ่าน ต้องกดปุ่มก่อนถึงจะพิมพ์ได้ — ผู้ตรวจเห็นช่องแดง
+   * แต่แก้ไม่ได้จนกว่าจะรู้ว่าต้องกดปุ่มก่อน
+   *
+   * ⚠️ ตัวแปรนี้ยังอยู่เพราะ `handleSave` ใช้มันคุมว่า "จะส่ง JSONB กับยอดเงินไปด้วยไหม"
+   *    ตอนเป็นโหมดอ่านมันจงใจไม่ส่ง เพื่อไม่ให้เขียนทับของเดิมด้วยค่าว่าง
+   *    ตอนนี้พิมพ์ได้ตลอด จึงต้องส่งตลอด — ปล่อยเป็น true คงที่ ห้ามเปลี่ยนกลับเป็น state
+   *    ถ้าไม่ได้แก้ handleSave ให้ปลอดภัยก่อน
+   */
+  const isEditing = true;
   // ความเสียหายรถประกันเป็น JSONB — แก้ผ่าน FormData ไม่ได้ ต้องถือ state เอง
   // (เคสที่นำเข้าจากไฟล์ XML ของ ISURVEY จะว่างเสมอ ผู้ตรวจต้องกรอกก่อนส่งเข้า EMCS)
   const [damage, setDamage] = useState<DamageItem[]>(() =>
@@ -324,7 +352,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     const paint = () => {
       const names: string[] = [];
       form.querySelectorAll('.req-mark').forEach((mark) => {
-        fieldsOfMark(mark).forEach((el) => {
+        fieldsOfMark(mark, form).forEach((el) => {
           const blank = isBlank(el);
           // จำพื้นหลังเดิมไว้ครั้งแรก แล้วสลับไปมาระหว่างเดิม ↔ แดง
           if (!el.dataset.bg0) el.dataset.bg0 = BG_ORIG.find((c) => el.classList.contains(c)) || 'bg-white';
@@ -460,7 +488,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
       }
       const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: payload });
-      if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); setIsEditing(false); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
+      if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
       setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || '')); return false;
     } catch { setSaveMsg('เกิดข้อผิดพลาดในการบันทึก'); return false; }
     finally { setSaving(false); }
@@ -621,7 +649,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         <input type="text" disabled={d} name="prb_number" defaultValue={report.prb_number || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-gray-500">กรมธรรม์เลขที่ <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">กรมธรรม์เลขที่ <Req of="policy_no" /> :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="policy_no" defaultValue={report.policy_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -636,9 +664,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-4 py-2"><input type="text" disabled={d} name="policy_end" defaultValue={report.policy_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย <Req of="assured_name" /> :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="assured_name" defaultValue={report.assured_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2 text-gray-500">ประกันประเภท <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">ประกันประเภท <Req of="policy_type" /> :</td>
                     {/* ช่องพิมพ์ ไม่ใช่ dropdown — EMCS เองก็ไม่มีรายการให้เลือก และของจริง
                         มีมากกว่าที่ลิสต์ไว้ (ใบจริงเขียน "ประเภท 2+ ซ่อมอู่" = รหัส 52)
                         ตอนส่งออก policyTypeCode แปลงป้ายไทยที่รู้จัก ที่เหลือส่งตามที่กรอก */}
@@ -676,9 +704,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">หมายเลขทะเบียน <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">หมายเลขทะเบียน <Req of="license_plate" /> :</td>
                   <td className="px-4 py-2"><input type="text" disabled={d} name="license_plate" defaultValue={report.license_plate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">จังหวัด <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">จังหวัด <Req of="car_province" /> :</td>
                   <td className="px-4 py-2">
                     <select disabled={d} name="car_province" defaultValue={report.car_province || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
@@ -686,7 +714,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">ประเภทรถ <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">ประเภทรถ <Req of="car_type" /> :</td>
                   <td className="px-4 py-2">
                     <select disabled={d} name="car_type" value={carType} onChange={e => setCarType(e.target.value)} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       <option value="0">-- ระบุ --</option>
@@ -763,7 +791,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tbody>
                   <tr className="border-b border-gray-100">
                     {/* แถวนี้รวม 4 ช่องบังคับ: เพศ · คำนำหน้า · ชื่อ · นามสกุล (EMCS บล็อกทั้งชุด) */}
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย <Req of="driver_gender,driver_title,driver_first_name,driver_last_name" /> :</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
@@ -789,15 +817,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">วันเกิด <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">วันเกิด <Req of="driver_birthdate" /> :</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <input type="text" disabled={d} name="driver_birthdate" defaultValue={report.driver_birthdate || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <span className="text-gray-500 shrink-0">อายุ <Req /></span>
+                        <span className="text-gray-500 shrink-0">อายุ <Req of="driver_age" /></span>
                         <input type="text" disabled={d} name="driver_age" defaultValue={report.driver_age != null ? report.driver_age : ''} className={`w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ <Req of="driver_relation" /> :</td>
                     <td className="px-4 py-2">
                       <select disabled={d} name="driver_relation" defaultValue={report.driver_relation || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                         <option value="0">-- ระบุ --</option>
@@ -845,7 +873,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className="border-b border-gray-100">
                     {/* ที่อยู่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 ช่อง (เจอสดตอนเทส 2026-08-01) */}
-                    <td className="px-4 py-2 text-gray-500">ที่อยู่ปัจจุบัน <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">ที่อยู่ปัจจุบัน <Req of="driver_address,driver_province,driver_district" /> :</td>
                     <td className="px-4 py-2" colSpan={3}>
                       <div className="flex items-center gap-2">
                         <input type="text" disabled={d} name="driver_address" defaultValue={report.driver_address || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -859,12 +887,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">โทรศัพท์ <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">โทรศัพท์ <Req of="driver_phone" /> :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="driver_phone" defaultValue={report.driver_phone || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                     <td className="px-4 py-2" colSpan={2}></td>
                   </tr>
                   <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">บัตรประชาชนเลขที่ <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500">บัตรประชาชนเลขที่ <Req of="driver_id_card" /> :</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <input type="text" disabled={d} name="driver_id_card" defaultValue={report.driver_id_card || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -876,7 +904,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         </select>
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ใบอนุญาตขับขี่เลขที่ <Req when="ผู้ขับขี่มีใบขับขี่" /> :</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ใบอนุญาตขับขี่เลขที่ <Req of="driver_license_no" when="ผู้ขับขี่มีใบขับขี่" /> :</td>
                     <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_no" defaultValue={report.driver_license_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -923,7 +951,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className="border-b border-gray-100">
                     {/* ต้องมีรายการความเสียหายอย่างน้อย 1 รายการ (ผู้สำรวจเลือกจากแอป) */}
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเสียหายรถประกันภัย <Req /> :</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเสียหายรถประกันภัย <Req of="damage_description" /> :</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-sm whitespace-nowrap">ข้อมูลความเสียหาย</button>
@@ -957,7 +985,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่เกิดเหตุและเวลาประมาณ <Req of="acc_date,acc_time_hour,acc_time_minute" /> :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex items-center gap-2">
                       <input type="text" disabled={d} name="acc_date" defaultValue={report.acc_date || ''} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -970,7 +998,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   {/* สถานที่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 (จังหวัด/อำเภอ = ตัวที่บอทใช้หาเรทด้วย) */}
-                  <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ <Req of="acc_place,acc_province,acc_district" /> :</td>
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                   <td className="px-4 py-2" colSpan={2}>
                     <div className="flex items-center gap-1">
@@ -984,13 +1012,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ <Req of="acc_cause" /> :</td>
                   <td className="px-4 py-2">
                     <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {ACC_CAUSE_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ลักษณะความเสียหาย <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ลักษณะความเสียหาย <Req of="acc_damage_type" /> :</td>
                   <td className="px-4 py-2">
                     <select disabled={d} name="acc_damage_type" defaultValue={report.acc_damage_type || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                       {ACC_DAMAGE_TYPE_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
@@ -999,13 +1027,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   {/* ตรงกับช่อง "รายละเอียดการเกิดเหตุ" แท็บข้อมูลทั่วไปของ EMCS (ACC_DETAIL) */}
-                  <td className="px-4 py-2 text-gray-500 align-top">รายละเอียดการเกิดเหตุ <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500 align-top">รายละเอียดการเกิดเหตุ <Req of="acc_detail" /> :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[80px]`} rows={4} />
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท <Req of="acc_fault" /> :</td>
                   <td className="px-4 py-2" colSpan={3}>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       {/* ⚠️ `value` ต้องเป็น **ค่าสั้นชุดเดียวกับแอปมือถือ** (_faultDropdown ที่
@@ -1035,21 +1063,21 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-4 py-2 text-gray-500">ผู้แจ้ง :</td>
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_reporter" defaultValue={report.acc_reporter || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">ผู้สำรวจภัย <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">ผู้สำรวจภัย <Req of="acc_surveyor" /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_surveyor" defaultValue={report.acc_surveyor || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       {/* ถอด <select> "สาขาผู้สำรวจ" ออก — มีตัวเลือกเดียวคือ placeholder
                           จึงเขียนค่าว่างทับทุกครั้งที่บันทึก · แอปมือถือถอด UI นี้ไปแล้ว
                           และ XML ใช้ SURVEYBRID จาก env ไม่ได้อ่านคอลัมน์นี้เลย */}
-                      <span className="text-gray-500 shrink-0">โทรศัพท์ <Req /> :</span>
+                      <span className="text-gray-500 shrink-0">โทรศัพท์ <Req of="acc_surveyor_phone" /> :</span>
                       <input type="text" disabled={d} name="acc_surveyor_phone" defaultValue={report.acc_surveyor_phone || ''} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                     </div>
                   </td>
                 </tr>
                 {(() => { const cr = parseDatetime(report.acc_customer_report_date); const ins = parseDatetime(report.acc_insurance_notify_date); return (
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ลูกค้าแจ้ง บ.ประกัน <Req of="acc_customer_report_date_val,acc_customer_report_hour,acc_customer_report_minute" /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_customer_report_date_val" defaultValue={cr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -1059,7 +1087,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่ บ.ประกันแจ้งสำรวจภัย <Req of="acc_insurance_notify_date_val,acc_insurance_notify_hour,acc_insurance_notify_minute" /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_insurance_notify_date_val" defaultValue={ins.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -1073,7 +1101,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 ); })()}
                 {(() => { const arr = parseDatetime(report.acc_survey_arrive_date); const comp = parseDatetime(report.acc_survey_complete_date); return (
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา) <Req of="acc_survey_arrive_date_val,acc_survey_arrive_hour,acc_survey_arrive_minute" /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_survey_arrive_date_val" defaultValue={arr.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -1083,7 +1111,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <span className="text-gray-500 shrink-0">นาที</span>
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ <Req /> :</td>
+                  <td className="px-4 py-2 text-gray-500">วันที่สำรวจภัยเสร็จ <Req of="acc_survey_complete_date_val,acc_survey_complete_hour,acc_survey_complete_minute" /> :</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name="acc_survey_complete_date_val" defaultValue={comp.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
@@ -1150,9 +1178,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <ColGroup />
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อพนักงานสอบสวน <Req when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" /> :</td>
+                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อพนักงานสอบสวน <Req of="acc_police_name" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" /> :</td>
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_name" defaultValue={report.acc_police_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">สถานีตำรวจ <Req when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" /> :</td>
+                  <td className="px-4 py-2 text-gray-500">สถานีตำรวจ <Req of="acc_police_station" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" /> :</td>
                   <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_station" defaultValue={report.acc_police_station || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
                 </tr>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -1678,13 +1706,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             )}
           </div>
         ) : (
+          // ทุกช่องพิมพ์ได้ตลอด จึงไม่มีปุ่ม "แก้ไขทั้งหมด" / "ยกเลิก" อีกแล้ว
           <div className="flex gap-3">
-            {!isEditing && (
-              <button type="button" onClick={() => setIsEditing(true)} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">แก้ไขทั้งหมด</button>
-            )}
-            {isEditing && (
-              <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 bg-gray-400 text-white rounded-lg font-medium hover:bg-gray-500 transition">ยกเลิก</button>
-            )}
             <button type="button" onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
               {saving ? 'กำลังบันทึก...' : 'บันทึก'}
             </button>
