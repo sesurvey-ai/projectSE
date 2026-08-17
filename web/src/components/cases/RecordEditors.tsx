@@ -17,7 +17,7 @@
 import React from 'react';
 import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
 import { districtOptions } from './districtOptions';
-import { insurerOptions } from './insurerOptions';
+import { insurerOptions, isEmcsInsurer } from './insurerOptions';
 
 export type RecordItem = Record<string, string>;
 
@@ -112,28 +112,40 @@ export const emcsBadChars = (v: string) => {
 
 const badNameChars = (k: string, v: string) => (NAME_KEYS.has(k) ? emcsBadChars(v) : '');
 
-const cls = (def: FieldDef, value: string, bad: string) =>
+const cls = (def: FieldDef, value: string, warn: string) =>
   `w-full border rounded px-2 py-1 text-sm text-gray-800 ${
-    bad || (isRequiredLabel(def.label) && !String(value ?? '').trim()) ? REQ_CLS : OK_CLS}`;
+    warn || (isRequiredLabel(def.label) && !String(value ?? '').trim()) ? REQ_CLS : OK_CLS}`;
 
 function Field({ def, value, onChange }: { def: FieldDef; value: string; onChange: (v: string) => void }) {
-  const bad = badNameChars(def.k, String(value ?? ''));
-  const c = cls(def, value, bad);
+  const v = String(value ?? '');
+  const badChars = badNameChars(def.k, v);
+  /**
+   * ชื่อบริษัทที่ไม่มีในลิสต์ของ EMCS — บอทเลือกไม่ได้
+   * เกิดกับงานเก่าที่นำเข้ามาก่อนมีลิสต์นี้ และชื่อฝั่ง ISURVEY ที่แปลงอัตโนมัติไม่ได้
+   * (จงใจไม่เดาให้ — ชื่อบริษัทประกันต่างกันแค่คำท้าย เช่น ประกันภัย/ประกันสุขภาพ
+   *  เดาผิดทีเดียว = เคลมไปผูกกับบริษัทผิด · ให้คนเลือกปลอดภัยกว่า)
+   */
+  const offList = def.k === 'insurer' && !isEmcsInsurer(v);
+  const warn = badChars ? `EMCS ไม่รับอักขระ ${badChars}`
+    : offList ? 'ชื่อนี้ไม่มีใน EMCS — เลือกใหม่จากลิสต์'
+      : '';
+  const c = cls(def, v, warn);
   return (
     <div className={def.wide ? 'col-span-2 md:col-span-4' : ''}>
       <label className="block text-xs text-gray-500 mb-0.5">
         {def.label}
-        {bad && <span className="ml-1 text-red-600 font-medium">· EMCS ไม่รับ {bad}</span>}
+        {warn && <span className="ml-1 text-red-600 font-medium">· {warn}</span>}
       </label>
       {def.options ? (
-        <select className={c} value={value} onChange={(e) => onChange(e.target.value)}>
+        <select className={c} value={value} title={warn || undefined}
+                onChange={(e) => onChange(e.target.value)}>
           <option value="">-- ระบุ --</option>
           {def.options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
       ) : (
         <input
           type="text" className={c} value={value} placeholder={def.placeholder}
-          title={bad ? `EMCS จะล้างชื่อทั้งช่องทิ้งเพราะมีอักขระ: ${bad}` : undefined}
+          title={badChars ? `EMCS จะล้างชื่อทั้งช่องทิ้งเพราะมีอักขระ: ${badChars}` : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
