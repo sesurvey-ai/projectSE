@@ -719,8 +719,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           ยังอนุมัติไม่ได้ {approvalBlockers.length} ข้อ
         </span>
       )}
+      {/* "บันทึกร่าง" ตามดีไซน์ — ตรงความจริงด้วย: บันทึกแล้วเคสยังไม่ถูกส่งไปไหน */}
       <button type="button" onClick={handleSave} disabled={saving} className="px-5 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
-        {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+        {saving ? 'กำลังบันทึก...' : 'บันทึกร่าง'}
       </button>
       <button type="button" onClick={async () => {
         // กันไว้อีกชั้นเผื่อสถานะยังไม่ทันอัปเดต (ปุ่มถูก disable อยู่แล้วตามปกติ)
@@ -1949,10 +1950,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
               <textarea name="survey_result" defaultValue={report?.survey_result || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
             </div>
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-              <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
-            </div>
+            {/* "ความเห็นของผู้ตรวจสอบ" ย้ายไปอยู่การ์ดตัดสินใจท้ายหน้าตามดีไซน์ใหม่ —
+                ย้าย ไม่ใช่ก๊อป: มี 2 ช่องชื่อเดียวกันเมื่อไหร่ ตัวบันทึกจะหยิบไปแค่ช่องเดียว
+                แล้วอีกช่องหายเงียบ ๆ */}
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
               <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
@@ -2123,21 +2123,39 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>
       </fieldset>
 
-      {/* ปุ่มย้ายขึ้นไปแถบหัวเคสแล้ว — ตรงนี้เหลือรายละเอียดว่า "ขาดอะไรบ้าง"
-          ปุ่มเทาเฉย ๆ ไม่บอกอะไร ผู้ตรวจจะเดาไม่ออกว่าต้องเติมตรงไหน */}
-      {!approved && approvalBlockers.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded px-4 py-2 text-sm text-amber-900">
-          <span className="font-semibold">ยังอนุมัติไม่ได้</span> — {approvalBlockers.join(' · ')}
-          <div className="text-xs text-amber-700 mt-0.5">
-            อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว
+      {/* ── การ์ดตัดสินใจท้ายหน้า (ตามดีไซน์ 1b) ──
+          รวม "ความเห็นผู้ตรวจสอบ" + ปุ่ม + เหตุผลที่ยังกดไม่ได้ ไว้ที่เดียว
+          ปุ่มชุดเดียวกันนี้ยังอยู่บนแถบหัวเคสด้วย สำหรับตอนอยู่กลางหน้า */}
+      <div className={`rounded-lg border ${approved ? 'border-green-200 bg-green-50' : approvalBlockers.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white'} p-4 space-y-3`}>
+        <fieldset disabled={approved} className="border-0 p-0 m-0">
+          <label className="block text-sm font-medium text-gray-700 mb-1">ความเห็นของผู้ตรวจสอบ</label>
+          <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
+            placeholder="บันทึกสิ่งที่ตรวจพบ / สิ่งที่แก้ให้ / เหตุผลที่อนุมัติ"
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-800 bg-white text-sm" rows={3} />
+        </fieldset>
+
+        {approved ? (
+          <div className="text-sm text-green-800">
+            อนุมัติแล้ว — บอทจะนำเข้าระบบประกันให้ · แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก
           </div>
-        </div>
-      )}
-      {approved && (
-        <div className="bg-green-50 border border-green-200 rounded px-4 py-2 text-sm text-green-800">
-          อนุมัติแล้ว — บอทจะยกเข้า EMCS ให้ · แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก
-        </div>
-      )}
+        ) : approvalBlockers.length > 0 ? (
+          <div className="text-sm text-amber-900">
+            <span className="font-semibold">ยังอนุมัติไม่ได้</span> — {approvalBlockers.join(' · ')}
+            <div className="text-xs text-amber-700 mt-0.5">
+              อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-600">
+            ช่องบังคับครบแล้ว — อนุมัติได้
+            {/* ⛔ ไม่เขียนว่า "ส่งเข้าระบบประกัน" เพราะบอทสร้างเป็น draft ให้เท่านั้น
+                คนยังต้องกด "ส่งงานใหม่" เองอีกครั้ง (เฟส 3 ยังไม่เปิด) เขียนเกินจริงคือหลอกผู้ตรวจ */}
+            <span className="text-gray-400"> · บอทจะนำเข้าเป็นร่างในระบบประกัน แล้วยังต้องมีคนกดส่งอีกครั้ง</span>
+          </div>
+        )}
+
+        <div className="flex justify-end">{actionBar}</div>
+      </div>
     </form>
   );
 }

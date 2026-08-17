@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import api from '@/lib/api';
-import CaseList, { moneyGaps, type Case } from '@/components/cases/CaseList';
+import CaseList, { type Case } from '@/components/cases/CaseList';
+import { queueStats } from '@/components/cases/reviewQueue';
 
 type Tab = 'pending' | 'approved' | 'sent';
 
@@ -61,11 +62,9 @@ export default function InspectorDashboard() {
     return { pending, approved, sent };
   }, [cases]);
 
-  /** งานที่กดอนุมัติไม่ได้จนกว่าจะเติมข้อมูล — ตัวเลขที่หัวหน้าต้องเห็นก่อนเปิดเคส */
-  const incomplete = useMemo(
-    () => groups.pending.filter(
-      (c) => (c.import_warnings?.length ?? 0) > 0 || moneyGaps(c).length > 0).length,
-    [groups.pending]);
+  /** งานที่กดอนุมัติไม่ได้จนกว่าจะเติมข้อมูล — ตัวเลขที่หัวหน้าต้องเห็นก่อนเปิดเคส
+   *  คิดที่ reviewQueue.ts ที่เดียว หน้าตรวจเคสก็แสดงตัวเลขชุดนี้ ต้องไม่คิดคนละแบบ */
+  const incomplete = useMemo(() => queueStats(cases).incomplete, [cases]);
 
   const surveyors = useMemo(() => {
     const s = new Set<string>();

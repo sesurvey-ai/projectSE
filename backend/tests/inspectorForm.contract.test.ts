@@ -130,5 +130,19 @@ check('ไม่มีหมวดไหนใช้ && เรนเดอร์
       !/secOpen\([^)]*\)\s*&&/.test(src));
 check('หมวดยอดเงินไม่ถูกทำให้ยุบได้', !secIds.includes('money') && !secIds.includes('pay'));
 
+// ชื่อช่องซ้ำ = FormData หยิบไปแค่ตัวเดียว อีกตัวหายเงียบ ๆ ตอนบันทึก
+// (เจอตอนย้าย "ความเห็นผู้ตรวจสอบ" ไปการ์ดตัดสินใจท้ายหน้า — ต้องย้าย ไม่ใช่ก๊อป)
+// `(?<!\[)` ตัดสตริง selector ทิ้ง — `querySelector('input[name="x"]')` ไม่ใช่ช่องในฟอร์ม
+// (ไม่ตัดแล้วจะฟ้องผิด 4 ชื่อที่ paint() ใช้อ่านค่า ทั้งที่ในฟอร์มมีช่องเดียว)
+const RADIO_GROUPS =
+  /^(acc_fault|acc_claim_opponent|claim_type|damage_level|acc_alcohol_test|acc_followup|driver_gender)$/;
+const dupNames = Array.from(
+  Array.from(src.matchAll(/(?<!\[)name="([a-zA-Z_0-9]+)"/g), (m) => m[1])
+    .filter((n) => !RADIO_GROUPS.test(n))
+    .reduce((m, n) => m.set(n, (m.get(n) ?? 0) + 1), new Map<string, number>()))
+  .filter(([, n]) => n > 1);
+check('ไม่มีช่องชื่อซ้ำ (ยกเว้นกลุ่ม radio/checkbox ที่ต้องชื่อเดียวกัน)',
+      dupNames.length === 0, dupNames.map(([k, n]) => `${k}×${n}`).join(', '));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);
