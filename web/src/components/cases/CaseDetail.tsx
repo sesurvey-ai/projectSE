@@ -1457,7 +1457,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <span className="font-bold">::: รูปภาพ</span>
         </div>
         <div className="p-4">
-          <PhotoGallery photos={photos} />
+          {/* onReviewSubmitted = โหลดเคสใหม่ทั้งก้อน — ใช้ซ้ำเพื่อให้รูปที่เพิ่งอัปโผล่ทันที
+              (อนุมัติแล้วซ่อนแถบอัป — backend กันซ้ำอีกชั้นด้วย 423) */}
+          <PhotoGallery photos={photos} caseId={approved ? undefined : caseData?.id}
+                        onUploaded={onReviewSubmitted} />
         </div>
       </div>
 

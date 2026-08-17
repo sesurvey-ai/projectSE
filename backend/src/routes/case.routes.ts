@@ -5,7 +5,7 @@ import { reviewController } from '../controllers/review.controller';
 import { auth } from '../middleware/auth';
 import { requireRole } from '../middleware/role';
 import { validate } from '../middleware/validate';
-import { upload, uploadXmlZip } from '../config/multer';
+import { upload, uploadXmlZip, uploadCasePhotos } from '../config/multer';
 
 const router = Router();
 
@@ -260,6 +260,10 @@ router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSc
 // ปลดล็อกเคสที่อนุมัติแล้ว — **แอดมินเท่านั้น** ผู้ตรวจปลดเองไม่ได้ ไม่งั้นการล็อกก็ไม่มีความหมาย
 router.post('/:id/unlock', auth, requireRole('admin'), reviewController.unlock);
 router.put('/:id/report', auth, requireRole('checker'), caseController.updateReport);
+// ผู้ตรวจสอบเพิ่มรูปเองจากหน้าเคส — **เพิ่มอย่างเดียว** (คนละ endpoint กับ upload-folder
+// ของแอปมือถือที่เป็น "ล้างแล้วเขียนใหม่" ตามโมเดล sync — ใช้ผิดตัวคือรูปทั้งเคสหาย)
+router.post('/:id/photos', auth, requireRole('checker', 'admin'),
+  uploadCasePhotos, caseController.addPhotos);
 
 // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — เฉพาะผู้ตรวจ ผู้สำรวจไม่เกี่ยวกับการตั้งยอดจ่ายตัวเอง
 router.get('/:id/pay', auth, requireRole('checker', 'admin'), caseController.getPay);

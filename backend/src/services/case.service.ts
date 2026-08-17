@@ -930,6 +930,42 @@ export const caseService = {
    * เก็บลง path เดียวกับรูปจากมือถือ (uploads/case_<id>/job_<id>/) บอทจึงดึงผ่าน API เดิมได้
    */
   /**
+   * ผู้ตรวจสอบเพิ่มรูปเองจากหน้าเคส — **เพิ่มอย่างเดียว ไม่ลบของเดิม**
+   *
+   * ทำไมไม่ใช้ `uploadCaseFolder` ซ้ำ: ตัวนั้นเป็น "ล้างแล้วเขียนใหม่" ตามโมเดล sync
+   * ของแอปมือถือ (client ส่งชุดไฟล์ปัจจุบันมาทั้งชุด) — เอามาใช้กับปุ่มบนเว็บที่ส่งมา
+   * ทีละ 2-3 ใบ = รูปทั้งเคสหายเกลี้ยงเหลือเฉพาะที่เพิ่งเลือก
+   *
+   * เกิดจากงานเส้น ISURVEY: ต้นทางทยอยอัปรูป และบางรูปหัวหน้าได้มาทางอื่น (LINE/อีเมล)
+   * ซึ่งไม่มีวันไปโผล่ที่ระบบต้นทาง
+   */
+  async addCasePhotos(caseId: number, files: Express.Multer.File[], category: string) {
+    const fs = await import('fs');
+    const pathMod = await import('path');
+    await assertNotApproved(caseId);            // อนุมัติแล้ว = ชุดรูปถูกรับรองไปแล้ว ห้ามเติม
+    const rid = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (rid.rows.length === 0) throw new NotFoundError('Report not found');
+    const reportId = rid.rows[0].id;
+
+    const dir = pathMod.default.resolve(env.UPLOAD_DIR, `case_${caseId}`, `job_${caseId}`);
+    fs.default.mkdirSync(dir, { recursive: true });
+
+    let added = 0;
+    for (const f of files || []) {
+      // ชื่อไฟล์ตั้งเองทั้งหมด — ห้ามเชื่อ originalname (path traversal + ชนกับรูปที่มีอยู่)
+      const ext = (pathMod.default.extname(f.originalname || '').toLowerCase()
+                   .replace(/[^.a-z0-9]/g, '')) || '.jpg';
+      const name = `web_${Date.now()}_${added}${ext}`;
+      fs.default.writeFileSync(pathMod.default.join(dir, name), f.buffer);
+      await db.query(
+        'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
+        [reportId, `case_${caseId}/job_${caseId}/${name}`, category]);
+      added++;
+    }
+    return { added, category };
+  },
+
+  /**
    * แตก zip รูปเข้าเคส
    *
    * `skipExisting` — สำหรับ **ดึงรูปซ้ำจากต้นทางเดิม** (ISURVEY ทยอยอัปรูปหลังช่างส่งงาน:

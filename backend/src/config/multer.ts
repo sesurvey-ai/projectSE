@@ -49,6 +49,14 @@ export const uploadUnique = multer({
   fileFilter,
 });
 
+// ผู้ตรวจสอบเพิ่มรูปเองบนหน้าเคส — เก็บใน memory แล้ว service เขียนลงโฟลเดอร์ของเคสโดยตรง
+// (ต่างจาก `upload` ด้านบนที่เขียนลง uploads/ ราก แล้วต้องย้ายทีหลัง)
+export const uploadCasePhotos = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.MAX_FILE_SIZE, files: 50 },
+  fileFilter,
+}).array('photos', 50);
+
 // อัปโหลดไฟล์ XML (SURV_REPORT) + zip รูป ของ ISURVEY — เก็บใน memory แล้ว service จัดการต่อ
 // (แยกจาก upload ด้านบนที่รับเฉพาะรูป และเขียนลงดิสก์ทันที)
 export const uploadXmlZip = multer({

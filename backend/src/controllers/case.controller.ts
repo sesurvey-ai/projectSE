@@ -48,6 +48,23 @@ export const caseController = {
     sendSuccess(res, cases);
   }),
 
+  /** ผู้ตรวจสอบเพิ่มรูปเองจากหน้าเคส (เพิ่มอย่างเดียว ไม่ลบของเดิม) */
+  addPhotos: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const files = (req.files as Express.Multer.File[]) || [];
+    if (files.length === 0) throw new AppError(400, 'กรุณาเลือกรูปอย่างน้อย 1 ไฟล์');
+    // หมวดต้องอยู่ในชุดเดียวกับที่ระบบใช้อยู่ — พิมพ์อิสระแล้วแกลเลอรีจะแตกกลุ่มใหม่
+    // และฝั่งบอทจะจับหมวดไม่ได้ตอนอัปเข้าระบบประกัน
+    const CATS = ['รูปรถประกัน', 'รูปรถคู่กรณี', 'รูปผู้บาดเจ็บ', 'รูปทรัพย์สิน',
+                  'รูปแผนที่เกิดเหตุ', 'รูปประกอบ'];
+    const category = String(req.body?.category ?? '').trim();
+    if (!CATS.includes(category)) {
+      throw new AppError(400, `หมวดรูปไม่ถูกต้อง — ต้องเป็นหนึ่งใน: ${CATS.join(' / ')}`);
+    }
+    const result = await caseService.addCasePhotos(caseId, files, category);
+    sendSuccess(res, result);
+  }),
+
   getDetail: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const detail = await caseService.getDetail(caseId, req.user);
