@@ -930,10 +930,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <span className="text-xs text-gray-400 shrink-0">เซอร์เวย์</span>
             <span className="font-medium text-gray-700 truncate">{report?.survey_job_no || '—'}</span>
           </div>
-          <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-xs text-gray-400 shrink-0">ทะเบียน</span>
-            <span className="font-medium text-gray-700 truncate">{report?.license_plate || '—'}</span>
-          </div>
           <span className="text-sm text-gray-500 truncate hidden md:inline">{report?.insurance_company || '—'}</span>
           <span className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 ${src.c}`}>{src.t}</span>
           <div className="ml-auto flex items-center gap-3">
@@ -1998,7 +1994,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                        (เดิมรวมการ์ดเดียวแล้วคั่นด้วยเงาด้านใน user บอกว่าอยากได้เงาของพื้นหลัง)
               แยกแล้วความกว้างตารางไม่เปลี่ยน — ทั้ง 2 การ์ดเต็มรางเท่ากัน ไม่ได้ซ้อนใน padding กัน
               รางแคบกว่าครึ่งจอเดิมมาก จึงวางช่องความเห็นเรียงลงล่างแทน 3 คอลัมน์ */}
-          <div data-section="review" className="space-y-6">
+          <div data-section="review" className="space-y-3">
           <div className="bg-white rounded-[10px] border border-gray-200 shadow-[0_4px_16px_-6px_rgba(16,24,40,0.14)] overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
               <span className="font-semibold">ค่าใช้จ่าย</span>
