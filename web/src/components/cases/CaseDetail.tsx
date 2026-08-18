@@ -1998,8 +1998,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                        (เดิมรวมการ์ดเดียวแล้วคั่นด้วยเงาด้านใน user บอกว่าอยากได้เงาของพื้นหลัง)
               แยกแล้วความกว้างตารางไม่เปลี่ยน — ทั้ง 2 การ์ดเต็มรางเท่ากัน ไม่ได้ซ้อนใน padding กัน
               รางแคบกว่าครึ่งจอเดิมมาก จึงวางช่องความเห็นเรียงลงล่างแทน 3 คอลัมน์ */}
-          <div data-section="review" className="space-y-4">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div data-section="review" className="space-y-6">
+          <div className="bg-white rounded-lg shadow-[0_10px_28px_-6px_rgba(0,0,0,0.28),0_4px_10px_-4px_rgba(0,0,0,0.18)] ring-1 ring-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
               <span className="font-semibold">ค่าใช้จ่าย</span>
               <div className="flex items-center gap-2">
@@ -2031,8 +2031,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           </div>{/* จบการ์ดบน */}
 
-          {/* การ์ดยอดเงิน — เงารอบกรอบของตัวเอง (user เคาะ 18/08/69) */}
-          <div className="bg-white rounded-lg shadow p-4">
+          {/* ── 2 การ์ดในรางนี้ใช้เงาเข้มกว่าการ์ดอื่นทั้งหน้าโดยตั้งใจ ──
+              user ขอให้ "เห็นว่ามีการ์ดลอยอยู่ 2 ใบ" (18/08/69) · เงามาตรฐานจาง 10%
+              ซึ่งบนพื้นเทาอ่อนของหน้านี้แทบแยกไม่ออกว่าเป็นคนละใบ */}
+          <div className="bg-white rounded-lg shadow-[0_10px_28px_-6px_rgba(0,0,0,0.28),0_4px_10px_-4px_rgba(0,0,0,0.18)] ring-1 ring-gray-200 p-4">
             <div>
               <table className="w-full text-sm table-fixed">
                 {/* รางขวาแคบกว่าครึ่งจอเดิม — ช่อง "จำนวน" มีอินพุต+หน่วยอยู่ในบรรทัดเดียว
