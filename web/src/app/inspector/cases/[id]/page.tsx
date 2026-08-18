@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import CaseDetail from '@/components/cases/CaseDetail';
-import { type Case } from '@/components/cases/CaseList';
-import { queueStats, type QueueStats } from '@/components/cases/reviewQueue';
 
 export default function CaseDetailPage() {
   const params = useParams();
@@ -43,17 +41,9 @@ export default function CaseDetailPage() {
 
   useEffect(() => { if (caseId) fetchDetail(); }, [caseId, fetchDetail]);
 
-  /**
-   * แถบ "คิวตรวจวันนี้" — ผู้ตรวจเปิดเคสทีละใบทั้งวัน ถ้าไม่บอกตรงนี้
-   * ต้องกดกลับไปหน้ารายการเพื่อดูว่าเหลือเท่าไหร่ (ดีไซน์ใหม่ให้เห็นตลอด)
-   * พังก็ไม่เป็นไร — เป็นข้อมูลประกอบ ไม่ใช่ของที่ต้องมีถึงจะตรวจเคสได้
-   */
-  const [queue, setQueue] = useState<QueueStats | null>(null);
-  useEffect(() => {
-    api.get('/api/cases/review')
-      .then((res) => { if (res.data?.success) setQueue(queueStats(res.data.data as Case[])); })
-      .catch(() => {});
-  }, []);
+  // เอาแถบ "คิวตรวจวันนี้" ออกจากหน้านี้แล้ว (user เคาะ 18/08/69) — ตัวเลขชุดเดียวกัน
+  // มีอยู่ที่หน้ารายการงานอยู่แล้ว ซ้ำสองที่ = พื้นที่หายไปเปล่า ๆ บนหน้าที่ยาวอยู่แล้ว
+  // (ตัวคิดเลขยังอยู่ที่ reviewQueue.ts หน้ารายการงานใช้อยู่)
 
   // ดาวน์โหลด INSERT_SURV_REPORT_XML เพื่อ import เข้าพอร์ทัลประกัน
   const [xmlBusy, setXmlBusy] = useState(false);
@@ -92,25 +82,6 @@ export default function CaseDetailPage() {
           </button>
         )}
       </div>
-      {queue && (
-        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5">
-          <span className="text-xs font-semibold tracking-wide text-gray-400">คิวตรวจวันนี้</span>
-          <button type="button" onClick={() => router.push('/inspector')}
-            className="flex items-baseline gap-2 hover:underline">
-            <span className="text-xs text-gray-500">รอตรวจ</span>
-            <span className="text-lg font-semibold text-gray-800">{queue.pending}</span>
-          </button>
-          <button type="button" onClick={() => router.push('/inspector')}
-            className="flex items-baseline gap-2 hover:underline">
-            <span className={`text-xs ${queue.incomplete > 0 ? 'text-amber-700' : 'text-gray-500'}`}>ติดปัญหา</span>
-            <span className={`text-lg font-semibold ${queue.incomplete > 0 ? 'text-amber-700' : 'text-gray-800'}`}>{queue.incomplete}</span>
-          </button>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs text-gray-500">อนุมัติแล้ววันนี้</span>
-            <span className="text-lg font-semibold text-gray-800">{queue.approvedToday}</span>
-          </div>
-        </div>
-      )}
       {nameWarnings.length > 0 && (
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
           <p className="text-sm font-semibold text-amber-900">
