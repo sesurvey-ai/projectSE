@@ -874,59 +874,50 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </label>
             </div>
             {/* Table rows */}
-            <table className="w-full text-sm table-fixed">
-              <ColGroup />
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">บริษัทผู้จัดเรื่อง :</td>
-                  <td className="px-4 py-2 font-medium text-gray-800">{report.survey_company || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500">วันที่ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.acc_date || '-'}</td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">ที่อยู่ :</td>
-                  <td className="px-4 py-2 text-gray-800">{report.survey_company_address || '-'}</td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">เบอร์โทรศัพท์/เบอร์ Fax</td>
-                  <td className="px-4 py-2 text-gray-800">{report.survey_company_phone || '-'}</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">บริษัทประกัน :</td>
-                  <td className="px-4 py-2 overflow-hidden">
-                    <div className="flex items-center gap-1">
-                      <select disabled={d} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        {/* เหลือ 2 บริษัทตามงานที่รับจริง (กติกา user 13/08/69) — เดิมลอกมาทั้ง
-                            dropdown ของ EMCS 7 ตัว · เลือกผิดที = เคสไปโผล่ผิดบริษัทในระบบประกัน
-                            ซึ่ง draft ของ EMCS ลบไม่ได้ · เคสเก่าที่ค่าไม่อยู่ใน 2 ตัวนี้ยังเก็บค่าเดิมไว้
-                            (เช่นแบบเขียนสั้น 'ไทยไพบูลย์ประกันภัย' ที่มีอยู่จริงใน DB) ไม่ให้หายตอนกดบันทึก */}
-                        <option value="0">-- ระบุ --</option>
-                        {INSURER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                        {report.insurance_company && !INSURER_OPTIONS.includes(report.insurance_company) && (
-                          <option value={report.insurance_company}>{report.insurance_company} (ค่าเดิม)</option>
-                        )}
-                      </select>
-                      <select disabled={d} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        <option value="0">-- ระบุ --</option>
-                        <option value="กรุงเทพ">กรุงเทพ</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">เลขเรื่องเซอร์เวย์ :</td>
-                  <td className="px-4 py-2">
-                    <input type="text" disabled={d} name="survey_job_no" defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">เลขที่รับแจ้ง :</td>
-                  <td className="px-4 py-2">
-                    <input type="text" disabled={d} name="claim_ref_no" defaultValue={report.claim_ref_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">เลขที่เคลม :</td>
-                  <td className="px-4 py-2">
-                    <input type="text" disabled={d} name="claim_no" defaultValue={report.claim_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+              <F label="บริษัทประกัน">
+                <div className="flex items-center gap-1">
+                  <select disabled={d} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    {/* เหลือ 2 บริษัทตามงานที่รับจริง (กติกา user 13/08/69) — เดิมลอกมาทั้ง
+                        dropdown ของ EMCS 7 ตัว · เลือกผิดที = เคสไปโผล่ผิดบริษัทในระบบประกัน
+                        ซึ่ง draft ของ EMCS ลบไม่ได้ · เคสเก่าที่ค่าไม่อยู่ใน 2 ตัวนี้ยังเก็บค่าเดิมไว้
+                        (เช่นแบบเขียนสั้น 'ไทยไพบูลย์ประกันภัย' ที่มีอยู่จริงใน DB) ไม่ให้หายตอนกดบันทึก */}
+                    <option value="0">-- ระบุ --</option>
+                    {INSURER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    {report.insurance_company && !INSURER_OPTIONS.includes(report.insurance_company) && (
+                      <option value={report.insurance_company}>{report.insurance_company} (ค่าเดิม)</option>
+                    )}
+                  </select>
+                  <select disabled={d} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <option value="0">-- ระบุ --</option>
+                    <option value="กรุงเทพ">กรุงเทพ</option>
+                  </select>
+                </div>
+              </F>
+              <F label="เลขเรื่องเซอร์เวย์">
+                <input type="text" disabled={d} name="survey_job_no" defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={CTL(d)} />
+              </F>
+              <F label="เลขที่รับแจ้ง">
+                <input type="text" disabled={d} name="claim_ref_no" defaultValue={report.claim_ref_no || ''} className={CTL(d)} />
+              </F>
+              <F label="เลขที่เคลม">
+                <input type="text" disabled={d} name="claim_no" defaultValue={report.claim_no || ''} className={CTL(d)} />
+              </F>
+
+              {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
+              <F label="บริษัทผู้จัดเรื่อง">
+                <p className="text-gray-800 py-1">{report.survey_company || '-'}</p>
+              </F>
+              <F label="เบอร์โทรศัพท์ / Fax">
+                <p className="text-gray-800 py-1">{report.survey_company_phone || '-'}</p>
+              </F>
+              <F label="วันที่">
+                <p className="text-gray-800 py-1">{report.acc_date || '-'}</p>
+              </F>
+              <F label="ที่อยู่">
+                <p className="text-gray-800 py-1 truncate" title={report.survey_company_address || ''}>{report.survey_company_address || '-'}</p>
+              </F>
+            </div>
           </div>
 
           </div>
@@ -936,67 +927,55 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="policy" className="space-y-2">
           <SectionBar title="กรมธรรม์" gap={(gapSec ?? []).includes('policy')} />
           <div>
-          {(
-            <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-              <table className="w-full table-fixed">
-                <ColGroup />
-                <tbody>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">กรมธรรม์(พรบ.) :</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="checkbox" disabled={d} checked={!!report.prb_number} className="w-3.5 h-3.5" /> มี (พรบ.)</label>
-                        <input type="text" disabled={d} name="prb_number" defaultValue={report.prb_number || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500">กรมธรรม์เลขที่ <Req of="policy_no" /> :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_no" defaultValue={report.policy_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อผู้ขับขี่ตามกรมธรรม์ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_by_policy" defaultValue={report.driver_by_policy || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2" colSpan={2}></td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">วันที่เริ่มต้น :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_start" defaultValue={report.policy_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2 text-gray-500">วันที่สิ้นสุด :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="policy_end" defaultValue={report.policy_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">ผู้เอาประกันภัย <Req of="assured_name" /> :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="assured_name" defaultValue={report.assured_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2 text-gray-500">ประกันประเภท <Req of="policy_type" /> :</td>
-                    {/* ช่องพิมพ์ ไม่ใช่ dropdown — EMCS เองก็ไม่มีรายการให้เลือก และของจริง
-                        มีมากกว่าที่ลิสต์ไว้ (ใบจริงเขียน "ประเภท 2+ ซ่อมอู่" = รหัส 52)
-                        ตอนส่งออก policyTypeCode แปลงป้ายไทยที่รู้จัก ที่เหลือส่งตามที่กรอก */}
-                    <td className="px-4 py-2">
-                      <input type="text" disabled={d} name="policy_type" defaultValue={report.policy_type || ''}
-                        placeholder="เช่น ชั้น 1 หรือ 52"
-                        className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">อีเมลผู้เอาประกัน :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="assured_email" defaultValue={report.assured_email || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2 text-gray-500">รหัสภัยยานยนต์ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="risk_code" defaultValue={report.risk_code || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">ค่าเสียหายส่วนแรก :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="deductible" defaultValue={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2" colSpan={2}></td>
-                  </tr>
-                  {/* ชื่ออู่/ศูนย์ซ่อม เป็นข้อความล้วน — ห้ามใส่ใน numericCols (ตัด comma จะกินชื่ออู่ที่มีลูกน้ำ) */}
-                  <tr>
-                    <td className="px-4 py-2 text-gray-500">ซ่อมที่ :</td>
-                    <td className="px-4 py-2">{/* maxLength ตรงกับ VARCHAR(200) — ยาวเกินแล้ว Postgres ไม่ตัดปลายให้ แต่ error จนบันทึกไม่ผ่านทั้งใบ */}<input type="text" disabled={d} maxLength={200} name="repair_shop" defaultValue={report.repair_shop || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2" colSpan={2}></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+              <F label="กรมธรรม์เลขที่" req={<Req of="policy_no" />}>
+                <input type="text" disabled={d} name="policy_no" defaultValue={report.policy_no || ''} className={CTL(d)} />
+              </F>
+              {/* ช่องพิมพ์ ไม่ใช่ dropdown — EMCS เองก็ไม่มีรายการให้เลือก และของจริง
+                  มีมากกว่าที่ลิสต์ไว้ (ใบจริงเขียน "ประเภท 2+ ซ่อมอู่" = รหัส 52)
+                  ตอนส่งออก policyTypeCode แปลงป้ายไทยที่รู้จัก ที่เหลือส่งตามที่กรอก */}
+              <F label="ประกันประเภท" req={<Req of="policy_type" />}>
+                <input type="text" disabled={d} name="policy_type" defaultValue={report.policy_type || ''}
+                  placeholder="เช่น ชั้น 1 หรือ 52" className={CTL(d)} />
+              </F>
+              <F label="วันที่เริ่มต้น">
+                <input type="text" disabled={d} name="policy_start" defaultValue={report.policy_start || ''} className={CTL(d)} />
+              </F>
+              <F label="วันที่สิ้นสุด">
+                <input type="text" disabled={d} name="policy_end" defaultValue={report.policy_end || ''} className={CTL(d)} />
+              </F>
+
+              <F label="ผู้เอาประกันภัย" req={<Req of="assured_name" />}>
+                <input type="text" disabled={d} name="assured_name" defaultValue={report.assured_name || ''} className={CTL(d)} />
+              </F>
+              <F label="ชื่อผู้ขับขี่ตามกรมธรรม์">
+                <input type="text" disabled={d} name="driver_by_policy" defaultValue={report.driver_by_policy || ''} className={CTL(d)} />
+              </F>
+              <F label="อีเมลผู้เอาประกัน">
+                <input type="text" disabled={d} name="assured_email" defaultValue={report.assured_email || ''} className={CTL(d)} />
+              </F>
+              <F label="รหัสภัยยานยนต์">
+                <input type="text" disabled={d} name="risk_code" defaultValue={report.risk_code || ''} className={CTL(d)} />
+              </F>
+
+              <F label="กรมธรรม์ (พรบ.)">
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs">
+                    <input type="checkbox" disabled={d} checked={!!report.prb_number} className="w-3.5 h-3.5" /> มี
+                  </label>
+                  <input type="text" disabled={d} name="prb_number" defaultValue={report.prb_number || ''}
+                    className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                </div>
+              </F>
+              <F label="ค่าเสียหายส่วนแรก">
+                <input type="text" disabled={d} name="deductible" defaultValue={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className={CTL(d)} />
+              </F>
+              {/* ชื่ออู่/ศูนย์ซ่อม เป็นข้อความล้วน — ห้ามใส่ใน numericCols (ตัด comma จะกินชื่ออู่ที่มีลูกน้ำ)
+                  maxLength ตรงกับ VARCHAR(200) — ยาวเกินแล้ว Postgres ไม่ตัดปลายให้ แต่ error จนบันทึกไม่ผ่านทั้งใบ */}
+              <F label="ซ่อมที่" wide>
+                <input type="text" disabled={d} maxLength={200} name="repair_shop" defaultValue={report.repair_shop || ''} className={CTL(d)} />
+              </F>
             </div>
-          )}
 
           </div>
           </div>
