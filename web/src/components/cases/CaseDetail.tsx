@@ -1990,12 +1990,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       min-[1500px]:max-h-[calc(100vh-84px)] min-[1500px]:overflow-y-auto">
         <div className="w-1/2 min-[1500px]:w-full">
 
-          {/* ── รางขวา = การ์ดเดียว ── หัวการ์ด "ค่าใช้จ่าย · ครั้งที่" มาอยู่บนสุดแทนหัวข้อ
-              "การตรวจสอบ" ที่ถอดออก (user เคาะ 18/08/69) · ข้างในเรียง 3 ช่องความเห็น
-              แล้วต่อด้วยตารางยอดเงิน = ทุกอย่างที่ผู้ตรวจเขียนเองอยู่ในกรอบเดียว
-              เรียงตามลำดับที่ user กำหนด: ผลการดำเนินงาน → ความเห็นผู้ตรวจสอบ → ความเห็นเซอร์เวย์
-              รางแคบกว่าเดิมมาก จึงวางเรียงลงล่างแทน 3 คอลัมน์ */}
-          <div data-section="review" className="bg-white rounded-lg shadow overflow-hidden">
+          {/* ── รางขวา = 2 การ์ดซ้อนกัน ──
+              การ์ดบน: หัว "ค่าใช้จ่าย · ครั้งที่" (มาแทนหัวข้อ "การตรวจสอบ" ที่ถอดออก)
+                       + 3 ช่องความเห็น เรียงตามที่ user กำหนด
+                       ผลการดำเนินงาน → ความเห็นผู้ตรวจสอบ → ความเห็นเซอร์เวย์
+              การ์ดล่าง: ตารางยอดเงิน — **แยกการ์ดจริง** เพื่อให้มีเงารอบกรอบของตัวเอง
+                       (เดิมรวมการ์ดเดียวแล้วคั่นด้วยเงาด้านใน user บอกว่าอยากได้เงาของพื้นหลัง)
+              แยกแล้วความกว้างตารางไม่เปลี่ยน — ทั้ง 2 การ์ดเต็มรางเท่ากัน ไม่ได้ซ้อนใน padding กัน
+              รางแคบกว่าครึ่งจอเดิมมาก จึงวางช่องความเห็นเรียงลงล่างแทน 3 คอลัมน์ */}
+          <div data-section="review" className="space-y-4">
+          <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
               <span className="font-semibold">ค่าใช้จ่าย</span>
               <div className="flex items-center gap-2">
@@ -2025,9 +2029,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </div>
           </div>
 
-          {/* ยอดเงินอยู่การ์ดเดียวกับ 3 ช่องความเห็น — คั่นด้วยเงาด้านบน
-              ให้เห็นว่าเป็นคนละเรื่องกัน เส้นบาง ๆ อย่างเดียวแยกไม่ออก (user ทัก 18/08/69) */}
-          <div className="p-4 border-t border-gray-200 shadow-[inset_0_10px_12px_-10px_rgba(0,0,0,0.18)]">
+          </div>{/* จบการ์ดบน */}
+
+          {/* การ์ดยอดเงิน — เงารอบกรอบของตัวเอง (user เคาะ 18/08/69) */}
+          <div className="bg-white rounded-lg shadow p-4">
             <div>
               <table className="w-full text-sm table-fixed">
                 {/* รางขวาแคบกว่าครึ่งจอเดิม — ช่อง "จำนวน" มีอินพุต+หน่วยอยู่ในบรรทัดเดียว
