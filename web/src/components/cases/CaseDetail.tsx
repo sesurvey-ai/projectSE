@@ -857,6 +857,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           ยังอนุมัติไม่ได้ {approvalBlockers.length} ข้อ
         </span>
       )}
+      {/* ตีกลับให้ผู้สำรวจ — วางไว้ซ้ายสุดของแถบ ไกลจาก "อนุมัติ" ที่อยู่ขวาสุด
+          และเป็นปุ่มขอบบาง ๆ ไม่ใช่ปุ่มทึบ เพราะเป็นการโยนงานออกจากมือ ไม่ใช่ทางลัดประจำวัน
+          กดแล้วช่องเหตุผลจะกางออกใต้แถบ (ไม่ได้ตีกลับทันที) */}
+      {!waitingSurveyor && (
+        <button type="button" onClick={() => setSbOpen(true)} disabled={saving}
+          className="px-4 py-1.5 border border-orange-400 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
+          ตีกลับผู้สำรวจ
+        </button>
+      )}
       {/* "บันทึกร่าง" ตามดีไซน์ — ตรงความจริงด้วย: บันทึกแล้วเคสยังไม่ถูกส่งไปไหน */}
       <button type="button" onClick={handleSave} disabled={saving} className="px-5 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition">
         {saving ? 'กำลังบันทึก...' : 'บันทึกร่าง'}
@@ -933,6 +942,28 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             )}
             {actionBar}
           </div>
+
+          {/* ⛔ ช่องเหตุผล **ไม่มี name** — อยู่ใน <form> เดียวกับฟอร์มหลัก มี name เมื่อไหร่
+              จะโดน FormData เก็บไปเป็นค่าของรายงานตอนกดบันทึก */}
+          {sbOpen && !approved && (
+            <div className="w-full border-t border-gray-200 pt-2 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-orange-900 shrink-0">ตีกลับ — ให้ช่างแก้อะไร</span>
+              <input type="text" value={sbReason} onChange={(e) => setSbReason(e.target.value)}
+                placeholder="เช่น ทะเบียนในรูปไม่ตรงกับที่กรอกมา / ขาดรูปความเสียหายฝั่งซ้าย"
+                className="flex-1 min-w-[240px] border border-orange-300 rounded px-2 py-1 text-sm bg-white text-gray-800" />
+              <span className="text-xs text-orange-800 shrink-0">
+                บันทึกให้ก่อน แล้วสถานะกลับเป็น &quot;กำลังสำรวจ&quot;
+              </span>
+              <button type="button" onClick={() => { setSbOpen(false); setSbReason(''); }}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">
+                ยกเลิก
+              </button>
+              <button type="button" onClick={doSendBack} disabled={saving || !sbReason.trim()}
+                className="px-4 py-1.5 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed">
+                {saving ? 'กำลังตีกลับ...' : 'บันทึกแล้วตีกลับ'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -2136,69 +2167,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>{/* จบ grid 2 คอลัมน์ */}
       </fieldset>
 
-      {/* ── การ์ดสถานะท้ายหน้า ──
-          **ไม่มีปุ่มบันทึก/อนุมัติที่นี่แล้ว** (user ทัก 18/08/69 ว่าปุ่มโผล่ 2 จุด)
-          ปุ่มอยู่ที่แถบหัวเคสที่ติดขอบบนจุดเดียว — เลื่อนไปตรงไหนของหน้าก็เห็นและกดได้
-          เอาปุ่มบนออกแทนไม่ได้ เพราะจะกลับไปเป็นปัญหาเดิมคือต้องเลื่อนสุดหน้าเพื่อกดบันทึก
-          ที่นี่เหลือของที่บนไม่มี: **เหตุผล**ว่าทำไมยังกดอนุมัติไม่ได้ (บนบอกแค่จำนวนข้อ)
-          และปุ่ม "ตีกลับให้ผู้สำรวจ" ที่ตั้งใจให้อยู่ไกลมือ ต้องเลื่อนลงมาถึงจะกดได้ */}
-      <div className={`rounded-lg border ${approved ? 'border-green-200 bg-green-50' : approvalBlockers.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white'} p-4 space-y-3`}>
-        {approved ? (
-          <div className="text-sm text-green-800">
-            อนุมัติแล้ว — บอทจะนำเข้าระบบประกันให้ · แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก
-          </div>
-        ) : approvalBlockers.length > 0 ? (
-          <div className="text-sm text-amber-900">
-            <span className="font-semibold">ยังอนุมัติไม่ได้</span> — {approvalBlockers.join(' · ')}
-            <div className="text-xs text-amber-700 mt-0.5">
-              อนุมัติแล้วบอทจะยกเข้าระบบประกันทันที ถ้าช่องบังคับยังว่างจะไปตกที่นั่นแล้วเสียเที่ยว
-            </div>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-600">
-            ช่องบังคับครบแล้ว — กดปุ่ม &quot;อนุมัติ&quot; ที่แถบด้านบนได้เลย
-            {/* ⛔ ไม่เขียนว่า "ส่งเข้าระบบประกัน" เพราะบอทสร้างเป็น draft ให้เท่านั้น
-                คนยังต้องกด "ส่งงานใหม่" เองอีกครั้ง (เฟส 3 ยังไม่เปิด) เขียนเกินจริงคือหลอกผู้ตรวจ */}
-            <span className="text-gray-400"> · บอทจะนำเข้าเป็นร่างในระบบประกัน แล้วยังต้องมีคนกดส่งอีกครั้ง</span>
-          </div>
-        )}
-
-        {/* ตีกลับให้ผู้สำรวจ — คนละเรื่องกับ "บันทึกร่าง/อนุมัติ" จึงไม่เอาไปรวมในแถบปุ่ม
-            เป็นการโยนงานออกจากมือ ต้องตั้งใจกด ไม่ใช่กดพลาดจากแถบที่ติดขอบบนตลอดเวลา
-            ⛔ ช่องเหตุผล **ไม่มี name** — อยู่ใน <form> เดียวกับฟอร์มหลัก มี name เมื่อไหร่
-               จะโดน FormData เก็บไปเป็นค่าของรายงานตอนกดบันทึก */}
-        {!approved && !waitingSurveyor && (sbOpen ? (
-          <div className="rounded border border-orange-300 bg-orange-50 p-3 space-y-2">
-            <label className="block text-sm font-medium text-orange-900">
-              ตีกลับให้ผู้สำรวจ — บอกด้วยว่าให้แก้อะไร
-            </label>
-            <textarea value={sbReason} onChange={(e) => setSbReason(e.target.value)} rows={2}
-              placeholder="เช่น ทะเบียนในรูปไม่ตรงกับที่กรอกมา / ขาดรูปความเสียหายฝั่งซ้าย"
-              className="w-full border border-orange-300 rounded px-2 py-1 text-sm bg-white text-gray-800" />
-            <div className="text-xs text-orange-800">
-              กดแล้วระบบจะ<strong>บันทึกสิ่งที่แก้ไว้ก่อน</strong> แล้วเปลี่ยนสถานะเป็น &quot;กำลังสำรวจ&quot;
-              — งานไปโผล่ในรายการของช่าง (ไม่มีแจ้งเตือนเข้าเครื่อง) · เคสยังอยู่ในหน้าตรวจสอบ
-              หัวหน้าแก้เองได้ด้วย
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => { setSbOpen(false); setSbReason(''); }}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">
-                ยกเลิก
-              </button>
-              <button type="button" onClick={doSendBack} disabled={saving || !sbReason.trim()}
-                className="px-4 py-1.5 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed">
-                {saving ? 'กำลังตีกลับ...' : 'บันทึกแล้วตีกลับ'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button type="button" onClick={() => setSbOpen(true)}
-            className="text-sm text-orange-700 hover:text-orange-900 hover:underline">
-            ตีกลับให้ผู้สำรวจไปแก้ในแอป
-          </button>
-        ))}
-
-      </div>
     </form>
   );
 }
