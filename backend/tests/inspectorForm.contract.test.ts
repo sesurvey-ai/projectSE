@@ -145,5 +145,26 @@ const dupNames = Array.from(
 check('ไม่มีช่องชื่อซ้ำ (ยกเว้นกลุ่ม radio/checkbox ที่ต้องชื่อเดียวกัน)',
       dupNames.length === 0, dupNames.map(([k, n]) => `${k}×${n}`).join(', '));
 
+/**
+ * ── ป้าย "ยังกรอกไม่ครบ" ต้องอ่าน DOM หลัง React วาดเสร็จ ──
+ *
+ * ไฮไลต์แบบมีเงื่อนไข (claimHl / oppNoHl / payHl) เป็นคลาสที่ **React** คุม ไม่ใช่ paint()
+ * ถ้านับป้ายอยู่ใน paint() จะอ่านคลาสของรอบก่อน → ป้ายช้าไป 1 จังหวะ:
+ * ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี" แล้วกรอบแดงหายทันที แต่ป้ายยังค้างว่ายังไม่ครบ
+ * (เจอจริง 18/08/69 ตอน user ทดลองใช้)
+ */
+console.log('\n── หน้าตรวจเคส: ป้าย "ยังกรอกไม่ครบ" ต้องไม่ช้าไป 1 จังหวะ ──');
+const gapBlock = /useEffect\(\(\) => \{[\s\S]*?setGapSec\([\s\S]*?\}, \[([^\]]*)\]\);/.exec(src);
+// เทียบด้วย "ตำแหน่ง" ไม่ใช่ regex คร่อม — `[\s\S]*?` ลากข้ามขอบเขตฟังก์ชันได้
+// (เขียนแบบ regex ครั้งแรกแล้วมันไปเจอ setGapSec ของ effect ตัวถัดไป = ฟ้องผิด)
+const paintEnd = src.indexOf('}, [report, isEditing, saveMsg, pay, payEditable]);');
+check('นับป้ายอยู่นอก effect ของ paint',
+      paintEnd > 0 && src.indexOf('setGapSec(') > paintEnd
+      && src.split('setGapSec(').length - 1 === 1);
+const gapDeps = gapBlock ? gapBlock[1].replace(/\s+/g, ' ') : '';
+check('deps ครบทุกสถานะไฮไลต์ที่ React คุม',
+      ['missing', 'claimHl', 'oppNoHl', 'payHl'].every((k) => gapDeps.includes(k)),
+      gapDeps.slice(0, 80));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

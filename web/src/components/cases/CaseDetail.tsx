@@ -519,12 +519,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       }
 
       setList(setMissing, names);
-      // หมวดไหนยังมีช่องแดงอยู่ — ใช้ตัดสินว่าจะกางหรือยุบหมวดนั้น
-      const gs: string[] = [];
-      form.querySelectorAll('[data-section]').forEach((s) => {
-        if (s.querySelector('.' + RING[0])) gs.push(s.getAttribute('data-section') || '');
-      });
-      setList(setGapSec as (u: (p: string[]) => string[]) => void, gs);
 
       // ── บล็อก "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
       // ค่า radio "คู่กรณีผิด" ตรงกับ rdoAcc_Cause01 ของ EMCS ที่เป็นตัวเปิดเงื่อนไข
@@ -614,6 +608,24 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     };
     // pay โหลดทีหลัง (async) — ไม่ใส่ไว้ ตัวเช็ค "ยังไม่กรอกราคาพนักงาน" จะค้างที่ผลก่อนโหลด
   }, [report, isEditing, saveMsg, pay, payEditable]);
+
+  /**
+   * ป้าย "ยังกรอกไม่ครบ" ที่หัวหมวด — ต้องอ่าน DOM **หลัง** React วาดเสร็จ
+   *
+   * ⛔ อย่าย้ายกลับไปคิดใน paint() — ตอน paint ทำงาน คลาสไฮไลต์ที่ React คุม
+   *    (claimHl / oppNoHl / payHl) ยังเป็นค่าของรอบก่อน ป้ายจะช้าไป 1 จังหวะ:
+   *    ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี" แล้วกรอบแดงหายทันที แต่ป้ายยังค้าง
+   *    ว่ายังกรอกไม่ครบ (เจอจริง 18/08/69) · deps จึงต้องมีสถานะไฮไลต์ครบทุกตัว
+   */
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const gs: string[] = [];
+    form.querySelectorAll('[data-section]').forEach((sec) => {
+      if (sec.querySelector('.' + RING[0])) gs.push(sec.getAttribute('data-section') || '');
+    });
+    setGapSec((prev) => (JSON.stringify(prev) === JSON.stringify(gs) ? prev : gs));
+  }, [missing, claimHl, oppNoHl, payHl, payOver, timeErrs, moneyMissing, opponents, injured, property, damage]);
 
   useEffect(() => {
     let alive = true;
