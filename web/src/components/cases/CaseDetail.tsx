@@ -1281,91 +1281,77 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
               <span className="font-bold">::: รายละเอียดอุบัติเหตุ</span>
             </div>
-            <table className="w-full table-fixed">
-              <ColGroup />
-              <tbody>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  {/* สถานที่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 (จังหวัด/อำเภอ = ตัวที่บอทใช้หาเรทด้วย) */}
-                  <td className="px-4 py-2 text-gray-500">สถานที่เกิดเหตุ <Req of="acc_place,acc_province,acc_district" /> :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2" colSpan={2}>
-                    <div className="flex items-center gap-1">
-                      <select disabled={d} name="acc_province" value={accProv} onChange={e => { setAccProv(e.target.value); setAccDist('-- เขต --'); }} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                      <select disabled={d} name="acc_district" value={accDist} onChange={e => setAccDist(e.target.value)} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        {districtOptions(accProv, accProv === report.acc_province ? report.acc_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
-                      </select>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">ลักษณะการเกิดเหตุ <Req of="acc_cause" /> :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {ACC_CAUSE_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ลักษณะความเสียหาย <Req of="acc_damage_type" /> :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="acc_damage_type" defaultValue={report.acc_damage_type || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {ACC_DAMAGE_TYPE_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  {/* ตรงกับช่อง "รายละเอียดการเกิดเหตุ" แท็บข้อมูลทั่วไปของ EMCS (ACC_DETAIL) */}
-                  <td className="px-4 py-2 text-gray-500 align-top">รายละเอียดการเกิดเหตุ <Req of="acc_detail" /> :</td>
-                  <td className="px-4 py-2" colSpan={3}>
-                    <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm min-h-[80px]`} rows={4} />
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">ฝ่ายประมาท <Req of="acc_fault" /> :</td>
-                  <td className="px-4 py-2" colSpan={3}>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      {/* ⚠️ `value` ต้องเป็น **ค่าสั้นชุดเดียวกับแอปมือถือ** (_faultDropdown ที่
-                          survey_form_screen.dart) — ไม่ใช่ป้ายเต็มที่โชว์
-                          เดิมเว็บเขียนป้ายเต็มลง DB ทับค่าของแอป แล้วตรรกะในแอปที่เทียบตรง ๆ
-                          (`_accFault == 'คู่กรณีผิด'`) เลิกทำงาน → แอปไม่บังคับ "คู่กรณีคันที่ +
-                          การเรียกร้อง ≥1" ทั้งที่ EMCS ยังบังคับ · XML แมปได้ทั้ง 2 สำเนียงอยู่แล้ว
-                          จึงไม่กระทบไฟล์ที่ส่งออก แต่ต้องเลิกทำให้ DB มีหลายสำเนียง */}
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายผิด' || report.acc_fault === 'รถประกันฝ่ายผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายถูกและผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด' || report.acc_fault === 'ถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="คู่กรณีผิด" disabled={d} defaultChecked={report.acc_fault === 'คู่กรณีผิด' || report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
-                      <span className="text-gray-500">คู่กรณีคันที่{' '}
-                        <span className={`ml-0.5 ${oppNoHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
-                          title={oppNoHl === 'red'
-                            ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับช่องนี้ (และต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)'
-                            : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด'}>*</span></span>
-                      <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={report.acc_fault_opponent_no ?? ''}
-                        className={`w-[40px] border rounded px-2 py-1 text-gray-800 text-sm text-center ${
-                          oppNoHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS[oppNoHl]}`} />
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รอสรุปผลคดี" disabled={d} defaultChecked={report.acc_fault === 'รอสรุปผลคดี'} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ยกเลิกการเคลม" disabled={d} defaultChecked={report.acc_fault === 'ยกเลิกการเคลม'} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ไปถึงแล้วไม่พบ" disabled={d} defaultChecked={report.acc_fault === 'ไปถึงแล้วไม่พบ' || report.acc_fault === 'ไปถึง แล้วไม่พบ'} className="w-3.5 h-3.5" /> ไปถึงแล้วไม่พบ</label>
-                    </div>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">ผู้แจ้ง :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_reporter" defaultValue={report.acc_reporter || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">ผู้สำรวจภัย <Req of="acc_surveyor" /> :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_surveyor" defaultValue={report.acc_surveyor || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      {/* ถอด <select> "สาขาผู้สำรวจ" ออก — มีตัวเลือกเดียวคือ placeholder
-                          จึงเขียนค่าว่างทับทุกครั้งที่บันทึก · แอปมือถือถอด UI นี้ไปแล้ว
-                          และ XML ใช้ SURVEYBRID จาก env ไม่ได้อ่านคอลัมน์นี้เลย */}
-                      <span className="text-gray-500 shrink-0">โทรศัพท์ <Req of="acc_surveyor_phone" /> :</span>
-                      <input type="text" disabled={d} name="acc_surveyor_phone" defaultValue={report.acc_surveyor_phone || ''} className={`w-[80px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                    </div>
-                  </td>
-                </tr>
-                {/* 4 จังหวะเวลาที่เคยอยู่ตรงนี้ ย้ายขึ้นไปการ์ด "ลำดับเวลา" ด้านบนแล้ว */}
-              </tbody>
-            </table>
+            <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+              {/* สถานที่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 (จังหวัด/อำเภอ = ตัวที่บอทใช้หาเรทด้วย) */}
+              <F label="สถานที่เกิดเหตุ" req={<Req of="acc_place,acc_province,acc_district" />} span={2}>
+                <input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={CTL(d)} />
+              </F>
+              <F label="จังหวัด">
+                <select disabled={d} name="acc_province" value={accProv} onChange={e => { setAccProv(e.target.value); setAccDist('-- เขต --'); }} className={CTL(d)}>
+                  {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </F>
+              <F label="เขต / อำเภอ">
+                <select disabled={d} name="acc_district" value={accDist} onChange={e => setAccDist(e.target.value)} className={CTL(d)}>
+                  {districtOptions(accProv, accProv === report.acc_province ? report.acc_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                </select>
+              </F>
+
+              <F label="ลักษณะการเกิดเหตุ" req={<Req of="acc_cause" />}>
+                <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={CTL(d)}>
+                  {ACC_CAUSE_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </F>
+              <F label="ลักษณะความเสียหาย" req={<Req of="acc_damage_type" />}>
+                <select disabled={d} name="acc_damage_type" defaultValue={report.acc_damage_type || '-- ระบุ --'} className={CTL(d)}>
+                  {ACC_DAMAGE_TYPE_OPTIONS.map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                </select>
+              </F>
+              <F label="ผู้แจ้ง">
+                <input type="text" disabled={d} name="acc_reporter" defaultValue={report.acc_reporter || ''} className={CTL(d)} />
+              </F>
+              <div className="min-w-0" />
+
+              {/* ถอด <select> "สาขาผู้สำรวจ" ออก — มีตัวเลือกเดียวคือ placeholder จึงเขียนค่าว่าง
+                  ทับทุกครั้งที่บันทึก · แอปมือถือถอด UI นี้ไปแล้ว และ XML ใช้ SURVEYBRID จาก env */}
+              <F label="ผู้สำรวจภัย" req={<Req of="acc_surveyor" />} span={2}>
+                <input type="text" disabled={d} name="acc_surveyor" defaultValue={report.acc_surveyor || ''} className={CTL(d)} />
+              </F>
+              <F label="โทรศัพท์ผู้สำรวจ" req={<Req of="acc_surveyor_phone" />}>
+                <input type="text" disabled={d} name="acc_surveyor_phone" defaultValue={report.acc_surveyor_phone || ''} className={CTL(d)} />
+              </F>
+              <div className="min-w-0" />
+
+              <F label="ฝ่ายประมาท" req={<Req of="acc_fault" />} span={4}>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {/* ⚠️ `value` ต้องเป็น **ค่าสั้นชุดเดียวกับแอปมือถือ** (_faultDropdown ที่
+                      survey_form_screen.dart) — ไม่ใช่ป้ายเต็มที่โชว์
+                      เดิมเว็บเขียนป้ายเต็มลง DB ทับค่าของแอป แล้วตรรกะในแอปที่เทียบตรง ๆ
+                      (`_accFault == 'คู่กรณีผิด'`) เลิกทำงาน → แอปไม่บังคับ "คู่กรณีคันที่ +
+                      การเรียกร้อง ≥1" ทั้งที่ EMCS ยังบังคับ */}
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายผิด' || report.acc_fault === 'รถประกันฝ่ายผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายผิด</label>
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายถูกและผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด' || report.acc_fault === 'ถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="คู่กรณีผิด" disabled={d} defaultChecked={report.acc_fault === 'คู่กรณีผิด' || report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
+                  <span className="text-gray-500">คู่กรณีคันที่{' '}
+                    <span className={`ml-0.5 ${oppNoHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
+                      title={oppNoHl === 'red'
+                        ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับช่องนี้ (และต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)'
+                        : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด'}>*</span></span>
+                  <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={report.acc_fault_opponent_no ?? ''}
+                    className={`w-[40px] border rounded px-2 py-1 text-gray-800 text-sm text-center ${
+                      oppNoHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS[oppNoHl]}`} />
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รอสรุปผลคดี" disabled={d} defaultChecked={report.acc_fault === 'รอสรุปผลคดี'} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ยกเลิกการเคลม" disabled={d} defaultChecked={report.acc_fault === 'ยกเลิกการเคลม'} className="w-3.5 h-3.5" /> ยกเลิกการเคลม</label>
+                  <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ไปถึงแล้วไม่พบ" disabled={d} defaultChecked={report.acc_fault === 'ไปถึงแล้วไม่พบ' || report.acc_fault === 'ไปถึง แล้วไม่พบ'} className="w-3.5 h-3.5" /> ไปถึงแล้วไม่พบ</label>
+                </div>
+              </F>
+
+              {/* ตรงกับช่อง "รายละเอียดการเกิดเหตุ" แท็บข้อมูลทั่วไปของ EMCS (ACC_DETAIL) */}
+              <F label="รายละเอียดการเกิดเหตุ" req={<Req of="acc_detail" />} span={4}>
+                <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`${CTL(d)} min-h-[80px]`} rows={4} />
+              </F>
+            </div>
           </div>
 
           </div>
@@ -1375,48 +1361,41 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="claim" className="space-y-2">
           <SectionBar title="การเรียกร้องค่าเสียหายจากคู่กรณี" gap={(gapSec ?? []).includes('claim')} />
           <div>
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full table-fixed">
-              <ColGroup />
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">การเรียกร้องค่าเสียหายจากคู่กรณี{' '}
-                    <span
-                      className={`ml-0.5 ${claimHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
-                      title={claimHl === 'red'
-                        ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับให้ติ๊กอย่างน้อย 1 ข้อ เว้นว่างแล้วบันทึกไม่ผ่าน'
-                        : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด — ผลคดีอื่นไม่บังคับ'}
-                    >*</span> :</td>
-                  <td className="px-4 py-2 text-gray-800" colSpan={3}>
-                    {/* กรอบ+พื้นหลังคุมทั้งกลุ่ม ไม่ใช่รายช่อง — checkbox เดี่ยว ๆ เล็กเกินกว่าจะเห็นสี
-                        border ใสตอนปกติ เพื่อไม่ให้ layout ขยับตอนเปลี่ยนสี */}
-                    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded px-2 py-1 border ${
-                      claimHl === 'none' ? 'border-transparent' : HL_CLS[claimHl]}`}>
-                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="คัดประจำวัน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับหลักฐานจากคู่กรณีผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บันทึกยอมรับผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บัตรติดต่อ" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
-                      <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
-                      {/* ติ๊ก "รับเงินจำนวน" เมื่อไหร่ ช่องเงินคู่นี้บังคับทันที (กติกา EMCS) */}
-                      <input type="text" name="acc_claim_amount" disabled={d} defaultValue={report.acc_claim_amount != null ? Number(report.acc_claim_amount).toFixed(2) : ''}
-                        className={`w-[100px] ml-1 border rounded px-2 py-1 text-gray-800 text-sm ${
-                          payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
-                      <span className="text-gray-500">บาท</span>
-                      <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
-                      <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={report.acc_claim_total_amount != null ? Number(report.acc_claim_total_amount).toFixed(2) : ''}
-                        className={`w-[100px] border rounded px-2 py-1 text-gray-800 text-sm ${
-                          payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
-                      <span className="text-gray-500">บาท</span>
-                      {payOver && (
-                        <span className="w-full text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
-                          ⚠ &quot;รับเงินจำนวน&quot; มากกว่า &quot;จากจำนวนเงินเรียกร้องทั้งหมด&quot; — ระบบประกันจะไม่ยอมให้บันทึก
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="bg-white rounded-lg shadow p-4 text-sm">
+            <label className="block text-xs text-gray-500 mb-1">
+              การเรียกร้องค่าเสียหายจากคู่กรณี{' '}
+              <span
+                className={`ml-0.5 ${claimHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
+                title={claimHl === 'red'
+                  ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับให้ติ๊กอย่างน้อย 1 ข้อ เว้นว่างแล้วบันทึกไม่ผ่าน'
+                  : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด — ผลคดีอื่นไม่บังคับ'}
+              >*</span>
+            </label>
+            {/* กรอบ+พื้นหลังคุมทั้งกลุ่ม ไม่ใช่รายช่อง — checkbox เดี่ยว ๆ เล็กเกินกว่าจะเห็นสี
+                border ใสตอนปกติ เพื่อไม่ให้ layout ขยับตอนเปลี่ยนสี */}
+            <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded px-2 py-1 border ${
+              claimHl === 'none' ? 'border-transparent' : HL_CLS[claimHl]}`}>
+              <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="คัดประจำวัน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('คัดประจำวัน')} className="w-3.5 h-3.5" /> คัดประจำวัน</label>
+              <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับหลักฐานจากคู่กรณีผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
+              <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บันทึกยอมรับผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
+              <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บัตรติดต่อ" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
+              <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
+              {/* ติ๊ก "รับเงินจำนวน" เมื่อไหร่ ช่องเงินคู่นี้บังคับทันที (กติกา EMCS) */}
+              <input type="text" name="acc_claim_amount" disabled={d} defaultValue={report.acc_claim_amount != null ? Number(report.acc_claim_amount).toFixed(2) : ''}
+                className={`w-[100px] ml-1 border rounded px-2 py-1 text-gray-800 text-sm ${
+                  payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
+              <span className="text-gray-500">บาท</span>
+              <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
+              <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={report.acc_claim_total_amount != null ? Number(report.acc_claim_total_amount).toFixed(2) : ''}
+                className={`w-[100px] border rounded px-2 py-1 text-gray-800 text-sm ${
+                  payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
+              <span className="text-gray-500">บาท</span>
+              {payOver && (
+                <span className="w-full text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                  ⚠ &quot;รับเงินจำนวน&quot; มากกว่า &quot;จากจำนวนเงินเรียกร้องทั้งหมด&quot; — ระบบประกันจะไม่ยอมให้บันทึก
+                </span>
+              )}
+            </div>
           </div>
 
           </div>
