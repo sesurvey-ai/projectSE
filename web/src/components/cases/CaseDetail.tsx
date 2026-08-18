@@ -1930,48 +1930,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         </div>
       </div>
 
-      {/* การตรวจสอบ — กรอกได้เลยไม่ต้องกดแก้ไข */}
-      <div data-section="review" className="space-y-2">
-      <SectionBar title="การตรวจสอบ" gap={(gapSec ?? []).includes('review')} />
-      <div>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-4">
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
-              <textarea name="survey_result" defaultValue={report?.survey_result || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
-            </div>
-            {/* "ความเห็นของผู้ตรวจสอบ" อยู่ตรงกลางระหว่างผลการดำเนินงานกับความเห็นเซอร์เวย์
-                (user เคาะ 18/08/69) — เคยย้ายไปการ์ดตัดสินใจท้ายหน้าตามดีไซน์ แล้วย้ายกลับ
-                ⛔ มีที่เดียวเท่านั้น: 2 ช่องชื่อเดียวกันเมื่อไหร่ ตัวบันทึกหยิบไปแค่ช่องเดียว
-                   แล้วอีกช่องหายเงียบ ๆ (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-              <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
-                placeholder="บันทึกสิ่งที่ตรวจพบ / สิ่งที่แก้ให้ / เหตุผลที่อนุมัติ"
-                className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
-              <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
-            </div>
-          </div>
-
-          {/* หมายเหตุของผู้สำรวจ — แอปเก็บมาให้ตั้งแต่หน้างาน แต่หน้านี้ไม่เคยแสดง
-              ผู้ตรวจจึงไม่เห็นสิ่งที่ช่างจดไว้เลย · **คนละช่องกับ 3 ช่องข้างบน**
-              ช่องนี้เป็นโน้ตภายใน ไม่ถูกส่งเข้าระบบประกัน (จงใจ) */}
-          <div>
-            <label className="block text-sm text-gray-500 mb-1">
-              หมายเหตุเพิ่มเติม <span className="text-xs text-gray-400">(ผู้สำรวจจดจากหน้างาน · ไม่ส่งเข้าระบบประกัน)</span>
-            </label>
-            <textarea name="notes" defaultValue={report?.notes || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" rows={2} />
-          </div>
-        </div>
-      </div>
-
-      </div>
-      </div>
-
       </div>{/* จบคอลัมน์ซ้าย */}
 
       {/* ── ค่าใช้จ่าย (คอลัมน์ขวาบนจอกว้าง) ──
@@ -1981,7 +1939,40 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
              ช่องที่ไม่ได้ถูกส่งไปด้วยจะกลายเป็น NULL คือยอดที่เคยกรอกไว้หายทั้งแถว */}
       <div className="flex gap-6 min-[1500px]:block min-[1500px]:sticky min-[1500px]:top-[68px]
                       min-[1500px]:max-h-[calc(100vh-84px)] min-[1500px]:overflow-y-auto">
-        <div className="w-1/2 min-[1500px]:w-full">
+        <div className="w-1/2 min-[1500px]:w-full space-y-6">
+
+          {/* ── การตรวจสอบ ── ย้ายมาไว้เหนือค่าใช้จ่ายในรางขวา (user เคาะ 18/08/69)
+              3 ช่องนี้กับยอดเงินคือ "สิ่งที่ผู้ตรวจเขียนเอง" ทั้งหมดของหน้านี้ อยู่ด้วยกันแล้ว
+              เลื่อนอ่านข้อมูลเคสทางซ้ายไปพลางเขียนไปพลางได้ (รางขวาลอยตามอยู่แล้ว)
+              เรียงตามลำดับที่ user กำหนด: ผลการดำเนินงาน → ความเห็นผู้ตรวจสอบ → ความเห็นเซอร์เวย์
+              รางแคบกว่าเดิมมาก จึงวางเรียงลงล่างแทน 3 คอลัมน์ */}
+          <div data-section="review" className="space-y-2">
+            <SectionBar title="การตรวจสอบ" gap={(gapSec ?? []).includes('review')} />
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-4 space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
+                  <textarea name="survey_result" defaultValue={report?.survey_result || ''}
+                    className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+                </div>
+                {/* ⛔ "ความเห็นของผู้ตรวจสอบ" มีที่เดียวเท่านั้น — 2 ช่องชื่อเดียวกันเมื่อไหร่
+                    ตัวบันทึกหยิบไปแค่ช่องเดียว แล้วอีกช่องหายเงียบ ๆ
+                    (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
+                  <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
+                    placeholder="บันทึกสิ่งที่ตรวจพบ / สิ่งที่แก้ให้ / เหตุผลที่อนุมัติ"
+                    className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
+                  <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''}
+                    className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
               <span className="font-semibold">ค่าใช้จ่าย</span>
@@ -2017,44 +2008,44 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าบริการ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="service_fee_count" defaultValue={ex.service_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={String(pay?.saved?.service_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="service_fee_price" defaultValue={ex.service_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(pay?.saved?.service_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="service_fee_price" defaultValue={zeroBlank(ex.service_fee_price)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="travel_fee_count" defaultValue={ex.travel_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={String(pay?.saved?.travel_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="travel_fee_price" defaultValue={ex.travel_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(pay?.saved?.travel_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="travel_fee_price" defaultValue={zeroBlank(ex.travel_fee_price)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="photo_fee_count" defaultValue={ex.photo_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">รูป</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_photo_fee" defaultValue={String(pay?.saved?.photo_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="photo_fee_price" defaultValue={ex.photo_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_photo_fee" defaultValue={zeroBlank(pay?.saved?.photo_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="photo_fee_price" defaultValue={zeroBlank(ex.photo_fee_price)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={String(pay?.saved?.phone_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="phone_fee" defaultValue={ex.phone_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={zeroBlank(pay?.saved?.phone_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="phone_fee" defaultValue={zeroBlank(ex.phone_fee)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={String(pay?.saved?.bail_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="bail_fee" defaultValue={ex.bail_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(pay?.saved?.bail_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="bail_fee" defaultValue={zeroBlank(ex.bail_fee)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
                         ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue={zeroBlank(ex.claim_fee_percent)} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">%</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={String(pay?.saved?.claim_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="claim_fee_price" defaultValue={ex.claim_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(pay?.saved?.claim_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="claim_fee_price" defaultValue={zeroBlank(ex.claim_fee_price)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าคัดประจำวัน</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={String(pay?.saved?.daily_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="daily_record_fee" defaultValue={ex.daily_record_fee || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={zeroBlank(pay?.saved?.daily_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="daily_record_fee" defaultValue={zeroBlank(ex.daily_record_fee)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="other_fee_detail" defaultValue={ex.other_fee_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={String(pay?.saved?.other_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="other_fee_price" defaultValue={ex.other_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={zeroBlank(pay?.saved?.other_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="other_fee_price" defaultValue={zeroBlank(ex.other_fee_price)} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   {/* หักเงิน — ระบบเดิมไม่มีแถวนี้ ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" มาใช้
                       เพราะแทรกช่องใหม่ลงฟอร์มระบบเก่าไม่ได้ · เว็บนี้เราคุมเอง จึงแยกให้ถูกความหมาย */}
@@ -2074,7 +2065,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </td>
                     {/* สลับให้ตรงกับแถวอื่น: คอลัมน์ 3 = ฝั่งพนักงาน · คอลัมน์ 4 = ฝั่งเรียกเก็บประกัน */}
                     <td className="px-3 min-[1500px]:px-2 py-2">
-                      <input type="text" disabled={dDeduct} name="pay_deduct_fee" defaultValue={String(pay?.saved?.deduct_fee ?? '')}
+                      <input type="text" disabled={dDeduct} name="pay_deduct_fee" defaultValue={zeroBlank(pay?.saved?.deduct_fee)}
                         className={`w-full border rounded px-2 py-1 text-sm text-right ${dDeduct ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`} />
                     </td>
                     <td className="px-3 min-[1500px]:px-2 py-2">
