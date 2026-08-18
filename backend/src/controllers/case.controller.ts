@@ -124,6 +124,12 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  /** แอดมินแก้ตัวระบุตัวเคส (บริษัทประกัน/สาขา/เลขเซอร์เวย์/เลขรับแจ้ง/เลขเคลม) */
+  updateIdentity: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    sendSuccess(res, await caseService.updateCaseIdentity(caseId, req.body));
+  }),
+
   /** ค่าตอบแทนผู้สำรวจของเคสนี้ — ยอดที่บันทึกไว้ + ยอดที่ระบบแนะนำจากตารางเรท */
   getPay: asyncHandler(async (req: Request, res: Response) => {
     sendSuccess(res, await payService.getCasePay(parseInt(req.params.id as string)));

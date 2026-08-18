@@ -1177,6 +1177,42 @@ export const caseService = {
     }
   },
 
+  /**
+   * แอดมินแก้ "ตัวระบุตัวเคส" — บริษัทประกัน/สาขา/เลขเซอร์เวย์/เลขรับแจ้ง/เลขเคลม
+   *
+   * 5 ช่องนี้ถูกล็อกไม่ให้แก้จากหน้าตรวจ (user เคาะ 18/08/69) เพราะแก้ผิดแล้วเคสไปผูก
+   * กับงานผิดใบ — แต่ถ้าเลขผิดมาตั้งแต่ต้นทางก็ต้องมีทางแก้ จึงเปิดทางนี้ให้แอดมินเท่านั้น
+   *
+   * ⛔ ต้องปลดล็อกก่อนถ้าเคสอนุมัติแล้ว — ใช้ประตูเดียวกับการแก้ข้อมูลอื่น
+   *    (อนุมัติแล้วบอทหยิบไปเข้า EMCS แล้ว แก้เลขที่นี่ไม่ตามไปแก้ให้ที่นั่น)
+   */
+  async updateCaseIdentity(caseId: number, data: Record<string, unknown>) {
+    await assertNotApproved(caseId);
+
+    const r = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
+    if (r.rows.length === 0) throw new NotFoundError('Report not found');
+
+    // เลขเซอร์เวย์ห้ามซ้ำข้ามเคส (เลขอ้างอิงเบิกเงิน) — เลขเคลมซ้ำได้โดยตั้งใจ
+    if (data.survey_job_no !== undefined) {
+      await assertSurveyJobNoUnique([data.survey_job_no], caseId);
+    }
+
+    const ALLOWED = ['insurance_company', 'insurance_branch', 'survey_job_no', 'claim_ref_no', 'claim_no'];
+    const sets: string[] = [];
+    const vals: unknown[] = [];
+    for (const k of ALLOWED) {
+      if (data[k] === undefined) continue;
+      sets.push(`${k} = $${sets.length + 1}`);
+      vals.push(String(data[k] ?? '').trim() || null);
+    }
+    if (sets.length === 0) throw new AppError(400, 'ไม่มีช่องที่จะแก้');
+
+    vals.push(caseId);
+    const out = await db.query(
+      `UPDATE survey_reports SET ${sets.join(', ')} WHERE case_id = $${vals.length} RETURNING *`, vals);
+    return out.rows[0];
+  },
+
   async updateReport(caseId: number, data: Record<string, unknown>) {
     // ⛔ อนุมัติแล้ว = ล็อก — แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก (POST /api/cases/:id/unlock)
     // ถ้าปล่อยให้แก้หลังอนุมัติ ลายเซ็นผู้อนุมัติจะไม่ได้รับรองข้อมูลชุดที่บอทหยิบไปจริง

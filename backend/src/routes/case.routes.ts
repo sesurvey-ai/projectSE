@@ -260,6 +260,9 @@ router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSc
 // ปลดล็อกเคสที่อนุมัติแล้ว — **แอดมินเท่านั้น** ผู้ตรวจปลดเองไม่ได้ ไม่งั้นการล็อกก็ไม่มีความหมาย
 router.post('/:id/unlock', auth, requireRole('admin'), reviewController.unlock);
 router.put('/:id/report', auth, requireRole('checker'), caseController.updateReport);
+// แก้ตัวระบุตัวเคส — **แอดมินเท่านั้น** ผู้ตรวจแก้ไม่ได้ (หน้าเว็บก็ล็อกไว้อีกชั้น)
+// เลขพวกนี้ผูกเคสกับงานจริง แก้ผิดแล้วเคสไปโผล่ผิดใบ/ผิดบริษัท
+router.patch('/:id/identity', auth, requireRole('admin'), caseController.updateIdentity);
 // ผู้ตรวจสอบเพิ่มรูปเองจากหน้าเคส — **เพิ่มอย่างเดียว** (คนละ endpoint กับ upload-folder
 // ของแอปมือถือที่เป็น "ล้างแล้วเขียนใหม่" ตามโมเดล sync — ใช้ผิดตัวคือรูปทั้งเคสหาย)
 router.post('/:id/photos', auth, requireRole('checker', 'admin'),

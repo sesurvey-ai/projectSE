@@ -166,5 +166,18 @@ check('deps ครบทุกสถานะไฮไลต์ที่ React �
       ['missing', 'claimHl', 'oppNoHl', 'payHl'].every((k) => gapDeps.includes(k)),
       gapDeps.slice(0, 80));
 
+/**
+ * ── แผงแก้ของแอดมินต้องไม่มี name ──
+ *
+ * แผงนี้อยู่ใน <form> เดียวกับฟอร์มหลัก ถ้าช่องในแผงมี name จะโดน `new FormData(form)`
+ * เก็บไปด้วยตอนกดบันทึก → เขียนทับตัวระบุตัวเคสที่ตั้งใจล็อกไว้ (และซ้ำชื่อกับที่อื่นด้วย)
+ */
+console.log('\n── หน้าตรวจเคส: แผงแก้ของแอดมินต้องไม่หลุดเข้าฟอร์มหลัก ──');
+const panel = /\{keyEdit && \(([\s\S]*?)\n              \)\}/.exec(src);
+check('มีแผงแก้ของแอดมิน', Boolean(panel));
+check('ช่องในแผงไม่มี name เลย', Boolean(panel) && !/\bname=/.test(panel![1]));
+check('ปุ่มเปิดแผงขึ้นเฉพาะแอดมิน และเฉพาะตอนยังไม่อนุมัติ',
+      /isAdmin && !approved && !keyEdit \? \(/.test(src));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

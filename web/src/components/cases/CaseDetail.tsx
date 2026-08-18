@@ -224,7 +224,7 @@ function F({ label, req, span, children }: {
   );
 }
 
-function SectionBar({ title, gap }: { title: string; gap: boolean }) {
+function SectionBar({ title, gap, right }: { title: string; gap: boolean; right?: React.ReactNode }) {
   return (
     <div className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 ${
       gap ? 'border-red-200 bg-red-50/50' : 'border-gray-200 bg-gray-50'}`}>
@@ -234,6 +234,7 @@ function SectionBar({ title, gap }: { title: string; gap: boolean }) {
           ยังกรอกไม่ครบ
         </span>
       )}
+      {right && <div className="ml-auto">{right}</div>}
     </div>
   );
 }
@@ -405,6 +406,35 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * ยอด**รายรับ** 16 ช่องยังล็อกเหมือนเดิม — ยอดพวกนั้นมีเจ้าของอยู่ที่ se-billing แล้ว
    */
   const dDeduct = false;
+  /**
+   * แอดมินแก้ตัวระบุตัวเคส — ทางออกเดียวเมื่อเลขผิดมาตั้งแต่ต้นทาง (user เคาะ 18/08/69)
+   * ⛔ ช่องในแผงนี้ **ห้ามมี name** — มันอยู่ใน <form> เดียวกับฟอร์มหลัก
+   *    ถ้ามี name จะถูก FormData เก็บไปด้วยตอนกดบันทึก แล้วทับค่าที่ตั้งใจล็อกไว้
+   */
+  const [keyEdit, setKeyEdit] = useState<Record<string, string> | null>(null);
+  const [keyMsg, setKeyMsg] = useState('');
+  const openKeyEdit = () => {
+    setKeyMsg('');
+    setKeyEdit({
+      insurance_company: String(report?.insurance_company ?? ''),
+      insurance_branch: String(report?.insurance_branch ?? 'กรุงเทพ'),
+      survey_job_no: String(report?.survey_job_no ?? ''),
+      claim_ref_no: String(report?.claim_ref_no ?? ''),
+      claim_no: String(report?.claim_no ?? ''),
+    });
+  };
+  const saveKeyEdit = async () => {
+    if (!keyEdit) return;
+    setKeyMsg('');
+    try {
+      const r = await api.patch(`/api/cases/${caseData.id}/identity`, keyEdit);
+      if (r.data?.success) { setKeyEdit(null); onReviewSubmitted(); }
+      else setKeyMsg(r.data?.message || 'แก้ไม่สำเร็จ');
+    } catch (e) {
+      const m = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setKeyMsg(m || 'แก้ไม่สำเร็จ');
+    }
+  };
   /**
    * ตัวระบุตัวเคส — **แสดงอย่างเดียว ไม่มีช่องกรอกเลย** (user เคาะ 18/08/69)
    *   บริษัทประกัน · สาขา · เลขเรื่องเซอร์เวย์ · เลขที่รับแจ้ง · เลขที่เคลม
@@ -901,7 +931,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div data-section="biz" className="space-y-2">
-          <SectionBar title="บริษัท · เคลม" gap={(gapSec ?? []).includes('biz')} />
+          <SectionBar title="บริษัท · เคลม" gap={(gapSec ?? []).includes('biz')}
+            right={isAdmin && !approved && !keyEdit ? (
+              <button type="button" onClick={openKeyEdit}
+                className="text-xs text-blue-700 hover:text-blue-900 hover:underline">
+                แก้เลขระบุเคส (แอดมิน)
+              </button>
+            ) : undefined} />
           <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
@@ -955,6 +991,59 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
 
               {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
+              {/* แผงแก้ของแอดมิน — โผล่เฉพาะตอนกดปุ่มบนหัวหมวด
+                  ⛔ ช่องในนี้ไม่มี name โดยตั้งใจ (อยู่ใน <form> เดียวกับฟอร์มหลัก
+                     ถ้ามี name จะโดน FormData เก็บไปทับค่าที่ล็อกไว้ตอนกดบันทึก) */}
+              {keyEdit && (
+                <div className="col-span-2 md:col-span-4 rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-2">
+                  <p className="text-xs text-amber-900">
+                    แก้เลขระบุเคส — ใช้เฉพาะตอนเลขผิดมาตั้งแต่ต้นทาง
+                    <span className="text-amber-700"> · เลขเซอร์เวย์ห้ามซ้ำกับเคสอื่น (ใช้อ้างอิงเบิกเงิน)</span>
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                    <F label="บริษัทประกัน">
+                      <select value={keyEdit.insurance_company} className={CTL(false)}
+                        onChange={(e) => setKeyEdit({ ...keyEdit, insurance_company: e.target.value })}>
+                        <option value="">-- ระบุ --</option>
+                        {INSURER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        {keyEdit.insurance_company && !INSURER_OPTIONS.includes(keyEdit.insurance_company) && (
+                          <option value={keyEdit.insurance_company}>{keyEdit.insurance_company} (ค่าเดิม)</option>
+                        )}
+                      </select>
+                    </F>
+                    <F label="สาขา">
+                      <select value={keyEdit.insurance_branch} className={CTL(false)}
+                        onChange={(e) => setKeyEdit({ ...keyEdit, insurance_branch: e.target.value })}>
+                        <option value="กรุงเทพ">กรุงเทพ</option>
+                      </select>
+                    </F>
+                    <F label="เลขเรื่องเซอร์เวย์">
+                      <input type="text" value={keyEdit.survey_job_no} className={CTL(false)}
+                        onChange={(e) => setKeyEdit({ ...keyEdit, survey_job_no: e.target.value })} />
+                    </F>
+                    <F label="เลขที่รับแจ้ง">
+                      <input type="text" value={keyEdit.claim_ref_no} className={CTL(false)}
+                        onChange={(e) => setKeyEdit({ ...keyEdit, claim_ref_no: e.target.value })} />
+                    </F>
+                    <F label="เลขที่เคลม">
+                      <input type="text" value={keyEdit.claim_no} className={CTL(false)}
+                        onChange={(e) => setKeyEdit({ ...keyEdit, claim_no: e.target.value })} />
+                    </F>
+                  </div>
+                  {keyMsg && <p className="text-xs text-red-700">{keyMsg}</p>}
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={saveKeyEdit}
+                      className="px-4 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700">
+                      บันทึกเลขระบุเคส
+                    </button>
+                    <button type="button" onClick={() => { setKeyEdit(null); setKeyMsg(''); }}
+                      className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                      ยกเลิก
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* 4 ช่องนี้ **แสดงอย่างเดียว ห้ามทำให้แก้ได้** (user เคาะ 18/08/69)
                   · 3 ช่องบริษัทผู้จัดเรื่องคือข้อมูลของเราเอง เหมือนกันทุกเคส จึงตรึงค่าไว้
                     ไม่ต้องกรอกรายเคส · ฝั่ง EMCS ไม่ต้องส่งไป เพราะมันเติมเองจากบริษัทประกัน
