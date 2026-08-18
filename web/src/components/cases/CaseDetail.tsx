@@ -1405,96 +1405,73 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="police" className="space-y-2">
           <SectionBar title="คดี · ตำรวจ · ติดตามงาน" gap={(gapSec ?? []).includes('police')} />
           <div>
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full table-fixed">
-              <ColGroup />
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ชื่อพนักงานสอบสวน <Req of="acc_police_name" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" /> :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_name" defaultValue={report.acc_police_name || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">สถานีตำรวจ <Req of="acc_police_station" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" /> :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_station" defaultValue={report.acc_police_station || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเห็นพนักงานสอบสวน :</td>
-                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled={d} name="acc_police_comment" defaultValue={report.acc_police_comment || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">วันที่ :</td>
-                  <td className="px-4 py-2">
-                    {/* วัน+เวลาเก็บรวมกันเป็น "วันที่|HH:mm" — ต้องแตกกลับมาใส่ช่องชั่วโมง/นาที
-                        เดิม hardcode '' ทั้งคู่ → กดบันทึกทีเดียวเวลาที่ช่างกรอกมาหายทันที
-                        (backend เขียนทับ acc_police_date ด้วยวันที่เปล่าเมื่อชั่วโมง/นาทีว่าง) */}
-                    {(() => { const pol = parseDatetime(report.acc_police_date); return (
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_police_date" defaultValue={pol.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[35px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                    ); })()}
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">ประจำวันข้อที่ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_police_book_no" defaultValue={report.acc_police_book_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผลการตรวจแอลกอฮอล์ :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_alcohol_test" value="ไม่มีการตรวจแอลกอฮอล์" disabled={d} defaultChecked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> ไม่มีการตรวจแอลกอฮอล์</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_alcohol_test" value="มีการตรวจแอลกอฮอล์" disabled={d} defaultChecked={report.acc_alcohol_test === 'มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> มีการตรวจแอลกอฮอล์</label>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">ระบุผล :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="acc_alcohol_result" defaultValue={report.acc_alcohol_result || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+            <F label="ชื่อพนักงานสอบสวน" req={<Req of="acc_police_name" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" />}>
+              <input type="text" disabled={d} name="acc_police_name" defaultValue={report.acc_police_name || ''} className={CTL(d)} />
+            </F>
+            <F label="สถานีตำรวจ" req={<Req of="acc_police_station" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" />}>
+              <input type="text" disabled={d} name="acc_police_station" defaultValue={report.acc_police_station || ''} className={CTL(d)} />
+            </F>
+            <F label="ประจำวันข้อที่">
+              <input type="text" disabled={d} name="acc_police_book_no" defaultValue={report.acc_police_book_no || ''} className={CTL(d)} />
+            </F>
+            {/* วัน+เวลาเก็บรวมกันเป็น "วันที่|HH:mm" — ต้องแตกกลับมาใส่ช่องชั่วโมง/นาที
+                เดิม hardcode '' ทั้งคู่ → กดบันทึกทีเดียวเวลาที่ช่างกรอกมาหายทันที
+                (backend เขียนทับ acc_police_date ด้วยวันที่เปล่าเมื่อชั่วโมง/นาทีว่าง) */}
+            {(() => { const pol = parseDatetime(report.acc_police_date); return (
+              <F label="วันที่แจ้งความ">
+                <div className="flex items-center gap-1">
+                  <input type="text" disabled={d} name="acc_police_date" defaultValue={pol.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                  <input type="text" disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <span className="text-gray-400 shrink-0">:</span>
+                  <input type="text" disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                </div>
+              </F>
+            ); })()}
 
-          {/* การติดตามงาน — รวมอยู่ในหมวด "คดี · ตำรวจ · ติดตามงาน" เดียวกันตามดีไซน์ใหม่ */}
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full table-fixed">
-              <ColGroup />
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">การติดตามงาน :</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="ไม่มีการนัดหมาย" disabled={d} defaultChecked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="รอการนัดหมาย" disabled={d} defaultChecked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
-                      <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="มีการนัดหมาย" disabled={d} defaultChecked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">ครั้งที่นัดหมาย :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="acc_followup_count" defaultValue={report.acc_followup_count || '1'} className={`w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">รายละเอียดการนัดหมาย :</td>
-                  <td className="px-4 py-2" colSpan={3}><input type="text" disabled={d} name="acc_followup_detail" defaultValue={report.acc_followup_detail || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-2 text-gray-500">วันที่ :</td>
-                  <td className="px-4 py-2" colSpan={3}>
-                    {/* เช่นเดียวกับบล็อกตำรวจ — เดิมล้างเวลานัดหมายทิ้งทุกครั้งที่กดบันทึก */}
-                    {(() => { const flu = parseDatetime(report.acc_followup_date); return (
-                    <div className="flex items-center gap-1">
-                      <input type="text" disabled={d} name="acc_followup_date" defaultValue={flu.date} className={`w-[130px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาฬิกา :</span>
-                      <input type="text" disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[35px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-500 shrink-0">นาที</span>
-                    </div>
-                    ); })()}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <F label="ความเห็นพนักงานสอบสวน" span={4}>
+              <input type="text" disabled={d} name="acc_police_comment" defaultValue={report.acc_police_comment || ''} className={CTL(d)} />
+            </F>
+
+            <F label="ผลการตรวจแอลกอฮอล์" span={2}>
+              <div className="flex items-center gap-3 py-1">
+                <label className="flex items-center gap-1"><input type="radio" name="acc_alcohol_test" value="ไม่มีการตรวจแอลกอฮอล์" disabled={d} defaultChecked={!report.acc_alcohol_test || report.acc_alcohol_test === 'ไม่มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> ไม่มีการตรวจ</label>
+                <label className="flex items-center gap-1"><input type="radio" name="acc_alcohol_test" value="มีการตรวจแอลกอฮอล์" disabled={d} defaultChecked={report.acc_alcohol_test === 'มีการตรวจแอลกอฮอล์'} className="w-3.5 h-3.5" /> มีการตรวจ</label>
+              </div>
+            </F>
+            <F label="ระบุผล" span={2}>
+              <input type="text" disabled={d} name="acc_alcohol_result" defaultValue={report.acc_alcohol_result || ''} className={CTL(d)} />
+            </F>
+
+            {/* การติดตามงาน — รวมอยู่ในหมวดเดียวกันตามดีไซน์ใหม่ (เดิมแยกเป็นการ์ดที่ 2) */}
+            <div className="col-span-2 md:col-span-4 border-t border-gray-100 pt-3 -mb-1" />
+
+            <F label="การติดตามงาน" span={2}>
+              <div className="flex items-center gap-3 py-1">
+                <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="ไม่มีการนัดหมาย" disabled={d} defaultChecked={!report.acc_followup || report.acc_followup === 'ไม่มีการนัดหมาย'} className="w-3.5 h-3.5" /> ไม่มีการนัดหมาย</label>
+                <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="รอการนัดหมาย" disabled={d} defaultChecked={report.acc_followup === 'รอการนัดหมาย'} className="w-3.5 h-3.5" /> รอการนัดหมาย</label>
+                <label className="flex items-center gap-1"><input type="radio" name="acc_followup" value="มีการนัดหมาย" disabled={d} defaultChecked={report.acc_followup === 'มีการนัดหมาย'} className="w-3.5 h-3.5" /> มีการนัดหมาย</label>
+              </div>
+            </F>
+            <F label="ครั้งที่นัดหมาย">
+              <select disabled={d} name="acc_followup_count" defaultValue={report.acc_followup_count || '1'} className={CTL(d)}>
+                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </F>
+            {/* เช่นเดียวกับบล็อกตำรวจ — เดิมล้างเวลานัดหมายทิ้งทุกครั้งที่กดบันทึก */}
+            {(() => { const flu = parseDatetime(report.acc_followup_date); return (
+              <F label="วันที่นัดหมาย">
+                <div className="flex items-center gap-1">
+                  <input type="text" disabled={d} name="acc_followup_date" defaultValue={flu.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                  <input type="text" disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <span className="text-gray-400 shrink-0">:</span>
+                  <input type="text" disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                </div>
+              </F>
+            ); })()}
+            <F label="รายละเอียดการนัดหมาย" span={4}>
+              <input type="text" disabled={d} name="acc_followup_detail" defaultValue={report.acc_followup_detail || ''} className={CTL(d)} />
+            </F>
           </div>
 
           </div>
