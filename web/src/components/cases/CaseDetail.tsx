@@ -76,6 +76,22 @@ function zeroBlank(v: unknown): string {
   const t = String(v ?? '').trim();
   return Number(t) === 0 ? '' : t;
 }
+/**
+ * ช่องเงินที่เก็บเป็นตัวเลขใน DB — null หรือ 0 = ยังไม่ได้กรอก จึงโชว์ว่าง
+ * มีค่าจริงค่อยจัดทศนิยม 2 ตำแหน่งให้เหมือนเดิม
+ */
+function money2(v: unknown): string {
+  if (v == null || v === '') return '';
+  const n = Number(String(v).replace(/,/g, ''));
+  if (!Number.isFinite(n)) return String(v);
+  return n === 0 ? '' : n.toFixed(2);
+}
+/** ค่าเสียหายประมาณของคู่กรณี/ทรัพย์สิน — 0 ที่ติดมากับข้อมูลคือ "ไม่ได้กรอก" ล้างตอนโหลด
+ *  (ล้างที่ตอนโหลด ไม่ใช่ตอนวาด — ช่องพวกนี้เป็น controlled ถ้าล้างตอนวาดจะพิมพ์เลข 0 ไม่ได้) */
+function blankZeroCost<T extends Record<string, unknown>>(x: T): T {
+  const c = x?.estimated_cost;
+  return (c != null && c !== '' && Number(c) === 0) ? { ...x, estimated_cost: '' } : x;
+}
 function currencyFromString(v: unknown): string {
   if (v == null || v === '') return '-';
   const n = Number(v);
@@ -358,12 +374,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // ผู้บาดเจ็บ/ทรัพย์สิน เป็น JSONB เหมือนกัน — ค่าใน object เป็นสตริงทั้งหมด (แอปมือถือเก็บแบบนี้)
   const toRecords = (v: unknown): RecordItem[] =>
     (Array.isArray(v) ? v : []).map((x: Record<string, unknown>) =>
-      Object.fromEntries(Object.entries(x ?? {}).map(([k, val]) => [k, val == null ? '' : String(val)])));
+      blankZeroCost(
+        Object.fromEntries(Object.entries(x ?? {}).map(([k, val]) => [k, val == null ? '' : String(val)]))));
   const [injured, setInjured] = useState<RecordItem[]>(() => toRecords(report?.injured_persons));
   const [property, setProperty] = useState<RecordItem[]>(() => toRecords(report?.damaged_property));
   // คู่กรณีเก็บดิบ ไม่ผ่าน toRecords — มี `damage` (อาเรย์) กับ `kfk` (บูลีน) ที่แปลงเป็นสตริงแล้วพัง
   const [opponents, setOpponents] = useState<LooseRecord[]>(
-    () => (Array.isArray(report?.opposing_parties) ? report.opposing_parties as LooseRecord[] : []));
+    () => (Array.isArray(report?.opposing_parties)
+      ? (report.opposing_parties as LooseRecord[]).map(blankZeroCost) : []));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — คนละฝั่งเงินกับตาราง survey_expenses ข้างบน
@@ -1175,7 +1193,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </div>
               </F>
               <F label="ค่าเสียหายส่วนแรก">
-                <input type="text" disabled={d} name="deductible" defaultValue={report.deductible != null ? Number(report.deductible).toFixed(2) : '0.00'} className={CTL(d)} />
+                <input type="text" disabled={d} name="deductible" defaultValue={money2(report.deductible)} className={CTL(d)} />
               </F>
               {/* ชื่ออู่/ศูนย์ซ่อม เป็นข้อความล้วน — ห้ามใส่ใน numericCols (ตัด comma จะกินชื่ออู่ที่มีลูกน้ำ)
                   maxLength ตรงกับ VARCHAR(200) — ยาวเกินแล้ว Postgres ไม่ตัดปลายให้ แต่ error จนบันทึกไม่ผ่านทั้งใบ */}
@@ -1582,12 +1600,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บัตรติดต่อ" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
               <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
               {/* ติ๊ก "รับเงินจำนวน" เมื่อไหร่ ช่องเงินคู่นี้บังคับทันที (กติกา EMCS) */}
-              <input type="text" name="acc_claim_amount" disabled={d} defaultValue={report.acc_claim_amount != null ? Number(report.acc_claim_amount).toFixed(2) : ''}
+              <input type="text" name="acc_claim_amount" disabled={d} defaultValue={money2(report.acc_claim_amount)}
                 className={`w-[100px] ml-1 border rounded px-2 py-1 text-gray-800 text-sm ${
                   payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
               <span className="text-gray-500">บาท</span>
               <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
-              <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={report.acc_claim_total_amount != null ? Number(report.acc_claim_total_amount).toFixed(2) : ''}
+              <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={money2(report.acc_claim_total_amount)}
                 className={`w-[100px] border rounded px-2 py-1 text-gray-800 text-sm ${
                   payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
               <span className="text-gray-500">บาท</span>
