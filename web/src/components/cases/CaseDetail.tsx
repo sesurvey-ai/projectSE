@@ -2007,7 +2007,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* ⛔ "ความเห็นของผู้ตรวจสอบ" มีที่เดียวเท่านั้น — 2 ช่องชื่อเดียวกันเมื่อไหร่
               ตัวบันทึกหยิบไปแค่ช่องเดียว แล้วอีกช่องหายเงียบ ๆ (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
-          <div className="p-4 space-y-3 border-b border-gray-200">
+          <div className="p-4 space-y-3">
             <div>
               <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
               <textarea name="survey_result" defaultValue={report?.survey_result || ''}
@@ -2025,7 +2025,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </div>
           </div>
 
-          <div className="p-4">
+          {/* ยอดเงินอยู่การ์ดเดียวกับ 3 ช่องความเห็น — คั่นด้วยเงาด้านบน
+              ให้เห็นว่าเป็นคนละเรื่องกัน เส้นบาง ๆ อย่างเดียวแยกไม่ออก (user ทัก 18/08/69) */}
+          <div className="p-4 border-t border-gray-200 shadow-[inset_0_10px_12px_-10px_rgba(0,0,0,0.18)]">
             <div>
               <table className="w-full text-sm table-fixed">
                 {/* รางขวาแคบกว่าครึ่งจอเดิม — ช่อง "จำนวน" มีอินพุต+หน่วยอยู่ในบรรทัดเดียว
