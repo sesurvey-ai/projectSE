@@ -939,11 +939,34 @@ export const caseService = {
      */
     let visits: unknown[] = [];
     if (report?.claim_no) {
+      /**
+       * ⛔ ไล่ชื่อคอลัมน์เอง ห้าม SELECT * จาก survey_expenses —
+       *    phone_fee / bail_fee มีอยู่ทั้ง 2 ตาราง (ฝั่งเรียกเก็บประกัน vs ฝั่งจ่ายพนักงาน)
+       *    ถ้าดึงรวมกันแบบ * ตัวหลังจะทับตัวแรกเงียบ ๆ แล้วยอด 2 ฝั่งกลายเป็นตัวเดียวกัน
+       *    (มีการ์ดเทสห้ามไว้ที่ xmlExport.contract.test.ts ด้วยเหตุผลเดียวกัน)
+       */
       visits = (await db.query(
         `SELECT c.id, c.status, sr.survey_job_no,
                 to_char(c.created_at, 'YYYY-MM-DD') AS created_on,
-                ROW_NUMBER() OVER (ORDER BY c.created_at) AS visit_no
-           FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
+                ROW_NUMBER() OVER (ORDER BY c.created_at) AS visit_no,
+                sr.survey_result, sr.review_comment, sr.surveyor_comment,
+                se.service_fee_count, se.service_fee_price,
+                se.travel_fee_count, se.travel_fee_price,
+                se.photo_fee_count, se.photo_fee_price,
+                se.phone_fee, se.bail_fee,
+                se.claim_fee_percent, se.claim_fee_price,
+                se.daily_record_fee, se.other_fee_detail, se.other_fee_price,
+                sp.service_fee AS pay_service_fee, sp.travel_fee AS pay_travel_fee,
+                sp.photo_fee AS pay_photo_fee, sp.phone_fee AS pay_phone_fee,
+                sp.bail_fee AS pay_bail_fee, sp.claim_fee AS pay_claim_fee,
+                sp.daily_fee AS pay_daily_fee, sp.other_fee AS pay_other_fee,
+                sp.deduct_fee AS pay_deduct_fee, sp.deduct_late, sp.deduct_docs,
+                sp.deduct_reason, sp.out_of_area, sp.out_of_hours,
+                sp.special_tumbon, sp.daily_check, sp.total AS pay_total
+           FROM cases c
+           JOIN survey_reports sr ON sr.case_id = c.id
+           LEFT JOIN survey_expenses se ON se.report_id = sr.id
+           LEFT JOIN survey_pay sp ON sp.case_id = c.id
           WHERE sr.claim_no = $1 ORDER BY c.created_at`, [report.claim_no])).rows;
     }
 
