@@ -66,12 +66,16 @@ check('ตัวหาช่องอ่าน data-req-of เป็นทาง
 check('ตัวหาช่องรับ form เข้ามาเพื่อค้นด้วยชื่อช่อง',
       /function fieldsOfMark\(mark: Element, form\?: HTMLFormElement \| null\)/.test(src));
 
-// ── การล็อกช่อง: "ยอดจ่ายพนักงาน" เท่านั้นที่ล็อกตามที่มาของงาน ──
+// ── ไม่มีช่องไหนถูกล็อกด้วย "ที่มาของงาน" อีกแล้ว ──
 // เดิม `d = !isEditing || !payEditable` ผูกอยู่กับ 116 ช่องที่ไม่เกี่ยวกับเงิน
 // ผลคือ **งานจากระบบเก่าแก้อะไรไม่ได้เลยทั้งหน้า** (เจอจริง 17/08/69 เคส #149)
 console.log('\n── หน้าตรวจเคส: ล็อกเฉพาะช่องยอดเงิน ไม่ใช่ทั้งฟอร์ม ──');
 check('ช่องทั่วไปไม่ถูกล็อกด้วยกติกาเรื่องเงิน', /const d = false;/.test(src));
-check('มีธงแยกสำหรับช่องยอดจ่ายพนักงาน', /const dPay = !payEditable;/.test(src));
+check('ยอดจ่ายพนักงานกรอกได้ทุกที่มาของงาน', /const dPay = false;/.test(src));
+// แก้มา 3 จังหวะ: ช่องทั่วไป (17/08) -> หักเงิน (17/08) -> ยอดรายรับ (18/08)
+// ทุกครั้งคือ **ล็อกผิดแกน** — การล็อกที่ถูกมีอันเดียวคือ "อนุมัติแล้ว" ซึ่งทำที่ <fieldset disabled>
+check('ไม่มีธงล็อกช่องตัวไหนผูกกับที่มาของงานอีก',
+      !/const d[A-Za-z]* = !/.test(src));
 
 // หักเงินแยกออกจากยอดรายรับ: เป็นกติกาของ se-survey เอง ระบบเดิมไม่มีช่องนี้และ
 // se-billing ไม่มีที่เก็บ → ล็อกตามที่มาของงานคือล็อกผิดฝั่ง (user เคาะ 17/08/69 เคส #149)
@@ -157,7 +161,7 @@ console.log('\n── หน้าตรวจเคส: ป้าย "ยัง
 const gapBlock = /useEffect\(\(\) => \{[\s\S]*?setGapSec\([\s\S]*?\}, \[([^\]]*)\]\);/.exec(src);
 // เทียบด้วย "ตำแหน่ง" ไม่ใช่ regex คร่อม — `[\s\S]*?` ลากข้ามขอบเขตฟังก์ชันได้
 // (เขียนแบบ regex ครั้งแรกแล้วมันไปเจอ setGapSec ของ effect ตัวถัดไป = ฟ้องผิด)
-const paintEnd = src.indexOf('}, [report, isEditing, saveMsg, pay, payEditable]);');
+const paintEnd = src.indexOf('}, [report, isEditing, saveMsg, pay, payRequired]);');
 check('นับป้ายอยู่นอก effect ของ paint',
       paintEnd > 0 && src.indexOf('setGapSec(') > paintEnd
       && src.split('setGapSec(').length - 1 === 1);

@@ -111,7 +111,7 @@ router.post('/cases/import', integrationAuth, asyncHandler(async (req: Request, 
     return;
   }
   // ทางนี้เปิดไว้ให้เส้น "ดึงสด" เท่านั้น — ไม่ให้ผู้เรียกอ้างที่มาอื่นเพื่อเปลี่ยนกติกาเงิน
-  // (isurvey_xml/mobile/emcs_extract คนละกติกาเรื่องยอด ดู BILLABLE_SOURCES + PAY_EDITABLE_SOURCES)
+  // (isurvey_xml/mobile/emcs_extract คนละกติกาเรื่องยอดเรียกเก็บ ดู BILLABLE_SOURCES)
   const source = String(b.source ?? 'isurvey_live');
   if (source !== 'isurvey_live') {
     res.status(400).json({ success: false, message: `ทางนี้รับเฉพาะ source='isurvey_live' (ได้รับ '${source}')` });

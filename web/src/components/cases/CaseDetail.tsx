@@ -68,6 +68,14 @@ const WOUND_LEVEL_COLORS: Record<string, string> = {
   'เสียชีวิต': 'bg-red-100 text-red-800',
 };
 function toArray(x: unknown): any[] { return Array.isArray(x) ? x : []; }
+/**
+ * ศูนย์ = "ยังไม่ได้กำหนด" ในช่องที่ไม่มีใครตั้งใจใส่ 0 จริง ๆ (เช่นเปอร์เซ็นต์ค่าเรียกร้อง)
+ * โชว์ 0.00 ไว้เฉย ๆ มีแต่ทำให้ต้องลบทิ้งก่อนพิมพ์ทับทุกครั้ง
+ */
+function zeroBlank(v: unknown): string {
+  const t = String(v ?? '').trim();
+  return Number(t) === 0 ? '' : t;
+}
 function currencyFromString(v: unknown): string {
   if (v == null || v === '') return '-';
   const n = Number(v);
@@ -373,37 +381,39 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const approved = caseData?.status === 'reviewed' || review?.status === 'approved';
   const isAdmin = user?.role === 'admin';
   /**
-   * ยอดจ่ายพนักงานกรอกได้เฉพาะ "งานที่เกิดในระบบ se-survey"
-   * (source='mobile' ซึ่งเป็นค่าเริ่มต้น — ครอบทั้งงานจากแอปและงานที่ callcenter สร้างบนเว็บ)
+   * ที่มาของงานที่ระบบ **เตือน** ว่ายังไม่ได้กรอกยอด — ไม่ใช่ตัวล็อกช่องอีกแล้ว
    *
-   * งานจากระบบเดิม หัวหน้ากรอกยอดไปแล้วที่ ISURVEY และยอดถูกเก็บที่ se-billing → ที่นี่ดูอย่างเดียว
-   * (backend บังคับซ้ำอีกชั้นที่ pay.service.ts — ที่นี่แค่ไม่ให้กรอกลม ๆ แล้วเซฟไม่ผ่าน)
-   *
-   * `isurvey_live` = ดึงจาก ISURVEY ตอนยังเป็น "รอตรวจข้อมูล" คือก่อนหัวหน้ากรอกยอด
-   * → ยอดยังไม่มีที่ไหนเลย ต้องกรอกที่นี่ · ลิสต์นี้ต้องตรงกับ PAY_EDITABLE_SOURCES ฝั่ง backend
+   * งานจากระบบเดิม (isurvey_xml) เคยกรอกยอดไว้ที่ ISURVEY/se-billing แล้ว จึงไม่ทวงซ้ำที่นี่
+   * แต่ **กรอกได้** ถ้าอยากกรอก — เอาที่มาไปล็อกช่องคือล็อกผิดแกน แบบเดียวกับที่เคยเจอ
+   * กับ "หักเงิน" มาแล้ว (user แจ้ง 18/08/69 ว่ากรอกช่องราคาพนักงานไม่ได้)
    */
-  const payEditable = ['mobile', 'isurvey_live'].includes(String(caseData?.source ?? 'mobile'));
+  const payRequired = ['mobile', 'isurvey_live'].includes(String(caseData?.source ?? 'mobile'));
   /**
    * ⚠️ `d` เคยเป็น "ล็อกทั้งฟอร์ม" — ผูกอยู่กับ 116 ช่องที่ไม่เกี่ยวกับเงินเลย
    *
-   * สูตรเดิม `!isEditing || !payEditable` ทำให้**งานจากระบบเก่า (payEditable=false)
+   * สูตรเดิม `!isEditing || !ที่มาของงานกรอกยอดได้` ทำให้**งานจากระบบเก่า
    * แก้อะไรไม่ได้เลยทั้งหน้า** แม้แต่ชื่อ ที่อยู่ สถานที่เกิดเหตุ — ตอนที่ยังต้องกด
    * "แก้ไขทั้งหมด" ก่อนไม่มีใครสังเกต เพราะดูเหมือนยังไม่ได้เข้าโหมดแก้
    * (user เจอจริง 17/08/69 เคส #149: 6 ช่องพิมพ์ไม่ได้)
    *
    * แยกเป็น 2 ตัว: ช่องทั่วไปแก้ได้เสมอ (การล็อกตอนอนุมัติทำที่ <fieldset disabled>)
-   * ส่วนช่อง**ยอดจ่ายพนักงาน** 16 ช่องยังล็อกตามที่มาของงานเหมือนเดิม
    */
   const d = false;
-  const dPay = !payEditable;
+  /**
+   * ยอดจ่ายพนักงานกรอกได้ทุกที่มาของงาน (user เคาะ 18/08/69)
+   *
+   * เดิมล็อกงานจากระบบเดิมไว้ด้วยเหตุผลว่า "ยอดอยู่ที่ se-billing แล้ว" — แต่เอาเข้าจริง
+   * หัวหน้าต้องกรอกยอดที่นี่ได้ทุกงาน (EMCS ไม่มีช่องเก็บเรทพนักงานเลย ยอดต้องออกจากระบบเรา)
+   * ล็อกไว้ = ทั้งคอลัมน์พิมพ์ไม่ได้ — แกนเดียวกับที่เคยล็อก "หักเงิน" ผิดมาก่อน
+   */
+  const dPay = false;
   /**
    * "หักเงิน" กรอกได้ทุกที่มาของงาน — ต่างจากยอดรายรับ (user เคาะ 17/08/69)
    *
    * เหตุผล: หักเงินเป็นกติกาของ **เราเอง** ไม่ได้มาจากระบบเดิมและไม่มีที่เก็บใน se-billing
    * (ระบบเดิมไม่มีแถวนี้ด้วยซ้ำ — ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" ดูคอมเมนต์ตรงตารางข้างล่าง)
-   * ล็อกตาม `payEditable` จึงเป็นการล็อกผิดฝั่ง หัวหน้าหักเงินงานระบบเดิมไม่ได้เลย
-   *
-   * ยอด**รายรับ** 16 ช่องยังล็อกเหมือนเดิม — ยอดพวกนั้นมีเจ้าของอยู่ที่ se-billing แล้ว
+   * ล็อกตามที่มาของงานจึงเป็นการล็อกผิดฝั่ง หัวหน้าหักเงินงานระบบเดิมไม่ได้เลย
+   * (ต่อมา 18/08/69 ยอดรายรับก็เลิกล็อกด้วยเหตุผลเดียวกัน — ดู `dPay` ข้างบน)
    */
   const dDeduct = false;
   /**
@@ -664,7 +674,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
       const mm: string[] = [];
-      if (payEditable) {
+      if (payRequired) {
         if (pay && !(Number(pay.saved?.total ?? 0) > 0)) mm.push('ยังไม่ได้กรอก "ราคาพนักงาน"');
         if (!val('input[name="service_fee_price"]')) mm.push('ยังไม่ได้กรอก "ราคาประกัน" (ค่าบริการ)');
       }
@@ -698,7 +708,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       form.removeEventListener('change', schedule);
     };
     // pay โหลดทีหลัง (async) — ไม่ใส่ไว้ ตัวเช็ค "ยังไม่กรอกราคาพนักงาน" จะค้างที่ผลก่อนโหลด
-  }, [report, isEditing, saveMsg, pay, payEditable]);
+  }, [report, isEditing, saveMsg, pay, payRequired]);
 
   /**
    * ป้าย "ยังกรอกไม่ครบ" ที่หัวหมวด — ต้องอ่าน DOM **หลัง** React วาดเสร็จ
@@ -757,28 +767,27 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       }
       // ยอดจ่ายพนักงานอยู่คนละตาราง (survey_pay) → ส่งแยก
       // ยิงก่อนบันทึกรายงาน เพื่อให้ถ้าพังจะพังทั้งคู่ ไม่เหลือสถานะครึ่ง ๆ
-      // งานจากระบบเดิมส่งได้เฉพาะ "หักเงิน" — ยอดรายรับเป็นของ se-billing ไม่ใช่ของเรา
-      // (backend บังคับกติกาเดียวกันอีกชั้นที่ pay.service.ts และจะเขียนแค่ 4 คอลัมน์หักเงิน)
+      // ยอดทุกช่องส่งเหมือนกันหมดทุกที่มาของงาน — ที่มาไม่ใช่ตัวตัดสินว่ากรอกได้ไหมอีกแล้ว
       if (isEditing) {
         const payBody: Record<string, unknown> = {
           deduct_fee: String(data['pay_deduct_fee'] ?? '').replace(/,/g, '') || null,
           deduct_late: fd.has('deduct_late'),
           deduct_docs: fd.has('deduct_docs'),
           deduct_reason: data['deduct_reason'] || null,
+          other_reason: data['other_fee_detail'] ?? null,
+          daily_check: (data['daily_check'] || '') || null,
         };
-        if (payEditable) {
-          payBody.other_reason = data['other_fee_detail'] ?? null;
-          for (const k of Object.keys(data)) {
-            if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
-          }
-          for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
-          payBody.daily_check = (data['daily_check'] || '') || null;
+        for (const k of Object.keys(data)) {
+          if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
         }
+        for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
         // ⛔ ไม่บังคับให้ระบุเหตุผลตอนหักเงิน (user เคาะ 17/08/69) — เดิมบล็อกการบันทึกทั้งหน้า
-        // งานระบบเดิมที่ไม่มีการหักเงินเลย ไม่ต้องยิง — กันไม่ให้เกิดแถว survey_pay เปล่า ๆ
-        const anyDeduct = (o: Record<string, unknown> | null | undefined) =>
-          Boolean(o?.deduct_fee) || Boolean(o?.deduct_late) || Boolean(o?.deduct_docs) || Boolean(o?.deduct_reason);
-        if (payEditable || anyDeduct(payBody) || anyDeduct(pay?.saved)) {
+        // เคสที่ไม่มีใครแตะยอดเลย ไม่ต้องยิง — กันไม่ให้เกิดแถว survey_pay เปล่าทุกครั้งที่กดบันทึก
+        // แต่ถ้าเคยมีแถวอยู่แล้วต้องยิงเสมอ ไม่งั้นลบยอดที่กรอกผิดไว้ไม่ได้
+        const anyVal = (o: Record<string, unknown> | null | undefined) =>
+          Boolean(o) && Object.values(o as Record<string, unknown>)
+            .some((v) => v !== null && v !== '' && v !== false && v !== undefined);
+        if (anyVal(payBody) || pay?.saved) {
           const pr = await api.put(`/api/cases/${caseData.id}/pay`, payBody);
           if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
         }
@@ -1998,8 +2007,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <th className="px-3 min-[1500px]:px-2 py-2 text-left text-gray-600 font-semibold">รายละเอียด</th>
                     <th className="px-3 min-[1500px]:px-2 py-2 text-center text-gray-600 font-semibold">จำนวน</th>
                     {/* ฝั่งจ่ายพนักงาน — ระบบประกันไม่มีช่องนี้ ต้องเก็บที่ระบบเราเท่านั้น */}
-                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-blue-700 font-semibold">ราคาพนักงาน<div className={`text-[10px] font-normal ${payEditable ? 'text-blue-400' : 'text-gray-400'}`}>
-                      {payEditable ? 'จ่ายผู้สำรวจ' : 'งานระบบเดิม — ยอดอยู่ที่ se-billing'}
+                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-blue-700 font-semibold">ราคาพนักงาน<div className="text-[10px] font-normal text-blue-400">
+                      จ่ายผู้สำรวจ
                     </div></th>
                     <th className="px-3 min-[1500px]:px-2 py-2 text-center text-gray-600 font-semibold">ราคาประกัน<div className="text-[10px] font-normal text-gray-400">เรียกเก็บประกัน</div></th>
                   </tr>
@@ -2032,7 +2041,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue={ex.claim_fee_percent || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">%</span></div></td>
+                    {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
+                        ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" name="claim_fee_percent" defaultValue={zeroBlank(ex.claim_fee_percent)} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">%</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={String(pay?.saved?.claim_fee ?? '')} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" name="claim_fee_price" defaultValue={ex.claim_fee_price || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">

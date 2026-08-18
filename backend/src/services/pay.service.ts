@@ -246,39 +246,24 @@ export interface SavePayInput {
 }
 
 /**
- * ที่มาเดียวที่ "ยอดจ่ายพนักงาน" เกิดขึ้นในระบบเรา — งานที่เกิดในระบบ se-survey
- * ('mobile' เป็นค่า default ของคอลัมน์ source จึงครอบทั้งงานจากแอปและงานที่ callcenter สร้างบนเว็บ)
+ * ยอดจ่ายพนักงานกรอกได้ทุกที่มาของงาน (user เคาะ 18/08/69)
  *
- * ที่มาอื่น (ปัจจุบันคือ isurvey_xml, emcs_extract) หัวหน้ากรอกยอดไปแล้วที่ระบบต้นทาง
- * และยอดนั้นถูกบันทึกไว้ที่ se-billing → ฝั่งเรา **ดูอย่างเดียว** (user เคาะ 15/08/69)
- * ถ้าปล่อยให้แก้ที่นี่ด้วย จะได้ยอดจ่ายพนักงาน 2 ชุดที่ไม่ตรงกันโดยไม่มีใครรู้ว่าชุดไหนถูก
+ * เดิมเป็น allowlist `PAY_EDITABLE_SOURCES = ['mobile','isurvey_live']` ด้วยเหตุผลว่า
+ * งานจากระบบเดิมกรอกยอดไปแล้วที่ต้นทางและเก็บไว้ที่ se-billing → กรอกซ้ำที่นี่จะได้ยอด 2 ชุด
  *
- * ⚠️ `isurvey_live` **แก้ได้** ทั้งที่ชื่อขึ้นต้นด้วย isurvey — ไม่ใช่ความพลาด
- * เส้นนี้ดึงงานมาตอน ISURVEY ยังเป็น "รอตรวจข้อมูล" คือ**ก่อน**หัวหน้าจะกรอกยอด
- * (ยิงดูจริง 16/08/69: ยอดยังว่างใน 2 จาก 3 เคสที่สุ่ม) → se-billing ยังไม่มีตัวเลข
- * ให้ดู การกรอกยอดคืองานที่กำลังย้ายมาทำที่นี่พอดี ต่างจาก isurvey_xml ที่ปิดงานไปแล้ว
+ * เอาเข้าจริงหัวหน้าต้องกรอกยอดที่นี่ได้ทุกงาน — **EMCS ไม่มีช่องเก็บเรทพนักงานเลย**
+ * ยอดที่จะไปโผล่หน้าค่าใช้จ่ายของ EMCS ต้องออกจากระบบเราเท่านั้น · การล็อกตามที่มา
+ * จึงเป็นการล็อกผิดแกน แบบเดียวกับที่เคยล็อก "หักเงิน" ผิดมาแล้วเมื่อ 17/08/69
+ * (user เจอจริง 18/08/69: คอลัมน์ "ราคาพนักงาน" ทั้งคอลัมน์พิมพ์ไม่ได้ในงานจากไฟล์ XML)
  *
- * ตั้งใจเขียนเป็น allowlist: ที่มาใหม่ที่ยังไม่ได้คิดกติกา จะกลายเป็น "แก้ไม่ได้" ไว้ก่อน
- * (พลาดทางนี้คนกรอกไม่ได้แล้วมาบอกเรา — พลาดอีกทางเงินเพี้ยนเงียบ ๆ)
+ * เหลือด่านเดียวคือ **อนุมัติแล้วห้ามแก้** — ประตูเดียวกับการแก้ข้อมูลส่วนอื่นของเคส
  */
-const PAY_EDITABLE_SOURCES = new Set(['mobile', 'isurvey_live']);
-
-/**
- * `full` = กรอกยอดได้ทั้งใบ · `deduct-only` = ได้เฉพาะ 4 ช่องหักเงิน
- *
- * "หักเงิน" เป็นกติกาของ se-survey เอง ระบบเดิมไม่มีช่องนี้และ se-billing ไม่มีที่เก็บ
- * → ปิดทั้งใบทำให้หัวหน้าหักเงินงานระบบเดิมไม่ได้เลย (user เจอจริง 17/08/69 เคส #149)
- * ส่วนยอด**รายรับ** ยังปิดเหมือนเดิม เพราะมีเจ้าของอยู่ที่ se-billing แล้ว
- */
-type PayEditMode = 'full' | 'deduct-only';
-
-async function assertPayEditable(caseId: number): Promise<PayEditMode> {
-  const r = await db.query('SELECT status, source FROM cases WHERE id = $1', [caseId]);
+async function assertPayNotLocked(caseId: number): Promise<void> {
+  const r = await db.query('SELECT status FROM cases WHERE id = $1', [caseId]);
   if (r.rows.length === 0) throw new AppError(404, 'ไม่พบเคสนี้');
   if (r.rows[0].status === 'reviewed') {
     throw new AppError(423, 'เคสนี้อนุมัติแล้ว — แก้ยอดไม่ได้จนกว่าแอดมินจะปลดล็อก');
   }
-  return PAY_EDITABLE_SOURCES.has(String(r.rows[0].source ?? '')) ? 'full' : 'deduct-only';
 }
 
 /**
@@ -287,36 +272,31 @@ async function assertPayEditable(caseId: number): Promise<PayEditMode> {
  * ยอดรวม = รายรับทั้งหมด − หักเงิน
  */
 export async function saveCasePay(caseId: number, input: SavePayInput, userId?: number) {
-  const mode = await assertPayEditable(caseId);
+  await assertPayNotLocked(caseId);
   const money: Record<string, number | null> = {};
   for (const f of PAY_MONEY_FIELDS) money[f] = num(input[f]);
   // หักเงินเก็บเป็นค่าบวกเสมอ — กรอกติดลบมาก็แปลงให้ ไม่งั้นลบซ้อนลบกลายเป็นบวก
   const deduct = num(input[PAY_DEDUCT_FIELD]);
   money[PAY_DEDUCT_FIELD] = deduct === null ? null : Math.abs(deduct);
 
-  // ── งานระบบเดิม: เขียนแค่ 4 ช่องหักเงิน ไม่แตะยอดรายรับและไม่คิด total ──
-  // total ปล่อยว่างโดยตั้งใจ: ยอดรายรับอยู่ที่ se-billing เราไม่รู้ฐาน จะคิดรวมก็ได้ยอดลวง
-  if (mode === 'deduct-only') {
-    const r = await db.query(
-      `INSERT INTO survey_pay (case_id, deduct_fee, deduct_late, deduct_docs, deduct_reason,
-          priced_by, priced_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())
-       ON CONFLICT (case_id) DO UPDATE SET
-         deduct_fee=EXCLUDED.deduct_fee, deduct_late=EXCLUDED.deduct_late,
-         deduct_docs=EXCLUDED.deduct_docs, deduct_reason=EXCLUDED.deduct_reason,
-         priced_by=EXCLUDED.priced_by, priced_at=NOW(), updated_at=NOW()
-       RETURNING *`,
-      [caseId, money[PAY_DEDUCT_FIELD], Boolean(input.deduct_late), Boolean(input.deduct_docs),
-       input.deduct_reason ?? null, userId ?? null]);
-    return r.rows[0];
-  }
   // ยอดตัวปรับ — เก็บแยกเพื่อให้ใบเบิกเงินแยกออกว่าจ่ายค่าอะไรไปเท่าไหร่
   // ติ๊กแต่ไม่ใส่เลข = ใช้ค่าตั้งต้น (นอกพื้นที่ 50 · นอกเวลา 100) ตามระบบเดิม
   const areaAmt = input.out_of_area ? (num(input.out_of_area_amt) ?? 50) : null;
   const hoursAmt = input.out_of_hours ? (num(input.out_of_hours_amt) ?? 100) : null;
-  const total = round2(
-    PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0)
-    + (areaAmt ?? 0) + (hoursAmt ?? 0) - (money[PAY_DEDUCT_FIELD] ?? 0));
+  /**
+   * ยอดรวม = รายรับทั้งหมด + ตัวปรับ − หักเงิน
+   *
+   * ⛔ ไม่มีฝั่งรายรับเลย = ยังไม่รู้ฐาน → total ต้องเป็น **ว่าง** ไม่ใช่ 0 หรือติดลบ
+   *    เคสที่หัวหน้าหักเงินอย่างเดียว (งานระบบเดิมที่ยอดรายรับอยู่ที่ se-billing) จะได้
+   *    total = -หักเงิน แล้วเลขติดลบนั้นจะไหลไปโผล่ในใบเบิกเงินเป็นยอดจ่ายจริง
+   */
+  const anyEarning = PAY_MONEY_FIELDS.some((f) => money[f] !== null)
+    || areaAmt !== null || hoursAmt !== null;
+  const total = anyEarning
+    ? round2(
+        PAY_MONEY_FIELDS.reduce((s, f) => s + (money[f] ?? 0), 0)
+        + (areaAmt ?? 0) + (hoursAmt ?? 0) - (money[PAY_DEDUCT_FIELD] ?? 0))
+    : null;
 
   // snapshot ต้องสะท้อน "สิ่งที่กรอกรอบนี้" ไม่ใช่แถวเก่าที่ยังไม่ทันอัปเดต —
   // getCasePay อ่านตัวปรับจากแถวที่บันทึกไว้ก่อนหน้า จึงได้ค่าเก่า/ว่างเสมอในครั้งแรก
