@@ -849,7 +849,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-bold">::: รายละเอียดรถยนต์</span>
               <span className="ml-auto font-bold">ประเภทเคลม :</span>
               <span className="text-red-400">*</span>
               {['F','D','A','C'].map(v => (
@@ -1277,10 +1276,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <SectionBar title="อุบัติเหตุ" gap={(gapSec ?? []).includes('acc')} />
           <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            {/* Header bar */}
-            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-              <span className="font-bold">::: รายละเอียดอุบัติเหตุ</span>
-            </div>
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               {/* สถานที่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 (จังหวัด/อำเภอ = ตัวที่บอทใช้หาเรทด้วย) */}
               <F label="สถานที่เกิดเหตุ" req={<Req of="acc_place,acc_province,acc_district" />} span={2}>
@@ -1491,9 +1486,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <div>
                 {(opposingParties.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: คู่กรณี ({isEditing ? opponents.length : opposingParties.length} คัน)</span>
-                    </div>
                     {isEditing ? (
                       <div className="p-4"><OpponentEditor items={opponents} onChange={setOpponents} /></div>
                     ) : (
@@ -1594,9 +1586,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <div>
                 {(injuredPersons.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: ผู้บาดเจ็บ ({isEditing ? injured.length : injuredPersons.length} คน)</span>
-                    </div>
                     {isEditing ? (
                       <div className="p-4"><InjuredEditor items={injured} onChange={setInjured} /></div>
                     ) : (
@@ -1652,9 +1641,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <div>
                 {(damagedProperty.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: ทรัพย์สินเสียหาย ({isEditing ? property.length : damagedProperty.length} ชิ้น)</span>
-                    </div>
                     {isEditing ? (
                       <div className="p-4"><PropertyEditor items={property} onChange={setProperty} /></div>
                     ) : (
@@ -1695,9 +1681,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <div>
                 {(insuredDamage.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-                    <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-                      <span className="font-bold">::: ความเสียหายรถประกัน</span>
-                    </div>
                     <div className="p-4">
                       {isEditing
                         ? <DamageEditor items={damage} onChange={setDamage} />
@@ -1746,9 +1729,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       <SectionBar title="การตรวจสอบ" gap={(gapSec ?? []).includes('review')} />
       <div>
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
-          <span className="font-bold">::: การตรวจสอบ</span>
-        </div>
         <div className="p-4">
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
