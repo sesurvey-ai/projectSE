@@ -156,6 +156,13 @@ const RING = ['border-red-400', 'ring-1', 'ring-red-300', 'bg-red-50'];
 // ไม่งั้นชนกันเองแล้วแล้วแต่ลำดับใน CSS ว่าใครชนะ (ไม่ใช่ลำดับใน class attribute)
 const BG_ORIG = ['bg-white', 'bg-gray-100'];
 /**
+ * className มาตรฐานของช่องกรอก
+ * ⚠️ ต้องมี `border-gray-300` + `bg-white`/`bg-gray-100` เสมอ — ตัวทากรอบแดงสลับคลาส
+ *    ชุดนี้ (ดู RING / BG_ORIG) เปลี่ยนชื่อคลาสเมื่อไหร่ กรอบแดงจะทาไม่ติดเงียบ ๆ
+ */
+const CTL = (locked: boolean) =>
+  `w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${locked ? 'bg-gray-100' : 'bg-white'} text-sm`;
+/**
  * ช่อง "ชื่อคน" ในฟอร์มหลักที่ EMCS มีตัวกรองอักขระติดอยู่
  * ต้องตรงกับ `emcsNameWarnings()` ฝั่ง backend (xmlExport.service.ts)
  * ⚠️ "ผู้เอาประกัน" (assured_name) **ไม่มี** ตัวกรองนี้ — ตรวจแล้ว ไม่ต้องใส่
@@ -168,6 +175,24 @@ const BG_ORIG = ['bg-white', 'bg-gray-100'];
  *    คือหมวดที่ผู้ตรวจจะไม่เปิดดู แล้วปล่อยข้อมูลผิดผ่านไปได้
  *    หน้านี้เป็นหน้า "ตรวจ" ต้องเห็นทุกช่องเสมอ · แถบนี้มีไว้ช่วยหาที่ ไม่ได้ซ่อนอะไร
  */
+/**
+ * ช่องกรอกแบบการ์ด — ป้ายเล็กด้านบน ช่องด้านล่าง (เลย์เอาต์ตามดีไซน์ใหม่)
+ *
+ * แทนตาราง 4 คอลัมน์แบบเดิมที่เป็น `ป้าย : [ช่อง]` เรียงข้างกัน
+ * ⚠️ className ของตัวช่องต้องเหมือนเดิมเป๊ะ (`border-gray-300` + `bg-white`/`bg-gray-100`)
+ *    ตัวทากรอบแดงสลับคลาสพวกนี้อยู่ — เปลี่ยนแล้วกรอบแดงจะทาไม่ติด
+ */
+function F({ label, req, wide, children }: {
+  label: string; req?: React.ReactNode; wide?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div className={wide ? 'col-span-2 md:col-span-4' : 'min-w-0'}>
+      <label className="block text-xs text-gray-500 mb-1">{label}{req ? <> {req}</> : null}</label>
+      {children}
+    </div>
+  );
+}
+
 function SectionBar({ title, gap }: { title: string; gap: boolean }) {
   return (
     <div className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 ${
@@ -980,88 +1005,75 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="car" className="space-y-2">
           <SectionBar title="รถประกัน" gap={(gapSec ?? []).includes('car')} />
           <div>
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <table className="w-full table-fixed">
-              <ColGroup />
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">หมายเลขทะเบียน <Req of="license_plate" /> :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="license_plate" defaultValue={report.license_plate || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">จังหวัด <Req of="car_province" /> :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="car_province" defaultValue={report.car_province || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">ประเภทรถ <Req of="car_type" /> :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="car_type" value={carType} onChange={e => setCarType(e.target.value)} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      <option value="0">-- ระบุ --</option>
-                      <option value="A">เก๋งเอเชีย</option>
-                      <option value="E">เก๋งยุโรป</option>
-                      <option value="M">รถจักรยานยนต์</option>
-                      <option value="T">กระบะ</option>
-                      <option value="V">รถตู้</option>
-                      <option value="W">รถบรรทุก</option>
-                      <option value="O">รถอื่นๆ</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">ยี่ห้อ :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="car_brand" defaultValue={report.car_brand || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {carBrandOptions(carType, report.car_brand).map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">รุ่น :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="car_model" defaultValue={report.car_model || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">สีรถ :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="car_color" defaultValue={report.car_color || '-- ระบุ --'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {CAR_COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">ปีจดทะเบียนรถ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="car_reg_year" defaultValue={report.car_reg_year || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ประเภทรถยนต์ไฟฟ้า :</td>
-                  <td className="px-4 py-2">
-                    <select disabled={d} name="ev_type" defaultValue={report.ev_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                      {EV_TYPE_OPTIONS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                {/* 3 ช่องรถไฟฟ้า — แอปมือถือเก็บมาให้อยู่แล้ว แต่หน้านี้ไม่เคยมีที่แสดง/แก้
-                    (ผู้ตรวจจึงมองไม่เห็นและแก้ไม่ได้ ทั้งที่ข้อมูลมีอยู่ในระบบ) */}
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">หมายเลขแบตเตอรี่ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="ev_battery_no" defaultValue={report.ev_battery_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">วันเริ่มใช้แบตเตอรี่ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="ev_battery_start" defaultValue={report.ev_battery_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500 whitespace-nowrap">หมายเลขเครื่องชาร์จ :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="ev_charger_no" defaultValue={report.ev_charger_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2" colSpan={2}></td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 text-gray-500">หมายเลขตัวถัง :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="chassis_no" defaultValue={report.chassis_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">หมายเลข Model :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="model_no" defaultValue={report.model_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className="px-4 py-2 text-gray-500">หมายเลขเครื่อง :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="engine_no" defaultValue={report.engine_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  <td className="px-4 py-2 text-gray-500">หมายเลข กม. :</td>
-                  <td className="px-4 py-2"><input type="text" disabled={d} name="mileage" defaultValue={report.mileage != null ? Number(report.mileage).toLocaleString() : ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+            <F label="หมายเลขทะเบียน" req={<Req of="license_plate" />}>
+              <input type="text" disabled={d} name="license_plate" defaultValue={report.license_plate || ''} className={CTL(d)} />
+            </F>
+            <F label="จังหวัด" req={<Req of="car_province" />}>
+              <select disabled={d} name="car_province" defaultValue={report.car_province || '-- ระบุ --'} className={CTL(d)}>
+                {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </F>
+            <F label="ประเภทรถ" req={<Req of="car_type" />}>
+              <select disabled={d} name="car_type" value={carType} onChange={e => setCarType(e.target.value)} className={CTL(d)}>
+                <option value="0">-- ระบุ --</option>
+                <option value="A">เก๋งเอเชีย</option>
+                <option value="E">เก๋งยุโรป</option>
+                <option value="M">รถจักรยานยนต์</option>
+                <option value="T">กระบะ</option>
+                <option value="V">รถตู้</option>
+                <option value="W">รถบรรทุก</option>
+                <option value="O">รถอื่นๆ</option>
+              </select>
+            </F>
+            <F label="ยี่ห้อ">
+              <select disabled={d} name="car_brand" defaultValue={report.car_brand || '-- ระบุ --'} className={CTL(d)}>
+                {carBrandOptions(carType, report.car_brand).map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </F>
+
+            <F label="รุ่น">
+              <input type="text" disabled={d} name="car_model" defaultValue={report.car_model || ''} className={CTL(d)} />
+            </F>
+            <F label="สีรถ">
+              <select disabled={d} name="car_color" defaultValue={report.car_color || '-- ระบุ --'} className={CTL(d)}>
+                {CAR_COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </F>
+            <F label="ปีจดทะเบียนรถ">
+              <input type="text" disabled={d} name="car_reg_year" defaultValue={report.car_reg_year || ''} className={CTL(d)} />
+            </F>
+            <F label="หมายเลขตัวถัง">
+              <input type="text" disabled={d} name="chassis_no" defaultValue={report.chassis_no || ''} className={CTL(d)} />
+            </F>
+
+            <F label="หมายเลขเครื่อง">
+              <input type="text" disabled={d} name="engine_no" defaultValue={report.engine_no || ''} className={CTL(d)} />
+            </F>
+            <F label="หมายเลข Model">
+              <input type="text" disabled={d} name="model_no" defaultValue={report.model_no || ''} className={CTL(d)} />
+            </F>
+            <F label="หมายเลข กม.">
+              <input type="text" disabled={d} name="mileage" defaultValue={report.mileage != null ? Number(report.mileage).toLocaleString() : ''} className={CTL(d)} />
+            </F>
+            <div className="min-w-0" />
+
+            {/* 3 ช่องรถไฟฟ้า — แอปมือถือเก็บมาให้อยู่แล้ว แต่หน้านี้ไม่เคยมีที่แสดง/แก้
+                (ผู้ตรวจจึงมองไม่เห็นและแก้ไม่ได้ ทั้งที่ข้อมูลมีอยู่ในระบบ) */}
+            <F label="ประเภทรถยนต์ไฟฟ้า">
+              <select disabled={d} name="ev_type" defaultValue={report.ev_type || '0'} className={CTL(d)}>
+                {EV_TYPE_OPTIONS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+              </select>
+            </F>
+            <F label="หมายเลขแบตเตอรี่">
+              <input type="text" disabled={d} name="ev_battery_no" defaultValue={report.ev_battery_no || ''} className={CTL(d)} />
+            </F>
+            <F label="วันเริ่มใช้แบตเตอรี่">
+              <input type="text" disabled={d} name="ev_battery_start" defaultValue={report.ev_battery_start || ''} className={CTL(d)} />
+            </F>
+            <F label="หมายเลขเครื่องชาร์จ">
+              <input type="text" disabled={d} name="ev_charger_no" defaultValue={report.ev_charger_no || ''} className={CTL(d)} />
+            </F>
           </div>
 
           </div>
