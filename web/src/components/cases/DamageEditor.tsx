@@ -16,11 +16,11 @@ import React from 'react';
 export type DamageItem = { part: string; pos: string; level: string };
 
 /** 22 ชิ้นของ checklist EMCS — 10 ตัวหลังเลือกด้าน L/R/A ได้, 12 ตัวแรกไม่มีด้าน */
-const PARTS_NO_SIDE = [
+export const PARTS_NO_SIDE = [
   'กันชนหน้า', 'กันชนหลัง', 'กระจกบังลมหน้า', 'กระจกบังลมหลัง', 'ฝากระโปรงหน้า',
   'ฝากระโปรงหลัง', 'กระจังหน้า', 'กระบะ', 'หลังคา', 'แผงท้าย', 'ฝาปิดท้าย', 'แค็ป',
 ];
-const PARTS_WITH_SIDE = [
+export const PARTS_WITH_SIDE = [
   'ไฟหน้า', 'ไฟท้าย', 'บังโคลนหน้า', 'บังโคลนหลัง', 'ประตูหน้า', 'ประตูหลัง',
   'ไฟเลี้ยวหน้า', 'ไฟเลี้ยวหลัง', 'กระจกมองข้าง', 'บันได',
 ];

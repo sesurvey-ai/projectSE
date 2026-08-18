@@ -8,6 +8,7 @@ import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import DamageEditor, { DamageItem } from './DamageEditor';
+import DamageDialog from './DamageDialog';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
 
 /** ค่าตอบแทนผู้สำรวจของเคส — `suggest` คือยอดที่ระบบคิดจากตารางเรท `saved` คือที่ผู้ตรวจบันทึกจริง
@@ -367,6 +368,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const isEditing = true;
   // ความเสียหายรถประกันเป็น JSONB — แก้ผ่าน FormData ไม่ได้ ต้องถือ state เอง
   // (เคสที่นำเข้าจากไฟล์ XML ของ ISURVEY จะว่างเสมอ ผู้ตรวจต้องกรอกก่อนส่งเข้า EMCS)
+  const [dmgOpen, setDmgOpen] = useState(false);
   const [damage, setDamage] = useState<DamageItem[]>(() =>
     (Array.isArray(report?.insured_damage) ? report.insured_damage : []).map((x: Record<string, unknown>) => ({
       part: String(x?.part ?? ''), pos: String(x?.pos ?? 'A'), level: String(x?.level ?? ''),
@@ -1469,7 +1471,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <F label="ความเสียหายรถประกันภัย" req={<Req of="damage_description" />} span={4}>
                 <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={CTL(d)} />
                 <div className="flex items-center gap-2 mt-1.5">
-                  <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">ข้อมูลความเสียหาย</button>
+                  {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
+                  <button type="button" disabled={d} onClick={() => setDmgOpen(true)}
+                    className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap hover:bg-gray-300">
+                    ข้อมูลความเสียหาย{damage.length > 0 ? ` (${damage.length})` : ''}
+                  </button>
                   <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">พิมพ์ข้อมูลความเสียหาย</button>
                 </div>
               </F>
@@ -2177,6 +2183,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>
       </div>{/* จบ grid 2 คอลัมน์ */}
       </fieldset>
+
+      <DamageDialog open={dmgOpen} items={damage} disabled={approved}
+        onClose={() => setDmgOpen(false)} onSave={setDamage} />
 
     </form>
   );

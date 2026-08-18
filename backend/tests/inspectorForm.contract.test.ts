@@ -243,5 +243,46 @@ check('หน้าตรวจสอบยังเห็นเคสที่�
       /OR \(c\.status = 'assigned' AND c\.sent_back_at IS NOT NULL\)/.test(svc));
 check('ส่งงานใหม่แล้วหมวดรูปที่ผู้ตรวจตั้งไว้ไม่หาย', /prevCats\.get\(/.test(svc));
 
+/**
+ * -- หน้าต่าง "ข้อมูลความเสียหาย" (ลอกหน้าจอ EMCS) --
+ *
+ * 2 กับดัก:
+ *   1. หน้าต่างอยู่ใน <form> เดียวกับฟอร์มหลัก — ช่องไหนมี name จะโดน FormData เก็บไปด้วย
+ *   2. ชื่อชิ้นส่วนใน checklist ต้องมาจากลิสต์เดียวกับที่ DamageEditor ใช้
+ *      พิมพ์ชื่อใหม่เองเมื่อไหร่ บอทจับคู่ checklist ของ EMCS ไม่ได้ ของจะไหลลงช่องอิสระ
+ *      พร้อมชื่อเพี้ยน (ดู se-autokey/autokey/emcs.py _match_damage_checklist)
+ */
+console.log(String.fromCharCode(10) + '-- หน้าตรวจเคส: หน้าต่างข้อมูลความเสียหาย --');
+const dlg = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'DamageDialog.tsx'), 'utf8');
+const ed = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'DamageEditor.tsx'), 'utf8');
+check('ไม่มีช่องไหนมี name (ไม่หลุดเข้าฟอร์มหลัก)', !/name=/.test(dlg));
+check('ปุ่มเปิดหน้าต่างเป็น type="button" (กันฟอร์ม submit)',
+      /type="button" disabled=\{d\} onClick=\{\(\) => setDmgOpen\(true\)\}/.test(src));
+check('หน้าต่างอยู่นอก <fieldset> (อนุมัติแล้วยังกดปิดได้)',
+      src.indexOf('<DamageDialog') > src.indexOf('</fieldset>'));
+
+/** ตัดเนื้อในวงเล็บก้าม [...] ของ const ตัวนั้น — ใช้ indexOf ล้วน ไม่พึ่ง regex escape */
+const between = (text: string, marker: string) => {
+  const a = text.indexOf(marker);
+  if (a < 0) return '';
+  const b = text.indexOf('[', a), c = text.indexOf('];', b);
+  return b < 0 || c < 0 ? '' : text.slice(b, c);
+};
+const quoted = (text: string) => Array.from(text.matchAll(/'([^']+)'/g), (x) => x[1]);
+const parts = new Set([
+  ...quoted(between(ed, 'export const PARTS_NO_SIDE')),
+  ...quoted(between(ed, 'export const PARTS_WITH_SIDE')),
+]);
+const rowParts = quoted(between(dlg, 'const ROWS'));
+check('checklist มีครบ 22 ชิ้นเท่าลิสต์ของ EMCS',
+      parts.size === 22 && rowParts.length === 22, `${rowParts.length}/${parts.size}`);
+check('ชื่อชิ้นส่วนทุกตัวมาจากลิสต์เดียวกับ DamageEditor (บอทถึงจะจับคู่ได้)',
+      rowParts.length > 0 && rowParts.every((p2) => parts.has(p2)),
+      rowParts.filter((p2) => !parts.has(p2)).join(', '));
+check('เตือนเมื่อช่องอิสระเกิน 8 ช่อง (ฟอร์มสร้างเรื่องใหม่ของ EMCS มีแค่ 8)',
+      /FREE_SAFE = 8/.test(dlg) && /freeUsed > FREE_SAFE/.test(dlg));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);
