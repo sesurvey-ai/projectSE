@@ -155,6 +155,21 @@ const RING = ['border-red-400', 'ring-1', 'ring-red-300', 'bg-red-50'];
 // พื้นหลังเดิมของช่อง (bg-white ตอนแก้ได้ / bg-gray-100 ตอนล็อก) — ต้องถอดออกตอนทาแดง
 // ไม่งั้นชนกันเองแล้วแล้วแต่ลำดับใน CSS ว่าใครชนะ (ไม่ใช่ลำดับใน class attribute)
 const BG_ORIG = ['bg-white', 'bg-gray-100'];
+
+/**
+ * ข้อมูลบริษัทผู้จัดเรื่อง — **โชว์บนเว็บ se-survey อย่างเดียว**
+ *
+ * เหมือนกันทุกเคส ไม่ใช่ข้อมูลของเคส จึงไม่เก็บรายเคสและไม่ให้แก้บนหน้าเคส
+ * ⛔ ห้ามต่อท่อไป XML/บอท — ฝั่ง EMCS เติมช่องนี้เองจากบริษัทประกันที่เลือก
+ *    ตอน import XML (ฝั่งเราส่ง SURVEYBRID จาก env ไม่ใช่ค่าพวกนี้)
+ * (user เคาะ 18/08/69 · คอลัมน์ survey_company* ใน DB ไม่มีใครอ่านแล้ว)
+ */
+const SURVEY_CO = {
+  name: 'เอสอี เซอร์เวย์ แอนด์ คอนซัลแตนท์ สำนักงานใหญ่',
+  address: '41 ซอยลาดพร้าว 138 (มีสุข) ถนนลาดพร้าว แขวงคลองจั่น เขตบางกะปิ 10240',
+  phone: '02-766-8889',
+} as const;
+
 /**
  * className มาตรฐานของช่องกรอก
  * ⚠️ ต้องมี `border-gray-300` + `bg-white`/`bg-gray-100` เสมอ — ตัวทากรอบแดงสลับคลาส
@@ -906,17 +921,22 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
 
               {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
+              {/* 4 ช่องนี้ **แสดงอย่างเดียว ห้ามทำให้แก้ได้** (user เคาะ 18/08/69)
+                  · 3 ช่องบริษัทผู้จัดเรื่องคือข้อมูลของเราเอง เหมือนกันทุกเคส จึงตรึงค่าไว้
+                    ไม่ต้องกรอกรายเคส · ฝั่ง EMCS ไม่ต้องส่งไป เพราะมันเติมเองจากบริษัทประกัน
+                    ที่เลือกตอน import XML อยู่แล้ว (XML ใช้ SURVEYBRID จาก env ไม่ใช่คอลัมน์พวกนี้)
+                  · "วันที่" = วันที่เกิดเหตุ แก้ได้ที่การ์ด "ลำดับเวลา" จังหวะที่ 1 ตรงนี้โชว์ซ้ำเฉย ๆ */}
               <F label="บริษัทผู้จัดเรื่อง">
-                <p className="text-gray-800 py-1">{report.survey_company || '-'}</p>
+                <p className="text-gray-800 py-1 truncate" title={SURVEY_CO.name}>{SURVEY_CO.name}</p>
               </F>
               <F label="เบอร์โทรศัพท์ / Fax">
-                <p className="text-gray-800 py-1">{report.survey_company_phone || '-'}</p>
+                <p className="text-gray-800 py-1">{SURVEY_CO.phone}</p>
               </F>
               <F label="วันที่">
                 <p className="text-gray-800 py-1">{report.acc_date || '-'}</p>
               </F>
               <F label="ที่อยู่">
-                <p className="text-gray-800 py-1 truncate" title={report.survey_company_address || ''}>{report.survey_company_address || '-'}</p>
+                <p className="text-gray-800 py-1 truncate" title={SURVEY_CO.address}>{SURVEY_CO.address}</p>
               </F>
             </div>
           </div>
