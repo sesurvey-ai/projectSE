@@ -11,16 +11,21 @@ class CaseCard extends StatelessWidget {
     required this.onTap,
   });
 
+  // ⛔ ต้องครอบ **ทุกค่า** ของ case_status ที่ฐานข้อมูลมีจริง
+  //    (pending · assigned · surveyed · reviewed + declined)
+  //    เดิมแปลแค่ 4 ค่าที่ไม่ตรงกับของจริงเลย ('in_progress'/'completed' ไม่มีในระบบ)
+  //    ค่าที่ตกหล่นจะหลุดไปโชว์เป็นภาษาอังกฤษดิบ ๆ บนหน้าจอช่าง (เจอจริง 18/08/69: 'surveyed')
   Color _statusColor(String status) {
     switch (status) {
       case 'assigned':
         return Colors.orange;
-      case 'in_progress':
+      case 'surveyed':
         return Colors.blue;
-      case 'completed':
+      case 'reviewed':
         return Colors.green;
+      case 'declined':
+        return Colors.red;
       case 'pending':
-        return Colors.grey;
       default:
         return Colors.grey;
     }
@@ -30,12 +35,14 @@ class CaseCard extends StatelessWidget {
     switch (status) {
       case 'assigned':
         return 'มอบหมายแล้ว';
-      case 'in_progress':
-        return 'กำลังดำเนินการ';
-      case 'completed':
-        return 'เสร็จสิ้น';
+      case 'surveyed':
+        return 'ส่งงานแล้ว';
+      case 'reviewed':
+        return 'หัวหน้าอนุมัติแล้ว';
+      case 'declined':
+        return 'ปฏิเสธงาน';
       case 'pending':
-        return 'รอดำเนินการ';
+        return 'รอมอบหมาย';
       default:
         return status;
     }
@@ -82,13 +89,14 @@ class CaseCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _statusColor(caseModel.status).withValues(alpha: 0.15),
+                      color: (caseModel.isSentBack ? Colors.deepOrange : _statusColor(caseModel.status))
+                          .withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _statusText(caseModel.status),
+                      caseModel.isSentBack ? 'ตีกลับให้แก้' : _statusText(caseModel.status),
                       style: TextStyle(
-                        color: _statusColor(caseModel.status),
+                        color: caseModel.isSentBack ? Colors.deepOrange : _statusColor(caseModel.status),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -96,6 +104,36 @@ class CaseCard extends StatelessWidget {
                   ),
                 ],
               ),
+              // งานที่หัวหน้าตีกลับ — ต้องบอก **เหตุผล** ไม่งั้นช่างส่งของเดิมกลับไปเหมือนเดิม
+              if (caseModel.isSentBack) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.deepOrange.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.assignment_return_outlined,
+                          size: 16, color: Colors.deepOrange),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          (caseModel.sentBackReason ?? '').trim().isEmpty
+                              ? 'หัวหน้าส่งงานกลับมาให้แก้'
+                              : 'หัวหน้าให้แก้: ${caseModel.sentBackReason!.trim()}',
+                          style: const TextStyle(
+                              fontSize: 13, height: 1.35, color: Colors.deepOrange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 children: [

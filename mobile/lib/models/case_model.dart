@@ -8,6 +8,11 @@ class CaseModel {
   final String status;
   final String createdAt;
   final String? claimNo;
+  /// ตีกลับให้ผู้สำรวจ (migration 041) — หัวหน้าส่งงานกลับมาให้แก้พร้อมเหตุผล
+  /// `sentBackAt` มีค่า + status ยังเป็น assigned = ยังไม่ได้ส่งกลับไปให้ตรวจใหม่
+  final String? sentBackAt;
+  final String? sentBackReason;
+  final int sentBackCount;
 
   CaseModel({
     required this.id,
@@ -19,7 +24,13 @@ class CaseModel {
     required this.status,
     required this.createdAt,
     this.claimNo,
+    this.sentBackAt,
+    this.sentBackReason,
+    this.sentBackCount = 0,
   });
+
+  /// งานที่หัวหน้าตีกลับมาให้แก้ และยังไม่ได้ส่งกลับไป
+  bool get isSentBack => (sentBackAt ?? '').isNotEmpty && status == 'assigned';
 
   factory CaseModel.fromJson(Map<String, dynamic> json) => CaseModel(
         id: json['id'],
@@ -35,5 +46,9 @@ class CaseModel {
         status: json['status'] ?? '',
         createdAt: json['created_at'] ?? '',
         claimNo: json['claim_no'],
+        sentBackAt: json['sent_back_at']?.toString(),
+        sentBackReason: json['sent_back_reason']?.toString(),
+        sentBackCount:
+            int.tryParse(json['sent_back_count']?.toString() ?? '') ?? 0,
       );
 }
