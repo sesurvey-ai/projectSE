@@ -392,15 +392,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const dDeduct = false;
   /**
-   * 4 ช่องที่ "ระบุว่าเคสนี้คือเคสไหน" — ล็อกไม่ให้แก้จากหน้าตรวจ (user เคาะ 18/08/69)
-   *   บริษัทประกัน · สาขา · เลขเรื่องเซอร์เวย์ · เลขที่รับแจ้ง · เลขที่เคลม
+   * ตัวระบุตัวเคส — แก้จากหน้าตรวจไม่ได้ (user เคาะ 18/08/69)
+   *   ตัวเลข 3 ตัว (เลขเซอร์เวย์ · เลขรับแจ้ง · เลขเคลม) = ตัวหนังสือหนา ไม่ใช่ช่องกรอกเลย
+   *   บริษัทประกัน + สาขา = dropdown ที่ล็อกด้วย `dKey` (ยังต้องเห็นว่าเลือกอะไรไว้)
    *
    * เลขพวกนี้ถูกกำหนดตั้งแต่ตอนรับงาน/นำเข้า แก้ทีหลังแล้วเคสจะไปผูกกับงานผิดใบ
    * (เลขเซอร์เวย์ใช้อ้างอิงเบิกเงิน · บริษัทประกันผิดที = เคสไปโผล่ผิดบริษัทใน EMCS
    *  ซึ่ง draft ของ EMCS ลบไม่ได้)
    *
-   * ⚠️ ช่อง disabled ไม่เข้า FormData ตามมาตรฐาน HTML → ไม่ถูกส่งตอนบันทึก
-   *    = ค่าเดิมใน DB ปลอดภัย ไม่ถูกเขียนทับด้วยค่าว่าง
+   * ⚠️ ทั้ง 5 ตัวไม่ถูกส่งตอนบันทึกแล้ว — ตัวหนังสือไม่มี name ส่วน dropdown ที่ disabled
+   *    ไม่เข้า FormData ตามมาตรฐาน HTML → ค่าเดิมใน DB ปลอดภัย ไม่ถูกเขียนทับ
    */
   const dKey = true;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
@@ -935,13 +936,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </div>
               </F>
               <F label="เลขเรื่องเซอร์เวย์">
-                <input type="text" disabled={dKey} name="survey_job_no" defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={CTL(dKey)} />
+                <p className="py-1 font-bold text-gray-900 truncate" title={report.survey_job_no || ''}>{report.survey_job_no || '—'}</p>
               </F>
               <F label="เลขที่รับแจ้ง">
-                <input type="text" disabled={dKey} name="claim_ref_no" defaultValue={report.claim_ref_no || ''} className={CTL(dKey)} />
+                <p className="py-1 font-bold text-gray-900 truncate" title={report.claim_ref_no || ''}>{report.claim_ref_no || '—'}</p>
               </F>
               <F label="เลขที่เคลม">
-                <input type="text" disabled={dKey} name="claim_no" defaultValue={report.claim_no || ''} className={CTL(dKey)} />
+                <p className="py-1 font-bold text-gray-900 truncate" title={report.claim_no || ''}>{report.claim_no || '—'}</p>
               </F>
 
               {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
