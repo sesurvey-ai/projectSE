@@ -130,6 +130,13 @@ export const caseController = {
     sendSuccess(res, await caseService.updateCaseIdentity(caseId, req.body));
   }),
 
+  /** ตีกลับให้ผู้สำรวจไปแก้ในแอป — สถานะกลับเป็น "กำลังสำรวจ" (เหตุผลบังคับกรอก) */
+  sendBack: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.sendBackToSurveyor(caseId, req.user!.id, String(req.body?.reason ?? ''));
+    sendSuccess(res, result);
+  }),
+
   /** ค่าตอบแทนผู้สำรวจของเคสนี้ — ยอดที่บันทึกไว้ + ยอดที่ระบบแนะนำจากตารางเรท */
   getPay: asyncHandler(async (req: Request, res: Response) => {
     sendSuccess(res, await payService.getCasePay(parseInt(req.params.id as string)));

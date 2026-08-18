@@ -407,6 +407,37 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const dDeduct = false;
   /**
+   * ── ตีกลับให้ผู้สำรวจ ── (กติกา user เคาะ 18/08/69)
+   *
+   * สถานะกลับเป็น "กำลังสำรวจ" → งานโผล่ในรายการของช่างอีกครั้ง ให้แก้ในแอปแล้วส่งใหม่
+   * ไม่มีการแจ้งเตือนเข้าเครื่อง (ตกลงกันว่าแค่ให้เห็นในรายการงานพอ)
+   * และ**หัวหน้ายังแก้เองได้ด้วย** — เคสที่ตีกลับแล้วยังอยู่ในหน้าตรวจสอบ เปิดแก้ได้ตามปกติ
+   *
+   * ใช้กับเรื่องที่หัวหน้าแก้แทนไม่ได้เพราะต้องถามคนที่ไปหน้างาน — ไม่ใช่ทางลัดแทนการแก้เอง
+   */
+  const sentBack = Boolean(caseData?.sent_back_at);
+  const waitingSurveyor = caseData?.status === 'assigned' && sentBack;
+  const [sbOpen, setSbOpen] = useState(false);
+  const [sbReason, setSbReason] = useState('');
+  const doSendBack = async () => {
+    const reason = sbReason.trim();
+    if (!reason) { setSaveMsg('ตีกลับไม่สำเร็จ: ต้องบอกเหตุผลว่าให้แก้อะไร'); return; }
+    // บันทึกก่อนเสมอ — สิ่งที่หัวหน้าเพิ่งแก้ต้องไปถึงเครื่องช่างพร้อมกับเหตุผล
+    // ไม่งั้นช่างเปิดแอปมาเจอข้อมูลชุดเก่า แล้วส่งกลับมาทับของที่หัวหน้าแก้ไว้
+    if (!(await handleSave())) return;
+    setSaving(true);
+    try {
+      await api.post(`/api/cases/${caseData.id}/send-back`, { reason });
+      setSaveMsg('ตีกลับให้ผู้สำรวจแล้ว');
+      setSbOpen(false); setSbReason('');
+      onReviewSubmitted();
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setSaveMsg('ตีกลับไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+    } finally { setSaving(false); }
+  };
+
+  /**
    * แอดมินแก้ตัวระบุตัวเคส — ทางออกเดียวเมื่อเลขผิดมาตั้งแต่ต้นทาง (user เคาะ 18/08/69)
    * ⛔ ช่องในแผงนี้ **ห้ามมี name** — มันอยู่ใน <form> เดียวกับฟอร์มหลัก
    *    ถ้ามี name จะถูก FormData เก็บไปด้วยตอนกดบันทึก แล้วทับค่าที่ตั้งใจล็อกไว้
@@ -901,6 +932,23 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               ถ้าไม่สรุปไว้บนสุด ผู้ตรวจต้องเลื่อนหาเอง แล้วไปเจอตอนบอทนำเข้าไม่ผ่าน */}
           {/* ลำดับเวลาผิด — ต่างจากช่องว่างตรงที่ "มองด้วยตาไม่เห็น" แต่ละช่องดูปกติหมด
               ต้องเอามาเทียบกันถึงจะรู้ ถ้าไม่สรุปไว้บนสุดก็ไม่มีทางสังเกตเจอ */}
+          {/* ตีกลับแล้ว — ต้องเห็นตั้งแต่เปิดหน้า ไม่งั้นหัวหน้านั่งแก้อยู่โดยไม่รู้ว่างานอยู่กับช่าง
+              (เคสยังอยู่ในหน้าตรวจสอบโดยตั้งใจ หัวหน้าแก้เองได้ด้วย — user เคาะ 18/08/69) */}
+          {sentBack && (
+            <div className={`rounded px-4 py-2 text-sm border ${waitingSurveyor
+              ? 'bg-orange-50 border-orange-300 text-orange-900'
+              : 'bg-gray-50 border-gray-300 text-gray-700'}`}>
+              <span className="font-semibold">
+                {waitingSurveyor
+                  ? 'ตีกลับให้ผู้สำรวจแล้ว — รอแก้ในแอปแล้วส่งกลับมา'
+                  : `เคยตีกลับให้ผู้สำรวจ ${caseData?.sent_back_count ?? 1} ครั้ง`}
+              </span>
+              {caseData?.sent_back_reason && (
+                <span> · ให้แก้: {String(caseData.sent_back_reason)}</span>
+              )}
+              {waitingSurveyor && <span className="text-orange-700"> · หัวหน้ายังแก้เองได้ตามปกติ</span>}
+            </div>
+          )}
           {/* สรุปสั้น ๆ พอให้รู้ว่ามีปัญหา — รายละเอียดไปอ่านที่จังหวะนั้นในการ์ดลำดับเวลา */}
           {timeErrs.length > 0 && (
             <div className="bg-red-50 border border-red-300 rounded px-4 py-2 text-sm text-red-800">
@@ -2097,6 +2145,41 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <span className="text-gray-400"> · บอทจะนำเข้าเป็นร่างในระบบประกัน แล้วยังต้องมีคนกดส่งอีกครั้ง</span>
           </div>
         )}
+
+        {/* ตีกลับให้ผู้สำรวจ — คนละเรื่องกับ "บันทึกร่าง/อนุมัติ" จึงไม่เอาไปรวมในแถบปุ่ม
+            เป็นการโยนงานออกจากมือ ต้องตั้งใจกด ไม่ใช่กดพลาดจากแถบที่ติดขอบบนตลอดเวลา
+            ⛔ ช่องเหตุผล **ไม่มี name** — อยู่ใน <form> เดียวกับฟอร์มหลัก มี name เมื่อไหร่
+               จะโดน FormData เก็บไปเป็นค่าของรายงานตอนกดบันทึก */}
+        {!approved && !waitingSurveyor && (sbOpen ? (
+          <div className="rounded border border-orange-300 bg-orange-50 p-3 space-y-2">
+            <label className="block text-sm font-medium text-orange-900">
+              ตีกลับให้ผู้สำรวจ — บอกด้วยว่าให้แก้อะไร
+            </label>
+            <textarea value={sbReason} onChange={(e) => setSbReason(e.target.value)} rows={2}
+              placeholder="เช่น ทะเบียนในรูปไม่ตรงกับที่กรอกมา / ขาดรูปความเสียหายฝั่งซ้าย"
+              className="w-full border border-orange-300 rounded px-2 py-1 text-sm bg-white text-gray-800" />
+            <div className="text-xs text-orange-800">
+              กดแล้วระบบจะ<strong>บันทึกสิ่งที่แก้ไว้ก่อน</strong> แล้วเปลี่ยนสถานะเป็น &quot;กำลังสำรวจ&quot;
+              — งานไปโผล่ในรายการของช่าง (ไม่มีแจ้งเตือนเข้าเครื่อง) · เคสยังอยู่ในหน้าตรวจสอบ
+              หัวหน้าแก้เองได้ด้วย
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => { setSbOpen(false); setSbReason(''); }}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">
+                ยกเลิก
+              </button>
+              <button type="button" onClick={doSendBack} disabled={saving || !sbReason.trim()}
+                className="px-4 py-1.5 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed">
+                {saving ? 'กำลังตีกลับ...' : 'บันทึกแล้วตีกลับ'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setSbOpen(true)}
+            className="text-sm text-orange-700 hover:text-orange-900 hover:underline">
+            ตีกลับให้ผู้สำรวจไปแก้ในแอป
+          </button>
+        ))}
 
         <div className="flex justify-end">{actionBar}</div>
       </div>

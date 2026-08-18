@@ -263,6 +263,9 @@ router.put('/:id/report', auth, requireRole('checker'), caseController.updateRep
 // แก้ตัวระบุตัวเคส — **แอดมินเท่านั้น** ผู้ตรวจแก้ไม่ได้ (หน้าเว็บก็ล็อกไว้อีกชั้น)
 // เลขพวกนี้ผูกเคสกับงานจริง แก้ผิดแล้วเคสไปโผล่ผิดใบ/ผิดบริษัท
 router.patch('/:id/identity', auth, requireRole('admin'), caseController.updateIdentity);
+
+// ตีกลับให้ผู้สำรวจไปแก้เอง — หัวหน้า (และแอดมิน) เท่านั้น · เหตุผลบังคับ (เช็คในเซอร์วิส)
+router.post('/:id/send-back', auth, requireRole('checker', 'admin'), caseController.sendBack);
 // ผู้ตรวจสอบเพิ่มรูปเองจากหน้าเคส — **เพิ่มอย่างเดียว** (คนละ endpoint กับ upload-folder
 // ของแอปมือถือที่เป็น "ล้างแล้วเขียนใหม่" ตามโมเดล sync — ใช้ผิดตัวคือรูปทั้งเคสหาย)
 router.post('/:id/photos', auth, requireRole('checker', 'admin'),

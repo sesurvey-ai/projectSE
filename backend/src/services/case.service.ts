@@ -702,6 +702,15 @@ export const caseService = {
       const fs = await import('fs');
       const pathMod = await import('path');
 
+      // จำหมวดเดิมของแต่ละไฟล์ไว้ก่อนลบ — รูปที่ผู้ตรวจอัปเองบนเว็บ (web_*.jpg) อยู่โฟลเดอร์
+      // เดียวกับรูปจากแอป แต่แอปไม่ได้ส่งหมวดของมันมาด้วย ถ้าไม่จำไว้ พอช่างส่งงานใหม่
+      // (เช่นหลังถูกตีกลับ) หมวดที่ผู้ตรวจตั้งไว้จะกลายเป็นว่างทั้งชุด
+      const prevCats = new Map<string, string>();
+      for (const row of (await client.query(
+        'SELECT file_path, category FROM survey_photos WHERE report_id = $1', [report.id])).rows) {
+        if (row.category) prevCats.set(String(row.file_path), String(row.category));
+      }
+
       // ลบ survey_photos เดิมของ report ก่อน re-insert — กันรูปซ้ำเมื่อ submit ซ้ำ (idempotent)
       await client.query('DELETE FROM survey_photos WHERE report_id = $1', [report.id]);
 
@@ -734,7 +743,8 @@ export const caseService = {
         for (const fileName of photoFiles) {
           await client.query(
             'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
-            [report.id, `${rel}/${fileName}`, catByName[fileName] || arrivalCategory(fileName)]
+            [report.id, `${rel}/${fileName}`,
+             catByName[fileName] || prevCats.get(`${rel}/${fileName}`) || arrivalCategory(fileName)]
           );
         }
         break; // โฟลเดอร์แรกที่มีอยู่จริง = แหล่งความจริง แม้ว่าง
@@ -812,7 +822,10 @@ export const caseService = {
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
        LEFT JOIN reviews rv ON rv.case_id = c.id
        LEFT JOIN users ck ON ck.id = rv.checker_id
+       -- เคสที่ตีกลับไปแล้วสถานะเป็น 'assigned' — ต้องยังอยู่ในลิสต์นี้
+       -- ไม่งั้นหัวหน้าตีกลับแล้วตามงานตัวเองต่อไม่ได้ และ "หัวหน้ายังแก้เองได้" ก็ทำไม่ได้จริง
        WHERE c.status IN ('surveyed', 'reviewed')
+          OR (c.status = 'assigned' AND c.sent_back_at IS NOT NULL)
        ORDER BY c.created_at DESC`
     );
     return result.rows;
@@ -1210,6 +1223,53 @@ export const caseService = {
     vals.push(caseId);
     const out = await db.query(
       `UPDATE survey_reports SET ${sets.join(', ')} WHERE case_id = $${vals.length} RETURNING *`, vals);
+    return out.rows[0];
+  },
+
+  /**
+   * ตีกลับให้ผู้สำรวจไปแก้เอง — สถานะกลับเป็น 'assigned' (กำลังสำรวจ)
+   *
+   * ใช้กับเรื่องที่หัวหน้าแก้บนเว็บแทนไม่ได้ เพราะต้องถามคนที่ไปหน้างานจริง
+   * (ทะเบียนไม่ตรงกับรูป · รูปไม่ครบ · เวลาที่จดมาผิด) — งานจะโผล่ในรายการของช่างอีกครั้ง
+   * แก้ในแอปแล้วกดส่งใหม่ได้ตามปกติ · **หัวหน้ายังแก้เองได้ด้วย** (กติกา user 18/08/69)
+   *
+   * ไม่มีการแจ้งเตือนเข้าเครื่อง — ตกลงกันแล้วว่าแค่ให้เห็นในรายการงานพอ
+   *
+   * ⛔ ต้องมีผู้สำรวจอยู่จริงถึงจะตีกลับได้ — งานที่นำเข้าจากระบบเก่า/XML ไม่มีคนรับผิดชอบ
+   *    ในระบบเรา ตีกลับไปแล้วจะไม่โผล่ในรายการของใครเลย = เคสหายเงียบ
+   * ⛔ เหตุผลบังคับกรอก — ตีกลับโดยไม่บอกว่าให้แก้อะไร ช่างก็ส่งของเดิมกลับมา
+   */
+  async sendBackToSurveyor(caseId: number, checkerId: number, reason: string) {
+    const text = String(reason ?? '').trim();
+    if (!text) throw new AppError(400, 'ต้องบอกเหตุผลที่ตีกลับ — ช่างต้องรู้ว่าให้แก้อะไร');
+
+    const c = await db.query('SELECT status, assigned_to FROM cases WHERE id = $1', [caseId]);
+    if (c.rows.length === 0) throw new NotFoundError('Case not found');
+    const { status, assigned_to } = c.rows[0];
+
+    if (status === 'reviewed') {
+      throw new ForbiddenError('เคสนี้อนุมัติแล้ว — ต้องให้แอดมินปลดล็อกก่อนจึงจะตีกลับได้');
+    }
+    if (status === 'assigned') throw new ForbiddenError('เคสนี้อยู่กับผู้สำรวจอยู่แล้ว');
+    if (status !== 'surveyed') throw new ForbiddenError('ตีกลับได้เฉพาะงานที่ส่งเข้ามาให้ตรวจแล้ว');
+    if (!assigned_to) {
+      throw new ForbiddenError(
+        'เคสนี้ไม่มีผู้สำรวจในระบบ (งานนำเข้าจากระบบเก่า) — ตีกลับแล้วจะไม่โผล่ในรายการของใคร');
+    }
+
+    const out = await db.query(
+      `UPDATE cases
+          SET status = 'assigned',
+              sent_back_at = NOW(),
+              sent_back_by = $2,
+              sent_back_reason = $3,
+              sent_back_count = sent_back_count + 1
+        WHERE id = $1 AND status = 'surveyed'
+        RETURNING id, status, sent_back_at, sent_back_reason, sent_back_count`,
+      [caseId, checkerId, text]
+    );
+    // 0 แถว = สถานะเปลี่ยนไประหว่างทาง (อนุมัติ/ส่งซ้ำพร้อมกัน) — ห้ามตอบว่าสำเร็จ
+    if (out.rowCount === 0) throw new ForbiddenError('สถานะเคสเพิ่งเปลี่ยนไป — โหลดหน้าใหม่แล้วลองอีกครั้ง');
     return out.rows[0];
   },
 

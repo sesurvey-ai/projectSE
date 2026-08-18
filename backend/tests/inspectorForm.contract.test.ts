@@ -202,5 +202,42 @@ check('ช่องยอดเงินอยู่ครบ (ขาดช่�
 check('ไม่มีช่องยอดเงินช่องไหนถูกซ่อนตามขนาดจอ',
       payBlock.length > 0 && !/:hidden|className="hidden/.test(payBlock));
 
+/**
+ * -- ตีกลับให้ผู้สำรวจ --
+ *
+ * กติกาที่ user เคาะ 18/08/69: สถานะกลับเป็น "กำลังสำรวจ" · ไม่มีแจ้งเตือนเข้าเครื่อง ·
+ * หัวหน้ายังแก้เองได้ · เหตุผลบังคับกรอก (ไม่บอกว่าให้แก้อะไร ช่างก็ส่งของเดิมกลับมา)
+ *
+ * 2 กับดักที่เทสนี้กันไว้:
+ *   1. ช่องเหตุผลอยู่ใน <form> เดียวกับฟอร์มหลัก — มี name เมื่อไหร่โดน FormData เก็บไปด้วย
+ *   2. ต้องบันทึกก่อนตีกลับ ไม่งั้นสิ่งที่หัวหน้าเพิ่งแก้ไม่ไปถึงเครื่องช่าง
+ *      แล้วช่างส่งข้อมูลชุดเก่ากลับมาทับ
+ */
+console.log('\n-- หน้าตรวจเคส: ตีกลับให้ผู้สำรวจ --');
+const sbStart = src.indexOf('const doSendBack');
+const sbEnd = src.indexOf('const [keyEdit', sbStart);
+const sbFn = sbStart > 0 && sbEnd > sbStart ? src.slice(sbStart, sbEnd) : '';
+check('มีปุ่มตีกลับให้ผู้สำรวจ', /ตีกลับให้ผู้สำรวจไปแก้ในแอป/.test(src));
+check('บันทึกก่อนตีกลับเสมอ', /if \(!\(await handleSave\(\)\)\) return;/.test(sbFn));
+check('ยิงไปที่ /send-back พร้อมเหตุผล', /send-back`, \{ reason \}/.test(sbFn));
+const sbPanel = src.slice(src.indexOf('{!approved && !waitingSurveyor && (sbOpen ?'),
+                          src.indexOf('<div className="flex justify-end">{actionBar}</div>'));
+check('ช่องเหตุผลไม่มี name', sbPanel.length > 0 && !/\bname=/.test(sbPanel));
+check('ตีกลับแล้วซ่อนปุ่ม (กันตีกลับซ้ำระหว่างรอช่าง)', /!approved && !waitingSurveyor/.test(src));
+
+const svc = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'services', 'case.service.ts'), 'utf8');
+const sbSvcStart = svc.indexOf('async sendBackToSurveyor');
+const sbSvc = sbSvcStart > 0 ? svc.slice(sbSvcStart, svc.indexOf('\n  },', sbSvcStart)) : '';
+check('เซอร์วิสตีกลับมีอยู่จริง', sbSvc.length > 0);
+check('เหตุผลบังคับกรอก', /if \(!text\) throw new AppError\(400/.test(sbSvc));
+check('อนุมัติแล้วตีกลับไม่ได้ (ต้องปลดล็อกก่อน)', /status === 'reviewed'/.test(sbSvc));
+check('เคสที่ไม่มีผู้สำรวจตีกลับไม่ได้ (ไม่งั้นเคสหายเงียบ)', /if \(!assigned_to\)/.test(sbSvc));
+check('เปลี่ยนสถานะแบบมี guard กันชนกับการอนุมัติ/ส่งซ้ำ',
+      /WHERE id = \$1 AND status = 'surveyed'/.test(sbSvc));
+check('หน้าตรวจสอบยังเห็นเคสที่ตีกลับแล้ว (หัวหน้าแก้เองได้)',
+      /OR \(c\.status = 'assigned' AND c\.sent_back_at IS NOT NULL\)/.test(svc));
+check('ส่งงานใหม่แล้วหมวดรูปที่ผู้ตรวจตั้งไว้ไม่หาย', /prevCats\.get\(/.test(svc));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

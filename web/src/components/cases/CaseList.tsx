@@ -27,6 +27,10 @@ export interface Case {
   approved_by?: string | null;
   approved_at?: string | null;
   unlocked_count?: number | null;
+  /** ตีกลับให้ผู้สำรวจ (migration 041) — status กลับเป็น 'assigned' แต่ยังอยู่ในลิสต์นี้ */
+  sent_back_at?: string | null;
+  sent_back_reason?: string | null;
+  sent_back_count?: number | null;
   emcs_imported_at?: string | null; // สร้าง draft ใน EMCS แล้วเมื่อ (null = ยัง) — กันกดซ้ำถาวรข้ามเครื่อง
   // ⚠️ "นำเข้าแล้ว" ≠ "ส่งงานแล้ว" — บอทสร้าง draft ให้เท่านั้น ปุ่ม "ส่งงานใหม่" คนกดเอง
   emcs_submitted_at?: string | null;  // ยืนยันแล้วว่าประกันรับงาน (null = ยังเป็น draft ค้าง)
@@ -184,6 +188,11 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
                         รูป {photos} ใบ
                       </span>
                     )}
+                  </div>
+                )}
+                {c.status === 'assigned' && c.sent_back_at && (
+                  <div className="text-xs text-orange-700 mt-1" title={String(c.sent_back_reason ?? '')}>
+                    ตีกลับแล้ว — รอช่างส่งใหม่
                   </div>
                 )}
                 {(c.unlocked_count ?? 0) > 0 && (

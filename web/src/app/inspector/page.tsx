@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import CaseList, { type Case } from '@/components/cases/CaseList';
 import { queueStats } from '@/components/cases/reviewQueue';
 
-type Tab = 'pending' | 'approved' | 'sent';
+type Tab = 'pending' | 'sentBack' | 'approved' | 'sent';
 
 export default function InspectorDashboard() {
   const [cases, setCases] = useState<Case[]>([]);
@@ -53,13 +53,16 @@ export default function InspectorDashboard() {
    * นำเข้าแล้ว (มี draft) ยังไม่ใช่ประกันได้รับงาน ต้องเห็นว่าค้างอยู่
    */
   const groups = useMemo(() => {
-    const pending: Case[] = [], approved: Case[] = [], sent: Case[] = [];
+    const pending: Case[] = [], sentBack: Case[] = [], approved: Case[] = [], sent: Case[] = [];
     for (const c of cases) {
       if (c.emcs_submitted_at) sent.push(c);
       else if (c.status === 'reviewed') approved.push(c);
+      // ตีกลับไปแล้ว = งานอยู่กับช่าง ไม่ใช่คิวที่หัวหน้าต้องลงมือ — แยกแท็บ ไม่งั้น
+      // ตัวเลข "รอตรวจ" จะบวมด้วยงานที่รออีกฝั่งอยู่ (แต่ยังเปิดแก้เองได้ตามที่ตกลงกันไว้)
+      else if (c.status === 'assigned' && c.sent_back_at) sentBack.push(c);
       else pending.push(c);
     }
-    return { pending, approved, sent };
+    return { pending, sentBack, approved, sent };
   }, [cases]);
 
   /** งานที่กดอนุมัติไม่ได้จนกว่าจะเติมข้อมูล — ตัวเลขที่หัวหน้าต้องเห็นก่อนเปิดเคส
@@ -95,6 +98,7 @@ export default function InspectorDashboard() {
 
   const TABS: { key: Tab; label: string; n: number }[] = [
     { key: 'pending', label: 'รอตรวจ', n: groups.pending.length },
+    { key: 'sentBack', label: 'ตีกลับแล้ว', n: groups.sentBack.length },
     { key: 'approved', label: 'อนุมัติแล้ว', n: groups.approved.length },
     { key: 'sent', label: 'ส่งประกันแล้ว', n: groups.sent.length },
   ];
