@@ -179,5 +179,28 @@ check('ช่องในแผงไม่มี name เลย', Boolean(panel
 check('ปุ่มเปิดแผงขึ้นเฉพาะแอดมิน และเฉพาะตอนยังไม่อนุมัติ',
       /isAdmin && !approved && !keyEdit \? \(/.test(src));
 
+/**
+ * -- ค่าใช้จ่ายย้ายไปคอลัมน์ขวา (เฉพาะจอกว้าง) --
+ *
+ * `survey_pay` บันทึกแบบ "ทั้งแถว" — ช่องไหนไม่ถูกส่งไปด้วยจะกลายเป็น NULL
+ * ห้ามซ่อน/ถอดช่องยอดเงินตามขนาดจอเด็ดขาด ต้องอยู่ครบใน DOM ทุกความกว้าง
+ * แล้วค่อยใช้ CSS จัดตำแหน่งเอา · และต้องยังอยู่ใน <fieldset disabled> ตัวเดิม
+ * ไม่งั้นเคสที่อนุมัติแล้วจะกลับมากรอกยอดทับได้
+ */
+console.log('\n-- หน้าตรวจเคส: ค่าใช้จ่ายอยู่คอลัมน์ขวาเฉพาะจอกว้าง --');
+const payStart = src.indexOf('{/* ── ค่าใช้จ่าย (คอลัมน์ขวาบนจอกว้าง) ──');
+const fsEnd = src.indexOf('</fieldset>');
+const payBlock = payStart > 0 && fsEnd > payStart ? src.slice(payStart, fsEnd) : '';
+check('ค่าใช้จ่ายยังอยู่ใน fieldset ที่ล็อกตอนอนุมัติแล้ว', payBlock.length > 0);
+check('จอแคบกลับไปเรียงลงล่างเอง (คอลัมน์เดียว)',
+      /className="grid grid-cols-1 min-\[1500px\]:grid-cols-\[/.test(src));
+const payFields = Array.from(
+  src.matchAll(/name="(pay_[a-z_]+|deduct_[a-z]+|out_of_[a-z]+|special_tumbon|daily_check)"/g),
+  (m) => m[1]);
+check('ช่องยอดเงินอยู่ครบ (ขาดช่องเดียว = ยอดช่องนั้นถูกล้างตอนบันทึก)',
+      payFields.length === 16, `${payFields.length} ช่อง`);
+check('ไม่มีช่องยอดเงินช่องไหนถูกซ่อนตามขนาดจอ',
+      payBlock.length > 0 && !/:hidden|className="hidden/.test(payBlock));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);
