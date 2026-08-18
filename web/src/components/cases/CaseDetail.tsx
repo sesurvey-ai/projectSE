@@ -391,6 +391,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * ยอด**รายรับ** 16 ช่องยังล็อกเหมือนเดิม — ยอดพวกนั้นมีเจ้าของอยู่ที่ se-billing แล้ว
    */
   const dDeduct = false;
+  /**
+   * 4 ช่องที่ "ระบุว่าเคสนี้คือเคสไหน" — ล็อกไม่ให้แก้จากหน้าตรวจ (user เคาะ 18/08/69)
+   *   บริษัทประกัน · สาขา · เลขเรื่องเซอร์เวย์ · เลขที่รับแจ้ง · เลขที่เคลม
+   *
+   * เลขพวกนี้ถูกกำหนดตั้งแต่ตอนรับงาน/นำเข้า แก้ทีหลังแล้วเคสจะไปผูกกับงานผิดใบ
+   * (เลขเซอร์เวย์ใช้อ้างอิงเบิกเงิน · บริษัทประกันผิดที = เคสไปโผล่ผิดบริษัทใน EMCS
+   *  ซึ่ง draft ของ EMCS ลบไม่ได้)
+   *
+   * ⚠️ ช่อง disabled ไม่เข้า FormData ตามมาตรฐาน HTML → ไม่ถูกส่งตอนบันทึก
+   *    = ค่าเดิมใน DB ปลอดภัย ไม่ถูกเขียนทับด้วยค่าว่าง
+   */
+  const dKey = true;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
   /**
@@ -905,7 +917,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               <F label="บริษัทประกัน">
                 <div className="flex items-center gap-1">
-                  <select disabled={d} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                  <select disabled={dKey} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${dKey ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                     {/* เหลือ 2 บริษัทตามงานที่รับจริง (กติกา user 13/08/69) — เดิมลอกมาทั้ง
                         dropdown ของ EMCS 7 ตัว · เลือกผิดที = เคสไปโผล่ผิดบริษัทในระบบประกัน
                         ซึ่ง draft ของ EMCS ลบไม่ได้ · เคสเก่าที่ค่าไม่อยู่ใน 2 ตัวนี้ยังเก็บค่าเดิมไว้
@@ -916,20 +928,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <option value={report.insurance_company}>{report.insurance_company} (ค่าเดิม)</option>
                     )}
                   </select>
-                  <select disabled={d} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                  <select disabled={dKey} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${dKey ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                     <option value="0">-- ระบุ --</option>
                     <option value="กรุงเทพ">กรุงเทพ</option>
                   </select>
                 </div>
               </F>
               <F label="เลขเรื่องเซอร์เวย์">
-                <input type="text" disabled={d} name="survey_job_no" defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={CTL(d)} />
+                <input type="text" disabled={dKey} name="survey_job_no" defaultValue={report.survey_job_no || ''} placeholder="SEABI-110260301037" className={CTL(dKey)} />
               </F>
               <F label="เลขที่รับแจ้ง">
-                <input type="text" disabled={d} name="claim_ref_no" defaultValue={report.claim_ref_no || ''} className={CTL(d)} />
+                <input type="text" disabled={dKey} name="claim_ref_no" defaultValue={report.claim_ref_no || ''} className={CTL(dKey)} />
               </F>
               <F label="เลขที่เคลม">
-                <input type="text" disabled={d} name="claim_no" defaultValue={report.claim_no || ''} className={CTL(d)} />
+                <input type="text" disabled={dKey} name="claim_no" defaultValue={report.claim_no || ''} className={CTL(dKey)} />
               </F>
 
               {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
