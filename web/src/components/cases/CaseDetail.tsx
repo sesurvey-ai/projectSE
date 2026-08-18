@@ -1470,13 +1470,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               {/* ต้องมีรายการความเสียหายอย่างน้อย 1 รายการ (ผู้สำรวจเลือกจากแอป) */}
               <F label="ความเสียหายรถประกันภัย" req={<Req of="damage_description" />} span={4}>
                 <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={CTL(d)} />
-                <div className="flex items-center gap-2 mt-1.5">
+                <div className="mt-1.5">
                   {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
                   <button type="button" disabled={d} onClick={() => setDmgOpen(true)}
                     className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap hover:bg-gray-300">
                     ข้อมูลความเสียหาย{damage.length > 0 ? ` (${damage.length})` : ''}
                   </button>
-                  <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">พิมพ์ข้อมูลความเสียหาย</button>
                 </div>
               </F>
             </div>
