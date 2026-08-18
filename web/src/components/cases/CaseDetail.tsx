@@ -1957,41 +1957,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
              ช่องที่ไม่ได้ถูกส่งไปด้วยจะกลายเป็น NULL คือยอดที่เคยกรอกไว้หายทั้งแถว */}
       <div className="flex gap-6 min-[1500px]:block min-[1500px]:sticky min-[1500px]:top-[68px]
                       min-[1500px]:max-h-[calc(100vh-84px)] min-[1500px]:overflow-y-auto">
-        <div className="w-1/2 min-[1500px]:w-full space-y-6">
+        <div className="w-1/2 min-[1500px]:w-full">
 
-          {/* ── การตรวจสอบ ── ย้ายมาไว้เหนือค่าใช้จ่ายในรางขวา (user เคาะ 18/08/69)
-              3 ช่องนี้กับยอดเงินคือ "สิ่งที่ผู้ตรวจเขียนเอง" ทั้งหมดของหน้านี้ อยู่ด้วยกันแล้ว
-              เลื่อนอ่านข้อมูลเคสทางซ้ายไปพลางเขียนไปพลางได้ (รางขวาลอยตามอยู่แล้ว)
+          {/* ── รางขวา = การ์ดเดียว ── หัวการ์ด "ค่าใช้จ่าย · ครั้งที่" มาอยู่บนสุดแทนหัวข้อ
+              "การตรวจสอบ" ที่ถอดออก (user เคาะ 18/08/69) · ข้างในเรียง 3 ช่องความเห็น
+              แล้วต่อด้วยตารางยอดเงิน = ทุกอย่างที่ผู้ตรวจเขียนเองอยู่ในกรอบเดียว
               เรียงตามลำดับที่ user กำหนด: ผลการดำเนินงาน → ความเห็นผู้ตรวจสอบ → ความเห็นเซอร์เวย์
               รางแคบกว่าเดิมมาก จึงวางเรียงลงล่างแทน 3 คอลัมน์ */}
-          <div data-section="review" className="space-y-2">
-            <SectionBar title="การตรวจสอบ" gap={(gapSec ?? []).includes('review')} />
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="p-4 space-y-3">
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
-                  <textarea name="survey_result" defaultValue={report?.survey_result || ''}
-                    className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
-                </div>
-                {/* ⛔ "ความเห็นของผู้ตรวจสอบ" มีที่เดียวเท่านั้น — 2 ช่องชื่อเดียวกันเมื่อไหร่
-                    ตัวบันทึกหยิบไปแค่ช่องเดียว แล้วอีกช่องหายเงียบ ๆ
-                    (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-                  <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
-                    placeholder="บันทึกสิ่งที่ตรวจพบ / สิ่งที่แก้ให้ / เหตุผลที่อนุมัติ"
-                    className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
-                  <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''}
-                    className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div data-section="review" className="bg-white rounded-lg shadow overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
               <span className="font-semibold">ค่าใช้จ่าย</span>
               <div className="flex items-center gap-2">
@@ -2000,6 +1973,27 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <input type="hidden" name="expense_count" value={visitCount} />
               </div>
             </div>
+
+          {/* ⛔ "ความเห็นของผู้ตรวจสอบ" มีที่เดียวเท่านั้น — 2 ช่องชื่อเดียวกันเมื่อไหร่
+              ตัวบันทึกหยิบไปแค่ช่องเดียว แล้วอีกช่องหายเงียบ ๆ (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
+          <div className="p-4 space-y-3 border-b border-gray-200">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
+              <textarea name="survey_result" defaultValue={report?.survey_result || ''}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
+              <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
+              <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+            </div>
+          </div>
+
           <div className="p-4">
             <div>
               <table className="w-full text-sm table-fixed">

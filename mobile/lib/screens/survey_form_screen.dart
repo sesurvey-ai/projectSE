@@ -44,7 +44,9 @@ const _ok = Color(0xFF1F9D6B);
 const _okTint = Color(0xFFE4F6EE);
 
 // มุมมองใน Hub-and-Spoke: hub = แดชบอร์ด, s1..s6 = หน้าหมวดเต็มจอ, ที่เหลือ = แท็บอื่น
-enum _SView { hub, s1, s2, s3, s4, s5, s6, photos, notes, injured, property, expenses, review }
+// 'notes' ถูกถอดออก 18/08/69 — หน้าจอนั้นไม่มีทางเข้าถึงอยู่แล้ว (ไม่มีปุ่มไหนพาไป)
+// และช่องหมายเหตุไม่เคยถูกส่งเข้าระบบประกัน ฝั่งเว็บก็ถอดออกไปพร้อมกัน
+enum _SView { hub, s1, s2, s3, s4, s5, s6, photos, injured, property, expenses, review }
 
 class SurveyFormScreen extends StatefulWidget {
   final int caseId;
@@ -977,7 +979,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _accPoliceBookNoCtl: 'acc_police_book_no', _accAlcoholTestCtl: 'acc_alcohol_test',
       _accAlcoholResultCtl: 'acc_alcohol_result', _driverTicketCtl: 'driver_ticket',
       _accFollowupCountCtl: 'acc_followup_count', _accFollowupDetailCtl: 'acc_followup_detail',
-      _accFollowupDateCtl: 'acc_followup_date', _notesCtl: 'notes',
+      _accFollowupDateCtl: 'acc_followup_date',
     };
     // ช่องตัวเลขที่ _collectFormData เขียน null เมื่อว่าง (null ใน draft = ผู้ใช้ตั้งใจล้างค่า)
     // — restore จาก draft ต้องล้างตาม ไม่ใช่ข้าม (เดิมข้าม null → ค่าเก่าจาก server คืนชีพ
@@ -1274,8 +1276,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
   final _accAlcoholResultCtl = TextEditingController();
   final _accPoliceBookNoCtl = TextEditingController();
 
-  // === หมายเหตุ ===
-  final _notesCtl = TextEditingController();
 
   @override
   void dispose() {
@@ -1312,7 +1312,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       _accClaimAmountCtl, _accClaimTotalAmountCtl,
       _accPoliceNameCtl, _accPoliceStationCtl, _accPoliceCommentCtl, _accPoliceDateCtl, _accPoliceBookNoCtl,
       _accAlcoholTestCtl, _accFollowupCountCtl, _accFollowupDetailCtl, _accFollowupDateCtl,
-      _accSurveyorBranchCtl, _accSurveyorPhoneCtl, _notesCtl,
+      _accSurveyorBranchCtl, _accSurveyorPhoneCtl,
     ]) {
       c.dispose();
     }
@@ -2093,7 +2093,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
       'acc_followup_count': _accFollowupCountCtl.text.trim(),
       'acc_followup_detail': _accFollowupDetailCtl.text.trim(),
       'acc_followup_date': _combineDT(_accFollowupDateCtl, _accFollowupTimeCtl),
-      'notes': _notesCtl.text.trim(),
     };
     // ส่ง key ตัวเลข "เสมอ" (null เมื่อว่าง) — เดิม omit เมื่อว่าง ทำให้ล้างค่าไม่ได้ (ค่าเก่าฟื้นจาก draft/DB)
     // ตัด comma ก่อน parse กัน '12,345' → null เงียบ ๆ
@@ -2190,8 +2189,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
           if (_photoPaths.isNotEmpty) _imgToolbar(),
           _buildPhotoGrid(),
         ]));
-      case _SView.notes:
-        return _sectionScroll(_card(6, Icons.sticky_note_2_outlined, 'หมายเหตุ', [_txt(_notesCtl, 'หมายเหตุเพิ่มเติม', maxLines: 3)]));
       case _SView.injured:
         return _injuredBody();
       case _SView.property:

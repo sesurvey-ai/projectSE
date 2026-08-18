@@ -18,9 +18,10 @@ export default function Header() {
     router.replace('/login');
   };
 
+  // ไม่มีหัวข้อฝั่งซ้ายแล้ว (user เคาะ 18/08/69) — "แผงควบคุม" ไม่ได้บอกอะไร
+  // ทุกหน้ามีหัวข้อของตัวเองอยู่แล้ว · เหลือแค่ชื่อผู้ใช้กับปุ่มออกจากระบบชิดขวา
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-      <h2 className="text-lg font-semibold text-gray-700">แผงควบคุม</h2>
+    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-end">
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm font-medium text-gray-700">

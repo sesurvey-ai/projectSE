@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,6 +45,19 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  /**
+   * เปิดหน้ารายละเอียดเคส = ยุบเมนูให้เอง (user เคาะ 18/08/69)
+   *
+   * หน้าเคสกว้างเต็มจอทั้งฟอร์ม ~200 ช่อง + รางค่าใช้จ่ายทางขวา — เมนู 256px
+   * ที่ไม่ได้ใช้ตอนนั้นเบียดพื้นที่อ่านข้อมูลไปเปล่า ๆ · ออกจากหน้าเคสแล้วกางคืนให้
+   * (กางคืนเฉพาะตอนที่ "เรา" เป็นคนยุบ — คนกดยุบเองที่หน้าอื่นต้องไม่ถูกกางแทรก)
+   */
+  const onCaseDetail = /^\/(inspector|admin|callcenter)\/cases\/\d+/.test(pathname ?? '');
+  const autoCollapsed = useRef(false);
+  useEffect(() => {
+    if (onCaseDetail) { autoCollapsed.current = true; setCollapsed(true); }
+    else if (autoCollapsed.current) { autoCollapsed.current = false; setCollapsed(false); }
+  }, [onCaseDetail]);
   const role = user?.role || '';
   const items = NAV_ITEMS[role] || [];
   const title = TITLES[role] || 'SE Survey';
