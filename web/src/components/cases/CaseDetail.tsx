@@ -2136,9 +2136,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>{/* จบ grid 2 คอลัมน์ */}
       </fieldset>
 
-      {/* ── การ์ดตัดสินใจท้ายหน้า ──
-          ปุ่ม + เหตุผลที่ยังกดไม่ได้ · ปุ่มชุดเดียวกันนี้อยู่บนแถบหัวเคสด้วย
-          ("ความเห็นผู้ตรวจสอบ" อยู่ในหมวดการตรวจสอบ ไม่ใช่ที่นี่ — user เคาะ 18/08/69) */}
+      {/* ── การ์ดสถานะท้ายหน้า ──
+          **ไม่มีปุ่มบันทึก/อนุมัติที่นี่แล้ว** (user ทัก 18/08/69 ว่าปุ่มโผล่ 2 จุด)
+          ปุ่มอยู่ที่แถบหัวเคสที่ติดขอบบนจุดเดียว — เลื่อนไปตรงไหนของหน้าก็เห็นและกดได้
+          เอาปุ่มบนออกแทนไม่ได้ เพราะจะกลับไปเป็นปัญหาเดิมคือต้องเลื่อนสุดหน้าเพื่อกดบันทึก
+          ที่นี่เหลือของที่บนไม่มี: **เหตุผล**ว่าทำไมยังกดอนุมัติไม่ได้ (บนบอกแค่จำนวนข้อ)
+          และปุ่ม "ตีกลับให้ผู้สำรวจ" ที่ตั้งใจให้อยู่ไกลมือ ต้องเลื่อนลงมาถึงจะกดได้ */}
       <div className={`rounded-lg border ${approved ? 'border-green-200 bg-green-50' : approvalBlockers.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white'} p-4 space-y-3`}>
         {approved ? (
           <div className="text-sm text-green-800">
@@ -2153,7 +2156,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </div>
         ) : (
           <div className="text-sm text-gray-600">
-            ช่องบังคับครบแล้ว — อนุมัติได้
+            ช่องบังคับครบแล้ว — กดปุ่ม &quot;อนุมัติ&quot; ที่แถบด้านบนได้เลย
             {/* ⛔ ไม่เขียนว่า "ส่งเข้าระบบประกัน" เพราะบอทสร้างเป็น draft ให้เท่านั้น
                 คนยังต้องกด "ส่งงานใหม่" เองอีกครั้ง (เฟส 3 ยังไม่เปิด) เขียนเกินจริงคือหลอกผู้ตรวจ */}
             <span className="text-gray-400"> · บอทจะนำเข้าเป็นร่างในระบบประกัน แล้วยังต้องมีคนกดส่งอีกครั้ง</span>
@@ -2195,7 +2198,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </button>
         ))}
 
-        <div className="flex justify-end">{actionBar}</div>
       </div>
     </form>
   );
