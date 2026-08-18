@@ -1836,9 +1836,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
               <textarea name="survey_result" defaultValue={report?.survey_result || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
             </div>
-            {/* "ความเห็นของผู้ตรวจสอบ" ย้ายไปอยู่การ์ดตัดสินใจท้ายหน้าตามดีไซน์ใหม่ —
-                ย้าย ไม่ใช่ก๊อป: มี 2 ช่องชื่อเดียวกันเมื่อไหร่ ตัวบันทึกจะหยิบไปแค่ช่องเดียว
-                แล้วอีกช่องหายเงียบ ๆ */}
+            {/* "ความเห็นของผู้ตรวจสอบ" อยู่ตรงกลางระหว่างผลการดำเนินงานกับความเห็นเซอร์เวย์
+                (user เคาะ 18/08/69) — เคยย้ายไปการ์ดตัดสินใจท้ายหน้าตามดีไซน์ แล้วย้ายกลับ
+                ⛔ มีที่เดียวเท่านั้น: 2 ช่องชื่อเดียวกันเมื่อไหร่ ตัวบันทึกหยิบไปแค่ช่องเดียว
+                   แล้วอีกช่องหายเงียบ ๆ (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
+              <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
+                placeholder="บันทึกสิ่งที่ตรวจพบ / สิ่งที่แก้ให้ / เหตุผลที่อนุมัติ"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
+            </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
               <textarea name="surveyor_comment" defaultValue={report?.surveyor_comment || review?.surveyor_comment || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[150px]" rows={6} />
@@ -2009,17 +2016,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>
       </fieldset>
 
-      {/* ── การ์ดตัดสินใจท้ายหน้า (ตามดีไซน์ 1b) ──
-          รวม "ความเห็นผู้ตรวจสอบ" + ปุ่ม + เหตุผลที่ยังกดไม่ได้ ไว้ที่เดียว
-          ปุ่มชุดเดียวกันนี้ยังอยู่บนแถบหัวเคสด้วย สำหรับตอนอยู่กลางหน้า */}
+      {/* ── การ์ดตัดสินใจท้ายหน้า ──
+          ปุ่ม + เหตุผลที่ยังกดไม่ได้ · ปุ่มชุดเดียวกันนี้อยู่บนแถบหัวเคสด้วย
+          ("ความเห็นผู้ตรวจสอบ" อยู่ในหมวดการตรวจสอบ ไม่ใช่ที่นี่ — user เคาะ 18/08/69) */}
       <div className={`rounded-lg border ${approved ? 'border-green-200 bg-green-50' : approvalBlockers.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white'} p-4 space-y-3`}>
-        <fieldset disabled={approved} className="border-0 p-0 m-0">
-          <label className="block text-sm font-medium text-gray-700 mb-1">ความเห็นของผู้ตรวจสอบ</label>
-          <textarea name="review_comment" defaultValue={report?.review_comment || review?.comment || ''}
-            placeholder="บันทึกสิ่งที่ตรวจพบ / สิ่งที่แก้ให้ / เหตุผลที่อนุมัติ"
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-800 bg-white text-sm" rows={3} />
-        </fieldset>
-
         {approved ? (
           <div className="text-sm text-green-800">
             อนุมัติแล้ว — บอทจะนำเข้าระบบประกันให้ · แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก
