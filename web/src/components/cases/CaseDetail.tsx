@@ -160,60 +160,27 @@ const BG_ORIG = ['bg-white', 'bg-gray-100'];
  * ต้องตรงกับ `emcsNameWarnings()` ฝั่ง backend (xmlExport.service.ts)
  * ⚠️ "ผู้เอาประกัน" (assured_name) **ไม่มี** ตัวกรองนี้ — ตรวจแล้ว ไม่ต้องใส่
  */
-/** ตัด placeholder ของ dropdown ('0' / '-- ระบุ --' / '-- เขต --') ออกจากสรุป — ไม่ใช่ค่าจริง */
-const noPh = (v: unknown) => {
-  const s = String(v ?? '').trim();
-  return s === '0' || s.startsWith('--') ? '' : s;
-};
-
-/** 1 บรรทัดสรุป — เทาจาง = ยังไม่มีข้อมูล (กติกาเดียวกับดีไซน์ใหม่) */
-function Sum({ l, v }: { l: string; v?: unknown }) {
-  const s = String(v ?? '').trim();
-  return (
-    <div className="flex gap-2 min-w-0">
-      <span className="text-gray-400 shrink-0">{l}</span>
-      <span className={`truncate ${s ? 'text-gray-800' : 'text-gray-300'}`}>{s || '—'}</span>
-    </div>
-  );
-}
-
 /**
- * แถบหัวหมวด + โหมดสรุป
+ * แถบหัวหมวด — ชื่อหมวดตามที่ดีไซน์ใหม่จัดไว้ + ป้ายบอกว่าหมวดนี้ยังกรอกไม่ครบ
  *
- * หมวดที่กรอกครบแล้วยุบเหลือสรุปอ่านอย่างเดียว ผู้ตรวจจะเห็นแต่ "สิ่งที่ต้องทำ"
- * ไม่ต้องเลื่อนผ่านกล่องกรอกที่กรอกครบแล้ว ~200 ช่อง (user เคาะ 17/08/69)
- *
- * ⛔ ตัวฟอร์มจริงถูกซ่อนด้วย CSS เท่านั้น (ดู `hidden` ฝั่งผู้เรียก) **ห้ามถอดออกจาก DOM**
- *    หน้านี้บันทึกด้วย FormData และตาราง survey_pay เป็น upsert ทั้งแถว
- *    ช่องที่หายไปจาก DOM = ค่าเดิมถูกเขียนทับเป็นว่างโดยไม่มีอะไรฟ้อง
+ * ⛔ **ห้ามใส่ปุ่มยุบ/ซ่อนหมวดกลับเข้ามา** (user เคาะ 18/08/69)
+ *    เคยทำเป็นโหมดสรุป (ยุบหมวดที่กรอกครบ) แล้วถอดออก — เหตุผล: หมวดที่ถูกยุบไว้
+ *    คือหมวดที่ผู้ตรวจจะไม่เปิดดู แล้วปล่อยข้อมูลผิดผ่านไปได้
+ *    หน้านี้เป็นหน้า "ตรวจ" ต้องเห็นทุกช่องเสมอ · แถบนี้มีไว้ช่วยหาที่ ไม่ได้ซ่อนอะไร
  */
-function SectionBar({ title, open, gap, onToggle, children }: {
-  title: string; open: boolean; gap: boolean; onToggle: () => void; children?: React.ReactNode;
-}) {
+function SectionBar({ title, gap }: { title: string; gap: boolean }) {
   return (
-    <div className={`rounded-lg border ${gap ? 'border-red-200' : 'border-gray-200'} bg-white overflow-hidden`}>
-      <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 border-b border-gray-100">
-        <span className="text-sm font-semibold text-gray-700">{title}</span>
-        {gap && <span className="text-[11px] font-medium text-red-700 bg-red-50 border border-red-200 rounded px-1.5">ยังกรอกไม่ครบ</span>}
-        <button type="button" onClick={onToggle}
-          className="ml-auto text-xs text-blue-700 hover:text-blue-900 hover:underline">
-          {open ? '▲ ยุบ' : '▼ เปิดฟอร์มเต็ม'}
-        </button>
-      </div>
-      {!open && (
-        <div className="px-4 py-2.5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-1 text-sm">
-          {children}
-        </div>
+    <div className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 ${
+      gap ? 'border-red-200 bg-red-50/50' : 'border-gray-200 bg-gray-50'}`}>
+      <span className="text-sm font-semibold text-gray-700">{title}</span>
+      {gap && (
+        <span className="text-[11px] font-medium text-red-700 bg-white border border-red-200 rounded px-1.5">
+          ยังกรอกไม่ครบ
+        </span>
       )}
     </div>
   );
 }
-
-/** รหัสประเภทรถ → ชื่อ (ต้องตรงกับ <option> ของช่อง car_type) — ใช้ตอนยุบหมวดเป็นสรุป */
-const CAR_TYPE_LABEL: Record<string, string> = {
-  A: 'เก๋งเอเชีย', E: 'เก๋งยุโรป', M: 'รถจักรยานยนต์',
-  T: 'กระบะ', V: 'รถตู้', W: 'รถบรรทุก',
-};
 
 /** ชื่อจังหวะในลำดับเวลา — ใช้ทั้งการ์ดลำดับเวลาและข้อความ "ยังอนุมัติไม่ได้" */
 const TL_LABEL: Record<string, string> = {
@@ -385,14 +352,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
   /**
-   * โหมดสรุป — หมวดไหนกรอกครบแล้วยุบเหลือสรุป ผู้ตรวจเห็นแต่สิ่งที่ต้องทำ
-   * `gapSec === null` = ยังไม่ได้ตรวจรอบแรก → กางไว้ก่อน (ดีกว่าซ่อนของที่ยังไม่รู้ว่าครบไหม)
-   * ผู้ใช้กดเองเมื่อไหร่ ค่าที่กดจะชนะกติกาอัตโนมัติเสมอ
+   * หมวดไหนยังมีช่องแดง — ใช้ติดป้าย "ยังกรอกไม่ครบ" ที่หัวหมวดเท่านั้น
+   *
+   * ⛔ **ห้ามเอาไปใช้ยุบ/ซ่อนหมวด** (user เคาะ 18/08/69) — เคยทำแล้วถอดออก
+   *    หมวดที่ถูกยุบไว้คือหมวดที่ผู้ตรวจจะไม่เปิดดู แล้วปล่อยข้อมูลผิดผ่านไป
+   *    หน้านี้เป็นหน้า "ตรวจ" ต้องเห็นทุกช่องเสมอ · มีการ์ดเทสกันไว้
    */
-  const [openSec, setOpenSec] = useState<Record<string, boolean>>({});
   const [gapSec, setGapSec] = useState<string[] | null>(null);
-  const secOpen = (id: string) => openSec[id] ?? (gapSec === null || gapSec.includes(id));
-  const secToggle = (id: string) => setOpenSec((p) => ({ ...p, [id]: !secOpen(id) }));
   /**
    * "การเรียกร้องค่าเสียหายจากคู่กรณี" — ช่องเดียวในฟอร์มที่ **บังคับแบบมีเงื่อนไข**
    *
@@ -851,15 +817,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div data-section="biz" className="space-y-2">
-          <SectionBar title="บริษัท · เคลม" open={secOpen('biz')} gap={(gapSec ?? []).includes('biz')} onToggle={() => secToggle('biz')}>
-            <Sum l="ประเภทเคลม" v={CLAIM_TYPE_LABELS[report.claim_type as string]} />
-            <Sum l="รถเสียหาย" v={report.damage_level} />
-            <Sum l="บริษัทประกัน" v={report.insurance_company} />
-            <Sum l="เลขเรื่องเซอร์เวย์" v={report.survey_job_no} />
-            <Sum l="เลขที่รับแจ้ง" v={report.claim_ref_no} />
-            <Sum l="เลขที่เคลม" v={report.claim_no} />
-          </SectionBar>
-          <div className={secOpen('biz') ? '' : 'hidden'}>
+          <SectionBar title="บริษัท · เคลม" gap={(gapSec ?? []).includes('biz')} />
+          <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -950,15 +909,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* กรมธรรม์ — แบบตาราง */}
           <div data-section="policy" className="space-y-2">
-          <SectionBar title="กรมธรรม์" open={secOpen('policy')} gap={(gapSec ?? []).includes('policy')} onToggle={() => secToggle('policy')}>
-            <Sum l="กรมธรรม์เลขที่" v={report.policy_no} />
-            <Sum l="ประกันประเภท" v={report.policy_type} />
-            <Sum l="เริ่ม–สิ้นสุด" v={[report.policy_start, report.policy_end].filter(Boolean).join(' – ')} />
-            <Sum l="กรมธรรม์ (พรบ.)" v={report.prb_number} />
-            <Sum l="ค่าเสียหายส่วนแรก" v={report.deductible} />
-            <Sum l="ซ่อมที่" v={report.repair_shop} />
-          </SectionBar>
-          <div className={secOpen('policy') ? '' : 'hidden'}>
+          <SectionBar title="กรมธรรม์" gap={(gapSec ?? []).includes('policy')} />
+          <div>
           {(
             <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
               <table className="w-full table-fixed">
@@ -1026,15 +978,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* รายละเอียดรถยนต์ — แบบตาราง */}
           <div data-section="car" className="space-y-2">
-          <SectionBar title="รถประกัน" open={secOpen('car')} gap={(gapSec ?? []).includes('car')} onToggle={() => secToggle('car')}>
-            <Sum l="ทะเบียน" v={[report.license_plate, report.car_province].filter(Boolean).join(' ')} />
-            <Sum l="ประเภทรถ" v={CAR_TYPE_LABEL[String(report.car_type ?? '')] ?? report.car_type} />
-            <Sum l="ยี่ห้อ / รุ่น" v={[report.car_brand, report.car_model].filter(Boolean).join(' ')} />
-            <Sum l="สีรถ" v={report.car_color} />
-            <Sum l="ปีจดทะเบียน" v={report.car_reg_year} />
-            <Sum l="เลขตัวถัง" v={report.chassis_no} />
-          </SectionBar>
-          <div className={secOpen('car') ? '' : 'hidden'}>
+          <SectionBar title="รถประกัน" gap={(gapSec ?? []).includes('car')} />
+          <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1124,15 +1069,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* ข้อมูลผู้ขับขี่ — แบบตาราง */}
           <div data-section="driver" className="space-y-2">
-          <SectionBar title="ผู้ขับขี่รถประกัน" open={secOpen('driver')} gap={(gapSec ?? []).includes('driver')} onToggle={() => secToggle('driver')}>
-            <Sum l="ผู้ขับขี่" v={[report.driver_title, report.driver_first_name || report.driver_name, report.driver_last_name].filter(Boolean).join(' ')} />
-            <Sum l="อายุ" v={report.driver_age} />
-            <Sum l="ความสัมพันธ์" v={report.driver_relation} />
-            <Sum l="โทรศัพท์" v={report.driver_phone} />
-            <Sum l="บัตรประชาชน" v={report.driver_id_card} />
-            <Sum l="ใบขับขี่" v={report.driver_license_no} />
-          </SectionBar>
-          <div className={secOpen('driver') ? '' : 'hidden'}>
+          <SectionBar title="ผู้ขับขี่รถประกัน" gap={(gapSec ?? []).includes('driver')} />
+          <div>
           {(
             <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
               <table className="w-full table-fixed">
@@ -1373,15 +1311,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
           <div data-section="acc" className="space-y-2">
-          <SectionBar title="อุบัติเหตุ" open={secOpen('acc')} gap={(gapSec ?? []).includes('acc')} onToggle={() => secToggle('acc')}>
-            <Sum l="สถานที่เกิดเหตุ" v={[report.acc_place, noPh(accDist), noPh(accProv)].filter(Boolean).join(' · ')} />
-            <Sum l="ลักษณะการเกิดเหตุ" v={noPh(report.acc_cause)} />
-            <Sum l="ลักษณะความเสียหาย" v={noPh(report.acc_damage_type)} />
-            <Sum l="ฝ่ายประมาท" v={[report.acc_fault, report.acc_fault_opponent_no ? `คันที่ ${report.acc_fault_opponent_no}` : ''].filter(Boolean).join(' · ')} />
-            <Sum l="ผู้แจ้ง" v={report.acc_reporter} />
-            <Sum l="ผู้สำรวจภัย" v={[report.acc_surveyor, report.acc_surveyor_phone].filter(Boolean).join(' · ')} />
-          </SectionBar>
-          <div className={secOpen('acc') ? '' : 'hidden'}>
+          <SectionBar title="อุบัติเหตุ" gap={(gapSec ?? []).includes('acc')} />
+          <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar */}
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1479,13 +1410,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* คู่กรณี + ตำรวจ + ติดตามงาน — แบบตาราง */}
           <div data-section="claim" className="space-y-2">
-          <SectionBar title="การเรียกร้องค่าเสียหายจากคู่กรณี" open={secOpen('claim')} gap={(gapSec ?? []).includes('claim')} onToggle={() => secToggle('claim')}>
-            <Sum l="การเรียกร้อง" v={toArray(report.acc_claim_opponent).join(' · ')
-              || String(report.acc_claim_opponent ?? '').split(',').filter(Boolean).join(' · ')} />
-            <Sum l="รับเงินจำนวน" v={report.acc_claim_amount} />
-            <Sum l="จากยอดเรียกร้องทั้งหมด" v={report.acc_claim_total_amount} />
-          </SectionBar>
-          <div className={secOpen('claim') ? '' : 'hidden'}>
+          <SectionBar title="การเรียกร้องค่าเสียหายจากคู่กรณี" gap={(gapSec ?? []).includes('claim')} />
+          <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1535,15 +1461,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* พนักงานสอบสวน + แอลกอฮอล์ — แบบตาราง */}
           <div data-section="police" className="space-y-2">
-          <SectionBar title="คดี · ตำรวจ · ติดตามงาน" open={secOpen('police')} gap={(gapSec ?? []).includes('police')} onToggle={() => secToggle('police')}>
-            <Sum l="พนักงานสอบสวน" v={report.acc_police_name} />
-            <Sum l="สถานีตำรวจ" v={report.acc_police_station} />
-            <Sum l="ประจำวันข้อที่" v={report.acc_police_book_no} />
-            <Sum l="ผลตรวจแอลกอฮอล์" v={[report.acc_alcohol_test, report.acc_alcohol_result].filter(Boolean).join(' · ')} />
-            <Sum l="การติดตามงาน" v={[report.acc_followup, report.acc_followup_count ? `ครั้งที่ ${report.acc_followup_count}` : ''].filter(Boolean).join(' · ')} />
-            <Sum l="รายละเอียดนัดหมาย" v={report.acc_followup_detail} />
-          </SectionBar>
-          <div className={secOpen('police') ? '' : 'hidden'}>
+          <SectionBar title="คดี · ตำรวจ · ติดตามงาน" gap={(gapSec ?? []).includes('police')} />
+          <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             <table className="w-full table-fixed">
               <ColGroup />
@@ -1649,15 +1568,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <>
                 {/* คู่กรณี — โชว์เสมอตอนกด "แก้ไข" (ไม่งั้นเคสที่ยังไม่มีคู่กรณีก็เพิ่มไม่ได้) */}
                 <div data-section="opp" className="space-y-2">
-                <SectionBar title={`คู่กรณี · ${opponents.length} คัน`} open={secOpen('opp')} gap={(gapSec ?? []).includes('opp')} onToggle={() => secToggle('opp')}>
-                  {opponents.length === 0
-                    ? <Sum l="คู่กรณี" v="" />
-                    : opponents.map((o, i) => (
-                      <Sum key={i} l={`คันที่ ${i + 1}`}
-                           v={[o.plate, o.province, o.owner_name].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')} />
-                    ))}
-                </SectionBar>
-                <div className={secOpen('opp') ? '' : 'hidden'}>
+                <SectionBar title={`คู่กรณี · ${opponents.length} คัน`} gap={(gapSec ?? []).includes('opp')} />
+                <div>
                 {(opposingParties.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1759,15 +1671,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
                 {/* ผู้บาดเจ็บ — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอตอนแก้ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
                 <div data-section="inj" className="space-y-2">
-                <SectionBar title={`ผู้บาดเจ็บ · ${injured.length} คน`} open={secOpen('inj')} gap={(gapSec ?? []).includes('inj')} onToggle={() => secToggle('inj')}>
-                  {injured.length === 0
-                    ? <Sum l="ผู้บาดเจ็บ" v="" />
-                    : injured.map((p, i) => (
-                      <Sum key={i} l={`คนที่ ${i + 1}`}
-                           v={[p.name, p.person_type, p.symptom].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')} />
-                    ))}
-                </SectionBar>
-                <div className={secOpen('inj') ? '' : 'hidden'}>
+                <SectionBar title={`ผู้บาดเจ็บ · ${injured.length} คน`} gap={(gapSec ?? []).includes('inj')} />
+                <div>
                 {(injuredPersons.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1824,15 +1729,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
                 {/* ทรัพย์สินเสียหาย — แก้ได้ตอนกด "แก้ไข" */}
                 <div data-section="prop" className="space-y-2">
-                <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} open={secOpen('prop')} gap={(gapSec ?? []).includes('prop')} onToggle={() => secToggle('prop')}>
-                  {property.length === 0
-                    ? <Sum l="ทรัพย์สินเสียหาย" v="" />
-                    : property.map((it, i) => (
-                      <Sum key={i} l={`รายการที่ ${i + 1}`}
-                           v={[it.item, it.owner_name].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ')} />
-                    ))}
-                </SectionBar>
-                <div className={secOpen('prop') ? '' : 'hidden'}>
+                <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} gap={(gapSec ?? []).includes('prop')} />
+                <div>
                 {(damagedProperty.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1874,15 +1772,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </div>
 
                 <div data-section="dmg" className="space-y-2">
-                <SectionBar title="ความเสียหายรถประกัน" open={secOpen('dmg')} gap={(gapSec ?? []).includes('dmg')} onToggle={() => secToggle('dmg')}>
-                  {damage.length === 0
-                    ? <Sum l="ความเสียหาย" v="" />
-                    : damage.map((x, i) => (
-                      <Sum key={i} l={`จุดที่ ${i + 1}`}
-                           v={[x.part, x.level].map((y) => String(y ?? '').trim()).filter(Boolean).join(' · ')} />
-                    ))}
-                </SectionBar>
-                <div className={secOpen('dmg') ? '' : 'hidden'}>
+                <SectionBar title="ความเสียหายรถประกัน" gap={(gapSec ?? []).includes('dmg')} />
+                <div>
                 {(insuredDamage.length > 0 || isEditing) && (
                   <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
                     <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
@@ -1933,13 +1824,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
       {/* การตรวจสอบ — กรอกได้เลยไม่ต้องกดแก้ไข */}
       <div data-section="review" className="space-y-2">
-      <SectionBar title="การตรวจสอบ" open={secOpen('review')} gap={(gapSec ?? []).includes('review')} onToggle={() => secToggle('review')}>
-        <Sum l="ผลการดำเนินงาน" v={report?.survey_result} />
-        <Sum l="ความเห็นของเซอร์เวย์" v={report?.surveyor_comment || review?.surveyor_comment} />
-        <Sum l="ความเห็นของผู้ตรวจสอบ" v={report?.review_comment || review?.comment} />
-        <Sum l="หมายเหตุเพิ่มเติม" v={report?.notes} />
-      </SectionBar>
-      <div className={secOpen('review') ? '' : 'hidden'}>
+      <SectionBar title="การตรวจสอบ" gap={(gapSec ?? []).includes('review')} />
+      <div>
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm">
           <span className="font-bold">::: การตรวจสอบ</span>
