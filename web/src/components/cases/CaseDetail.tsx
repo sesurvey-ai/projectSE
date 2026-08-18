@@ -155,6 +155,20 @@ const RING = ['border-red-400', 'ring-1', 'ring-red-300', 'bg-red-50'];
 // พื้นหลังเดิมของช่อง (bg-white ตอนแก้ได้ / bg-gray-100 ตอนล็อก) — ต้องถอดออกตอนทาแดง
 // ไม่งั้นชนกันเองแล้วแล้วแต่ลำดับใน CSS ว่าใครชนะ (ไม่ใช่ลำดับใน class attribute)
 const BG_ORIG = ['bg-white', 'bg-gray-100'];
+/**
+ * กลุ่ม radio ที่ระบบประกันบังคับ — ตัวทาสีทั่วไปคุมไม่ได้ 2 เหตุผล
+ *   1. input พวกนี้เป็น `sr-only` (โชว์ <span> แทนเพื่อทำวงกลมบนแถบสี) ทาสีที่ input ไม่มีใครเห็น
+ *   2. `isBlank()` มองทีละช่อง คืน false เสมอสำหรับ radio — ไม่รู้จัก "ทั้งกลุ่มยังไม่มีใครติ๊ก"
+ * เดิมดอกจัน 2 ตัวนี้จึงเป็นแค่ตัวอักษร ไม่ได้คุมอะไรเลย (user เจอ 18/08/69)
+ * ทั้งคู่ส่งเข้า EMCS จริง — SURV_CLAIM_TYPE กับ HEV_CAR
+ */
+const REQ_RADIO_GROUPS = ['claim_type', 'damage_level'];
+
+/** ตัด placeholder ของ dropdown ('0' / '-- ระบุ --') ออกก่อนเอาไปแสดงเป็นข้อความ — ไม่ใช่ค่าจริง */
+const noPh = (v: unknown) => {
+  const t = String(v ?? '').trim();
+  return t === '0' || t.startsWith('--') ? '' : t;
+};
 
 /**
  * ข้อมูลบริษัทผู้จัดเรื่อง — **โชว์บนเว็บ se-survey อย่างเดียว**
@@ -392,18 +406,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const dDeduct = false;
   /**
-   * ตัวระบุตัวเคส — แก้จากหน้าตรวจไม่ได้ (user เคาะ 18/08/69)
-   *   ตัวเลข 3 ตัว (เลขเซอร์เวย์ · เลขรับแจ้ง · เลขเคลม) = ตัวหนังสือหนา ไม่ใช่ช่องกรอกเลย
-   *   บริษัทประกัน + สาขา = dropdown ที่ล็อกด้วย `dKey` (ยังต้องเห็นว่าเลือกอะไรไว้)
+   * ตัวระบุตัวเคส — **แสดงอย่างเดียว ไม่มีช่องกรอกเลย** (user เคาะ 18/08/69)
+   *   บริษัทประกัน · สาขา · เลขเรื่องเซอร์เวย์ · เลขที่รับแจ้ง · เลขที่เคลม
    *
-   * เลขพวกนี้ถูกกำหนดตั้งแต่ตอนรับงาน/นำเข้า แก้ทีหลังแล้วเคสจะไปผูกกับงานผิดใบ
+   * ถูกกำหนดตั้งแต่ตอนรับงาน/นำเข้า แก้ทีหลังแล้วเคสจะไปผูกกับงานผิดใบ
    * (เลขเซอร์เวย์ใช้อ้างอิงเบิกเงิน · บริษัทประกันผิดที = เคสไปโผล่ผิดบริษัทใน EMCS
    *  ซึ่ง draft ของ EMCS ลบไม่ได้)
    *
-   * ⚠️ ทั้ง 5 ตัวไม่ถูกส่งตอนบันทึกแล้ว — ตัวหนังสือไม่มี name ส่วน dropdown ที่ disabled
-   *    ไม่เข้า FormData ตามมาตรฐาน HTML → ค่าเดิมใน DB ปลอดภัย ไม่ถูกเขียนทับ
+   * ⛔ ห้ามเปลี่ยนกลับเป็น <input>/<select> — ไม่มี name ในฟอร์มแล้ว จึงไม่มีทาง
+   *    ถูกเขียนทับตอนบันทึก ถ้าใส่กลับมาต้องคิดเรื่องกันเขียนทับใหม่ทั้งหมด
    */
-  const dKey = true;
   // จำนวนช่องบังคับที่ยังว่าง — โชว์เป็นแถบสรุปหัวหน้า (กรอบแดงรายช่องดูใน effect ด้านล่าง)
   const [missing, setMissing] = useState<string[]>([]);
   /**
@@ -512,6 +524,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           if (blank && nm && !names.includes(nm)) names.push(nm);
         });
       });
+      // กลุ่ม radio ที่บังคับ (ดู REQ_RADIO_GROUPS) — นับเองเพราะตัวทาสีทั่วไปมองไม่เห็น
+      for (const nm of REQ_RADIO_GROUPS) {
+        if (!form.querySelector(`input[name="${nm}"]:checked`)) names.push(nm);
+      }
+
       /**
        * ── ชื่อที่มีอักขระ EMCS ไม่รับ (วงเล็บ ทับ ฯลฯ) → ทาแดงที่ช่องเลย ──
        * เดิมเตือนเป็นแถบเหลืองบนหัวหน้าอย่างเดียว ซึ่งคำนวณตอนโหลดหน้า แก้แล้วไม่หาย
@@ -889,24 +906,32 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
             <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="ml-auto font-bold">ประเภทเคลม :</span>
-              <span className="text-red-400">*</span>
-              {['F','D','A','C'].map(v => (
-                <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="claim_type" value={v} disabled={d} defaultChecked={report.claim_type === v} className="peer sr-only" />
-                  <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
-                  <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{CLAIM_TYPE_LABELS[v]}</span>
-                </label>
-              ))}
-              <span className="font-bold ml-4">รถเสียหาย :</span>
-              <span className="text-red-400">*</span>
-              {['หนัก','เบา'].map(v => (
-                <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="damage_level" value={v} disabled={d} defaultChecked={report.damage_level === v} className="peer sr-only" />
-                  <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
-                  <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{v}</span>
-                </label>
-              ))}
+              {/* กรอบคุมทั้งกลุ่ม ไม่ใช่รายช่อง — วงกลม radio อยู่บนแถบสี ทาสีทีละอันแล้วไม่เห็น
+                  กติกาเดียวกับกลุ่ม "การเรียกร้องค่าเสียหายจากคู่กรณี" ข้างล่าง */}
+              <div className={`ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-0.5 border ${
+                missing.includes('claim_type') ? 'border-red-400 bg-red-500/25' : 'border-transparent'}`}>
+                <span className="font-bold">ประเภทเคลม :</span>
+                <span className={missing.includes('claim_type') ? 'text-white font-bold' : 'text-red-300'}>*</span>
+                {['F','D','A','C'].map(v => (
+                  <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="claim_type" value={v} disabled={d} defaultChecked={report.claim_type === v} className="peer sr-only" />
+                    <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
+                    <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{CLAIM_TYPE_LABELS[v]}</span>
+                  </label>
+                ))}
+              </div>
+              <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-0.5 border ${
+                missing.includes('damage_level') ? 'border-red-400 bg-red-500/25' : 'border-transparent'}`}>
+                <span className="font-bold">รถเสียหาย :</span>
+                <span className={missing.includes('damage_level') ? 'text-white font-bold' : 'text-red-300'}>*</span>
+                {['หนัก','เบา'].map(v => (
+                  <label key={v} className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="damage_level" value={v} disabled={d} defaultChecked={report.damage_level === v} className="peer sr-only" />
+                    <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
+                    <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{v}</span>
+                  </label>
+                ))}
+              </div>
               <label className="flex items-center gap-1.5 ml-2 cursor-pointer relative">
                 <input type="checkbox" name="car_lost" value="true" disabled={d} defaultChecked={!!report.car_lost} className="peer sr-only" />
                 <span className="w-4 h-4 rounded border-2 border-white/50 peer-checked:border-white peer-checked:bg-white shrink-0"></span>
@@ -917,23 +942,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             {/* Table rows */}
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               <F label="บริษัทประกัน">
-                <div className="flex items-center gap-1">
-                  <select disabled={dKey} name="insurance_company" defaultValue={report.insurance_company || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${dKey ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                    {/* เหลือ 2 บริษัทตามงานที่รับจริง (กติกา user 13/08/69) — เดิมลอกมาทั้ง
-                        dropdown ของ EMCS 7 ตัว · เลือกผิดที = เคสไปโผล่ผิดบริษัทในระบบประกัน
-                        ซึ่ง draft ของ EMCS ลบไม่ได้ · เคสเก่าที่ค่าไม่อยู่ใน 2 ตัวนี้ยังเก็บค่าเดิมไว้
-                        (เช่นแบบเขียนสั้น 'ไทยไพบูลย์ประกันภัย' ที่มีอยู่จริงใน DB) ไม่ให้หายตอนกดบันทึก */}
-                    <option value="0">-- ระบุ --</option>
-                    {INSURER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    {report.insurance_company && !INSURER_OPTIONS.includes(report.insurance_company) && (
-                      <option value={report.insurance_company}>{report.insurance_company} (ค่าเดิม)</option>
-                    )}
-                  </select>
-                  <select disabled={dKey} name="insurance_branch" defaultValue={report.insurance_branch || 'กรุงเทพ'} className={`w-[90px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${dKey ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                    <option value="0">-- ระบุ --</option>
-                    <option value="กรุงเทพ">กรุงเทพ</option>
-                  </select>
-                </div>
+                <p className="py-1 font-bold text-gray-900 truncate"
+                   title={[report.insurance_company, report.insurance_branch].filter(Boolean).join(' · ')}>
+                  {[noPh(report.insurance_company), noPh(report.insurance_branch) || 'กรุงเทพ']
+                    .filter(Boolean).join(' · ') || '—'}
+                </p>
               </F>
               <F label="เลขเรื่องเซอร์เวย์">
                 <p className="py-1 font-bold text-gray-900 truncate" title={report.survey_job_no || ''}>{report.survey_job_no || '—'}</p>
