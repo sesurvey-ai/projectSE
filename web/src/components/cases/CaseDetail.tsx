@@ -182,11 +182,13 @@ const CTL = (locked: boolean) =>
  * ⚠️ className ของตัวช่องต้องเหมือนเดิมเป๊ะ (`border-gray-300` + `bg-white`/`bg-gray-100`)
  *    ตัวทากรอบแดงสลับคลาสพวกนี้อยู่ — เปลี่ยนแล้วกรอบแดงจะทาไม่ติด
  */
-function F({ label, req, wide, children }: {
-  label: string; req?: React.ReactNode; wide?: boolean; children: React.ReactNode;
+function F({ label, req, span, children }: {
+  label: string; req?: React.ReactNode; span?: 2 | 4; children: React.ReactNode;
 }) {
+  // เขียนคลาสเต็มทั้งชุด ห้ามต่อสตริง — Tailwind อ่านซอร์สแบบข้อความ ต่อเองแล้วไม่ผลิต class ให้
+  const w = span === 4 ? 'col-span-2 md:col-span-4' : span === 2 ? 'col-span-2 md:col-span-2 min-w-0' : 'min-w-0';
   return (
-    <div className={wide ? 'col-span-2 md:col-span-4' : 'min-w-0'}>
+    <div className={w}>
       <label className="block text-xs text-gray-500 mb-1">{label}{req ? <> {req}</> : null}</label>
       {children}
     </div>
@@ -972,7 +974,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
               {/* ชื่ออู่/ศูนย์ซ่อม เป็นข้อความล้วน — ห้ามใส่ใน numericCols (ตัด comma จะกินชื่ออู่ที่มีลูกน้ำ)
                   maxLength ตรงกับ VARCHAR(200) — ยาวเกินแล้ว Postgres ไม่ตัดปลายให้ แต่ error จนบันทึกไม่ผ่านทั้งใบ */}
-              <F label="ซ่อมที่" wide>
+              <F label="ซ่อมที่" span={4}>
                 <input type="text" disabled={d} maxLength={200} name="repair_shop" defaultValue={report.repair_shop || ''} className={CTL(d)} />
               </F>
             </div>
@@ -1062,196 +1064,166 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="driver" className="space-y-2">
           <SectionBar title="ผู้ขับขี่รถประกัน" gap={(gapSec ?? []).includes('driver')} />
           <div>
-          {(
-            <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-              <table className="w-full table-fixed">
-                <ColGroup />
-                <tbody>
-                  <tr className="border-b border-gray-100">
-                    {/* แถวนี้รวม 4 ช่องบังคับ: เพศ · คำนำหน้า · ชื่อ · นามสกุล (EMCS บล็อกทั้งชุด) */}
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ผู้ขับขี่รถประกันภัย <Req of="driver_gender,driver_title,driver_first_name,driver_last_name" /> :</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
-                        <label className="flex items-center gap-1 text-gray-500 shrink-0"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
-                        <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`w-auto shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          <option value="0">- คำนำหน้า -</option>
-                          <option value="นาย">นาย</option>
-                          <option value="นาง">นาง</option>
-                          <option value="นางสาว">นางสาว</option>
-                          <option value="ด.ช.">ด.ช.</option>
-                          <option value="ด.ญ.">ด.ญ.</option>
-                          <option value="คุณ">คุณ</option>
-                        </select>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2" colSpan={2}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 shrink-0">ชื่อ</span>
-                        <input type="text" disabled={d} name="driver_first_name" defaultValue={report.driver_first_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <span className="text-gray-500 shrink-0">นามสกุล</span>
-                        <input type="text" disabled={d} name="driver_last_name" defaultValue={report.driver_last_name || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      </div>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">วันเกิด <Req of="driver_birthdate" /> :</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <input type="text" disabled={d} name="driver_birthdate" defaultValue={report.driver_birthdate || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <span className="text-gray-500 shrink-0">อายุ <Req of="driver_age" /></span>
-                        <input type="text" disabled={d} name="driver_age" defaultValue={report.driver_age != null ? report.driver_age : ''} className={`w-[60px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความสัมพันธ์กับเจ้าของรถ <Req of="driver_relation" /> :</td>
-                    <td className="px-4 py-2">
-                      <select disabled={d} name="driver_relation" defaultValue={report.driver_relation || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        <option value="0">-- ระบุ --</option>
-                        <option value="สามี">สามี</option>
-                        <option value="ภรรยา">ภรรยา</option>
-                        <option value="บุตร">บุตร</option>
-                        <option value="บิดา">บิดา</option>
-                        <option value="มารดา">มารดา</option>
-                        <option value="นายจ้าง">นายจ้าง</option>
-                        <option value="ลูกจ้าง">ลูกจ้าง</option>
-                        <option value="ผู้เช่า">ผู้เช่า</option>
-                        <option value="พี่ชาย">พี่ชาย</option>
-                        <option value="พี่สาว">พี่สาว</option>
-                        <option value="น้องชาย">น้องชาย</option>
-                        <option value="น้องสาว">น้องสาว</option>
-                        <option value="เจ้าของรถ">เจ้าของรถ</option>
-                        <option value="หลาน">หลาน</option>
-                        <option value="อา">อา</option>
-                        <option value="น้า">น้า</option>
-                        <option value="ลุง">ลุง</option>
-                        <option value="ป้า">ป้า</option>
-                        <option value="ญาติ">ญาติ</option>
-                        <option value="เพื่อน">เพื่อน</option>
-                        <option value="แฟน">แฟน</option>
-                        <option value="พนักงาน">พนักงาน</option>
-                        <option value="พี่เขย">พี่เขย</option>
-                        <option value="น้องเขย">น้องเขย</option>
-                        <option value="พี่สะใภ้">พี่สะใภ้</option>
-                        <option value="น้องสะใภ้">น้องสะใภ้</option>
-                        <option value="พนักงานผู้เช่า">พนักงานผู้เช่า</option>
-                        <option value="ลุงเขย">ลุงเขย</option>
-                        <option value="น้าเขย">น้าเขย</option>
-                        <option value="น้าสะใภ้">น้าสะใภ้</option>
-                        <option value="อาเขย">อาเขย</option>
-                        <option value="อาสะใภ้">อาสะใภ้</option>
-                        <option value="หุ้นส่วน">หุ้นส่วน</option>
-                        <option value="บุตรหุ้นส่วน">บุตรหุ้นส่วน</option>
-                        <option value="เจ้าของบริษัท">เจ้าของบริษัท</option>
-                        <option value="เพื่อนบุตรเจ้าของรถ">เพื่อนบุตรเจ้าของรถ</option>
-                        <option value="บุตรเขย">บุตรเขย</option>
-                        <option value="หลานเขย">หลานเขย</option>
-                        <option value="บุตรสะใภ้">บุตรสะใภ้</option>
-                      </select>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    {/* ที่อยู่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 ช่อง (เจอสดตอนเทส 2026-08-01) */}
-                    <td className="px-4 py-2 text-gray-500">ที่อยู่ปัจจุบัน <Req of="driver_address,driver_province,driver_district" /> :</td>
-                    <td className="px-4 py-2" colSpan={3}>
-                      <div className="flex items-center gap-2">
-                        <input type="text" disabled={d} name="driver_address" defaultValue={report.driver_address || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <select disabled={d} name="driver_province" value={driverProv} onChange={e => { setDriverProv(e.target.value); setDriverDist('-- เขต --'); }} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                        <select disabled={d} name="driver_district" value={driverDist} onChange={e => setDriverDist(e.target.value)} className={`w-[100px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          {districtOptions(driverProv, driverProv === report.driver_province ? report.driver_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">โทรศัพท์ <Req of="driver_phone" /> :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_phone" defaultValue={report.driver_phone || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2" colSpan={2}></td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">บัตรประชาชนเลขที่ <Req of="driver_id_card" /> :</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <input type="text" disabled={d} name="driver_id_card" defaultValue={report.driver_id_card || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        {/* คนไทยต้องผ่าน checksum 13 หลัก · ต่างชาติขอแค่ไม่ว่าง (บัตรต่างด้าว/พาสปอร์ต
-                            ไม่มีสูตรตรวจ) — แอปเก็บค่านี้อยู่แล้ว แต่หน้านี้ไม่เคยมีให้เลือก */}
-                        <select disabled={d} name="driver_id_type" defaultValue={report.driver_id_type || 'thai'} className={`w-[92px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                          <option value="thai">คนไทย</option>
-                          <option value="foreign">ต่างชาติ</option>
-                        </select>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ใบอนุญาตขับขี่เลขที่ <Req of="driver_license_no" when="ผู้ขับขี่มีใบขับขี่" /> :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_no" defaultValue={report.driver_license_no || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">ประเภท :</td>
-                    <td className="px-4 py-2">
-                      <select disabled={d} name="driver_license_type" defaultValue={report.driver_license_type || '0'} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
-                        <option value="0">-- ระบุ --</option>
-                        <option value="ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ</option>
-                        <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ</option>
-                        <option value="ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว">ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว</option>
-                        <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว</option>
-                        <option value="ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ">ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ</option>
-                        <option value="ใบขับขี่รถยนต์สาธารณะ">ใบขับขี่รถยนต์สาธารณะ</option>
-                        <option value="ใบขับขี่สากล">ใบขับขี่สากล</option>
-                        <option value="ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ">ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ</option>
-                        <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี</option>
-                        <option value="ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ">ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ</option>
-                        <option value="ใบขับขี่รถยนต์ส่วนบุคคล">ใบขับขี่รถยนต์ส่วนบุคคล</option>
-                        <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคล">ใบขับขี่รถจักรยานยนต์ส่วนบุคคล</option>
-                        <option value="ใบขับขี่ขนส่งชนิดที่1">ใบขับขี่ขนส่งชนิดที่1</option>
-                        <option value="ใบขับขี่ขนส่งชนิดที่2">ใบขับขี่ขนส่งชนิดที่2</option>
-                        <option value="ใบขับขี่ขนส่งชนิดที่3">ใบขับขี่ขนส่งชนิดที่3</option>
-                        <option value="ใบอนุญาติขับขี่ชนิดที่4">ใบอนุญาติขับขี่ชนิดที่4</option>
-                        <option value="ไม่มีใบขับขี่">ไม่มีใบขับขี่</option>
-                        <option value="ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ">ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ</option>
-                        <option value="ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว">ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว</option>
-                        <option value="ใบอนุญาตเป็นผู้ขับรถทุกประเภท">ใบอนุญาตเป็นผู้ขับรถทุกประเภท</option>
-                        <option value="อื่นๆ">อื่นๆ</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500">ออกให้ที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_place" defaultValue={report.driver_license_place || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">ออกให้วันที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_start" defaultValue={report.driver_license_start || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2 text-gray-500">หมดอายุวันที่ :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_license_end" defaultValue={report.driver_license_end || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">ใบสั่ง :</td>
-                    <td className="px-4 py-2"><input type="text" disabled={d} name="driver_ticket" defaultValue={report.driver_ticket || ''} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                    <td className="px-4 py-2" colSpan={2}></td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    {/* ต้องมีรายการความเสียหายอย่างน้อย 1 รายการ (ผู้สำรวจเลือกจากแอป) */}
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">ความเสียหายรถประกันภัย <Req of="damage_description" /> :</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-sm whitespace-nowrap">ข้อมูลความเสียหาย</button>
-                        <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-sm whitespace-nowrap">พิมพ์ข้อมูลความเสียหาย</button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2" colSpan={2}><textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`w-full border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} /></td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500">ความเสียหายประมาณ :</td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <input type="text" disabled={d} name="estimated_cost" defaultValue={report.estimated_cost != null ? Number(report.estimated_cost).toFixed(2) : ''} className={`w-[150px] border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                        <span className="text-gray-500">บาท</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2" colSpan={2}></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+              {/* 4 ช่องบังคับชุดเดียวกัน: เพศ · คำนำหน้า · ชื่อ · นามสกุล (EMCS บล็อกทั้งชุด) */}
+              <F label="ผู้ขับขี่รถประกันภัย" req={<Req of="driver_gender,driver_title,driver_first_name,driver_last_name" />}>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
+                  <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
+                  <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <option value="0">- คำนำหน้า -</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                    <option value="ด.ช.">ด.ช.</option>
+                    <option value="ด.ญ.">ด.ญ.</option>
+                    <option value="คุณ">คุณ</option>
+                  </select>
+                </div>
+              </F>
+              <F label="ชื่อ">
+                <input type="text" disabled={d} name="driver_first_name" defaultValue={report.driver_first_name || ''} className={CTL(d)} />
+              </F>
+              <F label="นามสกุล">
+                <input type="text" disabled={d} name="driver_last_name" defaultValue={report.driver_last_name || ''} className={CTL(d)} />
+              </F>
+              <F label="ความสัมพันธ์กับเจ้าของรถ" req={<Req of="driver_relation" />}>
+                <select disabled={d} name="driver_relation" defaultValue={report.driver_relation || '0'} className={CTL(d)}>
+                  <option value="0">-- ระบุ --</option>
+                  <option value="สามี">สามี</option>
+                  <option value="ภรรยา">ภรรยา</option>
+                  <option value="บุตร">บุตร</option>
+                  <option value="บิดา">บิดา</option>
+                  <option value="มารดา">มารดา</option>
+                  <option value="นายจ้าง">นายจ้าง</option>
+                  <option value="ลูกจ้าง">ลูกจ้าง</option>
+                  <option value="ผู้เช่า">ผู้เช่า</option>
+                  <option value="พี่ชาย">พี่ชาย</option>
+                  <option value="พี่สาว">พี่สาว</option>
+                  <option value="น้องชาย">น้องชาย</option>
+                  <option value="น้องสาว">น้องสาว</option>
+                  <option value="เจ้าของรถ">เจ้าของรถ</option>
+                  <option value="หลาน">หลาน</option>
+                  <option value="อา">อา</option>
+                  <option value="น้า">น้า</option>
+                  <option value="ลุง">ลุง</option>
+                  <option value="ป้า">ป้า</option>
+                  <option value="ญาติ">ญาติ</option>
+                  <option value="เพื่อน">เพื่อน</option>
+                  <option value="แฟน">แฟน</option>
+                  <option value="พนักงาน">พนักงาน</option>
+                  <option value="พี่เขย">พี่เขย</option>
+                  <option value="น้องเขย">น้องเขย</option>
+                  <option value="พี่สะใภ้">พี่สะใภ้</option>
+                  <option value="น้องสะใภ้">น้องสะใภ้</option>
+                  <option value="พนักงานผู้เช่า">พนักงานผู้เช่า</option>
+                  <option value="ลุงเขย">ลุงเขย</option>
+                  <option value="น้าเขย">น้าเขย</option>
+                  <option value="น้าสะใภ้">น้าสะใภ้</option>
+                  <option value="อาเขย">อาเขย</option>
+                  <option value="อาสะใภ้">อาสะใภ้</option>
+                  <option value="หุ้นส่วน">หุ้นส่วน</option>
+                  <option value="บุตรหุ้นส่วน">บุตรหุ้นส่วน</option>
+                  <option value="เจ้าของบริษัท">เจ้าของบริษัท</option>
+                  <option value="เพื่อนบุตรเจ้าของรถ">เพื่อนบุตรเจ้าของรถ</option>
+                  <option value="บุตรเขย">บุตรเขย</option>
+                  <option value="หลานเขย">หลานเขย</option>
+                  <option value="บุตรสะใภ้">บุตรสะใภ้</option>
+                </select>
+              </F>
+
+              <F label="วันเกิด" req={<Req of="driver_birthdate" />}>
+                <input type="text" disabled={d} name="driver_birthdate" defaultValue={report.driver_birthdate || ''} className={CTL(d)} />
+              </F>
+              <F label="อายุ" req={<Req of="driver_age" />}>
+                <input type="text" disabled={d} name="driver_age" defaultValue={report.driver_age != null ? report.driver_age : ''} className={CTL(d)} />
+              </F>
+              <F label="โทรศัพท์" req={<Req of="driver_phone" />}>
+                <input type="text" disabled={d} name="driver_phone" defaultValue={report.driver_phone || ''} className={CTL(d)} />
+              </F>
+              <F label="บัตรประชาชนเลขที่" req={<Req of="driver_id_card" />}>
+                <div className="flex items-center gap-1">
+                  <input type="text" disabled={d} name="driver_id_card" defaultValue={report.driver_id_card || ''} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                  {/* คนไทยต้องผ่าน checksum 13 หลัก · ต่างชาติขอแค่ไม่ว่าง (บัตรต่างด้าว/พาสปอร์ต
+                      ไม่มีสูตรตรวจ) — แอปเก็บค่านี้อยู่แล้ว แต่หน้านี้ไม่เคยมีให้เลือก */}
+                  <select disabled={d} name="driver_id_type" defaultValue={report.driver_id_type || 'thai'} className={`w-[84px] shrink-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                    <option value="thai">คนไทย</option>
+                    <option value="foreign">ต่างชาติ</option>
+                  </select>
+                </div>
+              </F>
+
+              {/* ที่อยู่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 ช่อง (เจอสดตอนเทส 2026-08-01) */}
+              <F label="ที่อยู่ปัจจุบัน" req={<Req of="driver_address,driver_province,driver_district" />} span={2}>
+                <input type="text" disabled={d} name="driver_address" defaultValue={report.driver_address || ''} className={CTL(d)} />
+              </F>
+              <F label="จังหวัด">
+                <select disabled={d} name="driver_province" value={driverProv} onChange={e => { setDriverProv(e.target.value); setDriverDist('-- เขต --'); }} className={CTL(d)}>
+                  {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </F>
+              <F label="เขต / อำเภอ">
+                <select disabled={d} name="driver_district" value={driverDist} onChange={e => setDriverDist(e.target.value)} className={CTL(d)}>
+                  {districtOptions(driverProv, driverProv === report.driver_province ? report.driver_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                </select>
+              </F>
+
+              <F label="ใบอนุญาตขับขี่เลขที่" req={<Req of="driver_license_no" when="ผู้ขับขี่มีใบขับขี่" />}>
+                <input type="text" disabled={d} name="driver_license_no" defaultValue={report.driver_license_no || ''} className={CTL(d)} />
+              </F>
+              <F label="ประเภทใบขับขี่">
+                <select disabled={d} name="driver_license_type" defaultValue={report.driver_license_type || '0'} className={CTL(d)}>
+                  <option value="0">-- ระบุ --</option>
+                  <option value="ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ</option>
+                  <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ</option>
+                  <option value="ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว">ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว</option>
+                  <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว</option>
+                  <option value="ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ">ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ</option>
+                  <option value="ใบขับขี่รถยนต์สาธารณะ">ใบขับขี่รถยนต์สาธารณะ</option>
+                  <option value="ใบขับขี่สากล">ใบขับขี่สากล</option>
+                  <option value="ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ">ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ</option>
+                  <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี</option>
+                  <option value="ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ">ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ</option>
+                  <option value="ใบขับขี่รถยนต์ส่วนบุคคล">ใบขับขี่รถยนต์ส่วนบุคคล</option>
+                  <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคล">ใบขับขี่รถจักรยานยนต์ส่วนบุคคล</option>
+                  <option value="ใบขับขี่ขนส่งชนิดที่1">ใบขับขี่ขนส่งชนิดที่1</option>
+                  <option value="ใบขับขี่ขนส่งชนิดที่2">ใบขับขี่ขนส่งชนิดที่2</option>
+                  <option value="ใบขับขี่ขนส่งชนิดที่3">ใบขับขี่ขนส่งชนิดที่3</option>
+                  <option value="ใบอนุญาติขับขี่ชนิดที่4">ใบอนุญาติขับขี่ชนิดที่4</option>
+                  <option value="ไม่มีใบขับขี่">ไม่มีใบขับขี่</option>
+                  <option value="ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ">ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ</option>
+                  <option value="ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว">ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว</option>
+                  <option value="ใบอนุญาตเป็นผู้ขับรถทุกประเภท">ใบอนุญาตเป็นผู้ขับรถทุกประเภท</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+              </F>
+              <F label="ออกให้ที่">
+                <input type="text" disabled={d} name="driver_license_place" defaultValue={report.driver_license_place || ''} className={CTL(d)} />
+              </F>
+              <F label="ใบสั่ง">
+                <input type="text" disabled={d} name="driver_ticket" defaultValue={report.driver_ticket || ''} className={CTL(d)} />
+              </F>
+
+              <F label="ใบขับขี่ ออกให้วันที่">
+                <input type="text" disabled={d} name="driver_license_start" defaultValue={report.driver_license_start || ''} className={CTL(d)} />
+              </F>
+              <F label="ใบขับขี่ หมดอายุวันที่">
+                <input type="text" disabled={d} name="driver_license_end" defaultValue={report.driver_license_end || ''} className={CTL(d)} />
+              </F>
+              <F label="ความเสียหายประมาณ (บาท)">
+                <input type="text" disabled={d} name="estimated_cost" defaultValue={report.estimated_cost != null ? Number(report.estimated_cost).toFixed(2) : ''} className={CTL(d)} />
+              </F>
+              <div className="min-w-0" />
+
+              {/* ต้องมีรายการความเสียหายอย่างน้อย 1 รายการ (ผู้สำรวจเลือกจากแอป) */}
+              <F label="ความเสียหายรถประกันภัย" req={<Req of="damage_description" />} span={4}>
+                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={CTL(d)} />
+                <div className="flex items-center gap-2 mt-1.5">
+                  <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">ข้อมูลความเสียหาย</button>
+                  <button disabled={d} className="px-3 py-1 border border-gray-400 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">พิมพ์ข้อมูลความเสียหาย</button>
+                </div>
+              </F>
             </div>
-          )}
 
           </div>
           </div>
