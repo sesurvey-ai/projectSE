@@ -930,6 +930,23 @@ export const caseService = {
       }
     }
 
+    /**
+     * "ครั้งที่" ทั้งหมดของเลขเคลมนี้ — 1 เคลมมีได้หลายงาน (งานต่อเนื่อง)
+     *
+     * ⛔ แต่ละครั้งคือ **คนละเคส** ในระบบเรา (คนละแถว cases/survey_reports/survey_pay)
+     *    ไม่ใช่หลายรอบในเคสเดียว — เลขเรื่องเซอร์เวย์ห้ามซ้ำจึงต่างกันทุกครั้ง
+     *    ดังนั้นการ "เปลี่ยนครั้งที่" = เปลี่ยนไปดูอีกเคส ไม่ใช่สลับข้อมูลในหน้าเดิม
+     */
+    let visits: unknown[] = [];
+    if (report?.claim_no) {
+      visits = (await db.query(
+        `SELECT c.id, c.status, sr.survey_job_no,
+                to_char(c.created_at, 'YYYY-MM-DD') AS created_on,
+                ROW_NUMBER() OVER (ORDER BY c.created_at) AS visit_no
+           FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
+          WHERE sr.claim_no = $1 ORDER BY c.created_at`, [report.claim_no])).rows;
+    }
+
     return {
       case: caseResult.rows[0],
       report,
@@ -937,6 +954,7 @@ export const caseService = {
       review: reviewResult.rows[0] || null,
       case_images: caseImagesResult.rows,
       visit_count: visitCount,
+      visits,
       expenses,
       linked_cases: linkedCases,
       // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้ง — เตือนคนตรวจก่อนส่งเข้า EMCS

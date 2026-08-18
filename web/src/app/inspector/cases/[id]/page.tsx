@@ -15,6 +15,8 @@ export default function CaseDetailPage() {
   const [photos, setPhotos] = useState([]);
   const [review, setReview] = useState(null);
   const [visitCount, setVisitCount] = useState(1);
+  /** ครั้งที่ทั้งหมดของเลขเคลมนี้ — แต่ละครั้งเป็นคนละเคส (ดู getDetail) */
+  const [visits, setVisits] = useState([]);
   const [expenses, setExpenses] = useState(null);
   // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้งตอนหัวหน้าคลิกโดน (backend คำนวณให้)
   const [nameWarnings, setNameWarnings] = useState<
@@ -32,6 +34,7 @@ export default function CaseDetailPage() {
         setPhotos(res.data.data.photos || []);
         setReview(res.data.data.review || null);
         setVisitCount(res.data.data.visit_count || 1);
+        setVisits(res.data.data.visits || []);
         setExpenses(res.data.data.expenses || null);
         setNameWarnings(res.data.data.emcs_name_warnings || []);
       }
@@ -103,7 +106,7 @@ export default function CaseDetailPage() {
           </ul>
         </div>
       )}
-      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} expenses={expenses} onReviewSubmitted={fetchDetail} />
+      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} visits={visits} expenses={expenses} onReviewSubmitted={fetchDetail} />
     </div>
   );
 }

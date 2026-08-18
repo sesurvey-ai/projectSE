@@ -30,6 +30,8 @@ interface CaseDetailProps {
   photos: any[];
   review: any;
   visitCount?: number;
+  /** ครั้งที่ทั้งหมดของเลขเคลมนี้ (คนละเคสกัน) — ดู getDetail ฝั่ง backend */
+  visits?: { id: number; visit_no: number | string; survey_job_no: string | null; status: string; created_on: string }[];
   expenses?: any;
   onReviewSubmitted: () => void;
 }
@@ -344,7 +346,7 @@ const isBlank = (el: HTMLElement) => {
   return !v.trim();
 };
 
-export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, expenses, onReviewSubmitted }: CaseDetailProps) {
+export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, visits = [], expenses, onReviewSubmitted }: CaseDetailProps) {
   const ex = expenses || {};
   // ประเภทรถ → ตัวเลือกยี่ห้อ (EMCS กรองลิสต์ยี่ห้อตามประเภทรถ; เดิมโชว์ชุดของ
   // 'เก๋งเอเชีย' ชุดเดียวกับทุกประเภท → กระบะ/มอเตอร์ไซค์เลือกยี่ห้อที่ EMCS ไม่รับ)
@@ -368,6 +370,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const isEditing = true;
   // ความเสียหายรถประกันเป็น JSONB — แก้ผ่าน FormData ไม่ได้ ต้องถือ state เอง
   // (เคสที่นำเข้าจากไฟล์ XML ของ ISURVEY จะว่างเสมอ ผู้ตรวจต้องกรอกก่อนส่งเข้า EMCS)
+  /**
+   * สลับ "ครั้งที่" = เปิดเคสของครั้งนั้นแทน (คนละเคสกัน — ดูหมายเหตุที่หัวการ์ดค่าใช้จ่าย)
+   * เตือนก่อนถ้ายังไม่ได้บันทึก เพราะออกจากหน้าไปแล้วสิ่งที่พิมพ์ค้างไว้หาย
+   */
+  const switchVisit = (id: string) => {
+    if (!id || Number(id) === Number(caseData?.id)) return;
+    const msg = 'เปิดเคสของครั้งที่เลือก?' + String.fromCharCode(10)
+      + 'ถ้ายังไม่ได้กด "บันทึกร่าง" สิ่งที่แก้ค้างไว้จะหาย';
+    if (!window.confirm(msg)) return;
+    window.location.href = `/inspector/cases/${id}`;
+  };
   const [dmgOpen, setDmgOpen] = useState(false);
   const [damage, setDamage] = useState<DamageItem[]>(() =>
     (Array.isArray(report?.insured_damage) ? report.insured_damage : []).map((x: Record<string, unknown>) => ({
@@ -2001,11 +2014,30 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               รางแคบกว่าครึ่งจอเดิมมาก จึงวางช่องความเห็นเรียงลงล่างแทน 3 คอลัมน์ */}
           <div data-section="review" className="space-y-3">
           <div className="bg-white rounded-[10px] border border-gray-200 shadow-[0_4px_16px_-6px_rgba(16,24,40,0.14)] overflow-hidden">
-            <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
-              <span className="font-semibold">ค่าใช้จ่าย</span>
-              <div className="flex items-center gap-2">
+            {/* ── หัวการ์ด: ค่าใช้จ่าย · เลขเรื่องเซอร์เวย์ของครั้งนี้ · ตัวเลือกครั้งที่ ──
+                ⛔ "ครั้งที่" ไม่ใช่รอบข้อมูลในเคสเดียว — **แต่ละครั้งเป็นคนละเคส**
+                   เลือกครั้งอื่น = เปิดเคสนั้นแทน (ทั้งหน้าเปลี่ยนตาม ไม่ใช่แค่รางขวา)
+                   จะสลับเฉพาะรางขวาไม่ได้ เพราะ 3 ช่องความเห็น + ยอดเงินอยู่ใน <form>
+                   เดียวกับฟอร์มหลัก กดบันทึกทีเดียวจะเขียนข้อมูลของครั้งอื่นทับเคสที่เปิดอยู่ */}
+            <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-semibold shrink-0">ค่าใช้จ่าย</span>
+              <span className="text-gray-500 truncate min-w-0" title="เลขเรื่องเซอร์เวย์ของครั้งนี้">
+                {report?.survey_job_no || '—'}
+              </span>
+              <div className="ml-auto flex items-center gap-2 shrink-0">
                 <span className="text-gray-500 text-sm">ครั้งที่</span>
-                <span className="bg-gray-200 text-gray-800 rounded px-2.5 py-0.5 text-sm font-semibold">{visitCount}</span>
+                {(visits ?? []).length > 1 ? (
+                  <select value={String(caseData?.id ?? '')} onChange={(e) => switchVisit(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-0.5 text-sm font-semibold text-gray-800 bg-white">
+                    {(visits ?? []).map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.visit_no}{v.survey_job_no ? ` · ${v.survey_job_no}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="bg-gray-200 text-gray-800 rounded px-2.5 py-0.5 text-sm font-semibold">{visitCount}</span>
+                )}
                 <input type="hidden" name="expense_count" value={visitCount} />
               </div>
             </div>
