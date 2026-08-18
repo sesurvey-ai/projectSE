@@ -157,7 +157,7 @@ const RING = ['border-red-400', 'ring-1', 'ring-red-300', 'bg-red-50'];
 const BG_ORIG = ['bg-white', 'bg-gray-100'];
 /**
  * กลุ่ม radio ที่ระบบประกันบังคับ — ตัวทาสีทั่วไปคุมไม่ได้ 2 เหตุผล
- *   1. input พวกนี้เป็น `sr-only` (โชว์ <span> แทนเพื่อทำวงกลมบนแถบสี) ทาสีที่ input ไม่มีใครเห็น
+ *   1. ทาสีที่ตัว input เองแทบมองไม่เห็น (วงกลม/กล่องเล็กมาก) ต้องคุมสีทั้งกลุ่ม
  *   2. `isBlank()` มองทีละช่อง คืน false เสมอสำหรับ radio — ไม่รู้จัก "ทั้งกลุ่มยังไม่มีใครติ๊ก"
  * เดิมดอกจัน 2 ตัวนี้จึงเป็นแค่ตัวอักษร ไม่ได้คุมอะไรเลย (user เจอ 18/08/69)
  * ทั้งคู่ส่งเข้า EMCS จริง — SURV_CLAIM_TYPE กับ HEV_CAR
@@ -905,38 +905,34 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div>
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
-            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               {/* กรอบคุมทั้งกลุ่ม ไม่ใช่รายช่อง — วงกลม radio อยู่บนแถบสี ทาสีทีละอันแล้วไม่เห็น
                   กติกาเดียวกับกลุ่ม "การเรียกร้องค่าเสียหายจากคู่กรณี" ข้างล่าง */}
               <div className={`ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-0.5 border ${
-                missing.includes('claim_type') ? 'border-red-400 bg-red-500/25' : 'border-transparent'}`}>
+                missing.includes('claim_type') ? 'border-red-400 bg-red-50' : 'border-transparent'}`}>
                 <span className="font-bold">ประเภทเคลม :</span>
-                <span className={missing.includes('claim_type') ? 'text-white font-bold' : 'text-red-300'}>*</span>
+                <span className={missing.includes('claim_type') ? 'text-red-600 font-bold' : 'text-red-500'}>*</span>
                 {['F','D','A','C'].map(v => (
                   <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="claim_type" value={v} disabled={d} defaultChecked={report.claim_type === v} className="peer sr-only" />
-                    <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
-                    <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{CLAIM_TYPE_LABELS[v]}</span>
+                    <input type="radio" name="claim_type" value={v} disabled={d} defaultChecked={report.claim_type === v} className="peer w-3.5 h-3.5" />
+                    <span className="peer-checked:font-semibold">{CLAIM_TYPE_LABELS[v]}</span>
                   </label>
                 ))}
               </div>
               <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded px-2 py-0.5 border ${
-                missing.includes('damage_level') ? 'border-red-400 bg-red-500/25' : 'border-transparent'}`}>
+                missing.includes('damage_level') ? 'border-red-400 bg-red-50' : 'border-transparent'}`}>
                 <span className="font-bold">รถเสียหาย :</span>
-                <span className={missing.includes('damage_level') ? 'text-white font-bold' : 'text-red-300'}>*</span>
+                <span className={missing.includes('damage_level') ? 'text-red-600 font-bold' : 'text-red-500'}>*</span>
                 {['หนัก','เบา'].map(v => (
                   <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="damage_level" value={v} disabled={d} defaultChecked={report.damage_level === v} className="peer sr-only" />
-                    <span className="w-4 h-4 rounded-full border-2 border-white/50 peer-checked:border-white peer-checked:bg-white peer-checked:shadow-[inset_0_0_0_2px_#0174BE] shrink-0"></span>
-                    <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">{v}</span>
+                    <input type="radio" name="damage_level" value={v} disabled={d} defaultChecked={report.damage_level === v} className="peer w-3.5 h-3.5" />
+                    <span className="peer-checked:font-semibold">{v}</span>
                   </label>
                 ))}
               </div>
-              <label className="flex items-center gap-1.5 ml-2 cursor-pointer relative">
-                <input type="checkbox" name="car_lost" value="true" disabled={d} defaultChecked={!!report.car_lost} className="peer sr-only" />
-                <span className="w-4 h-4 rounded border-2 border-white/50 peer-checked:border-white peer-checked:bg-white shrink-0"></span>
-                <svg className="absolute left-[3px] w-2.5 h-2.5 text-blue-700 hidden peer-checked:block pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                <span className="opacity-70 peer-checked:opacity-100 peer-checked:font-semibold">รถหาย</span>
+              <label className="flex items-center gap-1.5 ml-2 cursor-pointer">
+                <input type="checkbox" name="car_lost" value="true" disabled={d} defaultChecked={!!report.car_lost} className="peer w-3.5 h-3.5" />
+                <span className="peer-checked:font-semibold">รถหาย</span>
               </label>
             </div>
             {/* Table rows */}
@@ -1290,9 +1286,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
               ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
           <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
-            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-bold">::: ลำดับเวลา</span>
-              <span className="text-xs text-white/75">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
+            <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-semibold">ลำดับเวลา</span>
+              <span className="text-xs text-gray-500">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
               {timeErrs.length > 0 && (
                 <span className="ml-auto text-xs font-semibold bg-red-500 rounded px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
               )}
@@ -1760,11 +1756,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           ตอนนั้น เทียบกับ 22–41 ใบตอนจบงาน) → ต้องเห็นตัวเลขก่อนกดอนุมัติ
           ไม่งั้นบอทยกเข้า EMCS ด้วยรูป 3 ใบแล้วต้องตามแก้ทีหลัง */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="font-bold">::: รูปหลักฐาน</span>
-          <span className="bg-white/20 rounded px-2 py-0.5 text-xs font-semibold">{photos?.length ?? 0} ใบ</span>
+        <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-semibold">รูปหลักฐาน</span>
+          <span className="bg-gray-200 text-gray-700 rounded px-2 py-0.5 text-xs font-semibold">{photos?.length ?? 0} ใบ</span>
           {photoCats.length > 0 && (
-            <span className="text-xs text-white/75 truncate">
+            <span className="text-xs text-gray-500 truncate">
               {photoCats.map((c) => `${c.name} ${c.n}`).join(' · ')}
             </span>
           )}
@@ -1828,11 +1824,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       <div className="flex gap-6">
         <div className="w-1/2">
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="bg-gradient-to-r from-[#0174BE] to-[#4988C4] text-white px-4 py-2 text-sm flex items-center justify-between">
-              <span className="font-bold">::: ค่าใช้จ่าย</span>
+            <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex items-center justify-between">
+              <span className="font-semibold">ค่าใช้จ่าย</span>
               <div className="flex items-center gap-2">
-                <span className="text-white text-sm">ครั้งที่</span>
-                <span className="bg-white text-gray-800 rounded px-2.5 py-0.5 text-sm font-bold">{visitCount}</span>
+                <span className="text-gray-500 text-sm">ครั้งที่</span>
+                <span className="bg-gray-200 text-gray-800 rounded px-2.5 py-0.5 text-sm font-semibold">{visitCount}</span>
                 <input type="hidden" name="expense_count" value={visitCount} />
               </div>
             </div>
