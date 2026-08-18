@@ -64,21 +64,23 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Toggle button (visible when collapsed) */}
-      {collapsed && (
-        <button
-          onClick={() => setCollapsed(false)}
-          className="fixed top-3 left-3 z-50 w-10 h-10 bg-gray-800 text-white rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors shadow-lg"
-          title="เปิดเมนู"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      )}
-
-      {/* Sidebar */}
-      <aside className={`bg-gray-800 text-white min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-0 overflow-hidden' : 'w-64'}`}>
+      {/* ── เมนูข้าง ──
+          ตอนยุบไม่ได้หดเหลือ 0 แล้ว แต่เหลือเป็นแถบแคบ ๆ ที่ยัง "กินที่" ตามปกติ
+          เดิมปุ่มเปิดเมนูเป็น fixed ลอยทับมุมซ้ายบน → ไปบังเลขเคลมบนแถบหัวเคส
+          (user เจอจริง 18/08/69) · ทำเป็นแถบในสายตาแทน เนื้อหาเลยถูกดันมาเองไม่ต้องเผื่อที่ */}
+      <aside className={`bg-gray-800 text-white min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-14' : 'w-64'}`}>
+        {collapsed ? (
+          <button
+            onClick={() => setCollapsed(false)}
+            className="w-10 h-10 m-2 rounded-lg flex items-center justify-center text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            title="เปิดเมนู"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        ) : (
+          <>
         <div className="p-5 border-b border-gray-700 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold">{title}</h1>
@@ -109,6 +111,8 @@ export default function Sidebar() {
             </Link>
           ))}
         </nav>
+          </>
+        )}
       </aside>
     </>
   );
