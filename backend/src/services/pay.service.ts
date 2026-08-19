@@ -222,9 +222,22 @@ export async function getCasePay(caseId: number) {
     outOfHours: saved?.out_of_hours ? Number(saved.out_of_hours_amt ?? 100) : null,
   });
 
+  /**
+   * ⛔ ยอดที่แนะนำต้องเป็น **เรทฐานล้วน** ไม่รวมตัวปรับ (user เคาะ 19/08/69)
+   *
+   * เดิมส่ง `pay.surInvest` ซึ่งเป็นยอดรวมทั้งงาน (ฐาน + นอกพื้นที่ + นอกเวลา − หัก)
+   * แต่หน้าเว็บเอาไปแปะข้างช่อง "ค่าบริการ" ว่า "ระบบแนะนำค่าบริการ N บาท"
+   * → หัวหน้าพิมพ์ N ลงช่องค่าบริการ → saveCasePay บวกนอกพื้นที่/นอกเวลาเข้าไป**อีกรอบ**
+   * → ใบเบิกเงินเกินจริง 50-150 บาท/งาน
+   * เรทฐานล้วนตรงกับทั้งสูตรรวมยอดและคอลัมน์แยกของใบเบิกเงิน (payExport)
+   */
+  const baseRate = pay.snapshot?.base_rate;
   return {
     saved,
-    suggest: { service_fee: pay.surInvest, snapshot: pay.snapshot },
+    suggest: {
+      service_fee: pay.surInvest === null ? null : (typeof baseRate === 'number' ? baseRate : null),
+      snapshot: pay.snapshot,
+    },
     area: {
       province_code: province, amphur_code: amphur, team,
       province_name: r.acc_province ?? null, district_name: r.acc_district ?? null,

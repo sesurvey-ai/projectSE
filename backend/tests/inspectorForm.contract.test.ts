@@ -359,5 +359,19 @@ check('ลบวันที่ในการ์ดลำดับเวลา�
 check('ช่อง ชม./นาที บนเว็บเติมศูนย์ให้ครบทุกช่อง',
       (src.match(/onBlur=\{padTimeOnBlur\}/g) || []).length === 6);
 
+console.log(String.fromCharCode(10) + '-- ประตูอนุมัติ: ต้องครอบของที่ EMCS บังคับ --');
+check('นับช่องบังคับของคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สินเข้าประตูอนุมัติ',
+      /recordGaps > 0 \? \[/.test(src) && /OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED/.test(src));
+check('บังคับให้มีรายการความเสียหายอย่างน้อย 1 ชิ้น',
+      /damageRows === 0 \? \[/.test(src));
+check('เลิกผูกดอกจันกับ damage_description (ค่าไม่เคยถึง EMCS)',
+      !/<Req of="damage_description"/.test(src));
+check('ตรวจลำดับเวลาครบ 7 คู่ + ห้ามเวลาเท่ากัน',
+      (src.match(/te\.push\(\{ at:/g) || []).length >= 7 && /a <= b;/.test(src));
+const xml3 = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'services', 'xmlExport.service.ts'), 'utf8');
+check('ไม่ส่งชื่อสาขาไทยลง INSURERBRID (EMCS ต้องการรหัสตัวเลข)',
+      xml3.includes("el('INSURERBRID', /^") && xml3.includes("? r.insurance_branch : '')"));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

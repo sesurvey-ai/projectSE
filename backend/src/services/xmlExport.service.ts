@@ -571,7 +571,20 @@ export function generateSurveyXml(r: Row): string {
   const report = '<TXN_SURV_REPORT>' +
     el('SURV_JOBNO', r.survey_job_no) +
     el('REF_CLAIM_NO', r.claim_no) +
-    el('INSURERBRID', r.insurance_branch) +
+    /**
+     * ⛔ EMCS ต้องการ **รหัสสาขา (ตัวเลข)** ไม่ใช่ชื่อสาขา — ใส่ชื่อไทยไปจะตอบ
+     *    "ไม่พบข้อมูลนำเข้าที่ระบบต้องการ" แล้วนำเข้าไม่ได้ทั้งไฟล์
+     *
+     * คอลัมน์นี้เก็บคนละแบบตามที่มาของงาน:
+     *   - งานนำเข้าจาก XML ระบบเก่า → เป็นรหัสตัวเลขอยู่แล้ว (xmlImport เก็บ INSURERBRID ดิบ)
+     *   - งานจากแอป/เว็บ → เป็นชื่อไทย เช่น "กรุงเทพ"
+     * ส่งเฉพาะตอนเป็นตัวเลข · ชื่อไทยส่งว่างแทน ไม่งั้นไฟล์ใช้ไม่ได้ทั้งใบ
+     *
+     * หมายเหตุ: เส้นทางบอทไม่กระทบ — บอทอ่านรหัสสาขาจริงจากหน้า EMCS
+     * แล้ว patch ค่านี้ทับก่อนแนบไฟล์อยู่แล้ว (emcs.py `_import_branch_value`)
+     */
+    el('INSURERBRID', /^\d+$/.test(String(r.insurance_branch ?? '').trim())
+                        ? r.insurance_branch : '') +
     el('SURVEYID', SURVEY_ID) +
     el('SURVEYBRID', SURVEY_BR_ID) +
     el('ACC_CLAIMREF_NO', r.claim_ref_no) +

@@ -331,9 +331,18 @@ const OPPONENT_FIELDS: FieldDef[] = [
 const OPPONENT_KEYS = OPPONENT_FIELDS.map((f) => f.k);
 
 /** 8 ช่องที่ `vlidOpoCar` บล็อกทุกบริษัท — ใช้นับป้าย "ยังขาด N ช่องบังคับ" */
-const OPPONENT_REQUIRED = [
+export const OPPONENT_REQUIRED = [
   'owner_name', 'plate', 'province', 'insurer', 'policy_no', 'birthdate', 'age', 'car_type',
 ];
+
+/**
+ * ช่องบังคับของผู้บาดเจ็บ/ทรัพย์สิน — ดึงจากดอกจันท้าย label ของ field def เดียวกับที่วาดฟอร์ม
+ * ⛔ ต้อง export ให้หน้าตรวจเคสเอาไปนับเข้าประตูอนุมัติด้วย ไม่งั้นการ์ดขึ้น "ยังขาด N ช่อง"
+ *    แต่แถบบนขึ้นเขียว "ครบแล้ว" แล้วอนุมัติผ่าน → บอทไปตายที่หน้าคู่กรณีของ EMCS
+ */
+const reqKeys = (defs: FieldDef[]) => defs.filter((f) => f.label.trim().endsWith('*')).map((f) => f.k);
+export const INJURED_REQUIRED = reqKeys(INJURED_FIELDS);
+export const PROPERTY_REQUIRED = reqKeys(PROPERTY_FIELDS);
 
 export function OpponentEditor({ items, onChange }: {
   items: LooseRecord[]; onChange: (next: LooseRecord[]) => void;

@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import DamageEditor, { DamageItem } from './DamageEditor';
 import DamageDialog from './DamageDialog';
+import { OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED } from './RecordEditors';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
 
 /** ค่าตอบแทนผู้สำรวจของเคส — `suggest` คือยอดที่ระบบคิดจากตารางเรท `saved` คือที่ผู้ตรวจบันทึกจริง
@@ -82,6 +83,43 @@ function toArray(x: unknown): any[] { return Array.isArray(x) ? x : []; }
 function padTimeOnBlur(e: React.FocusEvent<HTMLInputElement>) {
   const v = e.target.value.trim();
   if (/^[0-9]{1}$/.test(v)) e.target.value = v.padStart(2, '0');
+}
+
+/**
+ * ⛔ ค่าที่บันทึกไว้ต้องอยู่ในลิสต์เสมอ ไม่งั้นเบราว์เซอร์เลือก option แรกให้แทน
+ *    (= "-- ระบุ --") แล้วพอกดบันทึก ตัวล้าง placeholder แปลงเป็นค่าว่าง
+ *    → ข้อมูลเดิมหายถาวรโดยไม่มีดอกจันหรืออะไรเตือน
+ *    เกิดจริงกับสีรถ (OCR ส่งข้อความอิสระเข้ามา) จังหวัด และสาเหตุการเกิดเหตุ
+ *    ทำแบบเดียวกับที่ carBrandOptions / districtOptions กันไว้อยู่แล้ว
+ */
+/** ประเภทใบขับขี่ที่ EMCS มีให้เลือก — ยกมาจาก <option> ข้างล่างให้เทียบค่านอกลิสต์ได้ */
+const DRIVER_LICENSE_TYPES = [
+  'ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ',
+  'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ',
+  'ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว',
+  'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลชั่วคราว',
+  'ใบขับขี่รถยนต์ส่วนบุคคล 5 ปีต่ออายุ',
+  'ใบขับขี่รถยนต์สาธารณะ',
+  'ใบขับขี่สากล',
+  'ใบขับขี่รถยนต์ส่วนบุคคลหนึ่งปีต่ออายุ',
+  'ใบขับขี่รถจักรยานยนต์ส่วนบุคคลหนึ่งปี',
+  'ใบขับขี่รถยนต์ส่วนบุคคล 7 ปีต่ออายุ',
+  'ใบขับขี่รถยนต์ส่วนบุคคล',
+  'ใบขับขี่รถจักรยานยนต์ส่วนบุคคล',
+  'ใบขับขี่ขนส่งชนิดที่1',
+  'ใบขับขี่ขนส่งชนิดที่2',
+  'ใบขับขี่ขนส่งชนิดที่3',
+  'ใบอนุญาติขับขี่ชนิดที่4',
+  'ไม่มีใบขับขี่',
+  'ใบขับขี่รถยนต์สามล้อส่วนบุคคลสาธารณะ',
+  'ใบขับขี่รถยนต์สามล้อส่วนบุคคลชั่วคราว',
+  'ใบอนุญาตเป็นผู้ขับรถทุกประเภท',
+  'อื่นๆ',
+];
+
+function withCurrent(list: string[], current: unknown, placeholder = '-- ระบุ --'): string[] {
+  const cur = String(current ?? '').trim();
+  return cur && cur !== placeholder && !list.includes(cur) ? [...list, cur] : list;
 }
 
 function zeroBlank(v: unknown): string {
@@ -675,6 +713,29 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *
    * นับเฉพาะ "แดง" (บังคับจริงตอนนี้) — เหลืองคือยังไม่บังคับ ไม่บล็อก
    */
+  /**
+   * ช่องบังคับใน 3 ตารางย่อย (คู่กรณี · ผู้บาดเจ็บ · ทรัพย์สิน)
+   *
+   * ⛔ ช่องพวกนี้ไม่มี name และไม่มีดอกจันในฟอร์มหลัก ตัวไล่หาช่องว่างจึงมองไม่เห็นเลย
+   *    ผลคือการ์ดขึ้น "⚠ ยังขาด N ช่องบังคับ" แต่แถบบนขึ้นเขียว "ช่องบังคับครบแล้ว"
+   *    หน้าจอขัดกันเอง แล้วอนุมัติผ่าน → บอทไปตายที่หน้าคู่กรณีของ EMCS (vlidOpoCar
+   *    บังคับ 8 ช่องต่อคันทุกบริษัท) ต้องให้แอดมินปลดล็อกแล้วทำใหม่
+   */
+  const recordGaps = (() => {
+    const cnt = (rows: Record<string, unknown>[], keys: string[]) =>
+      rows.reduce((n, it) => n + keys.filter((k) => !String(it[k] ?? '').trim()).length, 0);
+    return cnt(opponents as Record<string, unknown>[], OPPONENT_REQUIRED)
+         + cnt(injured as Record<string, unknown>[], INJURED_REQUIRED)
+         + cnt(property as Record<string, unknown>[], PROPERTY_REQUIRED);
+  })();
+  /**
+   * รายการความเสียหายต้องมีอย่างน้อย 1 ชิ้น (B7)
+   * ⛔ เดิมดอกจันไปผูกกับ textarea `damage_description` ซึ่ง **ไม่เคยถึง EMCS เลย**
+   *    (ไม่มีใน xmlExport และไม่มีในบอททั้ง repo) → พิมพ์อะไรก็ได้ = ปลดล็อกเกต
+   *    ทั้งที่รายการจริงยังว่าง แล้วบอทยกเข้า EMCS ด้วยความเสียหาย 0 ชิ้น
+   */
+  const damageRows = damage.filter((x) => x.part && x.level).length;
+
   const approvalBlockers = [
     ...(missing.length > 0 ? [`ช่องบังคับยังว่าง ${missing.length} ช่อง`] : []),
     ...(claimHl === 'red' ? ['ยังไม่ได้ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี"'] : []),
@@ -682,6 +743,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     ...(payHl === 'red' ? ['ติ๊ก "รับเงินจำนวน" แล้วแต่ยังไม่กรอกยอด'] : []),
     ...(payOver ? ['"รับเงินจำนวน" มากกว่ายอดเรียกร้องทั้งหมด'] : []),
     ...timeErrs.map((e) => `"${TL_LABEL[e.at] ?? e.at}" ${e.msg}`),
+    ...(recordGaps > 0 ? [`คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน ยังขาด ${recordGaps} ช่องบังคับ`] : []),
+    ...(damageRows === 0 ? ['ยังไม่มีรายการ "ความเสียหายรถประกัน"'] : []),
     ...moneyMissing,
   ];
 
@@ -793,7 +856,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const tIns = stamp('acc_insurance_notify_date_val', 'acc_insurance_notify_hour', 'acc_insurance_notify_minute');
       const tArr = stamp('acc_survey_arrive_date_val', 'acc_survey_arrive_hour', 'acc_survey_arrive_minute');
       const tFin = stamp('acc_survey_complete_date_val', 'acc_survey_complete_hour', 'acc_survey_complete_minute');
-      const before = (a: number | null, b: number | null) => a !== null && b !== null && a < b;
+      /**
+       * ⛔ EMCS ใช้เงื่อนไข **">=" เป็น error** คือ "ห้ามเท่ากัน" ด้วย
+       *    เดิมที่นี่ใช้ a < b เฉย ๆ → เวลาเท่ากันเป๊ะผ่านหน้าเว็บแต่ตกที่ EMCS
+       */
+      const before = (a: number | null, b: number | null) => a !== null && b !== null && a <= b;
       // `at` = ช่องที่ผิด — เอาไว้แปะข้อความเตือนใต้จังหวะนั้นในการ์ดลำดับเวลา
       // (เดิมมีแต่ข้อความรวมบนหัวหน้า ตัวช่องได้แค่กรอบแดง ไม่บอกว่าผิดยังไง
       //  ต้องเลื่อนขึ้นไปอ่านแล้วเลื่อนกลับลงมาแก้ — user เคาะ 17/08/69 ให้ย้ายมาไว้ที่จุด)
@@ -804,6 +871,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (before(tArr, tIns)) te.push({ at: ARR, msg: 'ย้อนหลังกว่าเวลาที่ บ.ประกันแจ้งสำรวจภัย' });
       // ข้อนี้ยังไม่เคยเห็นระบบประกันฟ้อง แต่เป็นไปไม่ได้ทางตรรกะ — ปล่อยผ่านก็เสียเที่ยวอยู่ดี
       if (before(tFin, tArr)) te.push({ at: 'acc_survey_complete_date_val', msg: 'ย้อนหลังกว่าเวลาที่ถึงที่เกิดเหตุ' });
+      /**
+       * อีก 3 คู่ที่ EMCS ตรวจแต่เดิมที่นี่ไม่ได้ตรวจ — และ **ไม่ได้ตามมาโดยปริยาย**
+       * ตัวอย่างที่หลุด: เกิดเหตุ 12:00 · ลูกค้าแจ้ง 14:20 · แจ้งสำรวจ 13:50 · ถึงที่ 15:00
+       * → 4 กฎเดิมผ่านหมด แต่ EMCS เด้งเพราะแจ้งสำรวจมาก่อนลูกค้าแจ้ง
+       */
+      const CUS = 'acc_customer_report_date_val';
+      const INS = 'acc_insurance_notify_date_val';
+      if (before(tCus, tAcc)) te.push({ at: CUS, msg: 'ย้อนหลังกว่าเวลาเกิดเหตุ' });
+      if (before(tIns, tAcc)) te.push({ at: INS, msg: 'ย้อนหลังกว่าเวลาเกิดเหตุ' });
+      if (before(tIns, tCus)) te.push({ at: INS, msg: 'ย้อนหลังกว่าเวลาที่ลูกค้าแจ้ง บ.ประกัน' });
       setList(setTimeErrs, te);
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
@@ -1369,7 +1446,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </F>
             <F label="จังหวัด" req={<Req of="car_province" />}>
               <select disabled={d} name="car_province" defaultValue={report.car_province || '-- ระบุ --'} className={CTL(d)}>
-                {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                {withCurrent(PROVINCE_OPTIONS, report.car_province).map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </F>
             <F label="ประเภทรถ" req={<Req of="car_type" />}>
@@ -1396,7 +1473,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </F>
             <F label="สีรถ">
               <select disabled={d} name="car_color" defaultValue={report.car_color || '-- ระบุ --'} className={CTL(d)}>
-                {CAR_COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                {withCurrent(CAR_COLOR_OPTIONS, report.car_color).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </F>
             <F label="ปีจดทะเบียนรถ">
@@ -1537,7 +1614,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
               <F label="จังหวัด">
                 <select disabled={d} name="driver_province" value={driverProv} onChange={e => { setDriverProv(e.target.value); setDriverDist('-- เขต --'); }} className={CTL(d)}>
-                  {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {withCurrent(PROVINCE_OPTIONS, driverProv).map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </F>
               <F label="เขต / อำเภอ">
@@ -1552,6 +1629,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <F label="ประเภทใบขับขี่">
                 <select disabled={d} name="driver_license_type" defaultValue={report.driver_license_type || '0'} className={CTL(d)}>
                   <option value="0">-- ระบุ --</option>
+                  {/* ประเภทใบขับขี่นอกลิสต์ (มาจากระบบเก่า/OCR) ต้องไม่หายตอนบันทึก */}
+                  {withCurrent(DRIVER_LICENSE_TYPES, report.driver_license_type, '0')
+                    .filter((v) => !DRIVER_LICENSE_TYPES.includes(v))
+                    .map((v) => <option key={v} value={v}>{v}</option>)}
                   <option value="ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถยนต์ส่วนบุคคลตลอดชีพ</option>
                   <option value="ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ">ใบขับขี่รถจักรยานยนต์ส่วนบุคคลตลอดชีพ</option>
                   <option value="ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว">ใบขับขี่รถยนต์ส่วนบุคคลชั่วคราว</option>
@@ -1594,7 +1675,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <div className="min-w-0" />
 
               {/* ต้องมีรายการความเสียหายอย่างน้อย 1 รายการ (ผู้สำรวจเลือกจากแอป) */}
-              <F label="ความเสียหายรถประกันภัย" req={<Req of="damage_description" />} span={4}>
+              {/* ⛔ ไม่ใส่ดอกจันที่ textarea นี้ — ค่าของมันไม่เคยถูกส่งเข้า EMCS เลย
+                  ตัวที่ EMCS ต้องการคือ "รายการ" ความเสียหาย ซึ่งคุมที่ approvalBlockers */}
+              <F label="ความเสียหายรถประกันภัย" span={4}>
                 <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={CTL(d)} />
                 <div className="mt-1.5">
                   {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
@@ -1665,7 +1748,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
               <F label="จังหวัด">
                 <select disabled={d} name="acc_province" value={accProv} onChange={e => { setAccProv(e.target.value); setAccDist('-- เขต --'); }} className={CTL(d)}>
-                  {PROVINCE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {withCurrent(PROVINCE_OPTIONS, accProv).map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </F>
               <F label="เขต / อำเภอ">
@@ -1676,7 +1759,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
               <F label="ลักษณะการเกิดเหตุ" req={<Req of="acc_cause" />}>
                 <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={CTL(d)}>
-                  {ACC_CAUSE_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                  {withCurrent(ACC_CAUSE_OPTIONS, report.acc_cause).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </F>
               <F label="ลักษณะความเสียหาย" req={<Req of="acc_damage_type" />}>
