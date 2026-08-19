@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import CaseDetail from '@/components/cases/CaseDetail';
@@ -24,9 +24,19 @@ export default function CaseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  /**
+   * ⛔ โชว์ "กำลังโหลด" เต็มหน้า **เฉพาะครั้งแรก** เท่านั้น
+   *
+   * เดิม refetch ทุกครั้ง (หลังบันทึก · หลังอัปรูป · หลังตีกลับ) ตั้ง loading=true
+   * ทำให้ทั้งหน้าถูกถอดออกจากจอชั่วขณะ แล้ว <CaseDetail> ถูกสร้างใหม่ทั้งก้อน
+   * → ทุกช่องกลับไปเป็นค่าที่บันทึกไว้ และ state ของคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน/
+   *   ความเสียหาย ถูก init ใหม่ = **สิ่งที่หัวหน้าพิมพ์ค้างไว้หายทั้งหน้าโดยไม่มีอะไรถาม**
+   *   (เจอง่ายสุดตอนอัปรูปเพิ่ม ซึ่งการ์ดรูปชวนให้ทำอยู่แล้วด้วยป้าย "รูปน้อยผิดปกติ")
+   */
+  const firstLoad = useRef(true);
   const fetchDetail = useCallback(async () => {
     try {
-      setLoading(true);
+      if (firstLoad.current) setLoading(true);
       const res = await api.get(`/api/cases/${caseId}/detail`);
       if (res.data.success) {
         setCaseData(res.data.data.case);
@@ -39,7 +49,7 @@ export default function CaseDetailPage() {
         setNameWarnings(res.data.data.emcs_name_warnings || []);
       }
     } catch { setError('ไม่สามารถโหลดข้อมูลเคสได้'); }
-    finally { setLoading(false); }
+    finally { setLoading(false); firstLoad.current = false; }
   }, [caseId]);
 
   useEffect(() => { if (caseId) fetchDetail(); }, [caseId, fetchDetail]);

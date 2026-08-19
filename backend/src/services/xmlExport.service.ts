@@ -311,8 +311,11 @@ function parseSe(dateStr: unknown, timeStr?: unknown): { d: string; m: string; y
   let yBE = parseInt(dm[3], 10);
   if (yBE < 100) yBE += 2500;          // พ.ศ. ย่อ
   else if (yBE < 2400) yBE += 543;     // เผื่อ input เป็น ค.ศ. → ทำให้เป็น พ.ศ. ฐานเดียว
-  const tm = /^(\d{1,2}):(\d{2})/.exec(ts);
-  return { d: dm[1].padStart(2, '0'), m: dm[2].padStart(2, '0'), yBE, hh: tm ? tm[1].padStart(2, '0') : '00', mi: tm ? tm[2] : '00' };
+  // รับนาทีหลักเดียวด้วย (แถวเก่าที่บันทึกไว้ก่อนแก้เรื่องเติมศูนย์ยังมีอยู่ใน DB)
+  // ⛔ เดิมบังคับนาที 2 หลัก พอไม่ match จะทิ้ง**ทั้งชั่วโมงและนาที**เป็น 00:00 เงียบ ๆ
+  const tm = /^(\d{1,2}):(\d{1,2})/.exec(ts);
+  return { d: dm[1].padStart(2, '0'), m: dm[2].padStart(2, '0'), yBE,
+           hh: tm ? tm[1].padStart(2, '0') : '00', mi: tm ? tm[2].padStart(2, '0') : '00' };
 }
 // วันที่ใน XML ทุก field : แปลงเป็น ค.ศ. (ลบ 543) — ยืนยันจาก export จริง (ดู header)
 const toXmlCE = (dateStr: unknown, timeStr?: unknown): string => {

@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 let failed = 0;
+const BSD = String.fromCharCode(92) + 'd';
 const check = (label: string, ok: boolean, note = '') => {
   if (!ok) failed++;
   console.log(`  [${ok ? 'PASS' : 'FAIL'}] ${label}${note ? `  (${note})` : ''}`);
@@ -305,6 +306,58 @@ check('ปุ่มบันทึก/อนุมัติ/ตีกลับ �
 check('สลับครั้งแล้วสร้างรางใหม่ (ไม่ให้ค่าเก่าค้างในช่อง uncontrolled)',
       /key=\{viewVisit \?\? 'self'\}/.test(src));
 check('มียอดสะสมทั้งเคลม', /ยอดสะสมทั้งเคลม/.test(src) && /claimTotals/.test(src));
+
+/**
+ * -- กันงานที่พิมพ์ค้างไว้หาย --
+ *
+ * หน้านี้ไม่มี autosave/localStorage เลย ค่าที่ยังไม่กดบันทึกอยู่ใน DOM ล้วน ๆ
+ * อะไรก็ตามที่ทำให้ component ถูกสร้างใหม่ = งานหายทั้งหน้าโดยไม่มีอะไรถาม
+ */
+console.log(String.fromCharCode(10) + '-- หน้าตรวจเคส: งานที่พิมพ์ค้างต้องไม่หาย --');
+const pageSrc = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'app', 'inspector', 'cases', '[id]', 'page.tsx'), 'utf8');
+check('โหลดใหม่แล้วไม่ถอดทั้งหน้าทิ้ง (โชว์ตัวโหลดเฉพาะครั้งแรก)',
+      /if \(firstLoad\.current\) setLoading\(true\)/.test(pageSrc));
+check('สลับครั้งที่แล้วเก็บค่าที่พิมพ์ไว้ก่อน', /railDraft\.current = readRail\(\)/.test(src));
+check('กลับมาครั้งเดิมแล้วเขียนค่าคืน', /railDraft\.current\[el\.name\]/.test(src));
+check('เลือกครั้งของเคสตัวเอง = กลับเป็น self (ไม่สร้างรางใหม่ซ้ำซ้อน)',
+      /to === Number\(caseData\?\.id\) \? null : to/.test(src));
+check('ช่อง "ค่าคัดประจำวัน" รับค่าที่โหลดมาทีหลังได้', /key=\{`dc-\$\{String\(payV/.test(src));
+
+/**
+ * -- ดอกจันต้องบังคับจริง --
+ * radio ไม่ถูกตัวไล่หาช่องว่างมองเห็น ต้องอยู่ใน REQ_RADIO_GROUPS เท่านั้นถึงจะนับ
+ * ช่องพวกนี้ EMCS บังคับทุกบริษัท — ปล่อยผ่านหน้าเว็บ = บอทไปตายที่ปลายทาง
+ */
+console.log(String.fromCharCode(10) + '-- หน้าตรวจเคส: ดอกจันของ radio ต้องบังคับจริง --');
+const radioLine = src.split(String.fromCharCode(10)).find((l) => l.includes('const REQ_RADIO_GROUPS')) || '';
+for (const g of ['claim_type', 'damage_level', 'acc_fault', 'driver_gender']) {
+  check(`นับ radio "${g}" เป็นช่องบังคับ`, radioLine.includes(`'${g}'`));
+}
+check('ยี่ห้อรถมีดอกจัน (EMCS บังคับ)', /label="ยี่ห้อ" req=\{<Req of="car_brand" \/>\}/.test(src));
+// ดอกจันของ radio ทุกตัวต้องมีชื่ออยู่ในลิสต์ ไม่งั้นเป็นดอกจันหลอก
+const radioReqs = ['acc_fault', 'claim_type', 'damage_level', 'driver_gender', 'acc_alcohol_test', 'acc_followup'];
+const marked = radioReqs.filter((g) => src.includes(`<Req of="${g}"`));
+const unenforced = marked.filter((g) => !radioLine.includes(`'${g}'`));
+check('ไม่มีดอกจันของ radio ที่ไม่ถูกนับ', unenforced.length === 0, unenforced.join(', '));
+
+/**
+ * -- เวลาที่ส่งเข้าระบบประกันต้องเป็น 2 หลักเสมอ --
+ * "16:5" ทำให้ตัวอ่านตอนสร้าง XML ทิ้งเวลาเป็น 00:00 ทั้งก้อน โดยหน้าเว็บไม่ฟ้องอะไร
+ */
+console.log(String.fromCharCode(10) + '-- เวลา: ต้องเติมศูนย์ทุกทาง --');
+const svc2 = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'services', 'case.service.ts'), 'utf8');
+const xml2 = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'services', 'xmlExport.service.ts'), 'utf8');
+check('backend เติมศูนย์ก่อนเก็บลงคอลัมน์', /const pad2 = /.test(svc2)
+      && /pad2\(g\(f\.hourKey\)\), m = pad2\(g\(f\.minKey\)\)/.test(svc2));
+check('ตัวอ่านตอนสร้าง XML รับนาทีหลักเดียวได้ (แถวเก่าใน DB)',
+      xml2.includes('const tm = /^(' + BSD + '{1,2}):(' + BSD + '{1,2})/'));
+check('ลบวันที่ในการ์ดลำดับเวลาแล้วล้างคอลัมน์จริง',
+      /if \(f\.dateKey in rd\) rd\[f\.dbCol\]/.test(svc2));
+check('ช่อง ชม./นาที บนเว็บเติมศูนย์ให้ครบทุกช่อง',
+      (src.match(/onBlur=\{padTimeOnBlur\}/g) || []).length === 6);
 
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

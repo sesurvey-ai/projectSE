@@ -1333,9 +1333,17 @@ export const caseService = {
 
     // === 1. Combine time fields ===
     const g = (k: string) => rd[k] || '';
+    /**
+     * ⛔ เติมศูนย์หน้าเสมอ — ช่อง ชม./นาที บนเว็บเป็น input ข้อความเปล่า พิมพ์ "5" ได้
+     *    ได้เวลา "16:5" ซึ่งตัวอ่านตอนสร้าง XML ต้องการนาที 2 หลักเป๊ะ → อ่านไม่ผ่าน
+     *    แล้ว **ทิ้งทั้งชั่วโมงและนาทีเป็น 00:00** ส่งเข้าระบบประกันเป็นเที่ยงคืน
+     *    ตัวตรวจลำดับเวลาบนหน้าเว็บอ่าน "5" เป็นนาที 5 จึงไม่ฟ้อง = อนุมัติผ่านไปเงียบ ๆ
+     *    (แอปมือถือเติมศูนย์ให้อยู่แล้ว เว็บเป็นทางเดียวที่ผลิตค่าเพี้ยน)
+     */
+    const pad2 = (v: string) => (v === '' ? '' : String(v).trim().padStart(2, '0'));
     // acc_time = hour:minute
     if (g('acc_time_hour') || g('acc_time_minute')) {
-      rd.acc_time = `${g('acc_time_hour')}:${g('acc_time_minute')}`;
+      rd.acc_time = `${pad2(g('acc_time_hour'))}:${pad2(g('acc_time_minute'))}`;
     }
     // Date|HH:MM fields
     const dateTimeFields = [
@@ -1345,8 +1353,14 @@ export const caseService = {
       { dateKey: 'acc_survey_complete_date_val', hourKey: 'acc_survey_complete_hour', minKey: 'acc_survey_complete_minute', dbCol: 'acc_survey_complete_date' },
     ];
     for (const f of dateTimeFields) {
-      const d = g(f.dateKey), h = g(f.hourKey), m = g(f.minKey);
-      if (d) rd[f.dbCol] = h || m ? `${d}|${h}:${m}` : d;
+      const d = g(f.dateKey), h = pad2(g(f.hourKey)), m = pad2(g(f.minKey));
+      /**
+       * ⛔ ต้องมี else ล้างคอลัมน์ด้วย — ชื่อช่องบนฟอร์มคือ `*_date_val` ซึ่งไม่ใช่ชื่อคอลัมน์
+       *    ถ้าไม่เขียนตรงนี้ คอลัมน์จริงจะไม่ถูกแตะเลย → ลบวันที่ทิ้งแล้วกดบันทึก API ตอบ
+       *    "สำเร็จ" แต่ค่าเก่ายังอยู่และไหลเข้าระบบประกันต่อ (ต่างจาก acc_police_date
+       *    ที่ส่งชื่อคอลัมน์ตรง ๆ จึงลบได้ — พฤติกรรมสวนทางกันเองบนหน้าเดียวกัน)
+       */
+      if (f.dateKey in rd) rd[f.dbCol] = d ? (h || m ? `${d}|${h}:${m}` : d) : '';
     }
     // Police date + time
     if (g('acc_police_date') || g('acc_police_hour')) {

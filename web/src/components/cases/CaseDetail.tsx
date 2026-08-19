@@ -75,6 +75,15 @@ function toArray(x: unknown): any[] { return Array.isArray(x) ? x : []; }
  * ศูนย์ = "ยังไม่ได้กำหนด" ในช่องที่ไม่มีใครตั้งใจใส่ 0 จริง ๆ (เช่นเปอร์เซ็นต์ค่าเรียกร้อง)
  * โชว์ 0.00 ไว้เฉย ๆ มีแต่ทำให้ต้องลบทิ้งก่อนพิมพ์ทับทุกครั้ง
  */
+/**
+ * เติมศูนย์หน้าให้ ชม./นาที ตอนออกจากช่อง — พิมพ์ "5" แล้วเห็น "05" ทันที
+ * (backend เติมให้อีกชั้นเป็นด่านหลัก อันนี้ไว้ให้คนเห็นว่าค่าถูกจัดรูปแล้ว)
+ */
+function padTimeOnBlur(e: React.FocusEvent<HTMLInputElement>) {
+  const v = e.target.value.trim();
+  if (/^[0-9]{1}$/.test(v)) e.target.value = v.padStart(2, '0');
+}
+
 function zeroBlank(v: unknown): string {
   const t = String(v ?? '').trim();
   return Number(t) === 0 ? '' : t;
@@ -189,7 +198,16 @@ const BG_ORIG = ['bg-white', 'bg-gray-100'];
  * เดิมดอกจัน 2 ตัวนี้จึงเป็นแค่ตัวอักษร ไม่ได้คุมอะไรเลย (user เจอ 18/08/69)
  * ทั้งคู่ส่งเข้า EMCS จริง — SURV_CLAIM_TYPE กับ HEV_CAR
  */
-const REQ_RADIO_GROUPS = ['claim_type', 'damage_level'];
+/**
+ * กลุ่ม radio ที่ต้องนับเป็น "ช่องบังคับ" — ตัวไล่หาช่องว่างมองไม่เห็น radio เอง
+ * (isBlank คืน false เสมอ) ต้องมาลิสต์ไว้ที่นี่เท่านั้น
+ *
+ * ⛔ มีดอกจันแล้วลืมใส่ที่นี่ = ดอกจันหลอก · ผ่านหน้าเว็บแต่ EMCS ตีกลับ
+ *    acc_fault / driver_gender เพิ่ม 19/08/69 — EMCS บังคับทั้งคู่ทุกบริษัท
+ *    (acc_fault ว่างยังลามไปทำให้ "การเรียกร้องค่าเสียหาย" กับ "คู่กรณีคันที่"
+ *     ตกจากแดงเป็นเหลือง หลุดจากประตูอนุมัติอีก 2 ช่อง)
+ */
+const REQ_RADIO_GROUPS = ['claim_type', 'damage_level', 'acc_fault', 'driver_gender'];
 
 /** ตัด placeholder ของ dropdown ('0' / '-- ระบุ --') ออกก่อนเอาไปแสดงเป็นข้อความ — ไม่ใช่ค่าจริง */
 const noPh = (v: unknown) => {
@@ -444,6 +462,24 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *     ยอดของเคสที่เปิดอยู่จะกลายเป็นค่าว่างทั้งแถว)
    */
   const [viewVisit, setViewVisit] = useState<number | null>(null);
+  /**
+   * ⛔ สลับ "ครั้งที่" ทำให้รางขวาถูกสร้างใหม่ทั้งราง (ดู key ที่ครอบราง) — ช่องในนั้น
+   *    เป็น uncontrolled ทั้งหมด ค่าที่หัวหน้าพิมพ์ค้างไว้จึงหายเกลี้ยงโดยไม่มีอะไรถาม
+   *    ซึ่งเจอแน่ ๆ เพราะเหตุผลเดียวที่ฟีเจอร์นี้มีอยู่คือ "เปิดไปเทียบยอดกับครั้งก่อน"
+   *    → เก็บค่าไว้ก่อนออก แล้วเขียนคืนให้ตอนกลับมาครั้งของเคสนี้
+   */
+  const railRef = useRef<HTMLDivElement>(null);
+  const railDraft = useRef<Record<string, { v?: string; c?: boolean }> | null>(null);
+  const railFields = () => Array.from(
+    railRef.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[name]') ?? []);
+  const readRail = () => {
+    const out: Record<string, { v?: string; c?: boolean }> = {};
+    for (const el of railFields()) {
+      out[el.name] = (el instanceof HTMLInputElement && el.type === 'checkbox')
+        ? { c: el.checked } : { v: el.value };
+    }
+    return out;
+  };
   const pv = (visits ?? []).find((v) => v.id === viewVisit) as Record<string, unknown> | undefined;
   const previewing = Boolean(pv) && Number(viewVisit) !== Number(caseData?.id);
   const pvv = previewing ? (pv as Record<string, any>) : null;
@@ -468,6 +504,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     },
   } : pay;
   const repV = pvv ?? report;
+
+  /** กลับมาครั้งของเคสนี้แล้ว → เขียนค่าที่เก็บไว้คืนลงช่อง (รางเพิ่งถูกสร้างใหม่) */
+  useEffect(() => {
+    if (previewing || !railDraft.current) return;
+    for (const el of railFields()) {
+      const keep = railDraft.current[el.name];
+      if (!keep) continue;
+      if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = Boolean(keep.c);
+      else el.value = keep.v ?? '';
+    }
+    railDraft.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewVisit, previewing]);
+
 
   /** ยอดสะสมทั้งเคลม — บวกทุกครั้งของเลขเคลมเดียวกัน (ฝั่งจ่ายพนักงาน / ฝั่งเรียกเก็บประกัน) */
   const claimTotals = (() => {
@@ -1334,7 +1384,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <option value="O">รถอื่นๆ</option>
               </select>
             </F>
-            <F label="ยี่ห้อ">
+            {/* EMCS บังคับยี่ห้อรถทุกบริษัท — ว่างแล้วบอทหยุดรอคนไปเลือกเองบนหน้า EMCS */}
+            <F label="ยี่ห้อ" req={<Req of="car_brand" />}>
               <select disabled={d} name="car_brand" defaultValue={report.car_brand || '-- ระบุ --'} className={CTL(d)}>
                 {carBrandOptions(carType, report.car_brand).map(b => <option key={b} value={b}>{b}</option>)}
               </select>
@@ -1586,10 +1637,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
                         className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
+                      <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
                         className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-400 shrink-0">:</span>
-                      <input type="text" disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
+                      <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
                         className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                     </div>
                     {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
@@ -1748,9 +1799,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <F label="วันที่แจ้งความ">
                 <div className="flex items-center gap-1">
                   <input type="text" disabled={d} name="acc_police_date" defaultValue={pol.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  <input type="text" disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                   <span className="text-gray-400 shrink-0">:</span>
-                  <input type="text" disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                 </div>
               </F>
             ); })()}
@@ -1789,9 +1840,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <F label="วันที่นัดหมาย">
                 <div className="flex items-center gap-1">
                   <input type="text" disabled={d} name="acc_followup_date" defaultValue={flu.date} className={`flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  <input type="text" disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                   <span className="text-gray-400 shrink-0">:</span>
-                  <input type="text" disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded px-1 py-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                 </div>
               </F>
             ); })()}
@@ -2076,7 +2127,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               รางแคบกว่าครึ่งจอเดิมมาก จึงวางช่องความเห็นเรียงลงล่างแทน 3 คอลัมน์ */}
           {/* key = บังคับสร้างใหม่ทั้งราง เมื่อสลับครั้งที่ — ช่องพวกนี้เป็น uncontrolled
               (defaultValue) ถ้าไม่สร้างใหม่ ค่าจะค้างของครั้งก่อนทั้งที่ข้อมูลเปลี่ยนแล้ว */}
-          <div data-section="review" className="space-y-3" key={viewVisit ?? 'self'}>
+          <div data-section="review" className="space-y-3" key={viewVisit ?? 'self'} ref={railRef}>
           <div className="bg-white rounded-[10px] border border-gray-200 shadow-[0_4px_16px_-6px_rgba(16,24,40,0.14)] overflow-hidden">
             {/* ── หัวการ์ด: ค่าใช้จ่าย · เลขเรื่องเซอร์เวย์ของครั้งนี้ · ตัวเลือกครั้งที่ ──
                 ⛔ "ครั้งที่" ไม่ใช่รอบข้อมูลในเคสเดียว — **แต่ละครั้งเป็นคนละเคส**
@@ -2092,7 +2143,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <span className="text-gray-500 text-sm">ครั้งที่</span>
                 {(visits ?? []).length > 1 ? (
                   <select value={String(viewVisit ?? caseData?.id ?? '')}
-                    onChange={(e) => setViewVisit(Number(e.target.value))}
+                    onChange={(e) => {
+                      const to = Number(e.target.value);
+                      if (!previewing) railDraft.current = readRail();
+                      setViewVisit(to === Number(caseData?.id) ? null : to);
+                    }}
                     className="border border-gray-300 rounded px-2 py-0.5 text-sm font-semibold text-gray-800 bg-white">
                     {(visits ?? []).map((v) => (
                       <option key={v.id} value={v.id}>
@@ -2264,7 +2319,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </label>
                   <label className="flex items-center gap-1.5">
                     <span className="text-gray-700">ค่าคัดประจำวัน</span>
-                    <select disabled={dPay} name="daily_check" defaultValue={String(payV?.saved?.daily_check ?? '')}
+                    {/* ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) ตอน render แรกยังว่าง
+                        React ไม่เอา defaultValue ของ <select> มาใส่ซ้ำเมื่อ props เปลี่ยน
+                        (ต่างจาก <input>) ช่องนี้จึงค้างที่ "— ไม่มี —" ตลอด แล้วพอกดบันทึก
+                        ก็เขียนค่าว่างทับของเดิมใน survey_pay + rate_snapshot */}
+                    <select key={`dc-${String(payV?.saved?.daily_check ?? '')}`}
+                      disabled={dPay} name="daily_check" defaultValue={String(payV?.saved?.daily_check ?? '')}
                       className={`border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`}>
                       <option value="">— ไม่มี —</option>
                       <option value="ถูก">ถูก</option>
