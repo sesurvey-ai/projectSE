@@ -881,6 +881,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (before(tCus, tAcc)) te.push({ at: CUS, msg: 'ย้อนหลังกว่าเวลาเกิดเหตุ' });
       if (before(tIns, tAcc)) te.push({ at: INS, msg: 'ย้อนหลังกว่าเวลาเกิดเหตุ' });
       if (before(tIns, tCus)) te.push({ at: INS, msg: 'ย้อนหลังกว่าเวลาที่ลูกค้าแจ้ง บ.ประกัน' });
+      /**
+       * ⛔ ห้ามล้ำเวลาปัจจุบัน — EMCS ฟ้องว่า "กรุณาระบุวันที่สำรวจภัยเสร็จ ต้องไม่เกินวันที่
+       *    ณ ปัจจุบัน" แล้วปัดตกทั้งหน้า **เทียบถึงระดับนาที ไม่ใช่ระดับวัน**
+       *    ยืนยันจากการทดสอบสด 19/08/69: ล้ำไป 45 นาทีก็ตก ล้ำไป 2 นาทีก็ตก
+       *    (จึงเตือนแบบเดียวกับ EMCS เป๊ะ ๆ — ปัดให้หลวมกว่านี้เท่ากับปล่อยให้เสียเที่ยว)
+       */
+      if (tFin !== null && tFin > Date.now()) {
+        te.push({ at: 'acc_survey_complete_date_val', msg: 'ล้ำเวลาปัจจุบัน — ระบบประกันไม่รับ' });
+      }
       setList(setTimeErrs, te);
 
       // ── ยอดเงินของงานจากแอปมือถือ ──

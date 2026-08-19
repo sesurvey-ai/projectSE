@@ -403,5 +403,20 @@ for (const f of ['deduct_late', 'deduct_docs', 'out_of_area', 'out_of_hours', 's
 }
 check('ช่อง "ค่าคัดประจำวัน" มี key เช่นกัน', src.includes('key={`dc-${String(payV'));
 
+/**
+ * -- กติกาที่ EMCS ฟ้องจริง (เก็บจากการทดสอบสด 19/08/69) --
+ * ปล่อยผ่านที่นี่ = อนุมัติได้ แต่บอทกดบันทึกบน EMCS ไม่ผ่าน เสียเที่ยวทั้งรอบ
+ */
+console.log(String.fromCharCode(10) + '-- กติกาที่ระบบประกันฟ้องจริง --');
+check('เตือนเมื่อ "สำรวจภัยเสร็จ" ล้ำเวลาปัจจุบัน (EMCS เทียบระดับนาที)',
+      src.includes('tFin > Date.now()'));
+const opt = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'caseOptions.ts'), 'utf8');
+check('ลิสต์ยี่ห้อรับได้ทั้งรหัสและป้ายไทย (คู่กรณีเก็บประเภทรถเป็นป้ายไทย)',
+      opt.includes('CAR_TYPE_LABEL_TO_CODE')
+      && opt.includes('CAR_BRANDS_BY_TYPE[CAR_TYPE_LABEL_TO_CODE[raw] ?? raw]'));
+check('เว็บตรวจ checksum เลขบัตรประชาชนของคู่กรณี/ผู้บาดเจ็บ (มือถือตรวจอยู่แล้ว)',
+      rec.includes('const cidChecksum') && rec.includes("def.k === 'cid'"));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

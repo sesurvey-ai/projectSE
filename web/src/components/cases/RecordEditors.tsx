@@ -119,9 +119,25 @@ const cls = (def: FieldDef, value: string, warn: string) =>
   `w-full border rounded px-2 py-1 text-sm text-gray-800 ${
     warn || (isRequiredLabel(def.label) && !String(value ?? '').trim()) ? REQ_CLS : OK_CLS}`;
 
+/**
+ * เลขบัตรประชาชนไทย 13 หลัก (mod 11) — ลอกจาก `cidChecksum` ของแอปมือถือทีต่อที
+ *
+ * ⛔ EMCS ตรวจหลักตรวจสอบเอง แล้ว **ปัดตกทั้งบล็อกผู้บาดเจ็บ** ด้วยข้อความ
+ *    "กรุณาระบุเลขที่บัตรประชาชน ของ::คนที่ 1 ให้ถูกต้อง" (เจอจากการทดสอบสด 19/08/69)
+ *    แอปมือถือกันไว้ตั้งแต่หน้ากรอกแล้ว เว็บเป็นทางเดียวที่ปล่อยเลขมั่วผ่านไปได้
+ */
+const cidChecksum = (raw: string): boolean => {
+  const d = raw.replace(/\D/g, '');
+  if (d.length !== 13) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(d[i]) * (13 - i);
+  return (11 - (sum % 11)) % 10 === Number(d[12]);
+};
+
 function Field({ def, value, onChange }: { def: FieldDef; value: string; onChange: (v: string) => void }) {
   const v = String(value ?? '');
   const badChars = badNameChars(def.k, v);
+  const badCid = def.k === 'cid' && v.trim() !== '' && !cidChecksum(v);
   /**
    * ชื่อบริษัทที่ไม่มีในลิสต์ของ EMCS — บอทเลือกไม่ได้
    * เกิดกับงานเก่าที่นำเข้ามาก่อนมีลิสต์นี้ และชื่อฝั่ง ISURVEY ที่แปลงอัตโนมัติไม่ได้
@@ -131,7 +147,8 @@ function Field({ def, value, onChange }: { def: FieldDef; value: string; onChang
   const offList = def.k === 'insurer' && !isEmcsInsurer(v);
   const warn = badChars ? `EMCS ไม่รับอักขระ ${badChars}`
     : offList ? 'ชื่อนี้ไม่มีใน EMCS — เลือกใหม่จากลิสต์'
-      : '';
+      : badCid ? 'เลขบัตรไม่ถูกต้อง — EMCS จะไม่ยอมบันทึกทั้งบล็อก'
+        : '';
   const c = cls(def, v, warn);
   return (
     <div className={def.wide ? 'col-span-2 md:col-span-4' : ''}>

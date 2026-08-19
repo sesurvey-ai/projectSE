@@ -105,11 +105,20 @@ export const CAR_BRANDS_BY_TYPE: Record<string, string[]> = {
   ],
 };
 
-/** ตัวเลือกยี่ห้อของประเภทรถนี้ (code A/E/M/O/T/V/W) — ไม่รู้ประเภท = ว่าง
+/** ป้ายไทย → code — คู่กรณีเก็บ "ประเภทรถ" เป็นป้ายไทย ('เก๋งเอเชีย') ไม่ใช่ code
+ *  ตารางยี่ห้อข้างบน key เป็น code → ถ้าไม่แปลงก่อน ลิสต์ยี่ห้อของคู่กรณีจะว่างเปล่าทุกคัน
+ *  (มือถือแปลงทางกลับกันอยู่แล้วที่ carBrandsFor ใน survey_master.dart) */
+const CAR_TYPE_LABEL_TO_CODE: Record<string, string> = {
+  'เก๋งเอเชีย': 'A', 'เก๋งยุโรป': 'E', 'รถจักรยานยนต์': 'M', 'รถอื่นๆ': 'O',
+  'กระบะ': 'T', 'รถตู้': 'V', 'รถบรรทุก': 'W',
+};
+
+/** ตัวเลือกยี่ห้อของประเภทรถนี้ — รับได้ทั้ง code (A/E/M/O/T/V/W) และป้ายไทย
  *  current: ค่าที่บันทึกไว้แล้ว ถ้าไม่อยู่ในลิสต์ (ข้อมูลเก่าเป็นไทย เช่น 'เอ็มจี')
  *  ให้คงไว้เป็นตัวเลือก ไม่งั้น select จะเด้งไป '-- ระบุ --' แล้วเซฟทับค่าเดิมทิ้ง */
 export function carBrandOptions(carType?: string | null, current?: string | null): string[] {
-  const list = CAR_BRANDS_BY_TYPE[(carType || '').trim()] ?? [];
+  const raw = (carType || '').trim();
+  const list = CAR_BRANDS_BY_TYPE[CAR_TYPE_LABEL_TO_CODE[raw] ?? raw] ?? [];
   const cur = (current || '').trim();
   const keep = cur && cur !== '-- ระบุ --' && !list.includes(cur) ? [cur] : [];
   return ['-- ระบุ --', ...list, ...keep];
