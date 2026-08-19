@@ -64,7 +64,14 @@ export default function DamageEditor({
       )}
 
       {items.map((it, i) => {
-        const hasSide = PARTS_WITH_SIDE.includes(it.part);
+        /**
+         * ชิ้นส่วนที่ไม่อยู่ใน 22 ตัว = "ช่องอิสระ" (มาจากหน้าต่างข้อมูลความเสียหาย
+         * หรือจากแอปมือถือ) — ต้องแสดงชื่อได้และเลือกด้านได้เหมือนช่องอิสระของ EMCS
+         * ⛔ ถ้าไม่ใส่ชื่อมันกลับเข้าลิสต์ตัวเลือก ช่องจะว่างทั้งที่ข้อมูลมีอยู่
+         *    แล้วพอผู้ตรวจแตะแถวนั้นทีเดียว ชื่อที่พิมพ์ไว้จะหายทันที (เจอจริง 18/08/69)
+         */
+        const known = ALL_PARTS.includes(it.part);
+        const hasSide = known ? PARTS_WITH_SIDE.includes(it.part) : Boolean(it.part);
         return (
           <div key={i} className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-400 w-5 text-right">{i + 1}.</span>
@@ -73,6 +80,7 @@ export default function DamageEditor({
               onChange={(e) => set(i, 'part', e.target.value)}
             >
               <option value="">-- เลือกชิ้นส่วน --</option>
+              {!known && it.part && <option value={it.part}>{it.part} (ช่องอิสระ)</option>}
               {ALL_PARTS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
 
