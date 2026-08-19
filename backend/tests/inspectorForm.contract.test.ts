@@ -390,5 +390,18 @@ check('รวม "-- เขต --" เป็น placeholder ด้วย', /'-- 
 check('เวลา "บ.ประกันแจ้งสำรวจภัย" ไม่ถูกคอลัมน์เก่าทับ',
       xml4.includes("el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date))"));
 
+/**
+ * -- ค่าที่โหลดมาทีหลังต้องขึ้นบนหน้าจอ --
+ * React ไม่เอา defaultValue ของ <select> และ defaultChecked ของ checkbox มาใส่ซ้ำ
+ * เมื่อ props เปลี่ยน (ต่างจาก <input type=text>) ยอดเงินโหลด async จึงต้องมี key
+ * ⛔ ไม่มี key = ช่องว่าง/ไม่ติ๊ก ทั้งที่ DB มีค่า แล้วกดบันทึกทีเดียวล้างของเดิมทิ้ง
+ */
+console.log(String.fromCharCode(10) + '-- ยอดเงินที่โหลดทีหลังต้องขึ้นครบ --');
+for (const f of ['deduct_late', 'deduct_docs', 'out_of_area', 'out_of_hours', 'special_tumbon']) {
+  check(`ช่องติ๊ก "${f}" มี key ผูกกับค่าที่โหลดมา`,
+        src.includes('key={`' + f + '-${String(payV?.saved?.' + f));
+}
+check('ช่อง "ค่าคัดประจำวัน" มี key เช่นกัน', src.includes('key={`dc-${String(payV'));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

@@ -2365,10 +2365,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-700">
                         <label className="flex items-center gap-1">
-                          <input type="checkbox" disabled={dDeduct} name="deduct_late" defaultChecked={Boolean(payV?.saved?.deduct_late)} />ส่งช้า
+                          {/* ⛔ key จำเป็นเหมือน "ค่าคัดประจำวัน" — React ไม่เอา defaultChecked
+                              มาใส่ซ้ำเมื่อยอดเงินโหลดมาทีหลัง (async) ช่องติ๊กจึงว่างทั้งที่ DB
+                              มีค่า true แล้วกดบันทึกทีเดียวล้างเป็น false = ยอดจ่ายหาย 50-100 บาท
+                              และเหตุผลหักเงินหาย · เจอจากการทดสอบสด 19/08/69 */}
+                          <input type="checkbox" disabled={dDeduct} key={`deduct_late-${String(payV?.saved?.deduct_late ?? "")}`} name="deduct_late" defaultChecked={Boolean(payV?.saved?.deduct_late)} />ส่งช้า
                         </label>
                         <label className="flex items-center gap-1">
-                          <input type="checkbox" disabled={dDeduct} name="deduct_docs" defaultChecked={Boolean(payV?.saved?.deduct_docs)} />เอกสารไม่ครบ
+                          <input type="checkbox" disabled={dDeduct} key={`deduct_docs-${String(payV?.saved?.deduct_docs ?? "")}`} name="deduct_docs" defaultChecked={Boolean(payV?.saved?.deduct_docs)} />เอกสารไม่ครบ
                         </label>
                       </div>
                     </td>
@@ -2389,15 +2393,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                   <label className="flex items-center gap-1.5">
-                    <input type="checkbox" disabled={dPay} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
+                    <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
                     <span className="text-gray-700">นอกพื้นที่</span>
                   </label>
                   <label className="flex items-center gap-1.5">
-                    <input type="checkbox" disabled={dPay} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
+                    <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
                     <span className="text-gray-700">นอกเวลา</span>
                   </label>
                   <label className="flex items-center gap-1.5">
-                    <input type="checkbox" disabled={dPay} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
+                    <input type="checkbox" disabled={dPay} key={`special_tumbon-${String(payV?.saved?.special_tumbon ?? "")}`} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
                     <span className="text-gray-700">ตำบลพิเศษ</span>
                   </label>
                   <label className="flex items-center gap-1.5">
