@@ -449,7 +449,24 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const pvv = previewing ? (pv as Record<string, any>) : null;
   /** ค่าที่รางขวาใช้แสดง — ครั้งปัจจุบันใช้ของเคสนี้ · ครั้งอื่นใช้ของครั้งนั้น */
   const exV = pvv ?? ex;
-  const payV = pvv ? { saved: pvv } : pay;
+  /**
+   * ⛔ คอลัมน์ฝั่งจ่ายพนักงานถูก alias เป็น `pay_*` ตอน query (เพราะ phone_fee/bail_fee
+   *    ชนกับฝั่งเรียกเก็บประกัน) — ต้องแมปกลับเป็นชื่อเดิมก่อนส่งให้ช่องกรอกอ่าน
+   *    ไม่งั้นช่อง "ราคาพนักงาน" ว่างทั้งคอลัมน์ตอนดูครั้งอื่น (เจอจริงตอนทดสอบ 18/08/69)
+   */
+  const payV = pvv ? {
+    saved: {
+      service_fee: pvv.pay_service_fee, travel_fee: pvv.pay_travel_fee,
+      photo_fee: pvv.pay_photo_fee, phone_fee: pvv.pay_phone_fee,
+      bail_fee: pvv.pay_bail_fee, claim_fee: pvv.pay_claim_fee,
+      daily_fee: pvv.pay_daily_fee, other_fee: pvv.pay_other_fee,
+      deduct_fee: pvv.pay_deduct_fee, deduct_late: pvv.deduct_late,
+      deduct_docs: pvv.deduct_docs, deduct_reason: pvv.deduct_reason,
+      out_of_area: pvv.out_of_area, out_of_hours: pvv.out_of_hours,
+      special_tumbon: pvv.special_tumbon, daily_check: pvv.daily_check,
+      total: pvv.pay_total,
+    },
+  } : pay;
   const repV = pvv ?? report;
 
   /** ยอดสะสมทั้งเคลม — บวกทุกครั้งของเลขเคลมเดียวกัน (ฝั่งจ่ายพนักงาน / ฝั่งเรียกเก็บประกัน) */
