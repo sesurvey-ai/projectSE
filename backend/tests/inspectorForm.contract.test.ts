@@ -373,5 +373,22 @@ const xml3 = fs.readFileSync(
 check('ไม่ส่งชื่อสาขาไทยลง INSURERBRID (EMCS ต้องการรหัสตัวเลข)',
       xml3.includes("el('INSURERBRID', /^") && xml3.includes("? r.insurance_branch : '')"));
 
+console.log(String.fromCharCode(10) + '-- ค่า placeholder ต้องไม่กลายเป็นข้อมูลจริง --');
+const rec = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'RecordEditors.tsx'), 'utf8');
+const svc3 = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'services', 'case.service.ts'), 'utf8');
+const xml4 = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'services', 'xmlExport.service.ts'), 'utf8');
+check('ตารางย่อยตัด placeholder ออกจากลิสต์ตัวเลือก',
+      /def\.options\.filter\(\(o\) => !PLACEHOLDERS\.has/.test(rec));
+check('ตัวล้าง placeholder เดินลง array/object ของ JSONB',
+      /if \(Array\.isArray\(v\)\) return v\.map\(stripSentinel\)/.test(svc3));
+check('JSONB ผ่านตัวล้างก่อนเก็บ (เดิมข้ามไปเลย)',
+      /JSON\.stringify\(stripSentinel\(/.test(svc3));
+check('รวม "-- เขต --" เป็น placeholder ด้วย', /'-- เขต --'/.test(svc3) && /'-- เขต --'/.test(rec));
+check('เวลา "บ.ประกันแจ้งสำรวจภัย" ไม่ถูกคอลัมน์เก่าทับ',
+      xml4.includes("el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date))"));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

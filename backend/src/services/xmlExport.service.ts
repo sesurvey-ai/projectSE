@@ -648,7 +648,14 @@ export function generateSurveyXml(r: Row): string {
     el('HAS_PRB', /[0-9A-Za-zก-๙]/.test(String(r.prb_number ?? '')) ? '1' : '') +
     el('RISK_CODE', r.risk_code) +
     el('LOST_CAR', r.car_lost === true ? '1' : '') +
-    el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date, r.acc_insurance_notify_time)) +
+    /**
+     * ⛔ ห้ามส่งคอลัมน์เวลาเก่าเป็น arg ที่ 2 — parseSe ให้ arg นั้น **ชนะ** เวลาหลัง '|'
+     *    `acc_insurance_notify_time` ถูกเขียนตอนสร้างเคสจาก OCR แล้วไม่มีที่ไหนในหน้าตรวจ
+     *    แก้ได้อีกเลย → หัวหน้าแก้เวลา "บ.ประกันแจ้งสำรวจภัย" ไปก็ไม่มีผล XML ได้
+     *    วันที่ใหม่ + เวลาเก่า ผิดเงียบ ๆ ทั้งที่เป็นเวลาที่ EMCS ใช้วัดลำดับ
+     *    (อีก 3 จังหวะส่ง arg เดียวอยู่แล้วจึงถูกต้อง — ตัวนี้ตกหล่นตัวเดียว)
+     */
+    el('INS_CALLING_SURV_DATE', toXmlCE(r.acc_insurance_notify_date)) +
     el('SURV_CLAIM_TYPE', String(r.claim_type ?? '').trim().toUpperCase()) +
     el('DRIVER_BY_POLICY', r.driver_by_policy) +
     el('DEDUCTIBLE', r.deductible) +

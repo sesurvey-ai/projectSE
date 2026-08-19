@@ -15,9 +15,22 @@ const JSONB_FIELDS = new Set([
 ]);
 // ข้อความ placeholder ของ dropdown ในแอป — ต้องไม่ถูกบันทึกเป็นค่าจริง (เคยหลุดเข้า acc_province/
 // car_color → รหัสจังหวัดใน XML ที่ส่งเข้า EMCS ว่าง) → normalize เป็นค่าว่างที่ชั้น bind (กันทุกฟิลด์)
-const PLACEHOLDER_SENTINELS = new Set(['-- ระบุ --', '-- เลือก --']);
-const stripSentinel = (v: unknown): unknown =>
-  (typeof v === 'string' && PLACEHOLDER_SENTINELS.has(v.trim())) ? '' : v;
+const PLACEHOLDER_SENTINELS = new Set(['-- ระบุ --', '-- เลือก --', '-- เขต --']);
+/**
+ * ⛔ ต้องเดินลงใน array/object ด้วย — คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน เก็บเป็น JSONB
+ *    ค่า placeholder ที่หลุดเข้าไปในนั้นไม่เคยถูกล้างเลย (เดิมเช็คแค่ typeof v === 'string')
+ *    แล้วไหลต่อไปเป็นรหัสจังหวัดว่างใน XML และทำให้ตัวนับช่องบังคับคิดว่า "กรอกแล้ว"
+ *    ⛔ ไม่ใส่ '0' ในลิสต์นี้ — บางช่องมีเลข 0 เป็นค่าจริง (จะล้างของที่ถูกต้องทิ้ง)
+ */
+const stripSentinel = (v: unknown): unknown => {
+  if (typeof v === 'string') return PLACEHOLDER_SENTINELS.has(v.trim()) ? '' : v;
+  if (Array.isArray(v)) return v.map(stripSentinel);
+  if (v && typeof v === 'object') {
+    return Object.fromEntries(Object.entries(v as Record<string, unknown>)
+      .map(([k, x]) => [k, stripSentinel(x)]));
+  }
+  return v;
+};
 
 // รูป "ยืนยันถึงที่เกิดเหตุ" (แอปถ่ายให้ตอนกดปุ่มถึงที่เกิดเหตุ) ไม่ได้อยู่ในหมวดที่
 // มือถือส่งมา (photo_categories) เลยเคยลงเป็น category = NULL แล้วไปกองรวมใน
@@ -31,7 +44,17 @@ const arrivalCategory = (fileName: string): string | null =>
 const bindVal = (f: string, v: unknown): unknown => {
   if (JSONB_FIELDS.has(f)) {
     if (v === undefined || v === null) return null;
-    return typeof v === 'string' ? v : JSON.stringify(v);
+    // ⛔ JSONB ก็ต้องผ่านตัวล้าง placeholder — เดิมข้ามไปเลย ค่า '-- ระบุ --' ในตาราง
+    //    คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน จึงถูกเก็บเป็นข้อมูลจริงมาตลอด
+    //    (มาเป็นสตริง JSON ได้ด้วยจากแอปมือถือ → แกะก่อนล้างแล้วประกอบกลับ)
+    if (typeof v === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(v);
+        if (parsed && typeof parsed === 'object') return JSON.stringify(stripSentinel(parsed));
+      } catch { /* ไม่ใช่ JSON — ปล่อยผ่านตามเดิม */ }
+      return v;
+    }
+    return JSON.stringify(stripSentinel(v));
   }
   return stripSentinel(v) ?? null;
 };

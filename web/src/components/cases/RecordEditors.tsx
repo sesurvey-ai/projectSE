@@ -70,6 +70,9 @@ const LICENSE_TYPES = [
 ];
 
 
+/** ข้อความ placeholder ที่ปนอยู่ในลิสต์ตัวเลือก — ต้องไม่กลายเป็นค่าที่เลือกได้จริง */
+const PLACEHOLDERS = new Set(['-- ระบุ --', '-- เลือก --', '-- เขต --']);
+
 type FieldDef = {
   k: string;
   label: string;
@@ -140,7 +143,12 @@ function Field({ def, value, onChange }: { def: FieldDef; value: string; onChang
         <select className={c} value={value} title={warn || undefined}
                 onChange={(e) => onChange(e.target.value)}>
           <option value="">-- ระบุ --</option>
-          {def.options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {/* ⛔ ตัดตัว placeholder ออกจากลิสต์ก่อน — PROVINCE_OPTIONS[0] / CAR_COLOR_OPTIONS[0]
+              เป็น '-- ระบุ --' และ districtOptions[0] เป็น '-- เขต --' ซึ่ง**มีค่าเป็นข้อความจริง**
+              ถ้าไม่ตัด dropdown จะมี 2 บรรทัดหน้าตาเหมือนกันเป๊ะ ตัวล่างเลือกแล้วเก็บข้อความนั้น
+              ลง JSONB → ตัวนับช่องบังคับเห็นว่า "กรอกแล้ว" ป้ายเตือนหาย และรหัสจังหวัดใน XML ว่าง */}
+          {def.options.filter((o) => !PLACEHOLDERS.has(o.trim()))
+            .map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
       ) : (
         <input
