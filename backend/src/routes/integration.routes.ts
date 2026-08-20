@@ -200,6 +200,10 @@ router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Re
     `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company,
             (u.first_name || ' ' || u.last_name) AS surveyor_name,
             to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at,
+            -- ต้องมีคู่กับ imported เสมอ — SE-AutoKey ใช้หา "นำเข้าแล้วแต่ยังไม่รู้ว่าส่งหรือยัง"
+            -- (โหมด --emcs-sync-status กวาดอ่านสถานะจริงจาก EMCS มาอัปเดต)
+            to_char(c.emcs_submitted_at, 'YYYY-MM-DD HH24:MI') AS emcs_submitted_at,
+            c.emcs_esurvey_no, c.emcs_status_text,
             to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
             (ck.first_name || ' ' || ck.last_name) AS approved_by,
             c.created_at
