@@ -14,10 +14,12 @@
  *
  * รวมสองตัวไว้ไฟล์เดียวเพราะใช้ layout/primitive ชุดเดียวกัน (การ์ดต่อ 1 ระเบียน + ปุ่มลบ + ปุ่มเพิ่ม)
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import { insurerOptions, isEmcsInsurer } from './insurerOptions';
+import DamageDialog from './DamageDialog';
+import { DamageItem } from './DamageEditor';
 
 export type RecordItem = Record<string, string>;
 
@@ -376,6 +378,13 @@ export function OpponentEditor({ items, onChange }: {
   const set = (i: number, k: string, v: string) =>
     onChange(items.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
 
+  /** หน้าต่าง "ข้อมูลความเสียหาย" ของคู่กรณีคันที่เปิดอยู่ (null = ปิด)
+   *  เดิมความเสียหายคู่กรณีแก้ได้เฉพาะในแอป หน้าตรวจเห็นแค่ตัวเลข → หัวหน้าตรวจไม่ได้
+   *  ว่าช่างเลือกถูกไหม ทั้งที่ EMCS มีช่องรับของคู่กรณีแยกทุกคัน (user สั่ง 20/08/69) */
+  const [dmgFor, setDmgFor] = useState<number | null>(null);
+  const dmgOf = (it: LooseRecord): DamageItem[] =>
+    (Array.isArray(it.damage) ? it.damage : []) as DamageItem[];
+
   return (
     <div className="space-y-4">
       {items.map((it, i) => {
@@ -393,11 +402,12 @@ export function OpponentEditor({ items, onChange }: {
                 />
                 KFK
               </label>
-              {dmg > 0 && (
-                <span className="text-xs text-gray-500" title="แก้รายการความเสียหายของคู่กรณีได้จากแอปเท่านั้น">
-                  ความเสียหาย {dmg} รายการ (แก้ในแอป)
-                </span>
-              )}
+              <button
+                type="button" onClick={() => setDmgFor(i)}
+                className="text-xs px-2 py-0.5 border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700"
+              >
+                ข้อมูลความเสียหาย{dmg > 0 ? ` (${dmg})` : ''}
+              </button>
               {missing.length > 0 && (
                 <span className="text-xs text-red-600">⚠ ยังขาด {missing.length} ช่องบังคับ</span>
               )}
@@ -430,6 +440,14 @@ export function OpponentEditor({ items, onChange }: {
       >
         + เพิ่มคู่กรณี
       </button>
+      {/* หน้าต่างเดียวกับของรถประกัน — ช่องข้างในไม่มี name จึงไม่ปนกับ FormData ของฟอร์มหลัก */}
+      {dmgFor !== null && items[dmgFor] && (
+        <DamageDialog
+          open items={dmgOf(items[dmgFor])}
+          onClose={() => setDmgFor(null)}
+          onSave={(next) => onChange(items.map((x, idx) => (idx === dmgFor ? { ...x, damage: next } : x)))}
+        />
+      )}
     </div>
   );
 }
