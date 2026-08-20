@@ -402,12 +402,6 @@ export function OpponentEditor({ items, onChange }: {
                 />
                 KFK
               </label>
-              <button
-                type="button" onClick={() => setDmgFor(i)}
-                className="text-xs px-2 py-0.5 border border-gray-300 rounded bg-white hover:bg-gray-100 text-gray-700"
-              >
-                ข้อมูลความเสียหาย{dmg > 0 ? ` (${dmg})` : ''}
-              </button>
               {missing.length > 0 && (
                 <span className="text-xs text-red-600">⚠ ยังขาด {missing.length} ช่องบังคับ</span>
               )}
@@ -428,6 +422,16 @@ export function OpponentEditor({ items, onChange }: {
                   onChange={(v) => set(i, f.k, v)}
                 />
               ))}
+            </div>
+            {/* ใต้ช่องสุดท้าย ("ที่อยู่ผู้ขับขี่") — user ขอย้ายลงมาจากหัวการ์ด 20/08/69
+                เพราะปุ่มขอบบางบนแถบหัวกลืนกับชื่อการ์ด หาไม่เจอ */}
+            <div className="px-3 pb-3">
+              <button
+                type="button" onClick={() => setDmgFor(i)}
+                className="px-3 py-1.5 text-sm border border-blue-300 rounded bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium"
+              >
+                ข้อมูลความเสียหาย{dmg > 0 ? ` (${dmg})` : ''}
+              </button>
             </div>
           </div>
         );
