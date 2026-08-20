@@ -415,6 +415,8 @@ const opt = fs.readFileSync(
 check('ลิสต์ยี่ห้อรับได้ทั้งรหัสและป้ายไทย (คู่กรณีเก็บประเภทรถเป็นป้ายไทย)',
       opt.includes('CAR_TYPE_LABEL_TO_CODE')
       && opt.includes('CAR_BRANDS_BY_TYPE[CAR_TYPE_LABEL_TO_CODE[raw] ?? raw]'));
+check('ช่อง "ราคาพนักงาน" ของค่ารูปถ่ายถูกล็อก (พนักงานไม่มีค่ารูป)',
+      src.includes('disabled name="pay_photo_fee"'));
 const xml5 = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'services', 'xmlExport.service.ts'), 'utf8');
 check('ตัดความยาวตามโควตาของ EMCS ก่อนส่ง (เกินช่องเดียว = ตีกลับทั้งไฟล์)',

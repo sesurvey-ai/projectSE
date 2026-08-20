@@ -2336,7 +2336,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">รูป</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_photo_fee" defaultValue={zeroBlank(payV?.saved?.photo_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    {/* ⛔ ล็อกถาวร — **พนักงานไม่มีค่ารูป** ค่ารูปเป็นของฝั่งเรียกเก็บประกันเท่านั้น
+                        (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
+                        ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled name="pay_photo_fee" defaultValue="" title="พนักงานไม่มีค่ารูป — ค่ารูปเบิกได้เฉพาะฝั่งประกัน" className="w-full border rounded px-2 py-1 text-sm text-right bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
