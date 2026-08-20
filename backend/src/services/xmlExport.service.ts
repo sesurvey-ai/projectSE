@@ -214,9 +214,34 @@ const genderCode = (v: unknown): string => {
 const esc = (s: unknown): string =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
+/**
+ * ความยาวสูงสุดที่ EMCS รับต่อช่อง — อ่านจาก maxlength ของฟอร์มจริงทั้ง 4 หน้า (20/08/69)
+ *
+ * ⛔ เกินแม้แต่ช่องเดียว EMCS **ตีกลับทั้งไฟล์** ด้วยกล่อง "กรุณาตรวจสอบ! ข้อมูลนำเข้ามี
+ *    ขนาดเกิน" แล้ว import ไม่ผ่านเลยสักบล็อก — ไม่ใช่แค่ตัดช่องนั้นทิ้ง
+ *    เจอจริง: ACC_PLACE ยาว 110 ตัว (ที่อยู่แบบ Google Maps "…, Chang Wat Pathum Thani
+ *    12120, Thailand") ทั้งเคสเข้าไม่ได้
+ * ตัดให้พอดีดีกว่าปล่อยให้ล้มทั้งไฟล์ — และ `emcsLengthWarnings()` เตือนคนตรวจให้ย่อเองก่อน
+ */
+const EMCS_MAXLEN: Record<string, number> = {
+  // ⚠️ **เฉพาะช่องข้อความ** — ห้ามใส่ช่องตัวเลข/เงิน/รหัส เพราะการตัดท้ายเปลี่ยนค่า
+  //    (เคยลองใส่ SUR_PERCENT_CLAIM ที่ maxlength=3 แล้ว '0.00' กลายเป็น '0.0'
+  //     และ RISK_CODE ที่ maxlength=6 ก็ตัดรหัสจริงทิ้ง — สัญญาข้อมูลพังทั้งคู่)
+  //    ตัวเลขที่ยาวเกินจริง ๆ ต้องให้คนแก้ ไม่ใช่ให้ระบบตัดเงียบ ๆ
+  CAR_REGNO: 20, DRI_DRVID: 20, SURV_JOBNO: 20,
+  ACC_POLICY_NO: 30, PRB_NUMBER: 30, CHASSISNO: 31, ENGINENO: 31,
+  REF_CLAIM_NO: 50, ACC_CLAIMREF_NO: 50, DRI_DRVPLACE: 50, MODELNO: 50, BILL_NO: 50,
+  ASSURED_NAME: 100, ACC_PLACE: 100, ACC_CALL: 100, ACC_SURV: 100,
+  POLICE_NAME: 100, POLICE_STATION: 100, DRIVER_BY_POLICY: 100,
+  POLICY_TYPE: 150, BOOK_NUMBER: 255, ALC_RESULT: 255, OTHER_DESC: 255,
+  POLICE_COMMENT: 1000, DRI_ADDRESS: 1000,
+};
+
 // element: ค่าว่าง → " " (พอร์ทัลคาดว่า element มีอยู่เสมอ เหมือนตัวอย่าง)
 const el = (tag: string, v: unknown): string => {
-  const s = String(v ?? '').trim();
+  let s = String(v ?? '').trim();
+  const lim = EMCS_MAXLEN[tag];
+  if (lim && s.length > lim) s = s.slice(0, lim);
   return `<${tag}>${s === '' ? ' ' : esc(s)}</${tag}>`;
 };
 
@@ -525,9 +550,23 @@ const nameWarn = (out: EmcsNameWarning[], tag: string, label: string, v: unknown
   out.push({ tag, label, value: s, bad });
 };
 
+/** ช่องที่ยาวเกินโควตาของ EMCS — คืนเป็นคำเตือนชุดเดียวกับชื่อผิดอักขระ
+ *  (ตอน export เราตัดให้พอดีอยู่แล้ว แต่ "ตัด" = ข้อมูลหาย คนตรวจควรย่อเองให้ได้ใจความ) */
+const lenWarn = (out: EmcsNameWarning[], tag: string, label: string, v: unknown) => {
+  const s = String(v ?? '').trim();
+  const lim = EMCS_MAXLEN[tag];
+  if (!s || !lim || s.length <= lim) return;
+  out.push({ tag, label, value: s, bad: `ยาว ${s.length} ตัว เกิน ${lim} — จะถูกตัดท้ายทิ้ง` });
+};
+
 /** ตรวจก่อนส่ง: ชื่อคนช่องไหนมีอักขระที่ EMCS จะล้างทิ้ง (ว่าง = ไม่มีปัญหา) */
 export function emcsNameWarnings(r: Row): EmcsNameWarning[] {
   const out: EmcsNameWarning[] = [];
+  lenWarn(out, 'ACC_PLACE', 'สถานที่เกิดเหตุ', r.acc_place);
+  lenWarn(out, 'ASSURED_NAME', 'ผู้เอาประกันภัย', r.assured_name);
+  lenWarn(out, 'POLICE_STATION', 'สถานีตำรวจ', r.acc_police_station);
+  lenWarn(out, 'DRIVER_BY_POLICY', 'ชื่อผู้ขับขี่ตามกรมธรรม์', r.driver_by_policy);
+  lenWarn(out, 'DRI_ADDRESS', 'ที่อยู่ผู้ขับขี่รถประกัน', r.driver_address);
   nameWarn(out, 'ACC_CALL', 'ผู้แจ้ง', r.acc_reporter);
   nameWarn(out, 'ACC_SURV', 'ผู้สำรวจภัย', r.acc_surveyor);
   nameWarn(out, 'POLICE_NAME', 'ชื่อพนักงานสอบสวน', r.acc_police_name);
