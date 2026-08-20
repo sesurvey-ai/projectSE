@@ -415,6 +415,10 @@ const opt = fs.readFileSync(
 check('ลิสต์ยี่ห้อรับได้ทั้งรหัสและป้ายไทย (คู่กรณีเก็บประเภทรถเป็นป้ายไทย)',
       opt.includes('CAR_TYPE_LABEL_TO_CODE')
       && opt.includes('CAR_BRANDS_BY_TYPE[CAR_TYPE_LABEL_TO_CODE[raw] ?? raw]'));
+check('ติ๊กชิ้นส่วนแล้วไม่เลือกด้าน/ระดับให้เอง (ผู้ตรวจสอบเลือกเอง)',
+      dlg.includes("{ part, pos: '', level: '' }") && !dlg.includes("pos: 'A', level: 'L'"));
+check('ช่องอิสระเก็บเป็นอาเรย์คงที่ 30 ช่อง (ไม่ให้แถวขยับตอนพิมพ์)',
+      dlg.includes('Array.from({ length: FREE_SLOTS }') && dlg.includes('setFree_'));
 check('เว็บตรวจ checksum เลขบัตรประชาชนของคู่กรณี/ผู้บาดเจ็บ (มือถือตรวจอยู่แล้ว)',
       rec.includes('const cidChecksum') && rec.includes("def.k === 'cid'"));
 

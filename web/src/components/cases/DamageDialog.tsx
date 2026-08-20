@@ -71,31 +71,41 @@ export default function DamageDialog({
   onSave: (next: DamageItem[]) => void;
   disabled?: boolean;
 }) {
-  /** แก้บนสำเนาก่อน — กด "ปิด" แล้วของเดิมต้องไม่เปลี่ยน (เหมือนปุ่มปิดของ EMCS) */
-  const [draft, setDraft] = useState<DamageItem[]>(items);
-  useEffect(() => { if (open) setDraft(items); }, [open, items]);
+  /** แก้บนสำเนาก่อน — กด "ปิด" แล้วของเดิมต้องไม่เปลี่ยน (เหมือนปุ่มปิดของ EMCS)
+   *
+   *  ⛔ ช่องอิสระต้องเก็บเป็น "อาเรย์ 30 ช่องคงที่" แยกจาก draft — ห้ามคำนวณจาก draft
+   *     ทุก render โดยกรองช่องว่างทิ้ง เพราะการกรองทำให้ index ของแถวขยับทุกครั้งที่พิมพ์
+   *     (พิมพ์ 'ท่อ' ช่องแรก แล้วพิมพ์ 'ก' ที่ช่องถัดลงมา → 'ก' เด้งไปโผล่คอลัมน์ขวา
+   *      เพราะตารางเรียง 2 คอลัมน์แบบซ้าย-ขวาสลับกันตาม index — user เจอ 20/08/69) */
+  const blank = (): DamageItem => ({ part: '', pos: '', level: '' });
+  const [checked, setChecked] = useState<DamageItem[]>([]);
+  const [free, setFree_] = useState<DamageItem[]>(() => Array.from({ length: FREE_SLOTS }, blank));
+  useEffect(() => {
+    if (!open) return;
+    setChecked(items.filter((d) => CHECKLIST.has(d.part)));
+    const rest = items.filter((d) => !CHECKLIST.has(d.part) && d.part.trim());
+    setFree_(Array.from({ length: FREE_SLOTS }, (_, i) => rest[i] ?? blank()));
+  }, [open, items]);
   if (!open) return null;
 
-  const find = (part: string) => draft.find((d) => d.part === part);
+  const find = (part: string) => checked.find((d) => d.part === part);
   const upd = (part: string, patch: Partial<DamageItem>) =>
-    setDraft(draft.map((d) => (d.part === part ? { ...d, ...patch } : d)));
+    setChecked(checked.map((d) => (d.part === part ? { ...d, ...patch } : d)));
   const toggle = (part: string) => {
-    if (find(part)) setDraft(draft.filter((d) => d.part !== part));
-    // ค่าเริ่มต้น: ด้าน "ทั้งคู่" · ระดับ "ต่ำ" — EMCS ไม่รับรายการที่ไม่มีระดับ
-    else setDraft([...draft, { part, pos: 'A', level: 'L' }]);
+    // ⛔ ติ๊กแล้ว **ห้ามเลือกด้าน/ระดับให้อัตโนมัติ** — ผู้ตรวจสอบต้องเลือกเอง
+    //    (เดิม default 'A'+'L' ทำให้ทุกชิ้นกลายเป็น "เสียหายน้อย ทั้งสองด้าน" โดยไม่มีใครสั่ง)
+    if (find(part)) setChecked(checked.filter((d) => d.part !== part));
+    else setChecked([...checked, { part, pos: '', level: '' }]);
   };
 
-  // ช่องอิสระ = รายการที่ชื่อไม่อยู่ใน checklist (บอทจะส่งลงช่องอิสระของ EMCS เอง)
-  const free = draft.filter((d) => !CHECKLIST.has(d.part));
-  const freeRows = [...free, ...Array.from(
-    { length: Math.max(0, FREE_SLOTS - free.length) },
-    () => ({ part: '', pos: 'A', level: '' } as DamageItem))].slice(0, FREE_SLOTS);
-  const setFree = (i: number, patch: Partial<DamageItem>) => {
-    const next = freeRows.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
-    setDraft([...draft.filter((d) => CHECKLIST.has(d.part)),
-              ...next.filter((r) => r.part.trim())]);
-  };
+  const setFree = (i: number, patch: Partial<DamageItem>) =>
+    setFree_(free.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  const freeRows = free;
   const freeUsed = free.filter((f) => f.part.trim()).length;
+  const picked = [...checked, ...free.filter((f) => f.part.trim())];
+  /** ชิ้นที่เลือกแล้วแต่ยังไม่ระบุระดับ — EMCS ต้องการระดับ ไม่งั้นแถวนั้นไปไม่ถึง */
+  const noLevel = picked.filter((d) => !String(d.level ?? '').trim()).length;
 
   const cell = 'flex items-center gap-2 px-2 py-1.5 border-b border-gray-100 min-w-0';
   const txt = 'flex-1 min-w-0 border-b border-gray-300 px-1 py-0.5 text-sm text-gray-800 bg-transparent focus:outline-none focus:border-blue-500';
@@ -106,8 +116,14 @@ export default function DamageDialog({
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50 rounded-t-[10px]">
           <span className="font-semibold text-gray-800">ข้อมูลความเสียหาย</span>
           <span className="text-xs text-gray-500">
-            เลือกไว้ {draft.filter((d) => d.part.trim()).length} รายการ
+            เลือกไว้ {picked.length} รายการ
             {freeUsed > 0 && ` · ช่องอิสระ ${freeUsed}`}
+            {/* ไม่บล็อกการกดตกลง แค่บอกให้รู้ตัว — ระบบประกันต้องการ "ระดับ" ของทุกชิ้น */}
+            {noLevel > 0 && (
+              <span className="ml-2 text-amber-800 bg-amber-50 border border-amber-300 rounded px-2 py-0.5">
+                ⚠ ยังไม่ได้เลือกระดับ {noLevel} ชิ้น
+              </span>
+            )}
           </span>
         </div>
 
@@ -122,7 +138,7 @@ export default function DamageDialog({
                   <input type="checkbox" checked={Boolean(it)} disabled={disabled}
                     onChange={() => toggle(part)} className="w-4 h-4 shrink-0 accent-blue-600" />
                   <span className="text-sm text-gray-800 flex-1 min-w-0 truncate">{part}</span>
-                  <Radios value={it?.pos ?? 'A'} options={SIDES} hidden={!hasSide}
+                  <Radios value={it?.pos ?? ''} options={SIDES} hidden={!hasSide}
                     disabled={disabled || !it} onPick={(v) => upd(part, { pos: v })} />
                   <Radios value={it?.level ?? ''} options={LEVELS}
                     disabled={disabled || !it} onPick={(v) => upd(part, { level: v })} />
@@ -147,7 +163,7 @@ export default function DamageDialog({
               <div key={i} className={cell}>
                 <input type="text" value={r.part} disabled={disabled}
                   onChange={(e) => setFree(i, { part: e.target.value })} className={txt} />
-                <Radios value={r.pos || 'A'} options={SIDES}
+                <Radios value={r.pos} options={SIDES}
                   disabled={disabled || !r.part.trim()} onPick={(v) => setFree(i, { pos: v })} />
                 <Radios value={r.level} options={LEVELS}
                   disabled={disabled || !r.part.trim()} onPick={(v) => setFree(i, { level: v })} />
@@ -162,7 +178,7 @@ export default function DamageDialog({
             ปิด
           </button>
           <button type="button" disabled={disabled}
-            onClick={() => { onSave(draft.filter((d) => d.part.trim())); onClose(); }}
+            onClick={() => { onSave(picked); onClose(); }}
             className="px-5 py-1.5 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300">
             ตกลง
           </button>
