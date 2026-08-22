@@ -358,6 +358,11 @@ class KPickerField extends StatelessWidget {
 }
 
 Future<String?> showKPicker(BuildContext context, String title, List<String> options, {String? current}) {
+  // ระยะเผื่อแถบปุ่มล่างของเครื่อง — ต้องอ่านจาก context ของ "หน้า" ไม่ใช่ของ sheet
+  // (ข้างใน showModalBottomSheet ค่า viewPadding.bottom ถูกหักเป็น 0 ตัวเลือกท้ายลิสต์
+  //  เลยไปนอนอยู่ใต้แถบปุ่ม กดไม่โดน — เจอจริงกับ "บริษัท ไอโออิ กรุงเทพ ประกันภัย"
+  //  ซึ่งเป็นตัวสุดท้ายของลิสต์ประกันคู่กรณี 22/08/69)
+  final safeBottom = MediaQuery.of(context).viewPadding.bottom;
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -398,7 +403,7 @@ Future<String?> showKPicker(BuildContext context, String title, List<String> opt
                   final filtered = query.isEmpty ? options : options.where((o) => o.toLowerCase().contains(query.toLowerCase())).toList();
                   return ListView.builder(
                     controller: scroll,
-                    padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewPadding.bottom), // ตัวเลือกท้ายลิสต์ไม่โดน nav bar บัง
+                    padding: EdgeInsets.only(bottom: safeBottom + 24), // ตัวเลือกท้ายลิสต์ไม่โดน nav bar บัง
                     itemCount: filtered.length,
                     itemBuilder: (ctx, i) {
                       final o = filtered[i];

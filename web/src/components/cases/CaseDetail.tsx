@@ -890,6 +890,23 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (tFin !== null && tFin > Date.now()) {
         te.push({ at: 'acc_survey_complete_date_val', msg: 'ล้ำเวลาปัจจุบัน — ระบบประกันไม่รับ' });
       }
+      /**
+       * ⛔ เคลมสด: 5 เวลาต้องอยู่ในกรอบ 24 ชั่วโมง — EMCS ฟ้องว่า
+       *    "กรณี [เคลมสด] ต้องระบุ 'วันที่เกิดเหตุและเวลา' 'วันที่ลูกค้าแจ้งบ.ประกัน'
+       *     'วันที่บ.ประกันแจ้งสำรวจภัย' 'วันที่สำรวจภัย(ถึงที่เกิดเหตุเวลา)'
+       *     'วันที่สำรวจภัยเสร็จ' ให้อยู่ภายใน 24 ชั่วโมง." แล้วปัดตกทั้งหน้า
+       *
+       *    เจอจริง 22/08/69 ทั้งไอโออิและไทยไพบูลย์: เวลาที่แอปบันทึกคือเวลาจริงในสนาม
+       *    แต่กว่าหัวหน้าจะตรวจ+อนุมัติอาจข้ามวัน → ตกทั้งคู่ ต้องมาไล่แก้ทีหลัง
+       *    (ตรวจเฉพาะจังหวะที่กรอกมาแล้ว — ช่องว่างมีกติกา "ช่องบังคับ" ดักอยู่แล้ว)
+       */
+      const isFresh = (document.querySelector('input[name="claim_type"]:checked') as HTMLInputElement | null)?.value === 'F';
+      if (isFresh) {
+        const ts = [tAcc, tCus, tIns, tArr, tFin].filter((x): x is number => x !== null);
+        if (ts.length >= 2 && Math.max(...ts) - Math.min(...ts) > 24 * 60 * 60 * 1000) {
+          te.push({ at: 'acc_date', msg: 'เคลมสด: 5 จังหวะเวลาต้องอยู่ในกรอบ 24 ชม. — ระบบประกันไม่รับ' });
+        }
+      }
       setList(setTimeErrs, te);
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
