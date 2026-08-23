@@ -1073,8 +1073,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
        */
       const err = e as { response?: { status?: number; data?: { message?: string } } };
       const msg = err.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึก';
-      if (err.response?.status === 409) setConflict(msg);
-      setSaveMsg(msg);
+      /**
+       * ชนกัน = ขึ้นแถบเต็มความกว้างอย่างเดียว **ห้ามใส่ป้ายเล็กในแถบปุ่มด้วย**
+       * ข้อความนี้ยาวหลายบรรทัด ใส่ 2 ที่แล้วแถบหัวเคสถูกดันจนปุ่มบันทึก/อนุมัติเบียดกัน
+       * (เห็นจริงตอนทดสอบบนเว็บจริง 23/08/69)
+       */
+      if (err.response?.status === 409) { setConflict(msg); setSaveMsg(''); }
+      else setSaveMsg(msg);
       return false;
     }
     finally { setSaving(false); }
