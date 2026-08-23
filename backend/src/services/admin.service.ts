@@ -4,6 +4,7 @@ import path from 'path';
 import { db } from '../config/database';
 import { env } from '../config/env';
 import { NotFoundError, AppError } from '../middleware/errorHandler';
+import { assertStrongPassword } from './password';
 
 interface PaginationParams {
   page?: number;
@@ -108,6 +109,9 @@ export const adminService = {
     const existing = await db.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [data.username]);
     if (existing.rows.length > 0) throw new AppError(409, 'Username already exists');
 
+    // กติกาเดียวกับตอนผู้ใช้เปลี่ยนรหัสเอง — ไม่งั้นแอดมินตั้งรหัสอ่อนให้ได้ตั้งแต่แรก
+    // แล้วกติกาฝั่งผู้ใช้ก็ไม่มีความหมาย (คนส่วนใหญ่ไม่เคยเปลี่ยนรหัสที่แอดมินตั้งให้)
+    assertStrongPassword(data.password, data.username);
     const hash = await bcrypt.hash(data.password, 10);
     const result = await db.query(
       `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id, code, phone)
@@ -132,6 +136,11 @@ export const adminService = {
     if (data.code !== undefined) { fields.push(`code = $${idx++}`); params.push(data.code || null); }
     if (data.phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(data.phone || null); }
     if (data.password) {
+      // แอดมินรีเซ็ตรหัสให้คนอื่น — ต้องผ่านกติกาเดียวกัน และห้ามตั้งเป็นชื่อผู้ใช้ของ
+      // เจ้าของบัญชี (ไม่ใช่ของแอดมิน) จึงต้องอ่าน username ของ id ที่กำลังแก้
+      const target = await db.query('SELECT username FROM users WHERE id = $1', [id]);
+      if (target.rows.length === 0) throw new NotFoundError('User not found');
+      assertStrongPassword(data.password, target.rows[0].username);
       const hash = await bcrypt.hash(data.password, 10);
       fields.push(`password_hash = $${idx++}`);
       params.push(hash);

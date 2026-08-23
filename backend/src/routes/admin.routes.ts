@@ -18,7 +18,7 @@ router.get('/dashboard', adminController.getDashboardStats);
 // Users CRUD
 const createUserSchema = z.object({
   username: z.string().min(1, 'Username is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร'),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   role: z.enum(['admin', 'surveyor', 'callcenter', 'checker']),
@@ -35,7 +35,7 @@ const updateUserSchema = z.object({
   role: z.enum(['admin', 'surveyor', 'callcenter', 'checker']).optional(),
   supervisor_id: z.number().int().positive().nullable().optional(),
   is_active: z.boolean().optional(),
-  password: z.string().min(6).optional(),
+  password: z.string().min(8, 'รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร').optional(),
   code: z.string().max(16).nullable().optional(),
   phone: z.string().max(20).nullable().optional(),
 });

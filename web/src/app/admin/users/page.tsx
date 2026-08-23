@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import ResetPasswordDialog from './ResetPasswordDialog';
 
 interface User {
   id: number;
@@ -41,6 +42,8 @@ export default function AdminUsersPage() {
   const [searchInput, setSearchInput] = useState(''); // ช่องพิมพ์ (debounce → search)
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  // ผู้ใช้ที่กำลังตั้งรหัสใหม่ให้ (null = ไม่ได้เปิดกล่อง)
+  const [pwUser, setPwUser] = useState<User | null>(null);
   const reqSeq = useRef(0); // กัน response เก่าทับใหม่ (พิมพ์เร็ว → คำขอเก่ามาช้า)
 
   // debounce ช่องค้นหา → search (ลดจำนวนคำขอ)
@@ -175,6 +178,10 @@ export default function AdminUsersPage() {
                       <Link href={`/admin/users/${u.id}/edit`} className="px-3 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors">
                         แก้ไข
                       </Link>
+                      <button onClick={() => setPwUser(u)} title="ตั้งรหัสผ่านใหม่ให้ผู้ใช้คนนี้"
+                        className="px-3 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-700 transition-colors">
+                        รหัสผ่าน
+                      </button>
                       {deleteConfirm === u.id ? (
                         <div className="flex gap-1">
                           <button onClick={() => handleDelete(u.id)} className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">
@@ -197,6 +204,8 @@ export default function AdminUsersPage() {
           </table>
         )}
       </div>
+
+      {pwUser && <ResetPasswordDialog user={pwUser} onClose={() => setPwUser(null)} />}
 
       {/* Pagination */}
       {totalPages > 1 && (

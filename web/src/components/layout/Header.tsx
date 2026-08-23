@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import ChangePasswordDialog from './ChangePasswordDialog';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'ผู้ดูแลระบบ',
@@ -12,6 +14,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const [pwOpen, setPwOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -32,12 +35,19 @@ export default function Header() {
           </span>
         </div>
         <button
+          onClick={() => setPwOpen(true)}
+          className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          เปลี่ยนรหัสผ่าน
+        </button>
+        <button
           onClick={handleLogout}
           className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
         >
           ออกจากระบบ
         </button>
       </div>
+      {pwOpen && <ChangePasswordDialog onClose={() => setPwOpen(false)} />}
     </header>
   );
 }
