@@ -120,7 +120,10 @@ export const caseController = {
 
   updateReport: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const result = await caseService.updateReport(caseId, req.body);
+    // base_rev = เลขรุ่นที่หน้าเว็บจำไว้ตอนเปิดเคส (กันหัวหน้า 2 คนบันทึกทับกัน)
+    // แยกออกจาก body ก่อนเสมอ ไม่ให้หลุดไปปนกับช่องข้อมูลของรายงาน
+    const { base_rev: baseRev, ...body } = (req.body ?? {}) as Record<string, unknown>;
+    const result = await caseService.updateReport(caseId, body, { userId: req.user?.id, baseRev });
     sendSuccess(res, result);
   }),
 
@@ -144,7 +147,8 @@ export const caseController = {
 
   savePay: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    sendSuccess(res, await payService.saveCasePay(caseId, req.body ?? {}, req.user?.id));
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    sendSuccess(res, await payService.saveCasePay(caseId, body, req.user?.id, body.base_rev));
   }),
 
   /** ใบเบิกเงินค่าตอบแทนผู้สำรวจ (.xlsx) — กรองตามช่วงวันที่คิดเงิน */

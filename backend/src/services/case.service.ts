@@ -6,6 +6,7 @@ import { generateSurveyXml, emcsNameWarnings } from './xmlExport.service';
 import { invalidateCaseOwner } from '../middleware/uploadsAuth';
 import { isFirebaseReady } from '../config/firebase';
 import type { XmlImportResult } from './xmlImport.service';
+import { assertReportRev } from './reportRev';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -993,9 +994,23 @@ export const caseService = {
           WHERE sr.claim_no = $1 ORDER BY c.created_at`, [report.claim_no])).rows;
     }
 
+    /**
+     * ใครบันทึกเคสนี้ล่าสุด — หน้าเว็บเอาไปขึ้นแถบ "คนอื่นกำลังแก้อยู่" เมื่อไม่ใช่ตัวเอง
+     * (report.rev / report.updated_at ติดมากับ SELECT * อยู่แล้ว)
+     */
+    let updatedBy: string | null = null;
+    if (report?.updated_by) {
+      const ub = await db.query(
+        `SELECT (first_name || ' ' || COALESCE(last_name, '')) AS name FROM users WHERE id = $1`,
+        [report.updated_by],
+      );
+      updatedBy = String(ub.rows[0]?.name ?? '').trim() || null;
+    }
+
     return {
       case: caseResult.rows[0],
       report,
+      report_updated_by: updatedBy,
       photos,
       review: reviewResult.rows[0] || null,
       case_images: caseImagesResult.rows,
@@ -1215,6 +1230,8 @@ export const caseService = {
         `SELECT column_name, data_type FROM information_schema.columns
           WHERE table_name = 'survey_reports'`);
       const valid = new Set<string>(cols.rows.map((r: { column_name: string }) => r.column_name));
+      // คอลัมน์ของระบบกันบันทึกทับ — ให้ trigger ดูแลเอง ห้ามให้ข้อมูลนำเข้าเขียนทับ
+      for (const sys of ['rev', 'updated_at', 'updated_by']) valid.delete(sys);
       // คอลัมน์ตัวเลข/วันที่/บูลีน รับสตริงว่างไม่ได้ (Postgres: invalid input syntax for type numeric)
       // XML ให้ค่าว่างมาเยอะ (OPO_PAY, COST_DAMAGE ฯลฯ) → บังคับเป็น NULL
       const nonText = new Set<string>(
@@ -1337,7 +1354,17 @@ export const caseService = {
     return out.rows[0];
   },
 
-  async updateReport(caseId: number, data: Record<string, unknown>) {
+  /**
+   * ผู้ตรวจบันทึกเคสจากหน้าเว็บ
+   *
+   * `baseRev` = เลขรุ่นที่หน้าเว็บจำไว้ตอนเปิดเคส — ไม่ตรงกับของจริง = มีคนบันทึกคั่น
+   * แล้วต้องไม่เขียนอะไรเลย (ดู reportRev.ts) · `userId` เก็บไว้บอกว่าใครบันทึกล่าสุด
+   */
+  async updateReport(
+    caseId: number,
+    data: Record<string, unknown>,
+    opts: { userId?: number; baseRev?: unknown } = {},
+  ) {
     // ⛔ อนุมัติแล้ว = ล็อก — แก้ต่อไม่ได้จนกว่าแอดมินจะปลดล็อก (POST /api/cases/:id/unlock)
     // ถ้าปล่อยให้แก้หลังอนุมัติ ลายเซ็นผู้อนุมัติจะไม่ได้รับรองข้อมูลชุดที่บอทหยิบไปจริง
     await assertNotApproved(caseId);
@@ -1398,7 +1425,9 @@ export const caseService = {
 
     // === 2. Update survey_reports ===
     const colResult = await db.query(
-      "SELECT column_name FROM information_schema.columns WHERE table_name = 'survey_reports' AND table_schema = 'public' AND column_name NOT IN ('id', 'case_id', 'created_at')"
+      // rev/updated_at/updated_by = คอลัมน์ของระบบกันบันทึกทับ (migration 042)
+      // ⛔ ห้ามให้ค่าจากฟอร์มเขียนทับได้ ไม่งั้นส่ง rev มาเองแล้วเดินข้ามด่านไปเลย
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'survey_reports' AND table_schema = 'public' AND column_name NOT IN ('id', 'case_id', 'created_at', 'rev', 'updated_at', 'updated_by')"
     );
     const validCols = new Set(colResult.rows.map((r: { column_name: string }) => r.column_name));
 
@@ -1432,11 +1461,26 @@ export const caseService = {
     try {
       await client.query('BEGIN');
 
+      /**
+       * ด่านกันบันทึกทับ — ต้องอยู่ **ใน** transaction และล็อกแถวไว้ (FOR UPDATE)
+       * ถ้าเช็คนอก transaction สองคนที่กดพร้อมกันเป๊ะ ๆ จะอ่าน rev เดิมได้เท่ากันทั้งคู่
+       * แล้วผ่านด่านไปทั้งคู่ = กันไม่ได้จริงในกรณีที่ควรกันที่สุด
+       */
+      await assertReportRev(caseId, opts.baseRev, { client, lock: true });
+
+      /**
+       * เขียน updated_by เสมอ แม้ไม่มีช่องไหนเปลี่ยน — เพื่อให้ trigger บวก rev ทุกครั้งที่
+       * มีคนกดบันทึก · ถ้าข้ามตอน fields ว่าง (เช่นแก้แต่ตารางค่าใช้จ่าย) rev จะไม่เดิน
+       * แล้วสองคนที่แก้เฉพาะค่าใช้จ่ายจะทับกันได้เหมือนเดิม
+       */
+      fields.push(`updated_by = $${idx++}`);
+      params.push(opts.userId ?? null);
+
       let reportUpdated = 0;
-      if (fields.length > 0) {
+      {
         params.push(reportId);
         await client.query(`UPDATE survey_reports SET ${fields.join(', ')} WHERE id = $${idx}`, params);
-        reportUpdated = fields.length;
+        reportUpdated = fields.length - 1;   // ไม่นับ updated_by ที่ระบบเติมให้เอง
       }
 
       if (expenseSubmitted) {
@@ -1459,11 +1503,16 @@ export const caseService = {
         await client.query(`INSERT INTO survey_expenses (${eCols.join(', ')}) VALUES (${ePlaceholders})`, eVals);
       }
 
+      // rev ใหม่หลังบันทึก — หน้าเว็บต้องเก็บไว้ใช้กับการบันทึกครั้งถัดไป
+      // ไม่ส่งกลับ = กดบันทึกสองครั้งติดจะเด้ง "มีคนบันทึกคั่น" ใส่ตัวเอง
+      const after = await client.query('SELECT rev FROM survey_reports WHERE id = $1', [reportId]);
+
       await client.query('COMMIT');
       return {
         message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense,
         // ผู้ตรวจล้างบิลทิ้ง — แยกจาก "ไม่ได้ยุ่งกับบิล" เพื่อให้เห็นได้จากคำตอบของ API
         expense_cleared: expenseSubmitted && !hasExpense,
+        rev: Number(after.rows[0]?.rev ?? 0),
       };
     } catch (err) {
       await client.query('ROLLBACK');

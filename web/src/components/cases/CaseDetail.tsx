@@ -455,6 +455,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       ? (report.opposing_parties as LooseRecord[]).map(blankZeroCost) : []));
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  /**
+   * ── กันหัวหน้า 2 คนบันทึกทับกัน ──
+   * เลขรุ่นของข้อมูล ณ ตอนที่หน้านี้โหลดมา · ส่งกลับไปทุกครั้งที่บันทึก
+   * ถ้าฝั่งเซิร์ฟเวอร์เดินไปแล้ว = มีคนบันทึกคั่น → ตอบ 409 ไม่เขียนอะไรเลย (reportRev.ts)
+   * เดิมไม่มีตัวนี้ คนบันทึกทีหลังทับงานคนแรกทั้งหน้าโดยทั้งคู่เห็น "บันทึกสำเร็จ"
+   */
+  const [rev, setRev] = useState<number | null>(
+    typeof report?.rev === 'number' ? report.rev : null);
+  // ข้อความตอนชนกัน — แยกจาก saveMsg เพราะต้องค้างไว้จนกว่าจะกดโหลดใหม่ ไม่ใช่หายเองใน 3 วิ
+  const [conflict, setConflict] = useState('');
   // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — คนละฝั่งเงินกับตาราง survey_expenses ข้างบน
   const [pay, setPay] = useState<PayData | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -973,6 +983,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     return () => { alive = false; };
   }, [caseData.id]);
 
+  /**
+   * โหลดเคสใหม่ (onReviewSubmitted) แล้ว rev ที่ถืออยู่ต้องเดินตามด้วย
+   * ไม่งั้นหลังกดโหลดใหม่จะยังส่ง rev เก่าไป = ชนซ้ำวนไปเรื่อย ๆ แก้อะไรไม่ได้เลย
+   */
+  useEffect(() => {
+    if (typeof report?.rev === 'number') setRev(report.rev);
+  }, [report?.rev]);
+
   const handleSave = async (): Promise<boolean> => {
     if (!formRef.current) return false;
     /**
@@ -1035,14 +1053,30 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           Boolean(o) && Object.values(o as Record<string, unknown>)
             .some((v) => v !== null && v !== '' && v !== false && v !== undefined);
         if (anyVal(payBody) || pay?.saved) {
-          const pr = await api.put(`/api/cases/${caseData.id}/pay`, payBody);
+          // base_rev = เลขรุ่นเดียวกับที่ส่งให้ /report — ฝั่งยอดเงินตรวจอย่างเดียว ไม่บวก rev
+          const pr = await api.put(`/api/cases/${caseData.id}/pay`, { ...payBody, base_rev: rev });
           if (pr.data?.success) setPay((prev: PayData | null) => (prev ? { ...prev, saved: pr.data.data } : prev));
         }
       }
-      const res = await api.put(`/api/cases/${caseData.id}/report`, { report_data: payload });
-      if (res.data.success) { setSaveMsg('บันทึกสำเร็จ'); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true; }
+      const res = await api.put(`/api/cases/${caseData.id}/report`,
+        { report_data: payload, base_rev: rev });
+      if (res.data.success) {
+        // เก็บ rev ใหม่ทันที ไม่งั้นกดบันทึกซ้ำจะเด้ง "มีคนบันทึกคั่น" ใส่ตัวเอง
+        if (typeof res.data.data?.rev === 'number') setRev(res.data.data.rev);
+        setSaveMsg('บันทึกสำเร็จ'); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true;
+      }
       setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || '')); return false;
-    } catch { setSaveMsg('เกิดข้อผิดพลาดในการบันทึก'); return false; }
+    } catch (e) {
+      /**
+       * เดิม catch เปล่า ๆ แล้วขึ้น "เกิดข้อผิดพลาดในการบันทึก" ทุกกรณี — ข้อความจริง
+       * จากเซิร์ฟเวอร์ (เช่น ชนกับคนอื่น / เลขเซอร์เวย์ซ้ำ) ถูกกลืนหายไปหมด
+       */
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const msg = err.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึก';
+      if (err.response?.status === 409) setConflict(msg);
+      setSaveMsg(msg);
+      return false;
+    }
     finally { setSaving(false); }
   };
 
@@ -1168,6 +1202,30 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             )}
             {actionBar}
           </div>
+
+          {/**
+            * ชนกับหัวหน้าอีกคน — ต้องค้างไว้จนกว่าจะตัดสินใจ ไม่ใช่ข้อความเล็ก ๆ ที่หายเอง
+            * ⛔ ห้ามโหลดใหม่ให้อัตโนมัติ — สิ่งที่พิมพ์ค้างอยู่จะหายทั้งหมด
+            *    ต้องให้คนอ่านก่อนว่าใครบันทึกคั่น แล้วเลือกเองว่าจะทิ้งของตัวเองไหม
+            */}
+          {conflict && (
+            <div className="w-full border-t border-red-200 pt-2 flex flex-wrap items-center gap-3">
+              <span className="text-lg leading-none shrink-0">⚠️</span>
+              <span className="flex-1 min-w-[280px] text-sm text-red-800">{conflict}</span>
+              <button type="button"
+                onClick={() => {
+                  if (!window.confirm('โหลดข้อมูลล่าสุด?\nสิ่งที่คุณพิมพ์ค้างไว้ในหน้านี้จะหายทั้งหมด\nถ้ายังไม่อยากให้หาย ให้จดค่าที่แก้ไว้ก่อน แล้วค่อยกด')) return;
+                  setConflict(''); setSaveMsg(''); onReviewSubmitted();
+                }}
+                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 shrink-0">
+                โหลดข้อมูลล่าสุด
+              </button>
+              <button type="button" onClick={() => setConflict('')}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 shrink-0">
+                ปิดข้อความ
+              </button>
+            </div>
+          )}
 
           {/* ⛔ ช่องเหตุผล **ไม่มี name** — อยู่ใน <form> เดียวกับฟอร์มหลัก มี name เมื่อไหร่
               จะโดน FormData เก็บไปเป็นค่าของรายงานตอนกดบันทึก */}

@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
+import { assertReportRev } from './reportRev';
 
 /**
  * คิดค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — พอร์ตจาก se-billing `content.js`
@@ -284,8 +285,17 @@ async function assertPayNotLocked(caseId: number): Promise<void> {
  *
  * ยอดรวม = รายรับทั้งหมด − หักเงิน
  */
-export async function saveCasePay(caseId: number, input: SavePayInput, userId?: number) {
+export async function saveCasePay(
+  caseId: number, input: SavePayInput, userId?: number, baseRev?: unknown,
+) {
   await assertPayNotLocked(caseId);
+  /**
+   * ด่านเดียวกับตอนบันทึกรายงาน — ยอดเงินก็ถูกทับเงียบ ๆ ได้เหมือนกัน
+   * ⛔ **ตรวจอย่างเดียว ไม่บวก rev** — ปุ่มบันทึกหนึ่งครั้งยิง 2 คำขอ (ยอดก่อน แล้วรายงาน)
+   *    ทั้งคู่ถือ rev ตัวเดียวกัน ถ้าตัวแรกบวกด้วย ตัวที่สองจะเด้งชนตัวเอง
+   *    (rev บวกโดย trigger ตอน UPDATE survey_reports เท่านั้น — survey_pay คนละตาราง)
+   */
+  await assertReportRev(caseId, baseRev);
   const money: Record<string, number | null> = {};
   for (const f of PAY_MONEY_FIELDS) money[f] = num(input[f]);
   // หักเงินเก็บเป็นค่าบวกเสมอ — กรอกติดลบมาก็แปลงให้ ไม่งั้นลบซ้อนลบกลายเป็นบวก
