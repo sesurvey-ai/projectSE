@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import api from '@/lib/api';
+import { useSocket } from '@/hooks/useSocket';
 import CaseList, { type Case } from '@/components/cases/CaseList';
 import { queueStats } from '@/components/cases/reviewQueue';
 
@@ -15,6 +16,11 @@ export default function InspectorDashboard() {
   const [to, setTo] = useState('');
   const [downloading, setDownloading] = useState(false);
   const [tab, setTab] = useState<Tab>('pending');
+  // เวลาที่ข้อมูลในจอตรงกับเซิร์ฟเวอร์ล่าสุด — ต้องเห็นได้ ไม่งั้นไม่มีทางรู้ว่าจอค้างมานานแค่ไหน
+  const [freshAt, setFreshAt] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const { socket } = useSocket();
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [q, setQ] = useState('');
   const [src, setSrc] = useState('');
   const [who, setWho] = useState('');
@@ -38,12 +44,56 @@ export default function InspectorDashboard() {
     } finally { setDownloading(false); }
   };
 
-  useEffect(() => {
-    api.get('/api/cases/review')
-      .then((res) => { if (res.data.success) setCases(res.data.data); })
-      .catch(() => setError('ไม่สามารถโหลดรายการงานได้'))
-      .finally(() => setLoading(false));
+  /**
+   * ── ทำให้คิวไม่ค้าง ──
+   * เดิมโหลดครั้งเดียวตอนเปิดหน้า พอมีหัวหน้าหลายคนต่างคนต่างเห็นภาพคนละเวลา —
+   * เปิดเรื่องที่คนอื่นตรวจจบไปแล้ว หรือไม่เห็นงานใหม่จนกว่าจะบังเอิญกด F5
+   *
+   * `quiet` = โหลดเบื้องหลัง ไม่ต้องขึ้นหน้าจอ "กำลังโหลด" ทับของที่อ่านอยู่
+   */
+  const load = useCallback(async (quiet = false) => {
+    if (quiet) setRefreshing(true); else setLoading(true);
+    try {
+      const res = await api.get('/api/cases/review');
+      if (res.data.success) { setCases(res.data.data); setFreshAt(new Date()); setError(''); }
+    } catch {
+      // โหลดเงียบพลาด = เน็ตสะดุดชั่วคราว ไม่ต้องล้างของเดิมทิ้งแล้วขึ้นหน้าจอ error
+      // (ป้าย "อัปเดตเมื่อ" จะค้างอยู่ที่เวลาเดิม ซึ่งบอกความจริงว่าข้อมูลเก่าแล้ว)
+      if (!quiet) setError('ไม่สามารถโหลดรายการงานได้');
+    } finally {
+      if (quiet) setRefreshing(false); else setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  /** เคสเปลี่ยน (ใครก็ตามทำ) → โหลดใหม่ · รวบหลายสัญญาณที่มาติด ๆ กันเป็นครั้งเดียว */
+  useEffect(() => {
+    if (!socket) return;
+    const onChange = () => {
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+      reloadTimer.current = setTimeout(() => load(true), 400);
+    };
+    socket.on('case_changed', onChange);
+    return () => {
+      socket.off('case_changed', onChange);
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    };
+  }, [socket, load]);
+
+  /**
+   * ตาข่ายรอง — socket หลุดเงียบได้ (เน็ตวืบ/พร็อกซีตัด) แล้วจะไม่มีสัญญาณอะไรมาอีกเลย
+   * โหลดเฉพาะตอนแท็บเปิดอยู่จริง ไม่ยิงทิ้งจากแท็บที่ถูกพับไว้ข้ามคืน
+   */
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') load(true);
+    }, 60_000);
+    // กลับมาที่แท็บ = จังหวะที่คนกำลังจะอ่าน ต้องสดที่สุด
+    const onVis = () => { if (document.visibilityState === 'visible') load(true); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVis); };
+  }, [load]);
 
   /**
    * แบ่งงานเป็น 3 กอง — เดิม API คืน surveyed + reviewed ปนกันมาในลิสต์เดียว
@@ -110,7 +160,20 @@ export default function InspectorDashboard() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">รายการงานตรวจสอบ</h2>
-          <p className="text-gray-500 mt-1">งานที่รอการตรวจสอบและอนุมัติ</p>
+          {/* บอกความสดของข้อมูล — หน้าอัปเดตเองอยู่แล้ว แต่ต้องพิสูจน์ให้เห็น
+              ไม่งั้นคนยังกด F5 เผื่อไว้ (และไม่มีทางรู้เลยถ้าการอัปเดตเงียบไป) */}
+          <p className="text-gray-500 mt-1 flex items-center gap-2">
+            <span>งานที่รอการตรวจสอบและอนุมัติ</span>
+            {freshAt && (
+              <span className="text-xs text-gray-400">
+                · อัปเดตเมื่อ {freshAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.
+              </span>
+            )}
+            <button type="button" onClick={() => load(true)} disabled={refreshing}
+              className="text-xs text-blue-600 hover:underline disabled:text-gray-400">
+              {refreshing ? 'กำลังอัปเดต...' : 'อัปเดตเดี๋ยวนี้'}
+            </button>
+          </p>
         </div>
         {/* ใบเบิกเงินค่าตอบแทนผู้สำรวจ — เฉพาะงานที่คิดเงินผ่านระบบนี้
             งานที่ยังทำผ่านระบบเก่ายังออกใบจาก se-billing เหมือนเดิม */}

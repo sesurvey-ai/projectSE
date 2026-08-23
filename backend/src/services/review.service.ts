@@ -14,6 +14,7 @@
  */
 import { db } from '../config/database';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
+import { notifyCaseChanged } from './caseEvents';
 
 export const reviewService = {
   async submitReview(caseId: number, checkerId: number, data: { comment?: string; proposed_fee?: number; approved_fee?: number }) {
@@ -46,6 +47,8 @@ export const reviewService = {
       await client.query(`UPDATE cases SET status = 'reviewed' WHERE id = $1`, [caseId]);
 
       await client.query('COMMIT');
+      // อนุมัติแล้ว = หลุดจากคิว "รอตรวจ" ของทุกคน — คนอื่นต้องเห็นทันที ไม่งั้นเปิดซ้ำ
+      notifyCaseChanged(caseId, 'approved', checkerId);
       return reviewResult.rows[0];
     } catch (err) {
       await client.query('ROLLBACK');
@@ -93,6 +96,7 @@ export const reviewService = {
       if (r.rowCount === 0) throw new NotFoundError('ไม่พบใบอนุมัติของเคสนี้');
       await client.query(`UPDATE cases SET status = 'surveyed' WHERE id = $1`, [caseId]);
       await client.query('COMMIT');
+      notifyCaseChanged(caseId, 'unlocked', adminId);
       return r.rows[0];
     } catch (err) {
       await client.query('ROLLBACK');

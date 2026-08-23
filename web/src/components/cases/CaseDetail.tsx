@@ -7,6 +7,7 @@ import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, 
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useSocket } from '@/hooks/useSocket';
 import DamageEditor, { DamageItem } from './DamageEditor';
 import DamageDialog from './DamageDialog';
 import { OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED } from './RecordEditors';
@@ -469,6 +470,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [pay, setPay] = useState<PayData | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const { user } = useAuth();
+  const { socket } = useSocket();
   /**
    * ประตูอนุมัติ (user เคาะ 15/08/69) — อนุมัติแล้ว = ล็อกทั้งหน้า แก้ต่อไม่ได้
    * เพราะบอทหยิบเฉพาะเคสที่อนุมัติแล้วไปเข้า EMCS และจะกดส่งงานเองในเฟสถัดไป
@@ -990,6 +992,28 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   useEffect(() => {
     if (typeof report?.rev === 'number') setRev(report.rev);
   }, [report?.rev]);
+
+  /**
+   * ── เตือนแต่เนิ่น ๆ ว่ามีคนอื่นแตะเคสนี้ ──
+   * ด่านกันบันทึกทับ (rev) ทำงานตอน "กดบันทึก" ซึ่งอาจเป็นหลังพิมพ์ไปแล้วครึ่งชั่วโมง
+   * สัญญาณนี้บอกตั้งแต่วินาทีที่อีกฝ่ายบันทึก จะได้ตัดสินใจก่อนลงแรงต่อ
+   *
+   * ⛔ ห้ามโหลดข้อมูลใหม่ให้เอง — ของที่พิมพ์ค้างอยู่จะหายโดยไม่ได้ถาม
+   *    (ใช้แถบเดียวกับตอนบันทึกชน ซึ่งมีปุ่มให้คนเลือกเองอยู่แล้ว)
+   */
+  useEffect(() => {
+    if (!socket) return;
+    const onChange = (p: { case_id?: number; by?: number | null }) => {
+      if (Number(p?.case_id) !== Number(caseData.id)) return;
+      // สัญญาณที่เกิดจากการบันทึกของตัวเอง ไม่ต้องเตือนตัวเอง
+      if (p?.by != null && user?.id != null && Number(p.by) === Number(user.id)) return;
+      setConflict('มีคนอื่นเพิ่งบันทึกเคสนี้ระหว่างที่คุณเปิดอยู่ — '
+        + 'ถ้าบันทึกทับตอนนี้ งานของอีกฝ่ายจะหายทั้งหมด '
+        + 'กด "โหลดข้อมูลล่าสุด" ก่อนแก้ต่อ (สิ่งที่พิมพ์ค้างไว้จะหาย จดไว้ก่อนถ้าจำเป็น)');
+    };
+    socket.on('case_changed', onChange);
+    return () => { socket.off('case_changed', onChange); };
+  }, [socket, caseData.id, user?.id]);
 
   const handleSave = async (): Promise<boolean> => {
     if (!formRef.current) return false;

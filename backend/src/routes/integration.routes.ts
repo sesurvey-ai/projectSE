@@ -5,6 +5,7 @@ import { UnauthorizedError } from '../middleware/errorHandler';
 import { env } from '../config/env';
 import { caseService } from '../services/case.service';
 import { uploadZipOnly } from '../config/multer';
+import { notifyCaseChanged } from '../services/caseEvents';
 
 // ── routes สำหรับเครื่องมือภายใน (se-autokey) — auth ด้วย service token ไม่ผูกบัญชีพนักงาน ──
 // เปิดใช้โดยตั้ง env INTEGRATION_TOKEN (ยาว ≥24 ตัว); ไม่ตั้ง = ทุก route ตอบ 401
@@ -260,6 +261,7 @@ router.post('/cases/:id/emcs-imported', integrationAuth, asyncHandler(async (req
     res.json({ success: true, data: { already: true, ...cur.rows[0] } });
     return;
   }
+  notifyCaseChanged(caseId, 'emcs', null);
   res.json({ success: true, data: { already: false } });
 }));
 
@@ -291,6 +293,8 @@ router.post('/cases/:id/emcs-status', integrationAuth, asyncHandler(async (req: 
     [caseId, statusText, submitted, esurveyNo]
   );
   if (r.rowCount === 0) { res.status(404).json({ success: false, message: 'case not found' }); return; }
+  // "ส่งประกันแล้ว" ย้ายแท็บในคิวตรวจ + ลดตัวเลข "draft ค้างที่ประกัน" — ต้องเห็นเองไม่ต้องรีเฟรช
+  notifyCaseChanged(caseId, 'emcs', null);
   res.json({ success: true, data: r.rows[0] });
 }));
 

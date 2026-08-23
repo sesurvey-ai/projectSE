@@ -7,6 +7,7 @@ import { invalidateCaseOwner } from '../middleware/uploadsAuth';
 import { isFirebaseReady } from '../config/firebase';
 import type { XmlImportResult } from './xmlImport.service';
 import { assertReportRev } from './reportRev';
+import { notifyCaseChanged } from './caseEvents';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -801,6 +802,8 @@ export const caseService = {
       if (st.rowCount === 0) throw new ForbiddenError('Case is not in assigned status');
 
       await client.query('COMMIT');
+      // งานใหม่เข้าคิวตรวจ — หน้าคิวของหัวหน้าทุกคนต้องเห็นทันทีโดยไม่ต้องกดรีเฟรช
+      notifyCaseChanged(caseId, 'submitted', surveyorId);
       return report;
     } catch (err) {
       await client.query('ROLLBACK');
@@ -1262,6 +1265,7 @@ export const caseService = {
       }
 
       await client.query('COMMIT');
+      notifyCaseChanged(caseId, 'imported', null);
       return { caseId, assignedTo, surveyorCode: parsed.surveyorCode };
     } catch (e) {
       await client.query('ROLLBACK');
@@ -1351,6 +1355,7 @@ export const caseService = {
     );
     // 0 แถว = สถานะเปลี่ยนไประหว่างทาง (อนุมัติ/ส่งซ้ำพร้อมกัน) — ห้ามตอบว่าสำเร็จ
     if (out.rowCount === 0) throw new ForbiddenError('สถานะเคสเพิ่งเปลี่ยนไป — โหลดหน้าใหม่แล้วลองอีกครั้ง');
+    notifyCaseChanged(caseId, 'sent_back', checkerId);
     return out.rows[0];
   },
 
@@ -1508,6 +1513,8 @@ export const caseService = {
       const after = await client.query('SELECT rev FROM survey_reports WHERE id = $1', [reportId]);
 
       await client.query('COMMIT');
+      // ยอดเงิน/ช่องที่ยังขาด เปลี่ยนแล้ว → ป้ายในคิว ("ต้องเติมก่อนอนุมัติ") ต้องตามด้วย
+      notifyCaseChanged(caseId, 'saved', opts.userId ?? null);
       return {
         message: 'Report updated', report_fields: reportUpdated, expense_saved: hasExpense,
         // ผู้ตรวจล้างบิลทิ้ง — แยกจาก "ไม่ได้ยุ่งกับบิล" เพื่อให้เห็นได้จากคำตอบของ API
