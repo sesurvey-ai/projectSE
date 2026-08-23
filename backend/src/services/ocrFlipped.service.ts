@@ -18,16 +18,35 @@ import { withTimeout, OCR_CALL_TIMEOUT_MS } from './ocrClients';
 
 const GEMINI_MODEL = env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
+/**
+ * บริษัทประกันที่การ์ด/ใบรับแจ้งหน้าตาต่างกัน — เลขคนละรูปแบบกันคนละเรื่อง
+ * ⛔ อย่าเอา validator ของฝั่งหนึ่งไปใช้กับอีกฝั่ง: ของไทยไพบูลย์มีตัวอักษรคั่น
+ *    (BR10/6906/13144) ส่วนไอโออิเป็นตัวเลขล้วน (2026143607) เอาไปตรวจข้ามกันตกหมด
+ */
+export type Insurer = 'TPB' | 'AIOI';
+
 // anchored validators (Python re.fullmatch → JS ^...$ + .test)
 const FULL_RECV = /^[A-Z]{2}\d{2}\/\d{3,5}\/\d{3,6}$/;
 const FULL_CLAIMNO = /^\d{2}[A-Z]{2}\d{2}[A-Z]{2,4}-\d{3,5}-\d{4,6}$/;
 const SURVEY_GRAB = /SETP-?\d{6,9}/;
 
+/**
+ * ไอโออิ — ทุกเลขเป็นตัวเลขล้วน ความยาวเอาจากการ์ดจริง 6 ใบ (ส.ค. 69)
+ * ผ่อนความยาว ±1-2 หลักเผื่อรูปแบบต่างปี ไม่ได้ล็อกเป๊ะ เพราะตกแล้วคนต้องพิมพ์เองทั้งเลข
+ * (ตัวคุมคุณภาพจริงคือ grounding กับ Vision ไม่ใช่ความยาว)
+ */
+const AIOI_RECV = /^\d{9,11}$/;        // เลขรับแจ้ง  2026143607
+const AIOI_CLAIM = /^\d{12,14}$/;      // เลขที่เคลม  2026013165416
+const AIOI_PRB = /^\d{12,14}$/;        // พ.ร.บ.      2026013303934
+const AIOI_POLICY = /^\d{9,14}$/;      // กรมธรรม์    126013134144 / 6252031583
+// เลขเรื่องเซอร์เวย์ของไอโออิ — **มีบางใบเท่านั้น** (3 ใน 6 ใบตัวอย่าง) ไม่มีก็ปล่อยว่าง
+const SEABI_GRAB = /SEABI-?\d{9,15}/;
+
 // OCR character-confusion tables (ใช้เฉพาะตำแหน่งที่รู้ class จาก template)
 const TO_DIGIT: Record<string, string> = { O: '0', D: '0', Q: '0', I: '1', L: '1', Z: '2', A: '4', S: '5', G: '6', T: '7', B: '8' };
 const TO_LETTER: Record<string, string> = { '0': 'O', '1': 'I', '2': 'Z', '4': 'A', '5': 'S', '6': 'G', '7': 'T', '8': 'B', '9': 'P' };
 
-const PROMPT =
+const PROMPT_TPB =
   'This is an IMAGE of a Thai motor-insurance claim form (ใบรับแจ้งเคลม). Extract:\n' +
   '- "claim_received": the เลขรับแจ้ง code (like BR10/6906/13144); "" if absent\n' +
   '- "claim_codes": array of every claim code (like 21BR10AVD-6906-000098; the 3 letters are AVD or ACD)\n' +
@@ -39,7 +58,7 @@ const PROMPT =
   '- "report_time": the เวลา (time of the วันที่รับแจ้ง) in 24-hour HH:mm (e.g. 13:21); "" if absent\n\n' +
   'CRITICAL: Read ONLY characters that are clearly and unambiguously printed. If ANY character in a code is blurry, faded, hidden, cut off, or you are not fully certain of it, OMIT that code entirely (do not include it). Do NOT guess, complete, or reconstruct missing characters. Returning fewer/blank is better than returning a wrong code.';
 
-const SCHEMA = {
+const SCHEMA_TPB = {
   type: Type.OBJECT,
   properties: {
     claim_received: { type: Type.STRING },
@@ -52,6 +71,51 @@ const SCHEMA = {
     report_time: { type: Type.STRING },
   },
   required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'chassis_no', 'incident_location', 'report_date', 'report_time'],
+};
+
+/**
+ * ไอโออิ — "แบบรับแจ้งอุบัติเหตุยานยนต์" เป็น**ตารางที่มีป้ายชื่อช่องกำกับทุกช่อง**
+ * ต่างจากใบไทยไพบูลย์ที่ต้องเดาจากตำแหน่ง → สั่งให้อ่านตามป้ายตรง ๆ แม่นกว่ามาก
+ *
+ * ⚠️ กับดักที่ต้องบอกให้ชัดในคำสั่ง (เจอจากการ์ดจริง 6 ใบ):
+ *   · "พ.ร.บ." ที่เราต้องการคือ**เลขเคลม พ.ร.บ.** (13 หลัก อยู่ในเนื้อความ)
+ *     ไม่ใช่ "เลขที่กรมธรรม์ภาคบังคับ" ซึ่งเป็นคนละเลขและอยู่ในตารางกรมธรรม์ท้ายใบ
+ *   · กรมธรรม์ที่ต้องการคือ "เลขที่กรมธรรม์คุ้มครองรถ" (ภาคสมัครใจ) ไม่ใช่ภาคบังคับ
+ *   · วันที่บนการ์ดเป็น **ค.ศ.** (22/08/2026) — flipReportDate แปลงเป็น พ.ศ. ให้เอง
+ *   · เลข SEABI มีบางใบเท่านั้น ไม่มีให้เว้น ห้ามเดา
+ */
+const PROMPT_AIOI =
+  'This is an IMAGE of a Thai motor-insurance accident report card from Aioi Bangkok Insurance ' +
+  '(แบบรับแจ้งอุบัติเหตุยานยนต์). It is a table where every value has a Thai label in the cell to its left. ' +
+  'Read values BY THEIR LABEL. Extract:\n' +
+  '- "claim_received": the number labelled เลขรับแจ้ง (all digits, about 10, e.g. 2026143607); "" if absent\n' +
+  '- "claim_codes": array with the single number labelled เลขที่เคลม (all digits, about 13, e.g. 2026013165416)\n' +
+  '- "prb_no": the พ.ร.บ. / พรบ. claim number written in the free-text area (all digits, about 13, e.g. 2026013303934). ' +
+  'This is NOT the เลขที่กรมธรรม์ภาคบังคับ in the policy table at the bottom — if you only see that one, return ""\n' +
+  '- "policy_no": the number labelled เลขที่กรมธรรม์คุ้มครองรถ (the voluntary policy, all digits). ' +
+  'Do NOT return เลขที่กรมธรรม์ภาคบังคับ here; "" if absent\n' +
+  '- "survey_codes": array of any code starting with SEABI (e.g. SEABI-114260800144). Most cards have none — return [] then\n' +
+  '- "chassis_no": the value labelled เลขตัวถัง (letters+digits VIN); "" if absent\n' +
+  '- "incident_location": the value labelled สถานที่เกิดเหตุ (free Thai text); "" if absent\n' +
+  '- "report_date": the DATE part of วันที่รับแจ้ง exactly as printed (e.g. 22/08/2026 — note this card prints the Christian year); "" if absent\n' +
+  '- "report_time": the TIME part of วันที่รับแจ้ง in 24-hour HH:mm (e.g. 12:40); "" if absent\n\n' +
+  'CRITICAL: Read ONLY characters that are clearly printed. If ANY character is blurry, cut off, or uncertain, ' +
+  'return "" for that field. Do NOT guess or reconstruct. Returning blank is better than returning a wrong number.';
+
+const SCHEMA_AIOI = {
+  type: Type.OBJECT,
+  properties: {
+    claim_received: { type: Type.STRING },
+    claim_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
+    prb_no: { type: Type.STRING },
+    policy_no: { type: Type.STRING },
+    survey_codes: { type: Type.ARRAY, items: { type: Type.STRING } },
+    chassis_no: { type: Type.STRING },
+    incident_location: { type: Type.STRING },
+    report_date: { type: Type.STRING },
+    report_time: { type: Type.STRING },
+  },
+  required: ['claim_received', 'claim_codes', 'prb_no', 'policy_no', 'survey_codes', 'chassis_no', 'incident_location', 'report_date', 'report_time'],
 };
 
 export type OcrField = {
@@ -134,10 +198,10 @@ async function visionText(buf: Buffer): Promise<string> {
   return resp.fullTextAnnotation?.text ?? '';
 }
 
-type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string };
+type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; prb_no?: string; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string };
 
 // ── Gemini อ่านรูป (หลัก) + retry 429/5xx ──
-async function geminiImageMap(buf: Buffer, tries = 6): Promise<GeminiMap> {
+async function geminiImageMap(buf: Buffer, insurer: Insurer, tries = 6): Promise<GeminiMap> {
   const base64 = buf.toString('base64');
   let delay = 5000;
   for (let a = 1; a <= tries; a++) {
@@ -145,8 +209,8 @@ async function geminiImageMap(buf: Buffer, tries = 6): Promise<GeminiMap> {
       const resp = await withTimeout(
         genaiClient().models.generateContent({
           model: GEMINI_MODEL,
-          contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }, { text: PROMPT }] }],
-          config: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
+          contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: base64 } }, { text: insurer === 'AIOI' ? PROMPT_AIOI : PROMPT_TPB }] }],
+          config: { responseMimeType: 'application/json', responseSchema: insurer === 'AIOI' ? SCHEMA_AIOI : SCHEMA_TPB, temperature: 0 },
         }),
         OCR_CALL_TIMEOUT_MS,
         'Gemini generateContent'
@@ -376,10 +440,72 @@ function flipReportDate(dateRaw: string | undefined, timeRaw: string | undefined
   return { value, raw: (timeRaw || '').trim() ? `${draw} ${(timeRaw || '').trim()}` : draw, auto_corrected: value.split('|')[0] !== draw, grounded, format_ok: true, confidence: grounded ? 'medium' : 'low' };
 }
 
-export async function flippedExtract(imagePath: string): Promise<FlippedResult> {
+/**
+ * เลขตัวเลขล้วน (ไอโออิ) — แก้ตัวอักษรที่ OCR สับสนให้เป็นเลขทั้งสตริง แล้วตรวจความยาว
+ *
+ * ปลอดภัยกว่าฝั่งไทยไพบูลย์ตรงที่ **รู้ว่าทุกตำแหน่งต้องเป็นตัวเลข** จึงไม่ต้องมี template
+ * ต่อความยาว (ที่ฝั่งนู้นถ้าความยาวไม่ตรงจะไม่กล้าแตะเลย)
+ */
+function flipDigits(rawIn: string | undefined, flat: string, pat: RegExp, required: boolean): OcrField {
+  const raw = (rawIn || '').trim();
+  if (!raw) return blankField(required);
+  // ตัดตัวคั่นที่คนใส่มาเอง (เว้นวรรค/ขีด) ก่อน แล้วค่อยแก้ตัวอักษร→ตัวเลข
+  const stripped = raw.replace(/[\s-]/g, '');
+  const fixed = stripped.split('').map((c) => (isDigit(c) ? c : (TO_DIGIT[c.toUpperCase()] ?? c))).join('');
+  const autoCorrected = fixed !== raw;
+  if (!pat.test(fixed)) {
+    // ความยาวไม่เข้าเกณฑ์ = อ่านไม่ครบ/อ่านเกิน → ส่งค่าให้คนเห็นแต่ตีธง low
+    return { value: fixed, raw, auto_corrected: autoCorrected, grounded: false, format_ok: false, confidence: 'low' };
+  }
+  const lvl = level(fixed, raw, flat, fixed.slice(-6));
+  return { value: fixed, raw, auto_corrected: autoCorrected, grounded: lvl !== 'none', format_ok: true, confidence: LVL_CONF[lvl] };
+}
+
+/** เลขเรื่องเซอร์เวย์ของไอโออิ (SEABI-…) — มีบางใบ ไม่มีก็ไม่ใช่ปัญหา จึง required=false */
+function flipSeabi(rawCodes: string[] | undefined, flat: string): OcrField {
+  for (const rawIn of rawCodes || []) {
+    const raw = (rawIn || '').trim();
+    if (!raw) continue;
+    const m = SEABI_GRAB.exec(raw.replace(/\s/g, '').toUpperCase());
+    if (!m) continue;
+    let value = m[0];
+    if (!value.includes('-')) value = value.replace('SEABI', 'SEABI-');
+    const digits = value.split('-')[1] || '';
+    const lvl = level(value, raw, flat, digits.slice(-6));
+    return { value, raw, auto_corrected: value !== raw, grounded: lvl !== 'none', format_ok: true, confidence: LVL_CONF[lvl] };
+  }
+  return blankField(false);
+}
+
+/** ไอโออิ: ทุกเลขเป็นตัวเลขล้วนและมีป้ายชื่อช่องกำกับ → ไม่ต้องเดาว่าโค้ดไหนคืออะไร */
+function extractAioi(mapped: GeminiMap, flat: string): FlippedResult['fields'] {
+  return {
+    claim_received: flipDigits(mapped.claim_received, flat, AIOI_RECV, true),
+    claim_no: flipDigits((mapped.claim_codes || [])[0], flat, AIOI_CLAIM, true),
+    prb_no: flipDigits(mapped.prb_no, flat, AIOI_PRB, false),
+    survey_no: flipSeabi(mapped.survey_codes, flat),
+    survey_no_2: blankField(false),   // ไอโออิไม่มีงานที่ 2 บนการ์ด
+    policy_no: flipDigits(mapped.policy_no, flat, AIOI_POLICY, false),
+    chassis_no: flipPolicy(mapped.chassis_no, flat),
+    incident_location: flipText(mapped.incident_location, flat),
+    customer_report: flipReportDate(mapped.report_date, mapped.report_time, flat),
+  };
+}
+
+export async function flippedExtract(imagePath: string, insurer: Insurer = 'TPB'): Promise<FlippedResult> {
   const buf = await fs.promises.readFile(imagePath);
-  const [mapped, flatRaw] = await Promise.all([geminiImageMap(buf), visionText(buf)]);
+  const [mapped, flatRaw] = await Promise.all([geminiImageMap(buf, insurer), visionText(buf)]);
   const flat = norm(flatRaw);
+
+  if (insurer === 'AIOI') {
+    const fields = extractAioi(mapped, flat);
+    return {
+      image: imagePath.split(/[\\/]/).pop() || imagePath,
+      // เลขเซอร์เวย์ไม่นับ — ไอโออิไม่มีบนการ์ดเป็นเรื่องปกติ ไม่ใช่สัญญาณว่าอ่านพลาด
+      review_needed: fields.claim_no.confidence !== 'high' || fields.claim_received.confidence !== 'high',
+      fields,
+    };
+  }
 
   const claim_received = flipSimple(mapped.claim_received, flat, correctClaimReceived, FULL_RECV);
   const [claim_no, prb_no] = flipClaim(mapped.claim_codes, flat);

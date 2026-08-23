@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import fs from 'fs';
 import { extractClaimData } from '../services/ocr.service';
-import { flippedExtract, OcrField } from '../services/ocrFlipped.service';
+import { flippedExtract, OcrField, Insurer } from '../services/ocrFlipped.service';
 import { extractDocument, DocKind } from '../services/documentOcr.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -39,10 +39,15 @@ export const ocrController = {
       return;
     }
     try {
-      console.log(`[OCR flipped] ${file.originalname} (${(file.size / 1024).toFixed(0)} KB, ${file.mimetype})`);
+      /**
+       * บริษัทประกันมาจากปุ่มที่คนรับแจ้งเลือกบนฟอร์ม — การ์ด/ใบรับแจ้งคนละแบบกัน
+       * ค่าเริ่มต้น TPB เพื่อให้หน้าเว็บรุ่นเก่า (ที่ยังไม่ส่ง insurer) ทำงานเหมือนเดิม
+       */
+      const insurer: Insurer = String(req.body?.insurer || '').toUpperCase() === 'AIOI' ? 'AIOI' : 'TPB';
+      console.log(`[OCR flipped:${insurer}] ${file.originalname} (${(file.size / 1024).toFixed(0)} KB, ${file.mimetype})`);
       const t0 = Date.now();
-      const result = await flippedExtract(file.path);
-      console.log(`[OCR flipped] done in ${Date.now() - t0}ms · review=${result.review_needed}`);
+      const result = await flippedExtract(file.path, insurer);
+      console.log(`[OCR flipped:${insurer}] done in ${Date.now() - t0}ms · review=${result.review_needed}`);
 
       // map 5 ฟิลด์ → ชื่อฟิลด์ในฟอร์มสร้างเคส (survey_no_2 ยังไม่มีคอลัมน์ → ส่งแยก)
       const byForm: Record<string, OcrField> = {

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useMemo, useEffect, FormEvent } from 'react';
+import React, { useState, useRef, useCallback, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
-import thaiProvinces from '@/data/thai_provinces.json';
 import AssignSurveyor from '@/components/cases/AssignSurveyor';
 
 // ป้ายภาษาไทยของ 5 ฟิลด์จาก OCR (flipped) — ใช้ในแบนเนอร์ "ให้ตรวจสอบ"
@@ -16,7 +15,7 @@ const OCR_FIELD_LABELS: Record<string, string> = {
 // logo = path ใน public (วางไฟล์ที่ web/public/insurance/*.png); ถ้าไฟล์ไม่มีจะ fallback เป็นตัวย่อ (code)
 const INSURANCE_COMPANIES: { value: string; name: string; sub?: string; logo: string; code: string; disabled?: boolean }[] = [
   { value: 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)', name: 'ไทยไพบูลย์ประกันภัย', sub: 'จำกัด (มหาชน)', logo: '/insurance/tpb.png', code: 'TPB' },
-  { value: 'ไอโออิกรุงเทพประกันภัย', name: 'ไอโออิ กรุงเทพประกันภัย', logo: '/insurance/aioi.png', code: 'AIOI', disabled: true },
+  { value: 'ไอโออิกรุงเทพประกันภัย', name: 'ไอโออิ กรุงเทพประกันภัย', logo: '/insurance/aioi.png', code: 'AIOI' },
 ];
 
 export default function NewCasePage() {
@@ -44,15 +43,9 @@ export default function NewCasePage() {
   const f = (key: string) => form[key] || '';
   const s = (key: string, v: string) => setForm(prev => ({ ...prev, [key]: v }));
 
-  const provinceNames = useMemo(() => Object.keys(thaiProvinces as Record<string, string[]>).sort(), []);
-  const accDistricts = useMemo(() => {
-    const prov = f('acc_province');
-    return prov ? ((thaiProvinces as Record<string, string[]>)[prov] || []) : [];
-  }, [form['acc_province']]);
-
-  const SP = 'w-full text-[12px] text-gray-900 outline-none bg-transparent px-1 py-0.5 border border-gray-200 rounded';
-
   // OCR state
+  // ไทยไพบูลย์เท่านั้นที่มีเลขเรื่องเซอร์เวย์บนใบรับแจ้ง — ไอโออิไม่มี
+  const isTPB = insuranceCompany === 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)';
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrDone, setOcrDone] = useState(false);
   const [ocrPreview, setOcrPreview] = useState<string | null>(null);
@@ -74,6 +67,11 @@ export default function NewCasePage() {
     try {
       const formData = new FormData();
       formData.append('image', file);
+      /**
+       * บอกตัวอ่านด้วยว่าเป็นการ์ดของบริษัทไหน — ใบไทยไพบูลย์กับการ์ดไอโออิคนละหน้าตา
+       * และเลขคนละรูปแบบ (มีตัวอักษรคั่น vs ตัวเลขล้วน) ใช้ชุดตรวจข้ามกันตกทุกเลข
+       */
+      formData.append('insurer', INSURANCE_COMPANIES.find(c => c.value === insuranceCompany)?.code || 'TPB');
       // flipped pipeline (Gemini + Vision) — เร็ว/แม่น ดึง 5 เลขสำคัญ + confidence
       const res = await api.post('/api/ocr/claim', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -316,10 +314,6 @@ export default function NewCasePage() {
     }
   };
 
-  const L = 'bg-gray-50 px-2 py-1 text-[11px] text-gray-500 font-medium whitespace-nowrap border border-gray-200';
-  const V = 'px-1 py-0.5 border border-gray-200';
-  const I = 'w-full text-[12px] text-gray-900 outline-none bg-transparent px-1 py-0.5';
-
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center mb-6">
@@ -371,167 +365,13 @@ export default function NewCasePage() {
           </div>
         </div>
 
-        {/* ไอโออิ → ตาราง */}
-        {insuranceCompany === 'ไอโออิกรุงเทพประกันภัย' && (
-          <>
-            <table className="w-full border-collapse border border-gray-200 bg-white text-[12px]">
-              <tbody>
-                <tr>
-                  <td className={L}>เลขรับแจ้ง</td>
-                  <td className={V}><input value={f('claim_ref_no')} onChange={e => s('claim_ref_no', e.target.value)} className={I} /></td>
-                  <td className={L}>เลขที่เคลม</td>
-                  <td className={V} colSpan={3}><input value={f('claim_no')} onChange={e => s('claim_no', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>ผู้รับแจ้ง</td>
-                  <td className={V}><input value={f('acc_reporter')} onChange={e => s('acc_reporter', e.target.value)} className={I} /></td>
-                  <td className={L}>วันที่รับแจ้ง</td>
-                  <td className={V}><input value={f('acc_insurance_notify_date')} onChange={e => s('acc_insurance_notify_date', e.target.value)} className={I} /></td>
-                  <td className={L}>วันที่เกิดเหตุ</td>
-                  <td className={V}><input value={f('acc_date')} onChange={e => s('acc_date', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>ประเภทเคลม</td>
-                  <td className={V}>
-                    <select value={f('claim_type')} onChange={e => s('claim_type', e.target.value)} className={`${I} bg-transparent`}>
-                      <option value="">-</option>
-                      <option value="F">สด</option>
-                      <option value="D">แห้ง</option>
-                      <option value="A">นัดหมาย</option>
-                      <option value="C">ติดตาม</option>
-                    </select>
-                  </td>
-                  <td className={L}>เวลาเกิดเหตุ</td>
-                  <td className={V}><input value={f('acc_time')} onChange={e => s('acc_time', e.target.value)} className={I} /></td>
-                  <td className={L}>เบอร์โทรผู้แจ้ง</td>
-                  <td className={V}><input value={f('reporter_phone')} onChange={e => s('reporter_phone', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>สาขาประกัน</td>
-                  <td className={V} colSpan={5}><input value={f('insurance_branch')} onChange={e => s('insurance_branch', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>บริษัทสำรวจ</td>
-                  <td className={V} colSpan={3}><input value={f('survey_company')} onChange={e => s('survey_company', e.target.value)} className={I} /></td>
-                  <td className={L}>เลขที่งาน</td>
-                  <td className={V}><input value={f('survey_job_no')} onChange={e => s('survey_job_no', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>ทะเบียนรถ</td>
-                  <td className={V}><input value={f('license_plate')} onChange={e => s('license_plate', e.target.value)} className={I} /></td>
-                  <td className={L}>ยี่ห้อ</td>
-                  <td className={V}><input value={f('car_brand')} onChange={e => s('car_brand', e.target.value)} className={I} /></td>
-                  <td className={L}>รุ่น</td>
-                  <td className={V}><input value={f('car_model')} onChange={e => s('car_model', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>เลขตัวถัง</td>
-                  <td className={V} colSpan={2}><input value={f('chassis_no')} onChange={e => s('chassis_no', e.target.value)} className={I} /></td>
-                  <td className={L}>เลขเครื่องยนต์</td>
-                  <td className={V}><input value={f('engine_no')} onChange={e => s('engine_no', e.target.value)} className={I} /></td>
-                  <td className={`${L} text-center`}>
-                    <select value={f('car_type')} onChange={e => s('car_type', e.target.value)} className={`${I} bg-transparent`}>
-                      <option value="">ประเภท</option>
-                      <option value="A">เก๋ง</option>
-                      <option value="V">ตู้</option>
-                      <option value="T">กระบะ</option>
-                      <option value="W">บรรทุก</option>
-                      <option value="M">จยย.</option>
-                      <option value="O">อื่นๆ</option>
-                    </select>
-                  </td>
-                </tr>
-                <tr>
-                  <td className={L}>สี</td>
-                  <td className={V}><input value={f('car_color')} onChange={e => s('car_color', e.target.value)} className={I} /></td>
-                  <td className={L}>ปีรถ</td>
-                  <td className={V}><input value={f('car_reg_year')} onChange={e => s('car_reg_year', e.target.value)} className={I} /></td>
-                  <td className={L}>จังหวัด</td>
-                  <td className={V}><input value={f('car_province')} onChange={e => s('car_province', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>ชื่อผู้ขับขี่</td>
-                  <td className={V} colSpan={2}>
-                    <div className="flex gap-1">
-                      <input value={f('driver_first_name')} onChange={e => s('driver_first_name', e.target.value)} className={I} />
-                      <input value={f('driver_last_name')} onChange={e => s('driver_last_name', e.target.value)} className={I} />
-                    </div>
-                  </td>
-                  <td className={L}>เบอร์โทรผู้ขับขี่</td>
-                  <td className={V} colSpan={2}><input value={f('driver_phone')} onChange={e => s('driver_phone', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>สถานที่เกิดเหตุ *</td>
-                  <td className={V} colSpan={5}><input value={incidentLocation} onChange={e => { setIncidentLocation(e.target.value); s('acc_place', e.target.value); }} className={`${I} font-medium`} required /></td>
-                </tr>
-                <tr>
-                  <td className={L}>ตำบล</td>
-                  <td className={V}><input value={f('acc_subdistrict')} onChange={e => s('acc_subdistrict', e.target.value)} className={I} /></td>
-                  <td className={L}>จังหวัด</td>
-                  <td className={V}>
-                    <select value={f('acc_province')} onChange={e => { s('acc_province', e.target.value); s('acc_district', ''); }} className={SP}>
-                      <option value="">-- เลือกจังหวัด --</option>
-                      {provinceNames.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </td>
-                  <td className={L}>อำเภอ</td>
-                  <td className={V}>
-                    <select value={f('acc_district')} onChange={e => s('acc_district', e.target.value)} className={SP}>
-                      <option value="">-- เลือกอำเภอ --</option>
-                      {accDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </td>
-                </tr>
-                <tr>
-                  <td className={L}>ลักษณะการเกิดเหตุ</td>
-                  <td className={V} colSpan={3}><input value={f('acc_cause')} onChange={e => s('acc_cause', e.target.value)} className={I} /></td>
-                  <td className={L}>ฝ่ายถูก/ผิด</td>
-                  <td className={V}>
-                    <select value={f('acc_fault')} onChange={e => s('acc_fault', e.target.value)} className={`${I} bg-transparent`}>
-                      <option value="">-</option>
-                      <option value="รถประกันผิด">รถประกันผิด</option>
-                      <option value="คู่กรณีผิด">คู่กรณีผิด</option>
-                      <option value="ประมาทร่วม">ประมาทร่วม</option>
-                    </select>
-                  </td>
-                </tr>
-                <tr>
-                  <td className={L}>เลขกรมธรรม์</td>
-                  <td className={V}><input value={f('policy_no')} onChange={e => s('policy_no', e.target.value)} className={I} /></td>
-                  <td className={L}>ประเภท</td>
-                  <td className={V}><input value={f('policy_type')} onChange={e => s('policy_type', e.target.value)} className={I} /></td>
-                  <td className={L}>ผู้เอาประกัน *</td>
-                  <td className={V}><input value={customerName} onChange={e => { setCustomerName(e.target.value); s('assured_name', e.target.value); }} className={`${I} font-medium`} required /></td>
-                </tr>
-                <tr>
-                  <td className={L}>เริ่มคุ้มครอง</td>
-                  <td className={V}><input value={f('policy_start')} onChange={e => s('policy_start', e.target.value)} className={I} /></td>
-                  <td className={L}>สิ้นสุด</td>
-                  <td className={V}><input value={f('policy_end')} onChange={e => s('policy_end', e.target.value)} className={I} /></td>
-                  <td className={L}>พ.ร.บ.</td>
-                  <td className={V}><input value={f('prb_number')} onChange={e => s('prb_number', e.target.value)} className={I} /></td>
-                </tr>
-                <tr>
-                  <td className={L}>หมายเหตุ</td>
-                  <td className={V} colSpan={5}>
-                    <textarea value={f('acc_detail')} onChange={e => s('acc_detail', e.target.value)} className={`${I} resize-none`} rows={2} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {!createdCaseId && (
-              <div className="flex justify-end mt-4">
-                <button type="submit" disabled={submitting} className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                  {submitting ? 'กำลังสร้าง...' : 'สร้างเคสและมอบหมาย'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ไทยไพบูลย์ → ช่องกรอกหลัก + OCR upload + ตาราง */}
-        {insuranceCompany === 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)' && (
+        {/**
+          * ฟอร์มกรอกหลัก + อ่านจากรูป — **ใช้ร่วมกันทั้ง 2 บริษัท**
+          * เดิมไอโออิมีตารางของตัวเอง 27 ช่อง ซึ่งซ้ำซ้อนกับหน้าตรวจที่แก้ได้ครบอยู่แล้ว
+          * (user เคาะ 23/08/69: ทำแบบเดียวกับไทยไพบูลย์ ใช้ฟิลด์ที่มีอยู่พอ)
+          * ต่างกันจุดเดียวคือ **ไอโออิไม่มีเลขเรื่องเซอร์เวย์บนการ์ด** — ดูที่ isTPB
+          */}
+        {insuranceCompany !== '' && (
           <>
             {/* ช่องกรอกข้อมูลหลัก — แสดงเสมอ */}
             <div className="grid grid-cols-3 gap-3 mb-4">
@@ -539,10 +379,14 @@ export default function NewCasePage() {
                 <label className="block text-xs font-medium text-gray-500 mb-1">เลขเคลม</label>
                 <input value={f('claim_no')} onChange={e => s('claim_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขเคลม" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">เลขเรื่องเซอร์เวย์</label>
-                <input value={f('survey_job_no')} onChange={e => s('survey_job_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขเรื่องเซอร์เวย์" />
-              </div>
+              {/* ไอโออิไม่มีเลขนี้บนการ์ด (มีบางใบ อ่านได้ก็ใส่ให้ แต่ไม่ต้องมีช่องให้กรอกมือ)
+                  เคสที่ไม่มีเลขเซอร์เวย์สร้างได้ปกติ — ตัวตรวจเลขซ้ำข้ามค่าว่างอยู่แล้ว */}
+              {isTPB && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">เลขเรื่องเซอร์เวย์</label>
+                  <input value={f('survey_job_no')} onChange={e => s('survey_job_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขเรื่องเซอร์เวย์" />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">เลขรับแจ้ง</label>
                 <input value={f('claim_ref_no')} onChange={e => s('claim_ref_no', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="กรอกเลขรับแจ้ง" />
