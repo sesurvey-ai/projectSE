@@ -8,7 +8,7 @@ import AssignSurveyor from '@/components/cases/AssignSurveyor';
 
 // ป้ายภาษาไทยของ 5 ฟิลด์จาก OCR (flipped) — ใช้ในแบนเนอร์ "ให้ตรวจสอบ"
 const OCR_FIELD_LABELS: Record<string, string> = {
-  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2', policy_no: 'เลขกรมธรรม์', chassis_no: 'เลขตัวถัง', incident_location: 'สถานที่เกิดเหตุ', acc_customer_report_date: 'ลูกค้าแจ้ง (วันที่รับแจ้ง)',
+  claim_ref_no: 'เลขรับแจ้ง', claim_no: 'เลขเคลม', prb_number: 'เลขพรบ', survey_job_no: 'เลขเซอร์เวย์', survey_job_no_2: 'เลขเซอร์เวย์ งาน 2', policy_no: 'เลขกรมธรรม์', chassis_no: 'เลขตัวถัง', incident_location: 'สถานที่เกิดเหตุ', acc_customer_report_date: 'ลูกค้าแจ้ง (วันที่รับแจ้ง)', reporter_phone: 'เบอร์โทรผู้แจ้งเหตุ', driver_phone: 'เบอร์โทรผู้ขับขี่',
 };
 
 // บริษัทประกันที่รองรับ (เพิ่มบริษัทใหม่ = เพิ่ม entry) — value ต้องตรงกับที่ใช้เช็คเงื่อนไขฟอร์มด้านล่าง
@@ -406,6 +406,21 @@ export default function NewCasePage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">เลขเซอร์เวย์ (งาน 2)</label>
                   <input value={f('survey_job_no_2')} onChange={e => s('survey_job_no_2', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="เลขเซอร์เวย์ งาน 2" />
+                </div>
+              )}
+              {/**
+                * เบอร์โทร — คนละที่บนเอกสารของแต่ละบริษัท (user เคาะ 24/08/69)
+                *   ไทยไพบูลย์: เบอร์เดียว อยู่บรรทัด "ชื่อผู้แจ้งเหตุ" บนใบรับแจ้ง
+                *   ไอโออิ:     2 เบอร์ มีป้ายกำกับแยกบนการ์ด (ผู้แจ้งเหตุ / ผู้ขับขี่)
+                */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">เบอร์โทรผู้แจ้งเหตุ</label>
+                <input value={f('reporter_phone')} onChange={e => s('reporter_phone', e.target.value)} inputMode="tel" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="เช่น 0812345678" />
+              </div>
+              {!isTPB && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">เบอร์โทรผู้ขับขี่</label>
+                  <input value={f('driver_phone')} onChange={e => s('driver_phone', e.target.value)} inputMode="tel" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="เช่น 0812345678" />
                 </div>
               )}
               <div>

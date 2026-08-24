@@ -58,10 +58,38 @@ check('แปลงปี ค.ศ. บนการ์ดเป็น พ.ศ.', 
 check('ไม่มีเลขเซอร์เวย์ ไม่ถือเป็นสัญญาณว่าอ่านพลาด',
       /review_needed: fields\.claim_no\.confidence !== 'high' \|\| fields\.claim_received\.confidence !== 'high'/.test(svc));
 
+/**
+ * เบอร์โทร — อยู่คนละที่บนเอกสารของแต่ละบริษัท (user เคาะ 24/08/69)
+ *   ไทยไพบูลย์: เบอร์เดียว บนบรรทัด "ชื่อผู้แจ้งเหตุ" · ใบนี้มีเบอร์ผู้ขับขี่ด้วยแต่ไม่เอา
+ *   ไอโออิ:     2 เบอร์ มีป้ายกำกับแยก
+ */
+check('อ่านเบอร์ผู้แจ้งเหตุทั้ง 2 บริษัท',
+      svc.includes('"reporter_phone": the โทร number printed on the ชื่อผู้แจ้งเหตุ line')
+      && svc.includes('"reporter_phone": the value labelled เบอร์โทรผู้แจ้งเหตุ'));
+check('อ่านเบอร์ผู้ขับขี่เฉพาะไอโออิ',
+      svc.includes('"driver_phone": the value labelled เบอร์โทรผู้ขับขี่')
+      && svc.includes('const driver_phone = blankField(false)'));
+/** ใบไทยไพบูลย์มี โทร 2 บรรทัด (ผู้ขับขี่/ผู้แจ้งเหตุ) — ต้องบอกให้หยิบถูกบรรทัด */
+check('บอกให้แยกจากเบอร์บนบรรทัดผู้ขับขี่', svc.includes('take the one on the ผู้แจ้งเหตุ line'));
+/**
+ * ⛔ ห้ามแก้ตัวอักษร→ตัวเลขกับเบอร์โทรแบบที่ทำกับเลขเคลม — เบอร์ผิดตัวเดียว = โทรผิดคน
+ *    แย่กว่าเว้นว่างให้คนกรอกเอง
+ */
+check('เบอร์ที่อ่านไม่เข้ารูปแบบ = ตีธง ไม่เดา',
+      svc.includes('function flipPhone') && svc.includes('^0\\d{8,9}$'));
+
 const ctl = read('src', 'controllers', 'ocr.controller.ts');
 check('อ่านค่า insurer จากคำขอ', /req\.body\?\.insurer/.test(ctl));
 /** หน้าเว็บที่เบราว์เซอร์แคชไว้ยังไม่ส่ง insurer — ต้องทำงานเหมือนเดิม ไม่ใช่ล้ม */
 check('ไม่ส่งมา = ใช้ไทยไพบูลย์เหมือนเดิม', /\? 'AIOI' : 'TPB'/.test(ctl));
+check('ส่งเบอร์ทั้ง 2 กลับไปให้ฟอร์ม',
+      ctl.includes('reporter_phone: result.fields.reporter_phone')
+      && ctl.includes('driver_phone: result.fields.driver_phone'));
+
+const form = read('..', 'web', 'src', 'app', 'callcenter', 'cases', 'new', 'page.tsx');
+check('ฟอร์มมีช่องเบอร์ผู้แจ้งเหตุ (ทั้ง 2 บริษัท)', form.includes("f('reporter_phone')"));
+check('ช่องเบอร์ผู้ขับขี่โชว์เฉพาะไอโออิ',
+      /\{!isTPB && \([\s\S]{0,400}driver_phone/.test(form));
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);

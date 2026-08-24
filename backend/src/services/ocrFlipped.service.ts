@@ -55,7 +55,9 @@ const PROMPT_TPB =
   '- "chassis_no": the เลขตัวถัง / VIN of the insured car (17 chars, letters+digits, e.g. MR0FZ29G901234567); "" if absent\n' +
   '- "incident_location": the สถานที่เกิดเหตุ (accident/incident location as free Thai text, e.g. ถนน/แยก/ตำบล/จังหวัด); "" if absent\n' +
   '- "report_date": the วันที่รับแจ้ง (claim-received date) exactly as printed, Thai Buddhist year (e.g. 02/06/2569); "" if absent\n' +
-  '- "report_time": the เวลา (time of the วันที่รับแจ้ง) in 24-hour HH:mm (e.g. 13:21); "" if absent\n\n' +
+  '- "report_time": the เวลา (time of the วันที่รับแจ้ง) in 24-hour HH:mm (e.g. 13:21); "" if absent\n' +
+  '- "reporter_phone": the โทร number printed on the ชื่อผู้แจ้งเหตุ line (Thai mobile, 9-10 digits, e.g. 0841789288). ' +
+  'There is another โทร on the ชื่อผู้ขับขี่ line — take the one on the ผู้แจ้งเหตุ line; "" if absent\n\n' +
   'CRITICAL: Read ONLY characters that are clearly and unambiguously printed. If ANY character in a code is blurry, faded, hidden, cut off, or you are not fully certain of it, OMIT that code entirely (do not include it). Do NOT guess, complete, or reconstruct missing characters. Returning fewer/blank is better than returning a wrong code.';
 
 const SCHEMA_TPB = {
@@ -69,8 +71,10 @@ const SCHEMA_TPB = {
     incident_location: { type: Type.STRING },
     report_date: { type: Type.STRING },
     report_time: { type: Type.STRING },
+    reporter_phone: { type: Type.STRING },
+    driver_phone: { type: Type.STRING },
   },
-  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'chassis_no', 'incident_location', 'report_date', 'report_time'],
+  required: ['claim_received', 'claim_codes', 'survey_codes', 'policy_no', 'chassis_no', 'incident_location', 'report_date', 'report_time', 'reporter_phone', 'driver_phone'],
 };
 
 /**
@@ -98,7 +102,9 @@ const PROMPT_AIOI =
   '- "chassis_no": the value labelled เลขตัวถัง (letters+digits VIN); "" if absent\n' +
   '- "incident_location": the value labelled สถานที่เกิดเหตุ (free Thai text); "" if absent\n' +
   '- "report_date": the DATE part of วันที่รับแจ้ง exactly as printed (e.g. 22/08/2026 — note this card prints the Christian year); "" if absent\n' +
-  '- "report_time": the TIME part of วันที่รับแจ้ง in 24-hour HH:mm (e.g. 12:40); "" if absent\n\n' +
+  '- "report_time": the TIME part of วันที่รับแจ้ง in 24-hour HH:mm (e.g. 12:40); "" if absent\n' +
+  '- "reporter_phone": the value labelled เบอร์โทรผู้แจ้งเหตุ (Thai phone, 9-10 digits); "" if absent\n' +
+  '- "driver_phone": the value labelled เบอร์โทรผู้ขับขี่ (Thai phone, 9-10 digits); "" if absent\n\n' +
   'CRITICAL: Read ONLY characters that are clearly printed. If ANY character is blurry, cut off, or uncertain, ' +
   'return "" for that field. Do NOT guess or reconstruct. Returning blank is better than returning a wrong number.';
 
@@ -114,8 +120,10 @@ const SCHEMA_AIOI = {
     incident_location: { type: Type.STRING },
     report_date: { type: Type.STRING },
     report_time: { type: Type.STRING },
+    reporter_phone: { type: Type.STRING },
+    driver_phone: { type: Type.STRING },
   },
-  required: ['claim_received', 'claim_codes', 'prb_no', 'policy_no', 'survey_codes', 'chassis_no', 'incident_location', 'report_date', 'report_time'],
+  required: ['claim_received', 'claim_codes', 'prb_no', 'policy_no', 'survey_codes', 'chassis_no', 'incident_location', 'report_date', 'report_time', 'reporter_phone', 'driver_phone'],
 };
 
 export type OcrField = {
@@ -139,6 +147,8 @@ export type FlippedResult = {
     chassis_no: OcrField;
     incident_location: OcrField;
     customer_report: OcrField; // "ลูกค้าแจ้ง" — วันที่+เวลารับแจ้ง รวมเป็น "dd/mm/พ.ศ.|HH:mm"
+    reporter_phone: OcrField;  // เบอร์ผู้แจ้งเหตุ — มีทั้ง 2 บริษัท
+    driver_phone: OcrField;    // เบอร์ผู้ขับขี่ — เฉพาะการ์ดไอโออิ (ใบไทยไพบูลย์ไม่เอา user เคาะ 24/08/69)
   };
 };
 
@@ -198,7 +208,7 @@ async function visionText(buf: Buffer): Promise<string> {
   return resp.fullTextAnnotation?.text ?? '';
 }
 
-type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; prb_no?: string; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string };
+type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; prb_no?: string; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string; reporter_phone?: string; driver_phone?: string };
 
 // ── Gemini อ่านรูป (หลัก) + retry 429/5xx ──
 async function geminiImageMap(buf: Buffer, insurer: Insurer, tries = 6): Promise<GeminiMap> {
@@ -477,6 +487,23 @@ function flipSeabi(rawCodes: string[] | undefined, flat: string): OcrField {
   return blankField(false);
 }
 
+/**
+ * เบอร์โทร — ตัดตัวคั่นที่คนพิมพ์มา (ขีด เว้นวรรค วงเล็บ) เหลือตัวเลขล้วน
+ * ⛔ ไม่แก้ตัวอักษร→ตัวเลขแบบเลขเคลม: เบอร์ที่อ่านผิดตัวเดียว = โทรไปผิดคน
+ *    ซึ่งแย่กว่าเว้นว่างให้คนกรอกเอง → อ่านไม่เข้ารูป = ตีธง low ไม่เดา
+ * รับ 9-10 หลักขึ้นต้น 0 (มือถือ 10 · เบอร์บ้าน 9)
+ */
+function flipPhone(rawIn: string | undefined, flat: string): OcrField {
+  const raw = (rawIn || '').trim();
+  if (!raw) return blankField(false);
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (!/^0\d{8,9}$/.test(digits)) {
+    return { value: digits, raw, auto_corrected: digits !== raw, grounded: false, format_ok: false, confidence: 'low' };
+  }
+  const lvl = level(digits, raw, flat, digits.slice(-6));
+  return { value: digits, raw, auto_corrected: digits !== raw, grounded: lvl !== 'none', format_ok: true, confidence: LVL_CONF[lvl] };
+}
+
 /** ไอโออิ: ทุกเลขเป็นตัวเลขล้วนและมีป้ายชื่อช่องกำกับ → ไม่ต้องเดาว่าโค้ดไหนคืออะไร */
 function extractAioi(mapped: GeminiMap, flat: string): FlippedResult['fields'] {
   return {
@@ -489,6 +516,8 @@ function extractAioi(mapped: GeminiMap, flat: string): FlippedResult['fields'] {
     chassis_no: flipPolicy(mapped.chassis_no, flat),
     incident_location: flipText(mapped.incident_location, flat),
     customer_report: flipReportDate(mapped.report_date, mapped.report_time, flat),
+    reporter_phone: flipPhone(mapped.reporter_phone, flat),
+    driver_phone: flipPhone(mapped.driver_phone, flat),
   };
 }
 
@@ -517,6 +546,9 @@ export async function flippedExtract(imagePath: string, insurer: Insurer = 'TPB'
   const chassis_no = flipPolicy(mapped.chassis_no, flat);
   const incident_location = flipText(mapped.incident_location, flat);
   const customer_report = flipReportDate(mapped.report_date, mapped.report_time, flat);
+  const reporter_phone = flipPhone(mapped.reporter_phone, flat);
+  // ใบไทยไพบูลย์มีเบอร์ผู้ขับขี่อยู่ด้วย แต่ user เคาะ 24/08/69 ว่าเอาช่องเดียว (ผู้แจ้งเหตุ)
+  const driver_phone = blankField(false);
 
   const review_needed =
     claim_no.confidence === 'medium' || claim_no.confidence === 'low' ||
@@ -525,6 +557,6 @@ export async function flippedExtract(imagePath: string, insurer: Insurer = 'TPB'
   return {
     image: imagePath.split(/[\\/]/).pop() || imagePath,
     review_needed,
-    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, chassis_no, incident_location, customer_report },
+    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, chassis_no, incident_location, customer_report, reporter_phone, driver_phone },
   };
 }

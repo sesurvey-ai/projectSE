@@ -60,6 +60,8 @@ export const ocrController = {
         chassis_no: result.fields.chassis_no,         // เลขตัวถัง (user ระบุเป็น 1 ใน 5 เลขที่ต้องอ่าน)
         incident_location: result.fields.incident_location, // สถานที่เกิดเหตุ (โชว์บนการ์ดงานมือถือ)
         acc_customer_report_date: result.fields.customer_report, // "ลูกค้าแจ้ง" — วันที่+เวลารับแจ้ง (dd/mm/พ.ศ.|HH:mm) → ไทม์ไลน์งานมือถือ
+        reporter_phone: result.fields.reporter_phone,   // เบอร์ผู้แจ้งเหตุ — คนจ่ายงาน/ช่างใช้โทรกลับ
+        driver_phone: result.fields.driver_phone,       // เบอร์ผู้ขับขี่ (การ์ดไอโออิเท่านั้น)
       };
       const fields: Record<string, string> = {};
       const confidence: Record<string, string> = {};
