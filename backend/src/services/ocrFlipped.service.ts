@@ -14,7 +14,7 @@ import fs from 'fs';
 import { GoogleGenAI, Type } from '@google/genai';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { env } from '../config/env';
-import { normalizeProvince, normalizeDistrict } from './geoProvince';
+import { normalizeProvince, normalizeDistrict, provinceOf } from './geoProvince';
 import { withTimeout, OCR_CALL_TIMEOUT_MS } from './ocrClients';
 
 const GEMINI_MODEL = env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
@@ -111,7 +111,9 @@ const PROMPT_AIOI =
   '- "reporter_phone": the value labelled เบอร์โทรผู้แจ้งเหตุ (Thai phone, 9-10 digits); "" if absent\n' +
   '- "driver_phone": the value labelled เบอร์โทรผู้ขับขี่ (Thai phone, 9-10 digits); "" if absent\n' +
   '- "province": the จังหวัด of the สถานที่เกิดเหตุ block (the FIRST one, not the green สถานที่ตรวจสอบ block below it); "" if absent\n' +
-  '- "district": the อำเภอ of that same สถานที่เกิดเหตุ block; "" if absent\n\n' +
+  '- "district": the อำเภอ of that same สถานที่เกิดเหตุ block; "" if absent\n' +
+  '- "latlng": the value labelled LatLng, copied exactly (e.g. 13.3690725,101.0404487). ' +
+  'Take the one under the สถานที่เกิดเหตุ block, not the green สถานที่ตรวจสอบ block; "" if absent\n\n' +
   'CRITICAL: Read ONLY characters that are clearly printed. If ANY character is blurry, cut off, or uncertain, ' +
   'return "" for that field. Do NOT guess or reconstruct. Returning blank is better than returning a wrong number.';
 
@@ -131,8 +133,9 @@ const SCHEMA_AIOI = {
     driver_phone: { type: Type.STRING },
     province: { type: Type.STRING },
     district: { type: Type.STRING },
+    latlng: { type: Type.STRING },
   },
-  required: ['claim_received', 'claim_codes', 'prb_no', 'policy_no', 'survey_codes', 'chassis_no', 'incident_location', 'report_date', 'report_time', 'reporter_phone', 'driver_phone', 'province', 'district'],
+  required: ['claim_received', 'claim_codes', 'prb_no', 'policy_no', 'survey_codes', 'chassis_no', 'incident_location', 'report_date', 'report_time', 'reporter_phone', 'driver_phone', 'province', 'district', 'latlng'],
 };
 
 export type OcrField = {
@@ -160,6 +163,8 @@ export type FlippedResult = {
     driver_phone: OcrField;    // เบอร์ผู้ขับขี่ — เฉพาะการ์ดไอโออิ (ใบไทยไพบูลย์ไม่เอา user เคาะ 24/08/69)
     acc_province: OcrField;    // จังหวัดที่เกิดเหตุ — ใช้จัดกลุ่มช่างตอนจ่ายงาน
     acc_district: OcrField;    // อำเภอ/เขตที่เกิดเหตุ
+    incident_lat: OcrField;    // พิกัดที่เกิดเหตุ — การ์ดไอโออิพิมพ์มาให้ (ใบไทยไพบูลย์ไม่มี)
+    incident_lng: OcrField;
   };
 };
 
@@ -219,7 +224,7 @@ async function visionText(buf: Buffer): Promise<string> {
   return resp.fullTextAnnotation?.text ?? '';
 }
 
-type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; prb_no?: string; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string; reporter_phone?: string; driver_phone?: string; province?: string; district?: string };
+type GeminiMap = { claim_received?: string; claim_codes?: string[]; survey_codes?: string[]; prb_no?: string; policy_no?: string; chassis_no?: string; incident_location?: string; report_date?: string; report_time?: string; reporter_phone?: string; driver_phone?: string; province?: string; district?: string; latlng?: string };
 
 // ── Gemini อ่านรูป (หลัก) + retry 429/5xx ──
 async function geminiImageMap(buf: Buffer, insurer: Insurer, tries = 6): Promise<GeminiMap> {
@@ -539,6 +544,28 @@ function flipDistrict(rawIn: string | undefined, province: string | null, flat: 
   return { value: name, raw, auto_corrected: name !== raw, grounded, format_ok: true, confidence: grounded ? 'high' : 'medium' };
 }
 
+/**
+ * "13.3690725,101.0404487" → พิกัด 2 ช่อง
+ *
+ * ⛔ ต้องเช็คว่าจุดตกในประเทศไทยจริง — พิกัดมั่วจะทำให้ระยะทางเพี้ยนทั้งรายการ
+ *    แล้วคนจ่ายงานเลือกคนผิด (แย่กว่าไม่มีพิกัดเลย ซึ่งจะตกไปใช้การจัดกลุ่มตามจังหวัดแทน)
+ */
+function flipLatLng(rawIn: string | undefined): [OcrField, OcrField] {
+  const raw = (rawIn || '').trim();
+  if (!raw) return [blankField(false), blankField(false)];
+  const m = /(-?\d{1,2}\.\d+)\s*,\s*(-?\d{2,3}\.\d+)/.exec(raw);
+  const bad: [OcrField, OcrField] = [
+    { value: '', raw, auto_corrected: false, grounded: false, format_ok: false, confidence: 'low' },
+    blankField(false),
+  ];
+  if (!m) return bad;
+  const lat = m[1], lng = m[2];
+  if (!provinceOf(lat, lng)) return bad;   // ไม่ตกในจังหวัดไหนของไทย = ใช้ไม่ได้
+  const f = (v: string): OcrField =>
+    ({ value: v, raw, auto_corrected: false, grounded: true, format_ok: true, confidence: 'high' });
+  return [f(lat), f(lng)];
+}
+
 /** ไอโออิ: ทุกเลขเป็นตัวเลขล้วนและมีป้ายชื่อช่องกำกับ → ไม่ต้องเดาว่าโค้ดไหนคืออะไร */
 function extractAioi(mapped: GeminiMap, flat: string): FlippedResult['fields'] {
   return {
@@ -555,7 +582,8 @@ function extractAioi(mapped: GeminiMap, flat: string): FlippedResult['fields'] {
     driver_phone: flipPhone(mapped.driver_phone, flat),
     ...(() => {
       const [acc_province, prov] = flipProvince(mapped.province, flat);
-      return { acc_province, acc_district: flipDistrict(mapped.district, prov, flat) };
+      const [incident_lat, incident_lng] = flipLatLng(mapped.latlng);
+      return { acc_province, acc_district: flipDistrict(mapped.district, prov, flat), incident_lat, incident_lng };
     })(),
   };
 }
@@ -588,6 +616,9 @@ export async function flippedExtract(imagePath: string, insurer: Insurer = 'TPB'
   const reporter_phone = flipPhone(mapped.reporter_phone, flat);
   const [acc_province, _prov] = flipProvince(mapped.province, flat);
   const acc_district = flipDistrict(mapped.district, _prov, flat);
+  // ใบไทยไพบูลย์ไม่มีพิกัดพิมพ์มาด้วย → หน้าจ่ายงานตกไปใช้การจัดกลุ่มตามจังหวัดแทน
+  const incident_lat = blankField(false);
+  const incident_lng = blankField(false);
   // ใบไทยไพบูลย์มีเบอร์ผู้ขับขี่อยู่ด้วย แต่ user เคาะ 24/08/69 ว่าเอาช่องเดียว (ผู้แจ้งเหตุ)
   const driver_phone = blankField(false);
 
@@ -598,6 +629,6 @@ export async function flippedExtract(imagePath: string, insurer: Insurer = 'TPB'
   return {
     image: imagePath.split(/[\\/]/).pop() || imagePath,
     review_needed,
-    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, chassis_no, incident_location, customer_report, reporter_phone, driver_phone, acc_province, acc_district },
+    fields: { claim_received, claim_no, prb_no, survey_no, survey_no_2, policy_no, chassis_no, incident_location, customer_report, reporter_phone, driver_phone, acc_province, acc_district, incident_lat, incident_lng },
   };
 }

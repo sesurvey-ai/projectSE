@@ -98,5 +98,30 @@ check('บอกด้วยว่าไม่มีใครอยู่จั�
 /** ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน */
 check('โชว์ว่าพิกัดอัปเดตเมื่อไหร่', /const freshness =/.test(assign) && assign.includes('อัปเดต '));
 
+console.log('\n── มีพิกัดบนการ์ด → เรียงตามระยะทางจริง ──');
+const ocr = read('src', 'services', 'ocrFlipped.service.ts');
+check('อ่าน LatLng จากการ์ดไอโออิ', ocr.includes('"latlng": the value labelled LatLng'));
+/** การ์ดมี 2 บล็อกสถานที่ (ที่เกิดเหตุ / ที่ตรวจสอบ) — หยิบผิดบล็อกได้ระยะทางผิด */
+check('บอกให้หยิบพิกัดของบล็อก "ที่เกิดเหตุ"', ocr.includes('not the green สถานที่ตรวจสอบ block'));
+/** ⛔ พิกัดมั่ว = ระยะทางเพี้ยนทั้งรายการ แล้วคนจ่ายงานเลือกคนผิด — แย่กว่าไม่มีพิกัด */
+check('พิกัดที่ไม่ตกในไทย = ทิ้ง ไม่เอาไปใช้', /if \(!provinceOf\(lat, lng\)\) return bad/.test(ocr));
+check('ใบไทยไพบูลย์ไม่มีพิกัด = ว่าง (ตกไปใช้การจัดกลุ่มตามจังหวัด)',
+      /const incident_lat = blankField\(false\)/.test(ocr));
+
+const ctl2 = read('src', 'controllers', 'ocr.controller.ts');
+check('ส่งพิกัดกลับไปให้ฟอร์มสร้างเคส',
+      ctl2.includes('incident_lat: result.fields.incident_lat')
+      && ctl2.includes('incident_lng: result.fields.incident_lng'));
+
+/**
+ * ⛔ มีพิกัดแล้วต้อง **ไม่** แบ่งกลุ่มจังหวัดซ้อนอีก — คนที่ห่างแค่ 3 กม. แต่คนละฝั่ง
+ *    เส้นแบ่งจังหวัดจะถูกพับไปอยู่ใน "ช่างคนอื่น" ซึ่งกลับหัวกลับหางกับที่ต้องการ
+ */
+check('มีพิกัด → เรียงระยะทางล้วน ไม่แบ่งจังหวัดซ้อน',
+      /const byDistance = incidentLat !== undefined && incidentLng !== undefined/.test(assign)
+      && /!byDistance && incidentProvince \? sorted\.filter/.test(assign));
+check('ไม่มีพิกัด → กลับไปจัดกลุ่มตามจังหวัดเหมือนเดิม',
+      /\{!byDistance && incidentProvince && others\.length > 0 && \(/.test(assign));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);

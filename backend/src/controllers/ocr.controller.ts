@@ -64,6 +64,9 @@ export const ocrController = {
         driver_phone: result.fields.driver_phone,       // เบอร์ผู้ขับขี่ (การ์ดไอโออิเท่านั้น)
         acc_province: result.fields.acc_province,      // จังหวัดที่เกิดเหตุ — หน้าจ่ายงานใช้จัดกลุ่มช่าง
         acc_district: result.fields.acc_district,      // อำเภอ/เขตที่เกิดเหตุ
+        // พิกัดที่เกิดเหตุ (การ์ดไอโออิพิมพ์มาให้) → หน้าจ่ายงานเรียงช่างตามระยะทางจริงได้
+        incident_lat: result.fields.incident_lat,
+        incident_lng: result.fields.incident_lng,
       };
       const fields: Record<string, string> = {};
       const confidence: Record<string, string> = {};

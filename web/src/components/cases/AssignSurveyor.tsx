@@ -157,8 +157,14 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
    *
    * แบ่งที่ระดับ**จังหวัด ไม่ใช่อำเภอ** ด้วยเหตุผลเดียวกัน (อำเภอแคบไป จะว่างบ่อยมาก)
    */
-  const inProvince = incidentProvince ? sorted.filter((x) => x.province === incidentProvince) : [];
-  const others = incidentProvince ? sorted.filter((x) => x.province !== incidentProvince) : sorted;
+  /**
+   * มีพิกัดที่เกิดเหตุ (การ์ดไอโออิพิมพ์มาให้) → **เรียงตามระยะทางล้วน ไม่ต้องแบ่งจังหวัด**
+   * เพราะระยะทางบอกได้ตรงกว่า และถ้าแบ่งจังหวัดด้วย คนที่อยู่ห่างแค่ 3 กม.
+   * แต่คนละฝั่งเส้นแบ่งจังหวัดจะถูกพับไปอยู่ในกลุ่ม "ช่างคนอื่น" ซึ่งกลับหัวกลับหาง
+   */
+  const byDistance = incidentLat !== undefined && incidentLng !== undefined;
+  const inProvince = !byDistance && incidentProvince ? sorted.filter((x) => x.province === incidentProvince) : [];
+  const others = !byDistance && incidentProvince ? sorted.filter((x) => x.province !== incidentProvince) : sorted;
   const [showOthers, setShowOthers] = useState(false);
 
   /** พิกัดอัปเดตเมื่อไหร่ — ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน */
@@ -245,7 +251,11 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           <div className="text-center py-8 text-gray-500">{requestSent ? 'กำลังรอข้อมูลพิกัดจากช่างสำรวจ...' : 'กดปุ่ม "เรียกพิกัด" เพื่อดูตำแหน่งช่างสำรวจ'}</div>
         ) : (
           <div className="space-y-3 xl:max-h-[520px] xl:overflow-y-auto xl:pr-1">
-            {incidentProvince && (
+            {byDistance ? (
+              <div className="text-xs text-gray-500">
+                เรียงตามระยะทางจากที่เกิดเหตุ{incidentProvince ? ` (${incidentProvince})` : ''} — ใกล้สุดขึ้นก่อน
+              </div>
+            ) : incidentProvince && (
               <div className="text-xs text-gray-500">
                 ที่เกิดเหตุอยู่ <span className="font-medium text-gray-700">{incidentProvince}</span>
                 {inProvince.length === 0 && ' — ไม่มีใครรายงานพิกัดจากจังหวัดนี้ (ดูรายชื่อทั้งหมดข้างล่าง)'}
@@ -254,7 +264,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
 
             {inProvince.map(row)}
 
-            {incidentProvince && others.length > 0 && (
+            {!byDistance && incidentProvince && others.length > 0 && (
               <>
                 <button type="button" onClick={() => setShowOthers((v) => !v)}
                   className="w-full text-left text-sm text-gray-500 hover:text-gray-700 border-t border-gray-200 pt-3">
@@ -264,7 +274,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
                 {showOthers && others.map(row)}
               </>
             )}
-            {!incidentProvince && others.map(row)}
+            {(byDistance || !incidentProvince) && others.map(row)}
           </div>
         )}
         </div>
