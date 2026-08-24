@@ -27,6 +27,8 @@ interface SurveyorLocation {
   username: string;
   first_name?: string;
   last_name?: string;
+  /** รหัสพนักงาน — โชว์คู่ชื่อให้ตรงกับรายชื่อด้านล่างแผนที่ */
+  code?: string | null;
   latitude: number;
   longitude: number;
   distance?: number;
@@ -92,7 +94,7 @@ export default function SurveyorMap({ surveyors, incidentLat, incidentLng, autoF
       {surveyors.map((s) => (
         <Marker key={s.user_id} position={[s.latitude, s.longitude]}>
           <Popup>
-            <strong>{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</strong>
+            <strong>{s.code ? `${s.code} ` : ''}{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</strong>
             {s.distance !== undefined && <br />}
             {s.distance !== undefined && `ระยะทาง: ${s.distance.toFixed(2)} กม.`}
           </Popup>

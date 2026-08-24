@@ -13,6 +13,8 @@ interface SurveyorLocation {
   username: string;
   first_name?: string;
   last_name?: string;
+  /** รหัสพนักงาน (SE###/SEC###) — ใช้ระบุตัวคนได้แน่กว่าชื่อ และตรงกับที่ใช้เรียกกันในงาน */
+  code?: string | null;
   latitude: number;
   longitude: number;
   distance?: number;
@@ -177,7 +179,13 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
             {sorted.map((s) => (
               <div key={s.user_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <div>
-                  <h3 className="font-medium text-gray-800">{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</h3>
+                  <h3 className="font-medium text-gray-800 flex items-center gap-2">
+                    {/* รหัสพนักงานมาก่อนชื่อ — ชื่อซ้ำกันได้ รหัสไม่ซ้ำ และเป็นตัวที่ใช้เรียกกันในงานจริง */}
+                    {s.code && (
+                      <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-mono tracking-tight">{s.code}</span>
+                    )}
+                    <span>{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</span>
+                  </h3>
                   <p className="text-sm text-gray-500">พิกัด: {Number(s.latitude).toFixed(6)}, {Number(s.longitude).toFixed(6)}</p>
                   {s.distance !== undefined && <p className="text-sm text-blue-600">ระยะทาง: {Number(s.distance).toFixed(2)} กม.</p>}
                 </div>

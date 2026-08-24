@@ -13,7 +13,7 @@ export const locationService = {
   async getLatest() {
     const result = await db.query(
       `SELECT DISTINCT ON (sl.user_id)
-         sl.*, u.first_name, u.last_name, u.username
+         sl.*, u.first_name, u.last_name, u.username, u.code
        FROM surveyor_locations sl
        JOIN users u ON sl.user_id = u.id
        WHERE u.is_active = true AND u.role = 'surveyor'
@@ -27,7 +27,7 @@ export const locationService = {
     const result = await db.query(
       `SELECT * FROM (
          SELECT DISTINCT ON (sl.user_id)
-           sl.*, u.first_name, u.last_name, u.username,
+           sl.*, u.first_name, u.last_name, u.username, u.code,
            (6371 * acos(
              LEAST(1.0, cos(radians($1)) * cos(radians(sl.latitude))
              * cos(radians(sl.longitude) - radians($2))

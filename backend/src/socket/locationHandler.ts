@@ -54,7 +54,7 @@ export function setupLocationHandler(io: Server, socket: Socket) {
       try {
         await locationService.saveLocation(user.id, data.latitude, data.longitude, data.request_id);
 
-        const userResult = await db.query('SELECT first_name, last_name FROM users WHERE id = $1', [user.id]);
+        const userResult = await db.query('SELECT first_name, last_name, code FROM users WHERE id = $1', [user.id]);
         const userInfo = userResult.rows[0] || {};
 
         io.to('role:callcenter').emit('location_update', {
@@ -62,6 +62,8 @@ export function setupLocationHandler(io: Server, socket: Socket) {
           username: user.username,
           first_name: userInfo.first_name,
           last_name: userInfo.last_name,
+          // รหัสพนักงาน — คนจ่ายงานใช้ระบุตัวคนได้แน่กว่าชื่อ (ชื่อซ้ำกันได้)
+          code: userInfo.code ?? null,
           latitude: data.latitude,
           longitude: data.longitude,
           request_id: data.request_id,

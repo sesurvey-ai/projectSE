@@ -27,7 +27,7 @@ export const userController = {
     await locationService.saveLocation(userId, latitude, longitude, request_id);
 
     // ดึงชื่อ user
-    const userResult = await db.query('SELECT username, first_name, last_name FROM users WHERE id = $1', [userId]);
+    const userResult = await db.query('SELECT username, first_name, last_name, code FROM users WHERE id = $1', [userId]);
     const userInfo = userResult.rows[0] || {};
 
     // ส่ง location_update ไปหา Call Center ผ่าน Socket.IO
@@ -38,6 +38,8 @@ export const userController = {
         username: userInfo.username,
         first_name: userInfo.first_name,
         last_name: userInfo.last_name,
+        // รหัสพนักงาน — คนจ่ายงานใช้ระบุตัวคนได้แน่กว่าชื่อ (ชื่อซ้ำกันได้)
+        code: userInfo.code ?? null,
         latitude,
         longitude,
         request_id: request_id || null,
