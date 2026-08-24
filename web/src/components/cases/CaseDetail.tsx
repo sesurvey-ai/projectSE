@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
 import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
@@ -474,6 +474,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const [auditOpen, setAuditOpen] = useState(false);
   const [audit, setAudit] = useState<Record<string, string>[] | null>(null);
+  const loadAudit = useCallback(async () => {
+    try {
+      const r = await api.get(`/api/cases/${caseData.id}/money-audit`);
+      setAudit(r.data?.success ? r.data.data : []);
+    } catch { setAudit([]); }
+  }, [caseData.id]);
   const formRef = useRef<HTMLFormElement>(null);
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -1093,6 +1099,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (res.data.success) {
         // เก็บ rev ใหม่ทันที ไม่งั้นกดบันทึกซ้ำจะเด้ง "มีคนบันทึกคั่น" ใส่ตัวเอง
         if (typeof res.data.data?.rev === 'number') setRev(res.data.data.rev);
+        /**
+         * บันทึกแล้วประวัติยอดเงินเปลี่ยนแน่นอน — ต้องทิ้งของที่โหลดไว้
+         * ไม่งั้นกางแผงดูจะเห็นภาพก่อนบันทึก แล้วนึกว่าระบบไม่ได้เก็บ (เจอจริง 24/08/69)
+         * กางอยู่ = โหลดใหม่ทันที · ปิดอยู่ = ล้างทิ้ง ค่อยโหลดตอนกางครั้งหน้า
+         */
+        if (auditOpen) loadAudit(); else setAudit(null);
         setSaveMsg('บันทึกสำเร็จ'); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true;
       }
       setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || '')); return false;
@@ -2567,12 +2579,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   onClick={async () => {
                     const next = !auditOpen;
                     setAuditOpen(next);
-                    if (next && audit === null) {
-                      try {
-                        const r = await api.get(`/api/cases/${caseData.id}/money-audit`);
-                        setAudit(r.data?.success ? r.data.data : []);
-                      } catch { setAudit([]); }
-                    }
+                    if (next && audit === null) await loadAudit();
                   }}
                   className="text-gray-500 hover:text-gray-700">
                   {auditOpen ? '▾' : '▸'} ประวัติการแก้ยอดเงิน
