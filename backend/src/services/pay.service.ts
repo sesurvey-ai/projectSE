@@ -1,6 +1,7 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { assertReportRev } from './reportRev';
+import { recordMoneyChanges } from './moneyAudit';
 
 /**
  * คิดค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — พอร์ตจาก se-billing `content.js`
@@ -339,7 +340,16 @@ export async function saveCasePay(
     ].filter(Boolean),
   };
 
-  const r = await db.query(
+  /**
+   * ห่อ transaction เดียวกับการเขียนประวัติ — ประวัติยอดเงินที่ขาดหายเป็นช่วง ๆ
+   * แย่กว่าไม่มีเลย เพราะทำให้เชื่อสิ่งที่เห็นไม่ได้
+   */
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const prev = await client.query('SELECT * FROM survey_pay WHERE case_id = $1', [caseId]);
+
+  const r = await client.query(
     `INSERT INTO survey_pay (case_id, service_fee, travel_fee, photo_fee, phone_fee, bail_fee,
         claim_fee, daily_fee, other_fee, other_reason, out_of_area, out_of_hours,
         special_tumbon, daily_check, total, rate_snapshot, priced_by,
@@ -365,5 +375,17 @@ export async function saveCasePay(
      JSON.stringify(snapshot), userId ?? null,
      money[PAY_DEDUCT_FIELD], Boolean(input.deduct_late), Boolean(input.deduct_docs),
      input.deduct_reason ?? null, areaAmt, hoursAmt]);
-  return r.rows[0];
+
+    await recordMoneyChanges(client, {
+      caseId, kind: 'pay', userId: userId ?? null,
+      before: prev.rows[0], after: r.rows[0],
+    });
+    await client.query('COMMIT');
+    return r.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }

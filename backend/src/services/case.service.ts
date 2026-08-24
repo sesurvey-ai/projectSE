@@ -9,6 +9,7 @@ import type { XmlImportResult } from './xmlImport.service';
 import { assertReportRev } from './reportRev';
 import { notifyCaseChanged } from './caseEvents';
 import { provinceOf } from './geoProvince';
+import { recordMoneyChanges } from './moneyAudit';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -1502,6 +1503,15 @@ export const caseService = {
         reportUpdated = fields.length - 1;   // ไม่นับ updated_by ที่ระบบเติมให้เอง
       }
 
+      /**
+       * จำยอดเดิมไว้ก่อนลบ — ตารางนี้เขียนด้วยท่า "ลบทิ้งแล้วใส่ใหม่" ทุกครั้ง
+       * ถ้าไม่จำไว้ก่อน จะแยกไม่ออกว่า "ผู้ตรวจแก้ 400 → 600" กับ "ลบทิ้งแล้วใส่ 600"
+       */
+      const expenseBefore = expenseSubmitted
+        ? (await client.query('SELECT * FROM survey_expenses WHERE report_id = $1', [reportId])).rows[0] ?? null
+        : null;
+      const expenseAfter: Record<string, unknown> = {};
+
       if (expenseSubmitted) {
         // ล้างก่อนเสมอเมื่อฟอร์มค่าใช้จ่ายถูกส่งมา — ถ้าไม่มีค่าเหลือเลยก็จบแค่ลบ (= ล้างบิล)
         await client.query('DELETE FROM survey_expenses WHERE report_id = $1', [reportId]);
@@ -1516,10 +1526,19 @@ export const caseService = {
             const raw = rd[f];
             const clean = raw === '' ? null : (f === 'other_fee_detail' ? raw : String(raw).replace(/,/g, ''));
             eVals.push(clean);
+            expenseAfter[f] = clean;
           }
         }
         const ePlaceholders = eVals.map((_, i) => `$${i + 1}`).join(', ');
         await client.query(`INSERT INTO survey_expenses (${eCols.join(', ')}) VALUES (${ePlaceholders})`, eVals);
+      }
+
+      // ประวัติยอดเรียกเก็บประกัน — เขียนใน transaction เดียวกับยอด ไม่งั้นประวัติขาดเป็นช่วง ๆ
+      if (expenseSubmitted) {
+        await recordMoneyChanges(client, {
+          caseId, kind: 'expense', userId: opts.userId ?? null,
+          before: expenseBefore, after: expenseAfter,
+        });
       }
 
       // rev ใหม่หลังบันทึก — หน้าเว็บต้องเก็บไว้ใช้กับการบันทึกครั้งถัดไป

@@ -276,5 +276,7 @@ router.delete('/:id/photos/:photoId', auth, requireRole('checker', 'admin'),
 // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — เฉพาะผู้ตรวจ ผู้สำรวจไม่เกี่ยวกับการตั้งยอดจ่ายตัวเอง
 router.get('/:id/pay', auth, requireRole('checker', 'admin'), caseController.getPay);
 router.put('/:id/pay', auth, requireRole('checker', 'admin'), caseController.savePay);
+// ประวัติการแก้ยอดเงินของเคส — ไว้ตามย้อนหลังว่า "คนแก้" หรือ "บั๊กกลืนข้อมูล"
+router.get('/:id/money-audit', auth, requireRole('checker', 'admin'), caseController.moneyAudit);
 
 export default router;

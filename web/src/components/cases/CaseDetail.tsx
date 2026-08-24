@@ -468,6 +468,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [conflict, setConflict] = useState('');
   // ค่าตอบแทนผู้สำรวจ (ฝั่งจ่ายพนักงาน) — คนละฝั่งเงินกับตาราง survey_expenses ข้างบน
   const [pay, setPay] = useState<PayData | null>(null);
+  /**
+   * ประวัติการแก้ยอดเงิน — โหลดตอนกางเท่านั้น ไม่ดึงมาพร้อมหน้า
+   * (ส่วนใหญ่ไม่มีใครเปิดดู ดึงทุกครั้งคือยิงเปล่า)
+   */
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [audit, setAudit] = useState<Record<string, string>[] | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -2549,6 +2555,55 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     แปลงจังหวัด/อำเภอของเคสนี้เป็นรหัสพื้นที่ไม่ได้ — หาเรทอัตโนมัติไม่ได้ กรอกยอดเองได้ตามปกติ
                   </div>
                 ))}
+              </div>
+
+              {/**
+                * ── ประวัติการแก้ยอดเงิน ──
+                * มีไว้แยกให้ออกว่า "คนแก้" หรือ "บั๊กกลืนข้อมูล" — เดือน ส.ค. 69 เดือนเดียว
+                * เจอบั๊กที่ยอดหายเงียบ ๆ 2 ตัว กว่าจะรู้ต้องมีคนบังเอิญสังเกต
+                */}
+              <div className="mt-3 border-t border-gray-200 pt-2 text-sm">
+                <button type="button"
+                  onClick={async () => {
+                    const next = !auditOpen;
+                    setAuditOpen(next);
+                    if (next && audit === null) {
+                      try {
+                        const r = await api.get(`/api/cases/${caseData.id}/money-audit`);
+                        setAudit(r.data?.success ? r.data.data : []);
+                      } catch { setAudit([]); }
+                    }
+                  }}
+                  className="text-gray-500 hover:text-gray-700">
+                  {auditOpen ? '▾' : '▸'} ประวัติการแก้ยอดเงิน
+                </button>
+                {auditOpen && (
+                  audit === null ? <div className="text-xs text-gray-400 mt-1">กำลังโหลด...</div>
+                  : audit.length === 0 ? (
+                    <div className="text-xs text-gray-400 mt-1">
+                      ยังไม่มีประวัติ — เริ่มเก็บตั้งแต่ 24/08/69 การแก้ก่อนหน้านั้นไม่ได้บันทึกไว้
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-1 max-h-56 overflow-y-auto pr-1">
+                      {audit.map((a2, i) => (
+                        <div key={i} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                          <span className="text-gray-400 tabular-nums">{a2.at}</span>
+                          <span className="text-gray-700">{a2.by_name}</span>
+                          <span className="text-gray-400">·</span>
+                          <span className="text-gray-500">{a2.side}</span>
+                          <span className="font-medium text-gray-800">{a2.label}</span>
+                          <span className="text-gray-500">
+                            {a2.old_value ?? '(ว่าง)'} <span className="text-gray-400">→</span>{' '}
+                            {/* ยอดที่หายไปเฉย ๆ คือสัญญาณที่ต้องเห็นชัดที่สุด */}
+                            <span className={a2.new_value ? 'text-gray-800' : 'text-red-600 font-medium'}>
+                              {a2.new_value ?? '(ว่าง)'}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
               </div>
 
               {/* ยอดสะสมทั้งเคลม — EMCS มีช่องนี้อยู่ (ยอดรวมข้ามทุกครั้งของเลขเคลมเดียวกัน)

@@ -6,6 +6,7 @@ import { sendSuccess } from '../utils/response';
 import { asyncHandler } from '../utils/asyncHandler';
 import { parseIsurveyXml } from '../services/xmlImport.service';
 import { AppError } from '../middleware/errorHandler';
+import { getMoneyAudit } from '../services/moneyAudit';
 
 export const caseController = {
   create: asyncHandler(async (req: Request, res: Response) => {
@@ -149,6 +150,11 @@ export const caseController = {
     const caseId = parseInt(req.params.id as string);
     const body = (req.body ?? {}) as Record<string, unknown>;
     sendSuccess(res, await payService.saveCasePay(caseId, body, req.user?.id, body.base_rev));
+  }),
+
+  /** ประวัติการแก้ยอดเงินของเคส (ใหม่→เก่า) */
+  moneyAudit: asyncHandler(async (req: Request, res: Response) => {
+    sendSuccess(res, await getMoneyAudit(parseInt(req.params.id as string)));
   }),
 
   /** ใบเบิกเงินค่าตอบแทนผู้สำรวจ (.xlsx) — กรองตามช่วงวันที่คิดเงิน */
