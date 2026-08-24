@@ -6,6 +6,7 @@ import { auth } from '../middleware/auth';
 import { requireRole } from '../middleware/role';
 import { validate } from '../middleware/validate';
 import { upload, uploadXmlZip, uploadCasePhotos } from '../config/multer';
+import { numericOrBlank } from '../utils/numericField';
 
 const router = Router();
 
@@ -13,8 +14,13 @@ const createCaseSchema = z.object({
   customer_name: z.string().optional().default(''),        // ไม่บังคับแล้ว (TPB อ่านจากรูป) — DB NOT NULL รับ '' ได้
   insurance_company: z.string().optional(),
   incident_location: z.string().optional().default(''),    // ไม่บังคับแล้ว (อ่านจากรูป)
-  incident_lat: z.number().optional(),
-  incident_lng: z.number().optional(),
+  /**
+   * พิกัดที่เกิดเหตุ — รับได้ทั้งตัวเลขและข้อความตัวเลข
+   * ฟอร์มเว็บเก็บทุกช่องเป็นข้อความ (ค่าที่อ่านจากการ์ดไอโออิก็มาเป็นข้อความ)
+   * ⛔ อย่าใช้ z.coerce.number() เฉย ๆ — ค่าว่างจะกลายเป็น 0 แล้วเคสไปโผล่กลางอ่าวกินี
+   */
+  incident_lat: numericOrBlank,
+  incident_lng: numericOrBlank,
   // ข้อมูลเบื้องต้นจากใบเคลม (optional ทั้งหมด)
   survey_company: z.string().optional(),
   survey_company_address: z.string().optional(),

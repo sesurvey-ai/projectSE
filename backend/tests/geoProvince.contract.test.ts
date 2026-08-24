@@ -9,6 +9,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { provinceOf, normalizeProvince, normalizeDistrict, PROVINCE_NAMES } from '../src/services/geoProvince';
+import { numericOrBlank } from '../src/utils/numericField';
 
 let failed = 0;
 const check = (label: string, ok: boolean, note = '') => {
@@ -122,6 +123,24 @@ check('มีพิกัด → เรียงระยะทางล้ว�
       && /!byDistance && incidentProvince \? sorted\.filter/.test(assign));
 check('ไม่มีพิกัด → กลับไปจัดกลุ่มตามจังหวัดเหมือนเดิม',
       /\{!byDistance && incidentProvince && others\.length > 0 && \(/.test(assign));
+
+console.log('\n── พิกัดที่ส่งมาเป็นข้อความ ──');
+/**
+ * ฟอร์มเว็บเก็บทุกช่องเป็นข้อความ · ค่าที่อ่านจากการ์ดก็เป็นข้อความ
+ * เจอจริง 24/08/69: สร้างเคสไอโออิไม่ได้เลย "incident_lat: Expected number, received string"
+ */
+for (const [label, input, want] of [
+  ['ข้อความตัวเลขจากการ์ด', '13.7541973', 13.7541973],
+  ['ตัวเลขจริง', 13.7541973, 13.7541973],
+  ['มีช่องว่างหน้าหลัง', ' 100.51 ', 100.51],
+  // ⛔ สำคัญสุด — ว่างต้องเป็น "ไม่ส่งค่า" ไม่ใช่ 0 · พิกัด (0,0) = กลางอ่าวกินี
+  //    ระยะทางจะเพี้ยนทั้งรายการโดยไม่มีอะไรฟ้อง (นี่คือเหตุผลที่ห้ามใช้ z.coerce.number())
+  ['ค่าว่าง → ไม่ส่งค่า ไม่ใช่ 0', '', undefined],
+  ['อ่านไม่ออก → ไม่ส่งค่า', 'abc', undefined],
+] as [string, unknown, unknown][]) {
+  const r = numericOrBlank.safeParse(input);
+  check(`${label}`, r.success && r.data === want, String(r.success ? r.data : 'ERROR'));
+}
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);

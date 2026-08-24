@@ -286,7 +286,11 @@ export default function NewCasePage() {
       if (ocrImagePaths.length > 0) payload.ocr_image_paths = ocrImagePaths;
       for (const [key, val] of Object.entries(form)) {
         if (val.trim()) {
-          payload[key] = key === 'deductible' ? (parseFloat(val) || 0) : val.trim();
+          // ช่องที่ฐานข้อมูลเก็บเป็นตัวเลข — ฟอร์มถือทุกค่าเป็นข้อความ ต้องแปลงก่อนส่ง
+          // (พิกัดมาจากการ์ดไอโออิเป็นข้อความ ส่งดิบ ๆ แล้วโดนตีกลับ "Expected number")
+          payload[key] = key === 'deductible' ? (parseFloat(val) || 0)
+            : (key === 'incident_lat' || key === 'incident_lng') ? parseFloat(val)
+            : val.trim();
         }
       }
       const res = await api.post('/api/cases', payload);
