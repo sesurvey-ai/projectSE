@@ -165,17 +165,27 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">แผนที่ตำแหน่งช่างสำรวจ</h2>
-        <SurveyorMap surveyors={sorted} incidentLat={incidentLat} incidentLng={incidentLng} />
-      </div>
+      {/**
+        * แผนที่ซ้าย รายชื่อขวา — เดิมวางซ้อนกัน ต้องเลื่อนผ่านแผนที่ทั้งจอกว่าจะเห็นรายชื่อ
+        * และเห็นทีละ 4-5 คนจากทั้งหมด 35 คน
+        * แยก 2 คอลัมน์เฉพาะจอกว้าง (xl ขึ้นไป) — หน้าสร้างเคสฝังตัวนี้ไว้ในคอลัมน์แคบ
+        * ถ้าแยกตลอดจะบีบจนอ่านไม่ออก
+        */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">แผนที่ตำแหน่งช่างสำรวจ</h2>
+          <SurveyorMap surveyors={sorted} incidentLat={incidentLat} incidentLng={incidentLng} height="520px" />
+        </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">รายชื่อช่างสำรวจ</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+          รายชื่อช่างสำรวจ
+          {sorted.length > 0 && <span className="ml-2 text-sm font-normal text-gray-400">{sorted.length} คน</span>}
+        </h2>
         {sorted.length === 0 ? (
           <div className="text-center py-8 text-gray-500">{requestSent ? 'กำลังรอข้อมูลพิกัดจากช่างสำรวจ...' : 'กดปุ่ม "เรียกพิกัด" เพื่อดูตำแหน่งช่างสำรวจ'}</div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 xl:max-h-[520px] xl:overflow-y-auto xl:pr-1">
             {sorted.map((s) => (
               <div key={s.user_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <div>
@@ -196,6 +206,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

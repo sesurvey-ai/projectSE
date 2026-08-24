@@ -8,7 +8,7 @@ export default function AssignPage() {
   const caseId = params.id as string;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-screen-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">มอบหมายช่างสำรวจ</h1>
         <p className="text-gray-500 mt-1">เลือกช่างสำรวจสำหรับเคส #{caseId}</p>
