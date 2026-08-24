@@ -8,6 +8,7 @@ import { isFirebaseReady } from '../config/firebase';
 import type { XmlImportResult } from './xmlImport.service';
 import { assertReportRev } from './reportRev';
 import { notifyCaseChanged } from './caseEvents';
+import { provinceOf } from './geoProvince';
 import { getIO } from '../socket';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
@@ -814,9 +815,22 @@ export const caseService = {
   },
 
   async getById(caseId: number) {
-    const result = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    // ดึงจังหวัด/อำเภอที่เกิดเหตุมาด้วย — หน้าจ่ายงานใช้จัดกลุ่มช่างที่อยู่จังหวัดเดียวกัน
+    // (อยู่คนละตารางกับ cases จึงต้อง join ไม่ใช่ SELECT * เฉย ๆ)
+    const result = await db.query(
+      `SELECT c.*, sr.acc_province, sr.acc_district
+         FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id
+        WHERE c.id = $1`, [caseId]);
     if (result.rows.length === 0) throw new NotFoundError('Case not found');
-    return result.rows[0];
+    const row = result.rows[0];
+    /**
+     * ไม่มีชื่อจังหวัดแต่มีพิกัด → แปลงเอา (การ์ดไอโออิมีพิกัดติดมา บางใบไม่มีชื่ออำเภอ)
+     * ไม่ใช่การเดา — พิกัดตกในขอบเขตจังหวัดไหนก็คือจังหวัดนั้นจริง ๆ
+     */
+    if (!row.acc_province && row.incident_lat && row.incident_lng) {
+      row.acc_province = provinceOf(row.incident_lat, row.incident_lng);
+    }
+    return row;
   },
 
   /**

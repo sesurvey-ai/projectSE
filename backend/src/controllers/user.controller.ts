@@ -6,6 +6,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { getIO } from '../socket';
 import { db } from '../config/database';
 import { clearSurveyorLocation } from '../utils/clearSurveyorLocation';
+import { provinceOf } from '../services/geoProvince';
 
 export const userController = {
   getMe: asyncHandler(async (req: Request, res: Response) => {
@@ -40,6 +41,9 @@ export const userController = {
         last_name: userInfo.last_name,
         // รหัสพนักงาน — คนจ่ายงานใช้ระบุตัวคนได้แน่กว่าชื่อ (ชื่อซ้ำกันได้)
         code: userInfo.code ?? null,
+        // จังหวัดที่พิกัดนี้อยู่ — ต้องส่งมาด้วย ไม่งั้นคนที่เพิ่งรายงานสด
+        // จะหลุดจากกลุ่ม "อยู่ในจังหวัดที่เกิดเหตุ" บนหน้าจ่ายงาน
+        province: provinceOf(latitude, longitude),
         latitude,
         longitude,
         request_id: request_id || null,

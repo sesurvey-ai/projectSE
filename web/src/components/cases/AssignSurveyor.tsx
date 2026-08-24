@@ -15,6 +15,10 @@ interface SurveyorLocation {
   last_name?: string;
   /** รหัสพนักงาน (SE###/SEC###) — ใช้ระบุตัวคนได้แน่กว่าชื่อ และตรงกับที่ใช้เรียกกันในงาน */
   code?: string | null;
+  /** จังหวัดที่พิกัดล่าสุดตกอยู่ (เซิร์ฟเวอร์คำนวณจากขอบเขตจังหวัดจริง) — null = อยู่นอกประเทศ/พิกัดเพี้ยน */
+  province?: string | null;
+  /** เวลาที่มือถือรายงานพิกัดครั้งล่าสุด — ใช้บอกว่าตำแหน่งนี้เชื่อได้แค่ไหน */
+  recorded_at?: string | null;
   latitude: number;
   longitude: number;
   distance?: number;
@@ -49,6 +53,8 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   // แจ้งเตือนงานใหม่ไปไม่ถึงเครื่องช่าง — มอบหมายสำเร็จแล้วแต่ต้องโทรตาม
   const [pushWarning, setPushWarning] = useState('');
   const [requestSent, setRequestSent] = useState(false);
+  // จังหวัดที่เกิดเหตุ — ใช้จัดกลุ่มช่าง ไม่ใช่กรองทิ้ง (ดูเหตุผลที่กลุ่ม "ช่างคนอื่น")
+  const [incidentProvince, setIncidentProvince] = useState<string | null>(null);
   const [incidentLat, setIncidentLat] = useState<number | undefined>();
   const [incidentLng, setIncidentLng] = useState<number | undefined>();
   // โหลดพิกัดเคสเสร็จหรือยัง — กัน race: ต้องได้พิกัดก่อน auto-request ถึงจะเข้า path เรียงตามระยะทาง
@@ -62,6 +68,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           const c = res.data.data;
           if (c.incident_lat != null) setIncidentLat(parseFloat(c.incident_lat));
           if (c.incident_lng != null) setIncidentLng(parseFloat(c.incident_lng));
+          if (c.acc_province) setIncidentProvince(String(c.acc_province));
         }
       })
       .catch(() => {})
@@ -141,6 +148,58 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
 
   const sorted = [...surveyors].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 
+  /**
+   * แบ่งเป็น "อยู่ในจังหวัดที่เกิดเหตุ" กับ "ช่างคนอื่น"
+   *
+   * ⛔ **กรองทิ้งไม่ได้ ต้องแค่แยกกลุ่ม** — พิกัดของช่างมากกว่าครึ่งเก่ากว่า 7 วัน
+   *    วันไหนไม่มีใครรายงานพิกัดจากจังหวัดนั้นเลย คนจ่ายงานจะเห็นรายชื่อว่างเปล่า
+   *    แล้วจ่ายงานไม่ได้ทั้งที่จริง ๆ มีคนอยู่แถวนั้น — แย่กว่าเรียงมั่ว
+   *
+   * แบ่งที่ระดับ**จังหวัด ไม่ใช่อำเภอ** ด้วยเหตุผลเดียวกัน (อำเภอแคบไป จะว่างบ่อยมาก)
+   */
+  const inProvince = incidentProvince ? sorted.filter((x) => x.province === incidentProvince) : [];
+  const others = incidentProvince ? sorted.filter((x) => x.province !== incidentProvince) : sorted;
+  const [showOthers, setShowOthers] = useState(false);
+
+  /** พิกัดอัปเดตเมื่อไหร่ — ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน */
+  const freshness = (iso?: string | null): { text: string; cls: string } | null => {
+    if (!iso) return null;
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (!Number.isFinite(mins) || mins < 0) return null;
+    if (mins < 60) return { text: `${mins} นาทีที่แล้ว`, cls: 'text-green-600' };
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return { text: `${hrs} ชม.ที่แล้ว`, cls: 'text-green-600' };
+    const days = Math.round(hrs / 24);
+    return { text: `${days} วันก่อน`, cls: days >= 7 ? 'text-red-500' : 'text-amber-600' };
+  };
+
+  /** แถวช่าง 1 คน — ใช้ซ้ำทั้งกลุ่ม "ในจังหวัด" และ "คนอื่น" จะได้ไม่ต้องดูแล 2 ที่ */
+  const row = (s: SurveyorLocation) => {
+    const fresh = freshness(s.recorded_at);
+    return (
+      <div key={s.user_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+        <div className="min-w-0">
+          <h3 className="font-medium text-gray-800 flex items-center gap-2">
+            {/* รหัสพนักงานมาก่อนชื่อ — ชื่อซ้ำกันได้ รหัสไม่ซ้ำ และเป็นตัวที่ใช้เรียกกันในงานจริง */}
+            {s.code && (
+              <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-mono tracking-tight">{s.code}</span>
+            )}
+            <span className="truncate">{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</span>
+          </h3>
+          <p className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+            {s.province && <span>{s.province}</span>}
+            {/* ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน — ต้องเห็น */}
+            {fresh && <span className={fresh.cls}>อัปเดต {fresh.text}</span>}
+            {s.distance !== undefined && <span className="text-blue-600">{Number(s.distance).toFixed(1)} กม.</span>}
+          </p>
+        </div>
+        <button type="button" onClick={() => handleAssign(String(s.user_id))} disabled={assigning === String(s.user_id)} className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          {assigning === String(s.user_id) ? 'กำลังมอบหมาย...' : 'มอบหมาย'}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">{error}</div>}
@@ -186,24 +245,26 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           <div className="text-center py-8 text-gray-500">{requestSent ? 'กำลังรอข้อมูลพิกัดจากช่างสำรวจ...' : 'กดปุ่ม "เรียกพิกัด" เพื่อดูตำแหน่งช่างสำรวจ'}</div>
         ) : (
           <div className="space-y-3 xl:max-h-[520px] xl:overflow-y-auto xl:pr-1">
-            {sorted.map((s) => (
-              <div key={s.user_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                <div>
-                  <h3 className="font-medium text-gray-800 flex items-center gap-2">
-                    {/* รหัสพนักงานมาก่อนชื่อ — ชื่อซ้ำกันได้ รหัสไม่ซ้ำ และเป็นตัวที่ใช้เรียกกันในงานจริง */}
-                    {s.code && (
-                      <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-mono tracking-tight">{s.code}</span>
-                    )}
-                    <span>{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</span>
-                  </h3>
-                  <p className="text-sm text-gray-500">พิกัด: {Number(s.latitude).toFixed(6)}, {Number(s.longitude).toFixed(6)}</p>
-                  {s.distance !== undefined && <p className="text-sm text-blue-600">ระยะทาง: {Number(s.distance).toFixed(2)} กม.</p>}
-                </div>
-                <button type="button" onClick={() => handleAssign(String(s.user_id))} disabled={assigning === String(s.user_id)} className="ml-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                  {assigning === String(s.user_id) ? 'กำลังมอบหมาย...' : 'มอบหมาย'}
-                </button>
+            {incidentProvince && (
+              <div className="text-xs text-gray-500">
+                ที่เกิดเหตุอยู่ <span className="font-medium text-gray-700">{incidentProvince}</span>
+                {inProvince.length === 0 && ' — ไม่มีใครรายงานพิกัดจากจังหวัดนี้ (ดูรายชื่อทั้งหมดข้างล่าง)'}
               </div>
-            ))}
+            )}
+
+            {inProvince.map(row)}
+
+            {incidentProvince && others.length > 0 && (
+              <>
+                <button type="button" onClick={() => setShowOthers((v) => !v)}
+                  className="w-full text-left text-sm text-gray-500 hover:text-gray-700 border-t border-gray-200 pt-3">
+                  {showOthers ? '▾' : '▸'} ช่างคนอื่น {others.length} คน
+                  <span className="text-gray-400"> (ไม่ได้อยู่ใน{incidentProvince})</span>
+                </button>
+                {showOthers && others.map(row)}
+              </>
+            )}
+            {!incidentProvince && others.map(row)}
           </div>
         )}
         </div>

@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { locationService } from '../services/location.service';
 import { db } from '../config/database';
 import { fcmService } from '../services/fcm.service';
+import { provinceOf } from '../services/geoProvince';
 
 export function setupLocationHandler(io: Server, socket: Socket) {
   const user = socket.data.user;
@@ -64,6 +65,9 @@ export function setupLocationHandler(io: Server, socket: Socket) {
           last_name: userInfo.last_name,
           // รหัสพนักงาน — คนจ่ายงานใช้ระบุตัวคนได้แน่กว่าชื่อ (ชื่อซ้ำกันได้)
           code: userInfo.code ?? null,
+          // จังหวัดที่พิกัดนี้อยู่ — ต้องส่งมาด้วย ไม่งั้นคนที่เพิ่งรายงานสด
+          // จะหลุดจากกลุ่ม "อยู่ในจังหวัดที่เกิดเหตุ" บนหน้าจ่ายงาน
+          province: provinceOf(data.latitude, data.longitude),
           latitude: data.latitude,
           longitude: data.longitude,
           request_id: data.request_id,
