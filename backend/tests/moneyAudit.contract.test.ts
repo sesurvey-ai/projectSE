@@ -46,6 +46,13 @@ const svc = read('src', 'services', 'moneyAudit.ts');
  */
 check('เทียบตัวเลขด้วยค่า ไม่ใช่ข้อความ', /Number\.isFinite\(fa\) && Number\.isFinite\(fb\)\) return fa === fb/.test(svc));
 check('บูลีนเก็บเป็นคำอ่านออก', svc.includes("? 'ใช่' : 'ไม่'"));
+/**
+ * ⛔ ตอนกรอกยอดครั้งแรกยังไม่มีแถวในตาราง ช่องติ๊กที่ไม่ได้ติ๊กจะเป็น null → false
+ *    ถ้านับเป็นการเปลี่ยน ประวัติครั้งแรกจะมี "นอกเวลา: (ว่าง) → ไม่" ทุกช่องติ๊ก = ขยะล้วน
+ *    (เจอจริงตอนทดสอบบน production 24/08/69) · ติ๊กแล้วเอาออก (true → false) ยังบันทึกอยู่
+ */
+check('ช่องติ๊กที่ไม่ได้ติ๊ก ไม่นับเป็นการเปลี่ยน',
+      /v === '' \|\| v === false/.test(svc));
 check('เขียนทีเดียวหลายแถว ไม่วิ่งทีละช่อง', /INSERT INTO money_audit[\s\S]{0,120}VALUES \$\{tuples\.join/.test(svc));
 
 const pay = read('src', 'services', 'pay.service.ts');

@@ -51,8 +51,15 @@ interface Queryable {
  *    ประวัติจะเต็มไปด้วยรายการที่ไม่มีอะไรเปลี่ยนจริง
  */
 function same(a: unknown, b: unknown): boolean {
-  const na = a === null || a === undefined || a === '' ? null : a;
-  const nb = b === null || b === undefined || b === '' ? null : b;
+  /**
+   * `false` ถือว่าเท่ากับ "ไม่มีค่า" — ตอนกรอกยอดครั้งแรกยังไม่มีแถวในตาราง
+   * ช่องติ๊กที่ไม่ได้ติ๊กจะกลายเป็น null → false ซึ่งไม่ใช่การเปลี่ยนแปลงที่คนทำ
+   * ไม่ทำแบบนี้ = บันทึกครั้งแรกจะได้ประวัติ "นอกเวลา: (ว่าง) → ไม่" ทุกช่องติ๊ก = ขยะล้วน
+   * (ติ๊กแล้วเอาออกยังบันทึกอยู่ เพราะ true → false ยังต่างกัน)
+   */
+  const blank = (v: unknown) => v === null || v === undefined || v === '' || v === false;
+  const na = blank(a) ? null : a;
+  const nb = blank(b) ? null : b;
   if (na === null && nb === null) return true;
   if (na === null || nb === null) return false;
   const fa = Number(na), fb = Number(nb);
