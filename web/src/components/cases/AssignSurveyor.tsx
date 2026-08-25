@@ -167,16 +167,17 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
    * เพราะระยะทางบอกได้ตรงกว่า และถ้าแบ่งจังหวัดด้วย คนที่อยู่ห่างแค่ 3 กม.
    * แต่คนละฝั่งเส้นแบ่งจังหวัดจะถูกพับไปอยู่ในกลุ่ม "ช่างคนอื่น" ซึ่งกลับหัวกลับหาง
    *
-   * ⚠️ พิกัด 2 แหล่ง เชื่อถือได้ไม่เท่ากัน — ดูที่ `incident_coord_source`
-   *    `'case'`     พิกัดมากับเคส บางใบละเอียดถึงปากซอย → โชว์ทศนิยมได้ตามเดิม
-   *    `'district'` backend คำนวณจากชื่ออำเภอให้ (เคสที่ไม่มีพิกัดเลย) → ต้องเขียนว่า
-   *                 "โดยประมาณ" + ปัดเป็นจำนวนเต็ม เพราะอำเภอกว้างได้หลายสิบกิโลเมตร
-   *    ⛔ อย่าเหมารวมเป็นแบบเดียว — เขียนคำเตือนทับพิกัดจริงที่แม่นอยู่แล้ว
-   *      คนจ่ายงานจะเลิกเชื่อตัวเลขที่เชื่อได้ (ดู `backend/src/services/geoDistrict.ts`)
+   * ⚠️ **ระยะทางที่โชว์เป็นค่าโดยประมาณเสมอ** — ปัดเป็นจำนวนเต็ม ไม่โชว์ทศนิยม
+   *    เพราะฝั่ง "ที่เกิดเหตุ" หยาบระดับอำเภอ ไม่ว่ามาทางไหน:
+   *    `'district'` backend คำนวณจุดกลางอำเภอให้ (ทางปกติ) → บอกได้เลยว่าวัดจากตรงไหน
+   *    `'case'`     ใช้พิกัดในเคสเพราะจับคู่ชื่ออำเภอไม่ได้ → **ไม่รู้ที่มา** บอกแค่ว่าประมาณ
+   *                 (พิกัดบนการ์ดประกันก็เป็นค่าสมมติจากอำเภออยู่แล้ว user ยืนยัน 25/08/69)
+   *    ⛔ อย่าโชว์ทศนิยม — คนจ่ายงานจะเชื่อว่าวัดมาเป๊ะแล้วเลือกคนผิด
+   *    (ฝั่งช่างเป็นพิกัด GPS จริงจากมือถือ ความหยาบอยู่ฝั่งที่เกิดเหตุฝั่งเดียว)
    */
   const byDistance = incidentLat !== undefined && incidentLng !== undefined;
-  /** พิกัดที่ backend คำนวณจากชื่ออำเภอให้ — ต้องบอกคนใช้ว่าหยาบ ไม่ใช่ที่เกิดเหตุจริง */
-  const approx = coordSource === 'district';
+  /** รู้ว่าวัดจากจุดกลางอำเภอไหน — บอกชื่ออำเภอบนหน้าจอได้ */
+  const fromDistrict = coordSource === 'district';
   const inProvince = !byDistance && incidentProvince ? sorted.filter((x) => x.province === incidentProvince) : [];
   const others = !byDistance && incidentProvince ? sorted.filter((x) => x.province !== incidentProvince) : sorted;
   const [showOthers, setShowOthers] = useState(false);
@@ -210,13 +211,11 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
             {s.province && <span>{s.province}</span>}
             {/* ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน — ต้องเห็น */}
             {fresh && <span className={fresh.cls}>อัปเดต {fresh.text}</span>}
-            {s.distance !== undefined && (approx ? (
+            {s.distance !== undefined && (
               <span className="text-blue-600" title="วัดจากจุดกลางของอำเภอที่เกิดเหตุ ไม่ใช่จุดเกิดเหตุจริง">
                 ~{Math.round(Number(s.distance))} กม.
               </span>
-            ) : (
-              <span className="text-blue-600">{Number(s.distance).toFixed(1)} กม.</span>
-            ))}
+            )}
           </p>
         </div>
         <button type="button" onClick={() => handleAssign(String(s.user_id))} disabled={assigning === String(s.user_id)} className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
@@ -273,14 +272,13 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           <div className="space-y-3 xl:max-h-[520px] xl:overflow-y-auto xl:pr-1">
             {byDistance ? (
               <div className="text-xs text-gray-500">
-                เรียงตามระยะทาง{approx && <span className="text-gray-400"> โดยประมาณ</span>} — ใกล้สุดขึ้นก่อน
-                {approx && (
-                  <div className="text-gray-400">
-                    เคสนี้ไม่มีพิกัดที่เกิดเหตุ — วัดจากจุดกลางของ
-                    {incidentDistrict ? `${incidentDistrict} ` : 'อำเภอที่เกิดเหตุ '}
-                    {incidentProvince ?? ''} ซึ่งกว้างได้หลายสิบกิโลเมตร
-                  </div>
-                )}
+                เรียงตามระยะทาง <span className="text-gray-400">โดยประมาณ</span> — ใกล้สุดขึ้นก่อน
+                <div className="text-gray-400">
+                  {fromDistrict
+                    ? `วัดจากจุดกลางของ${incidentDistrict ? `${incidentDistrict} ` : 'อำเภอที่เกิดเหตุ '}`
+                      + `${incidentProvince ?? ''} ซึ่งกว้างได้หลายสิบกิโลเมตร`
+                    : 'จุดที่เกิดเหตุเป็นค่าโดยประมาณ ไม่ใช่ตำแหน่งที่วัดมาจริง'}
+                </div>
               </div>
             ) : incidentProvince && (
               <div className="text-xs text-gray-500">
