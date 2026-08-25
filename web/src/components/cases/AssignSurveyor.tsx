@@ -55,6 +55,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const [requestSent, setRequestSent] = useState(false);
   // จังหวัดที่เกิดเหตุ — ใช้จัดกลุ่มช่าง ไม่ใช่กรองทิ้ง (ดูเหตุผลที่กลุ่ม "ช่างคนอื่น")
   const [incidentProvince, setIncidentProvince] = useState<string | null>(null);
+  const [incidentDistrict, setIncidentDistrict] = useState<string | null>(null);
   const [incidentLat, setIncidentLat] = useState<number | undefined>();
   const [incidentLng, setIncidentLng] = useState<number | undefined>();
   // โหลดพิกัดเคสเสร็จหรือยัง — กัน race: ต้องได้พิกัดก่อน auto-request ถึงจะเข้า path เรียงตามระยะทาง
@@ -69,6 +70,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           if (c.incident_lat != null) setIncidentLat(parseFloat(c.incident_lat));
           if (c.incident_lng != null) setIncidentLng(parseFloat(c.incident_lng));
           if (c.acc_province) setIncidentProvince(String(c.acc_province));
+          if (c.acc_district) setIncidentDistrict(String(c.acc_district));
         }
       })
       .catch(() => {})
@@ -158,9 +160,14 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
    * แบ่งที่ระดับ**จังหวัด ไม่ใช่อำเภอ** ด้วยเหตุผลเดียวกัน (อำเภอแคบไป จะว่างบ่อยมาก)
    */
   /**
-   * มีพิกัดที่เกิดเหตุ (การ์ดไอโออิพิมพ์มาให้) → **เรียงตามระยะทางล้วน ไม่ต้องแบ่งจังหวัด**
+   * มีพิกัดที่เกิดเหตุ → **เรียงตามระยะทางล้วน ไม่ต้องแบ่งจังหวัด**
    * เพราะระยะทางบอกได้ตรงกว่า และถ้าแบ่งจังหวัดด้วย คนที่อยู่ห่างแค่ 3 กม.
    * แต่คนละฝั่งเส้นแบ่งจังหวัดจะถูกพับไปอยู่ในกลุ่ม "ช่างคนอื่น" ซึ่งกลับหัวกลับหาง
+   *
+   * ⚠️ พิกัดที่ได้มา**ละเอียดแค่ระดับอำเภอ**ทั้ง 2 ทาง — ที่การ์ดไอโออิพิมพ์มาก็เป็น
+   *    จุดกลางอำเภออยู่แล้ว ส่วนงานที่ไม่มีพิกัด backend เติมจุดกลางอำเภอให้เอง
+   *    จึงต้องเขียนบนหน้าจอว่า "โดยประมาณ" และปัดเป็นจำนวนเต็ม ไม่โชว์ทศนิยม
+   *    ให้ดูเหมือนวัดมาเป๊ะ ๆ (ดู `backend/src/services/geoDistrict.ts`)
    */
   const byDistance = incidentLat !== undefined && incidentLng !== undefined;
   const inProvince = !byDistance && incidentProvince ? sorted.filter((x) => x.province === incidentProvince) : [];
@@ -196,7 +203,11 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
             {s.province && <span>{s.province}</span>}
             {/* ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน — ต้องเห็น */}
             {fresh && <span className={fresh.cls}>อัปเดต {fresh.text}</span>}
-            {s.distance !== undefined && <span className="text-blue-600">{Number(s.distance).toFixed(1)} กม.</span>}
+            {s.distance !== undefined && (
+              <span className="text-blue-600" title="ระยะจากจุดกลางของอำเภอที่เกิดเหตุ ไม่ใช่จุดเกิดเหตุจริง">
+                ~{Math.round(Number(s.distance))} กม.
+              </span>
+            )}
           </p>
         </div>
         <button type="button" onClick={() => handleAssign(String(s.user_id))} disabled={assigning === String(s.user_id)} className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
@@ -253,7 +264,11 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           <div className="space-y-3 xl:max-h-[520px] xl:overflow-y-auto xl:pr-1">
             {byDistance ? (
               <div className="text-xs text-gray-500">
-                เรียงตามระยะทางจากที่เกิดเหตุ{incidentProvince ? ` (${incidentProvince})` : ''} — ใกล้สุดขึ้นก่อน
+                เรียงตามระยะทาง <span className="text-gray-400">โดยประมาณ</span> — ใกล้สุดขึ้นก่อน
+                <div className="text-gray-400">
+                  วัดจากจุดกลางของ{incidentDistrict ? ` ${incidentDistrict}` : 'อำเภอที่เกิดเหตุ'}
+                  {incidentProvince ? ` ${incidentProvince}` : ''} ไม่ใช่จุดเกิดเหตุจริง
+                </div>
               </div>
             ) : incidentProvince && (
               <div className="text-xs text-gray-500">

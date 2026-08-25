@@ -9,6 +9,7 @@ import type { XmlImportResult } from './xmlImport.service';
 import { assertReportRev } from './reportRev';
 import { notifyCaseChanged } from './caseEvents';
 import { provinceOf } from './geoProvince';
+import { districtCentroid } from './geoDistrict';
 import { recordMoneyChanges } from './moneyAudit';
 import { getIO } from '../socket';
 
@@ -830,6 +831,23 @@ export const caseService = {
      */
     if (!row.acc_province && row.incident_lat && row.incident_lng) {
       row.acc_province = provinceOf(row.incident_lat, row.incident_lng);
+    }
+    /**
+     * ไม่มีพิกัดแต่รู้อำเภอ → เติมจุดกลางอำเภอให้ (งานไทยไพบูลย์เป็นแบบนี้ทุกใบ
+     * เพราะการ์ดไม่พิมพ์พิกัด) หน้าจ่ายงานจะได้เรียงช่างตามระยะทางได้เหมือนกัน
+     *
+     * ⚠️ ส่ง `incident_coord_source` ไปด้วยเสมอ — **พิกัดทั้ง 2 ทางละเอียดแค่ระดับอำเภอ**
+     *    (ของการ์ดก็เป็นจุดกลางอำเภอเหมือนกัน user ยืนยัน 24/08/69) หน้าจอต้องบอกตามจริง
+     *    ไม่ใช่โชว์เป็นระยะทางเป๊ะ ๆ · ไม่เขียนลง DB เพราะเป็นค่าที่คำนวณใหม่ได้เสมอ
+     */
+    row.incident_coord_source = row.incident_lat && row.incident_lng ? 'card' : null;
+    if (!row.incident_coord_source) {
+      const c = districtCentroid(row.acc_province, row.acc_district);
+      if (c) {
+        row.incident_lat = c.lat;
+        row.incident_lng = c.lng;
+        row.incident_coord_source = 'district';
+      }
     }
     return row;
   },
