@@ -33,16 +33,53 @@ class DamageNoticeBuilder {
     return code == null ? null : kInsurerFooters[code];
   }
 
-  /// รายการคู่กรณี (ใช้ตอนเลือกว่าจะพิมพ์ใบของคันไหน)
-  /// คีย์ใน payload คือ `opposing_parties` ไม่ใช่ `opponents`
-  List<Map<String, dynamic>> get opponents {
-    final raw = report['opposing_parties'];
+  List<Map<String, dynamic>> _list(String key) {
+    final raw = report[key];
     if (raw is! List) return const [];
     return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
-  /// สร้างใบ 1 ใบ — [opponentIndex] จำเป็นเฉพาะใบของรถคู่กรณี
-  DamageNoticeData build(SlipType type, {int opponentIndex = 0}) {
+  /// รายการคู่กรณี (ใช้ตอนเลือกว่าจะพิมพ์ใบของคันไหน)
+  /// คีย์ใน payload คือ `opposing_parties` ไม่ใช่ `opponents`
+  List<Map<String, dynamic>> get opponents => _list('opposing_parties');
+  List<Map<String, dynamic>> get injured => _list('injured_persons');
+  List<Map<String, dynamic>> get properties => _list('damaged_property');
+
+  /// รายการที่ต้องเลือกก่อนพิมพ์ใบแบบนี้ — ว่าง = ใบนี้ไม่ผูกกับใครเป็นราย ๆ
+  ///
+  /// ใบบันทึกรับเงินผูกกับ**คู่กรณี** เพราะเงินรับมาจากคู่กรณีคันนั้น
+  List<Map<String, dynamic>> subjectsOf(SlipType type) {
+    switch (type.subject) {
+      case SlipSubject.opponentCar:
+      case SlipSubject.payment:
+        return opponents;
+      case SlipSubject.injured:
+        return injured;
+      case SlipSubject.property:
+        return properties;
+      case SlipSubject.insuredCar:
+        return const [];
+    }
+  }
+
+  /// ป้ายในตัวเลือก "จะออกใบของใคร" — พยายามโชว์สิ่งที่ชี้ตัวได้จริง (ทะเบียน/ชื่อ)
+  static String subjectLabel(SlipSubject subject, Map<String, dynamic> m, int i) {
+    String v(String k) => (m[k] ?? '').toString().trim();
+    final detail = switch (subject) {
+      SlipSubject.opponentCar || SlipSubject.payment => v('plate'),
+      SlipSubject.injured => v('name'),
+      SlipSubject.property => v('item'),
+      SlipSubject.insuredCar => '',
+    };
+    final head = subject == SlipSubject.injured || subject == SlipSubject.property
+        ? 'รายการที่ ${i + 1}'
+        : 'คันที่ ${i + 1}';
+    return detail.isEmpty ? head : '$head · $detail';
+  }
+
+  /// สร้างใบ 1 ใบ — [index] เลือกว่าเป็นใบของคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สินรายไหน
+  /// (ดู [subjectsOf]) · ใบของรถประกันไม่ใช้
+  DamageNoticeData build(SlipType type, {int index = 0}) {
     final f = footer;
     if (f == null) {
       throw StateError('ไม่รู้จักบริษัทประกัน "${_s('insurance_company')}" — '
@@ -50,38 +87,101 @@ class DamageNoticeBuilder {
     }
 
     final isOpponent = type.subject == SlipSubject.opponentCar;
-    final opp = isOpponent && opponentIndex < opponents.length
-        ? opponents[opponentIndex]
+    final subjects = subjectsOf(type);
+    final item = index >= 0 && index < subjects.length
+        ? subjects[index]
         : const <String, dynamic>{};
 
-    String o(String key) => (opp[key] ?? '').toString().trim();
+    String o(String key) => (item[key] ?? '').toString().trim();
 
-    final fields = <SlipField>[
-      SlipField('พิมพ์วันที่', _thaiStamp(printedAt ?? DateTime.now())),
-      SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
-      SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
-    ];
+    final printedLine =
+        SlipField('พิมพ์วันที่', _thaiStamp(printedAt ?? DateTime.now()));
+    final accWhen = _thaiDateTime(_s('acc_date'), _s('acc_time'));
+    final insuredModel = '${_s('car_brand')}/${_s('car_model')}';
 
-    if (isOpponent) {
-      fields.addAll([
-        SlipField('เลขกรมธรรม์', o('policy_no')),
-        SlipField('ประเภทกรมธรรม์', o('policy_type')),
-        SlipField('รถคู่กรณีทะเบียน', o('plate')),
-        SlipField('จังหวัด', o('province')),
-        SlipField('ยี่ห้อ/รุ่น', '${o('car_brand')}/${o('car_model')}'),
-        SlipField('สี', o('car_color')),
-      ]);
-    } else {
-      fields.addAll([
-        SlipField('เลขกรมธรรม์', _s('policy_no')),
-        SlipField('ประเภทกรมธรรม์', _s('policy_type')),
-        SlipField('ทะเบียนรถ', _s('license_plate')),
-        SlipField('จังหวัด', _s('car_province')),
-        SlipField('ยี่ห้อ/รุ่น', '${_s('car_brand')}/${_s('car_model')}'),
-        SlipField('สี', _s('car_color')),
-        SlipField('ฝ่ายใดเป็นฝ่ายถูก/ผิด', _s('acc_fault')),
-        SlipField('ซ่อมที่', _s('repair_shop')),
-      ]);
+    // ใบแต่ละหมวดมีชุดบรรทัดของตัวเอง — คัดทีละบรรทัดจากใบจริง ไม่ใช่ใบเดียวใช้ร่วมกัน
+    final fields = <SlipField>[];
+    switch (type.subject) {
+      case SlipSubject.injured:
+        fields.addAll([
+          printedLine,
+          SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
+          SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
+          SlipField('วันที่เกิดเหตุ', accWhen),
+          SlipField('เลขที่รับแจ้ง', _s('claim_ref_no')),
+          SlipField('เลขกรมธรรม์', _s('policy_no')),
+          SlipField('ทะเบียนรถประกัน', _s('license_plate')),
+          SlipField('ยี่ห้อ/รุ่น', insuredModel),
+          SlipField('ชื่อผู้บาดเจ็บ', o('name')),
+          // ทะเบียนรถ**ของผู้บาดเจ็บ** (คนละคันกับรถประกัน) — คนเดินถนนก็เว้นว่างได้
+          SlipField('ทะเบียนรถ', o('car_reg')),
+          SlipField('รายละเอียดการบาดเจ็บ', o('symptom')),
+        ]);
+      case SlipSubject.property:
+        fields.addAll([
+          printedLine,
+          SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
+          SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
+          SlipField('วันที่เกิดเหตุ', accWhen),
+          SlipField('เลขที่รับแจ้ง', _s('claim_ref_no')),
+          SlipField('เลขกรมธรรม์', _s('policy_no')),
+          SlipField('ทะเบียนรถ', _s('license_plate')),
+          SlipField('ยี่ห้อ/รุ่น', insuredModel),
+          SlipField('ชื่อทรัพย์สิน', o('item')),
+          // แอปเก็บแค่ที่อยู่เจ้าของทรัพย์สิน ไม่มีช่องเขต/อำเภอ-จังหวัดแยก
+          // → เว้นว่างเหมือนใบจริงที่เจอ (บางใบก็เว้น) ดีกว่าเดาจากที่เกิดเหตุ
+          SlipField('ที่อยู่ทรัพย์สิน', o('owner_address')),
+          const SlipField('เขต/อำเภอ', ''),
+          const SlipField('จังหวัด', ''),
+          SlipField('รายละเอียดความเสียหาย', o('detail')),
+        ]);
+      case SlipSubject.payment:
+        final amount = _money(report['acc_claim_amount']);
+        fields.addAll([
+          printedLine,
+          SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
+          SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
+          SlipField('เลขที่รับแจ้ง', _s('claim_ref_no')),
+          SlipField('รับเงินจำนวน', amount == null ? '' : '${_thousands(amount)} บาท'),
+          SlipField('รับเงินจาก', '${o('first_name')} ${o('last_name')}'.trim()),
+          SlipField('ที่อยู่', o('address')),
+          SlipField('โทรศัพท์', o('phone')),
+          SlipField('เจ้าของ/ผู้ขับรถ ทะเบียน', o('plate')),
+          SlipField('ยี่ห้อ/รุ่น', '${o('car_brand')}/${o('car_model')}'),
+          const SlipField.blank(),
+          const SlipField.plain('ขับรถโดยประมาทได้ชนรถ'),
+          SlipField('ทะเบียนรถประกัน', _s('license_plate')),
+          SlipField('ยี่ห้อ/รุ่น', insuredModel),
+          SlipField('ของ', _s('assured_name')),
+          SlipField('เหตุเกิดวันที่', accWhen),
+          SlipField('เหตุเกิดที่', _s('acc_place')),
+        ]);
+      case SlipSubject.opponentCar:
+        fields.addAll([
+          printedLine,
+          SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
+          SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
+          SlipField('เลขกรมธรรม์', o('policy_no')),
+          SlipField('ประเภทกรมธรรม์', o('policy_type')),
+          SlipField('รถคู่กรณีทะเบียน', o('plate')),
+          SlipField('จังหวัด', o('province')),
+          SlipField('ยี่ห้อ/รุ่น', '${o('car_brand')}/${o('car_model')}'),
+          SlipField('สี', o('car_color')),
+        ]);
+      case SlipSubject.insuredCar:
+        fields.addAll([
+          printedLine,
+          SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
+          SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
+          SlipField('เลขกรมธรรม์', _s('policy_no')),
+          SlipField('ประเภทกรมธรรม์', _s('policy_type')),
+          SlipField('ทะเบียนรถ', _s('license_plate')),
+          SlipField('จังหวัด', _s('car_province')),
+          SlipField('ยี่ห้อ/รุ่น', insuredModel),
+          SlipField('สี', _s('car_color')),
+          SlipField('ฝ่ายใดเป็นฝ่ายถูก/ผิด', _s('acc_fault')),
+          SlipField('ซ่อมที่', _s('repair_shop')),
+        ]);
     }
 
     // ค่าเสียหายส่วนแรก: แสดงเฉพาะเคลมที่มีจริง ไม่มีข้อมูล = ซ่อนทั้งบล็อก
@@ -94,9 +194,10 @@ class DamageNoticeBuilder {
       subtitle: type.subtitle,
       fields: fields,
       damages: type.showDamages
-          ? _damages(isOpponent ? opp['damage'] : report['insured_damage'])
+          ? _damages(isOpponent ? item['damage'] : report['insured_damage'])
           : const [],
       note: type.note,
+      showNote: type.showNote,
       extraTitle: showDed ? 'ความเสียหายส่วนแรก' : null,
       extraFields: showDed
           ? [
@@ -108,7 +209,12 @@ class DamageNoticeBuilder {
       docs: type.docs,
       docsFootnote: type.docsFootnote,
       certifyText: type.certifyText,
-      signerLabel: type.signerLabel,
+      // ใบบันทึกรับเงินมีบรรทัด "ตัวแทนบริษัท" คั่นระหว่างคำรับรองกับช่องเซ็น
+      // (คนที่รับเงินแทนบริษัทคือผู้สำรวจคนเดียวกับที่ออกใบ)
+      preSignLines: type.subject == SlipSubject.payment
+          ? ['ตัวแทนบริษัท : $operatorName']
+          : const [],
+      signers: type.signers,
       operatorLine: operatorName,
       operatorPhone: operatorPhone,
       footer: f,
@@ -161,6 +267,24 @@ class DamageNoticeBuilder {
     'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
     'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
   ];
+
+  /// วันเกิดเหตุที่แอปเก็บเป็น `08/05/2569` + `19:00` → `8 พ.ค. 2569 เวลา 19:00`
+  ///
+  /// ⛔ อย่าแปลงเป็น DateTime แล้ว format — ปีที่เก็บเป็น **พ.ศ. อยู่แล้ว** แปลงกลับไปมา
+  /// มีแต่จะบวก 543 ซ้ำ · ถ้ารูปแบบไม่ตรงที่คาด คืนของเดิมต่อกันดีกว่าคืนค่าว่าง
+  static String _thaiDateTime(String date, String time) {
+    final t = time.trim();
+    final m = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$').firstMatch(date.trim());
+    if (m == null) {
+      final raw = [date.trim(), if (t.isNotEmpty) 'เวลา $t'].join(' ').trim();
+      return raw;
+    }
+    final d = int.parse(m.group(1)!);
+    final mo = int.parse(m.group(2)!);
+    if (mo < 1 || mo > 12) return [date.trim(), if (t.isNotEmpty) 'เวลา $t'].join(' ');
+    final head = '$d ${_thMonths[mo - 1]} ${m.group(3)}';
+    return t.isEmpty ? head : '$head เวลา $t';
+  }
 
   /// "11 ส.ค. 2569 เวลา 14:37" — พ.ศ. ตามใบจริง
   static String _thaiStamp(DateTime t) {

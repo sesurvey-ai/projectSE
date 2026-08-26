@@ -72,10 +72,11 @@ class SlipType {
     required this.title,
     required this.subtitle,
     required this.subject,
-    required this.signerLabel,
+    required this.signers,
     this.ready = true,
     this.showDamages = true,
     this.showDeductible = false,
+    this.showNote = true,
     this.note,
     this.docsTitle,
     this.docs = const [],
@@ -87,7 +88,10 @@ class SlipType {
   final String title;
   final String subtitle;
   final SlipSubject subject;
-  final String signerLabel;
+
+  /// ป้ายใต้ช่องเซ็น — ใบทั่วไปมีช่องเดียว **ใบบันทึกรับเงินมี 3 ช่อง**
+  /// (ผู้รับเงิน · ผู้ชำระเงิน · ผู้ขับขี่รถประกัน/พยาน)
+  final List<String> signers;
 
   /// false = รู้แค่หัวกระดาษ ยังไม่เคยเห็นเนื้อในใบจริง → โชว์ในรายการแต่กดพิมพ์ไม่ได้
   /// ดีกว่าเดาเนื้อหาเอกสารที่คนนอกต้องเซ็นรับรอง
@@ -95,6 +99,9 @@ class SlipType {
 
   final bool showDamages;
   final bool showDeductible;
+
+  /// ใบรถมีบรรทัด "*หมายเหตุ" เสมอ (เว้นให้เขียนมือ) — ใบทรัพย์สิน/ผู้บาดเจ็บ/รับเงินไม่มี
+  final bool showNote;
   final String? note;
   final String? docsTitle;
   final List<String> docs;
@@ -106,6 +113,14 @@ class SlipType {
 
 const kCertifyDamage = 'ข้าพเจ้าได้ตรวจสอบรายการความเสียหายที่ระบุไว้ข้างต้น '
     'ขอรับรองว่า ครบถ้วนถูกต้องทุกประการ';
+
+/// ใบทรัพย์สินใช้คำรับรองคนละประโยคกับใบรถ (คัดจากใบจริง 26/08/69)
+const kCertifyProperty =
+    'ขอรับรองว่ารายละเอียดอุบัติเหตุและความเสียหายข้างต้นถูกต้องทุกประการ';
+
+/// ใบบันทึกรับเงิน — เป็นการรับรอง "ได้รับเงินแล้ว" ไม่ใช่รับรองรายการความเสียหาย
+const kCertifyPayment = '*ข้าพเจ้าขอยืนยันว่าได้รับเงินเป็นการชดใช้ค่าเสียหาย '
+    'ดังกล่าวข้างต้นไว้ครบถ้วนถูกต้องแล้ว';
 
 /// เอกสาร 3 อย่างที่คู่กรณีต้องเตรียมไปติดต่อบริษัทประกัน (คัดจากใบจริง)
 const _kContactDocs = [
@@ -125,7 +140,7 @@ const List<SlipType> kSlipTypes = [
     title: 'ใบแจ้งความเสียหาย',
     subtitle: 'รถประกัน',
     subject: SlipSubject.insuredCar,
-    signerLabel: 'ผู้ขับขี่รถประกัน',
+    signers: ['ผู้ขับขี่รถประกัน'],
     showDeductible: true,
   ),
   SlipType(
@@ -133,7 +148,7 @@ const List<SlipType> kSlipTypes = [
     title: 'ใบติดต่อ',
     subtitle: 'รถประกัน',
     subject: SlipSubject.insuredCar,
-    signerLabel: 'ผู้ขับขี่รถประกัน',
+    signers: ['ผู้ขับขี่รถประกัน'],
     showDamages: false,
     note: 'หมายเหตุ ติดต่อ บริษัทประกันภัยของท่านก่อนจัดซ่อม',
     docsTitle: 'เอกสารที่ใช้ในการติดต่อ',
@@ -146,71 +161,89 @@ const List<SlipType> kSlipTypes = [
     title: 'ใบแจ้งความเสียหาย',
     subtitle: 'รถคู่กรณี',
     subject: SlipSubject.opponentCar,
-    signerLabel: 'ผู้ขับขี่รถคู่กรณี',
+    signers: ['ผู้ขับขี่รถคู่กรณี'],
   ),
   SlipType(
     id: 'opp_contact',
     title: 'ใบติดต่อ',
     subtitle: 'รถคู่กรณี',
     subject: SlipSubject.opponentCar,
-    signerLabel: 'ผู้ขับขี่รถคู่กรณี',
+    signers: ['ผู้ขับขี่รถคู่กรณี'],
     note: 'หมายเหตุ ติดต่อ บริษัทประกันภัยของท่านก่อนจัดซ่อม',
     docsTitle: 'เอกสารที่ใช้ในการติดต่อ',
     docs: _kContactDocs,
     docsFootnote: _kContactFootnote,
     certifyText: null,
   ),
-  // ── ยังไม่เคยเห็นเนื้อในใบจริง มีแต่หัวกระดาษ ──
+  // ── ทรัพย์สิน / ผู้บาดเจ็บ / รับเงิน — เนื้อใบจาก user 26/08/69 ──
+  //
+  // ต่างจากใบรถ 3 อย่าง: ไม่มีตารางความเสียหาย (ใช้บรรทัด "รายละเอียด…" แทน) ·
+  // ไม่มีบรรทัด "*หมายเหตุ" · มี "วันที่เกิดเหตุ"/"เลขที่รับแจ้ง" เพิ่มมาบนหัวใบ
   SlipType(
     id: 'inj_evidence',
     title: 'ใบหลักฐาน',
     subtitle: 'การบาดเจ็บ/เสียชีวิต',
     subject: SlipSubject.injured,
-    signerLabel: 'ผู้บาดเจ็บ',
+    signers: ['ผู้รับหลักฐาน ผู้บาดเจ็บ'],
+    showDamages: false,
+    showNote: false,
+    // ⏳ ยังไม่เคยเห็นใบจริงของแบบนี้ — ชุดที่ได้มา 26/08/69 มีแต่ "ใบติดต่อ ผู้บาดเจ็บ"
     ready: false,
   ),
   SlipType(
     id: 'inj_contact',
     title: 'ใบติดต่อ',
-    subtitle: 'ผู้บาดเจ็บเสียชีวิต',
+    subtitle: 'ผู้บาดเจ็บ',
     subject: SlipSubject.injured,
-    signerLabel: 'ผู้บาดเจ็บ',
+    signers: ['ผู้รับหลักฐาน ผู้บาดเจ็บ'],
     showDamages: false,
-    ready: false,
+    showNote: false,
+    // ⛔ ใบติดต่อของผู้บาดเจ็บ **ไม่มีรายการ "เอกสารที่ใช้ในการติดต่อ"** ต่างจากใบติดต่อรถ
+    //    (ตรวจกับใบจริง 2 ใบ) อย่าเผลอยก _kContactDocs มาใส่
   ),
   SlipType(
     id: 'prop_evidence',
     title: 'ใบหลักฐาน',
     subtitle: 'ความเสียหายทรัพย์สิน',
     subject: SlipSubject.property,
-    signerLabel: 'เจ้าของทรัพย์สิน',
-    ready: false,
+    signers: ['ผู้รับหลักฐาน/เจ้าของทรัพย์สิน'],
+    showDamages: false,
+    showNote: false,
+    certifyText: kCertifyProperty,
   ),
+  // ใบติดต่อทรัพย์สิน = ใบหลักฐานทรัพย์สินทุกบรรทัด **ต่างแค่หัวเรื่อง**
+  // (เทียบใบจริง 2 ใบจากเคสเดียวกัน) — จงใจไม่ยุบรวม เพราะเป็นคนละเอกสารในสำนวน
   SlipType(
     id: 'prop_contact',
     title: 'ใบติดต่อ',
     subtitle: 'ความเสียหายทรัพย์สิน',
     subject: SlipSubject.property,
-    signerLabel: 'เจ้าของทรัพย์สิน',
+    signers: ['ผู้รับหลักฐาน/เจ้าของทรัพย์สิน'],
     showDamages: false,
-    ready: false,
+    showNote: false,
+    certifyText: kCertifyProperty,
   ),
   SlipType(
     id: 'pay_receipt_car',
-    title: 'ใบบันทึกรับเงิน',
-    subtitle: 'ค่าเสียหาย (รถ)',
+    // หัวเรื่องบรรทัดเดียว (subtitle ว่าง) ต่างจากใบอื่นที่เป็น 2 บรรทัด
+    title: 'ใบบันทึกรับเงินค่าเสียหาย',
+    subtitle: '',
     subject: SlipSubject.payment,
-    signerLabel: 'ผู้รับเงิน',
+    signers: ['ผู้รับเงิน', 'ผู้ชำระเงิน', 'ผู้ขับขี่รถประกัน/พยาน'],
     showDamages: false,
-    ready: false,
+    showNote: false,
+    certifyText: kCertifyPayment,
   ),
   SlipType(
     id: 'pay_receipt_prop',
-    title: 'ใบบันทึกรับเงิน',
-    subtitle: 'ค่าเสียหาย (ทรัพย์สิน)',
+    title: 'ใบบันทึกรับเงินค่าเสียหาย',
+    subtitle: 'ทรัพย์สิน',
     subject: SlipSubject.payment,
-    signerLabel: 'ผู้รับเงิน',
+    signers: ['ผู้รับเงิน', 'ผู้ชำระเงิน', 'ผู้ขับขี่รถประกัน/พยาน'],
     showDamages: false,
+    showNote: false,
+    certifyText: kCertifyPayment,
+    // ⏳ ยังไม่รู้ว่าฝั่งทรัพย์สินมีใบรับเงินแยกจริงไหม — ใบจริงที่ได้มามีแบบเดียว (ฝั่งรถ)
     ready: false,
   ),
 ];

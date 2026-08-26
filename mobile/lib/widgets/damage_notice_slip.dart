@@ -15,12 +15,15 @@ class DamageNoticeSlip extends StatelessWidget {
   const DamageNoticeSlip({
     super.key,
     required this.data,
-    required this.signature,
+    required this.signatures,
     this.interactive = true,
   });
 
   final DamageNoticeData data;
-  final SignatureController signature;
+
+  /// ปากกา 1 ตัวต่อ 1 ช่องเซ็น — ต้องยาวเท่า [DamageNoticeData.signers]
+  /// (ใบบันทึกรับเงินมี 3 ช่อง: ผู้รับเงิน · ผู้ชำระเงิน · ผู้ขับขี่รถประกัน/พยาน)
+  final List<SignatureController> signatures;
 
   /// false = โหมดจับภาพ/ดูอย่างเดียว — ซ่อนคำใบ้ "เซ็นชื่อในกรอบนี้" ไม่ให้ติดไปบนกระดาษ
   final bool interactive;
@@ -50,8 +53,11 @@ class DamageNoticeSlip extends StatelessWidget {
           const Divider(color: Colors.black, thickness: 1, height: 1),
           const SizedBox(height: 12),
 
+          // ใบบันทึกรับเงินมีหัวเรื่องบรรทัดเดียว (subtitle ว่าง) — ต่อ \n ลอย ๆ
+          // จะได้บรรทัดว่างคั่นกลางใบ
           Center(
-            child: Text('${data.title}\n${data.subtitle}',
+            child: Text(
+                data.subtitle.isEmpty ? data.title : '${data.title}\n${data.subtitle}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     fontSize: 17, fontWeight: FontWeight.w700, color: Colors.black, height: 1.3)),
@@ -81,7 +87,9 @@ class DamageNoticeSlip extends StatelessWidget {
             Text('รวมจำนวนความเสียหายทั้งสิ้น : ${data.damages.length} รายการ'),
           ],
 
-          Text('*${data.note ?? 'หมายเหตุ'}'),
+          // ใบรถมีบรรทัด "*หมายเหตุ" เสมอ (เว้นไว้ให้เขียนมือถ้าไม่มีข้อความ) แต่ใบ
+          // ทรัพย์สิน/ผู้บาดเจ็บ/รับเงิน ไม่มีบรรทัดนี้เลย → ต้องปิดได้
+          if (data.showNote) Text('*${data.note ?? 'หมายเหตุ'}'),
 
           // "ความเสียหายส่วนแรก" — มีเฉพาะเคลมที่มีค่าเสียหายส่วนแรกจริง
           // ไม่มีข้อมูล = ซ่อนทั้งบล็อก (ทั้งไอโออิและไทยไพบูลย์ กติกา user 2026-08-11)
@@ -103,19 +111,31 @@ class DamageNoticeSlip extends StatelessWidget {
             const SizedBox(height: 12),
             Text(data.certifyText!, style: _small),
           ],
+
+          // บรรทัดที่ต้องอยู่ "หลังคำรับรอง แต่ก่อนช่องเซ็น" — ใบบันทึกรับเงินมี
+          // "ตัวแทนบริษัท : …" ตรงนี้ ใบอื่นไม่มี
+          if (data.preSignLines.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ...data.preSignLines.map((t) => Text(t, style: _small)),
+          ],
           const SizedBox(height: 8),
 
           // กรอบเซ็นชื่อ — ผู้ขับขี่เซ็นบนจอตรงนี้ เส้นที่เซ็นติดไปกับรูปที่พิมพ์เลย
-          Container(
-            decoration: BoxDecoration(border: Border.all(color: Colors.black, width: 1)),
-            child: SignaturePad(
-              controller: signature,
-              height: 96,
-              hint: interactive ? 'เซ็นชื่อในกรอบนี้' : '',
+          // ใบบันทึกรับเงินมี 3 ช่อง (ผู้รับเงิน/ผู้ชำระเงิน/พยาน) ใบอื่นมีช่องเดียว
+          for (var i = 0; i < data.signers.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(border: Border.all(color: Colors.black, width: 1)),
+              child: SignaturePad(
+                controller: signatures[i],
+                // หลายช่องในใบเดียวต้องเตี้ยลง ไม่งั้นใบยาวจนเปลืองกระดาษ
+                height: data.signers.length > 1 ? 76 : 96,
+                hint: interactive ? 'เซ็นชื่อในกรอบนี้' : '',
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Center(child: Text(data.signerLabel)),
+            const SizedBox(height: 4),
+            Center(child: Text(data.signers[i])),
+          ],
           const SizedBox(height: 10),
 
           Text('ผู้ปฏิบัติงาน : ${data.operatorLine}', style: _small),
@@ -148,13 +168,26 @@ class DamageNoticeSlip extends StatelessWidget {
     );
   }
 
-  Widget _line(SlipField f) => Text('${f.label} : ${f.value}');
+  Widget _line(SlipField f) =>
+      Text(f.value == null ? f.label : '${f.label} : ${f.value}');
 }
 
 class SlipField {
-  const SlipField(this.label, this.value);
+  const SlipField(this.label, String this.value);
+
+  /// บรรทัดข้อความล้วน ไม่มี " : " ต่อท้าย — ใบบันทึกรับเงินมีประโยคลอย
+  /// "ขับรถโดยประมาทได้ชนรถ" คั่นกลางระหว่างข้อมูล 2 ฝ่าย
+  const SlipField.plain(this.label) : value = null;
+
+  /// บรรทัดว่างคั่น (ใบจริงเว้นบรรทัดก่อนประโยคลอย)
+  const SlipField.blank()
+      : label = '',
+        value = null;
+
   final String label;
-  final String value;
+
+  /// null = พิมพ์แค่ [label] ไม่ต่อ " : "
+  final String? value;
 }
 
 class SlipDamage {
@@ -188,18 +221,20 @@ class DamageNoticeData {
     required this.title,
     required this.subtitle,
     required this.fields,
-    required this.signerLabel,
+    required this.signers,
     required this.operatorLine,
     required this.operatorPhone,
     required this.footer,
     this.damages = const [],
     this.note,
+    this.showNote = true,
     this.extraTitle,
     this.extraFields = const [],
     this.docsTitle,
     this.docs = const [],
     this.docsFootnote,
     this.certifyText,
+    this.preSignLines = const [],
   });
 
   final String title;
@@ -207,13 +242,17 @@ class DamageNoticeData {
   final List<SlipField> fields;
   final List<SlipDamage> damages;
   final String? note;
+  final bool showNote;
   final String? extraTitle;
   final List<SlipField> extraFields;
   final String? docsTitle;
   final List<String> docs;
   final String? docsFootnote;
   final String? certifyText;
-  final String signerLabel;
+  final List<String> preSignLines;
+
+  /// ป้ายใต้ช่องเซ็นแต่ละช่อง — 1 ช่องสำหรับใบทั่วไป, 3 ช่องสำหรับใบบันทึกรับเงิน
+  final List<String> signers;
   final String operatorLine;
   final String operatorPhone;
   final InsurerFooter footer;

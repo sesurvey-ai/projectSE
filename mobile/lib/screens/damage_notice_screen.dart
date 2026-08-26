@@ -39,12 +39,15 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
   static const _kPrefPrinterMac = 'slip_printer_mac';
 
   final _slipKey = GlobalKey();
-  final _sign = SignatureController();
+
+  /// ปากกา 1 ตัวต่อ 1 ช่องเซ็นของใบที่เลือกอยู่ — ใบบันทึกรับเงินมี 3 ช่อง
+  /// สร้างใหม่ทุกครั้งที่เปลี่ยนแบบใบ (ลายเซ็นของใบเดิมใช้กับใบใหม่ไม่ได้)
+  List<SignatureController> _signs = [];
 
   late final DamageNoticeBuilder _builder;
   late List<SlipType> _usable;
   SlipType? _type;
-  int _oppIndex = 0;
+  int _index = 0;
   bool _busy = false;
   String? _error;
 
@@ -58,12 +61,15 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
     );
     // แบบที่ยังไม่มีเนื้อในใบจริง ไม่เอามาโชว์ในหน้าใช้งานจริง (ต่างจากหน้าทดสอบ)
     // และใบของคู่กรณีจะเลือกได้ก็ต่อเมื่อกรอกคู่กรณีไว้แล้ว
+    // ใบที่ผูกกับรายการ (คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน/รับเงิน) จะเลือกได้ก็ต่อเมื่อ
+    // กรอกรายการนั้นไว้แล้ว — ไม่งั้นได้ใบเปล่าที่ให้คนนอกเซ็น
     _usable = kSlipTypes
         .where((t) =>
             t.ready &&
-            (t.subject != SlipSubject.opponentCar || _builder.opponents.isNotEmpty))
+            (t.subject == SlipSubject.insuredCar || _builder.subjectsOf(t).isNotEmpty))
         .toList();
     _type = _usable.isEmpty ? null : _usable.first;
+    _resetSigns();
     if (_builder.footer == null) {
       _error = 'ไม่รู้จักบริษัทประกัน "${widget.report['insurance_company'] ?? ''}"\n'
           'ท้ายใบ (เบอร์ติดต่อ/กำหนดวันติดต่อ) ต่างกันรายบริษัท เติมแทนไม่ได้ '
@@ -71,9 +77,19 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
     }
   }
 
+  /// เตรียมปากกาให้ครบตามจำนวนช่องเซ็นของใบที่เลือก (ทิ้งของเดิมทุกครั้ง)
+  void _resetSigns() {
+    for (final c in _signs) {
+      c.dispose();
+    }
+    _signs = List.generate(_type?.signers.length ?? 1, (_) => SignatureController());
+  }
+
   @override
   void dispose() {
-    _sign.dispose();
+    for (final c in _signs) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -83,12 +99,15 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
 
   /// เตือนถ้ายังไม่เซ็น แต่ไม่ห้าม — บางกรณีพิมพ์เปล่าให้เซ็นด้วยปากกาก็มี
   Future<bool> _confirmUnsigned(String action) async {
-    if (_sign.isNotEmpty) return true;
+    // ใบหลายช่องเซ็น: ถือว่า "เซ็นแล้ว" ต่อเมื่อครบทุกช่อง — ขาดช่องเดียวใบก็ใช้ไม่ได้
+    if (_signs.every((c) => c.isNotEmpty)) return true;
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('ยังไม่ได้เซ็นชื่อ'),
-            content: Text('ใบนี้ยังไม่มีลายเซ็น ต้องการ$actionเลยไหม'),
+            content: Text(_signs.length > 1
+                ? 'ใบนี้มี ${_signs.length} ช่องเซ็น และยังเซ็นไม่ครบ ต้องการ$actionเลยไหม'
+                : 'ใบนี้ยังไม่มีลายเซ็น ต้องการ$actionเลยไหม'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('กลับไปเซ็น')),
               TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(action)),
@@ -182,8 +201,7 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
       );
     }
 
-    final needsOpponent = _type!.subject == SlipSubject.opponentCar;
-    final opps = _builder.opponents;
+    final subjects = _builder.subjectsOf(_type!);
 
     return Scaffold(
       appBar: AppBar(title: const Text('ออกใบเอกสาร')),
@@ -201,26 +219,32 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
             // เปลี่ยนแบบใบ = คนละเอกสาร ลายเซ็นของใบเดิมใช้ต่อไม่ได้
             onChanged: (v) => setState(() {
               _type = v ?? _type;
-              _sign.clear();
+              // จำนวนช่องเซ็นต่างกันตามแบบใบ → สร้างปากกาใหม่ทั้งชุด
+              _index = 0;
+              _resetSigns();
             }),
           ),
-          if (needsOpponent && opps.length > 1) ...[
+          if (subjects.length > 1) ...[
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
-              initialValue: _oppIndex,
+              initialValue: _index,
               isExpanded: true,
-              decoration: const InputDecoration(
-                  labelText: 'คู่กรณีคันที่', border: OutlineInputBorder()),
-              items: List.generate(opps.length, (i) {
-                final plate = (opps[i]['plate'] ?? '').toString().trim();
-                return DropdownMenuItem(
-                    value: i,
-                    child: Text('คันที่ ${i + 1}${plate.isEmpty ? '' : ' · $plate'}',
-                        style: const TextStyle(fontSize: 14)));
-              }),
+              decoration: InputDecoration(
+                  labelText: 'ออกใบของ${_type!.subject.label}',
+                  border: const OutlineInputBorder()),
+              items: List.generate(
+                  subjects.length,
+                  (i) => DropdownMenuItem(
+                      value: i,
+                      child: Text(
+                          DamageNoticeBuilder.subjectLabel(
+                              _type!.subject, subjects[i], i),
+                          style: const TextStyle(fontSize: 14)))),
               onChanged: (v) => setState(() {
-                _oppIndex = v ?? 0;
-                _sign.clear();
+                _index = v ?? 0;
+                for (final c in _signs) {
+                  c.clear();
+                }
               }),
             ),
           ],
@@ -228,7 +252,13 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
           Row(children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: _busy ? null : () => setState(() => _sign.clear()),
+                onPressed: _busy
+                    ? null
+                    : () => setState(() {
+                          for (final c in _signs) {
+                            c.clear();
+                          }
+                        }),
                 icon: const Icon(Icons.undo, size: 18),
                 label: const Text('ล้างลายเซ็น'),
               ),
@@ -258,8 +288,8 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
               child: RepaintBoundary(
                 key: _slipKey,
                 child: DamageNoticeSlip(
-                  data: _builder.build(_type!, opponentIndex: _oppIndex),
-                  signature: _sign,
+                  data: _builder.build(_type!, index: _index),
+                  signatures: _signs,
                 ),
               ),
             ),

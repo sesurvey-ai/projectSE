@@ -28,7 +28,11 @@ class PrinterTestScreen extends StatefulWidget {
 
 class _PrinterTestScreenState extends State<PrinterTestScreen> {
   final _slipKey = GlobalKey();
-  final _sign = SignatureController();
+  // หน้าทดสอบสลับแบบใบได้ทุกแบบ → เตรียมปากกาเท่าใบที่มีช่องเซ็นเยอะสุดในทะเบียน
+  // (คิดจาก kSlipTypes เอง เพิ่มใบที่มี 4 ช่องวันหลังก็ไม่ต้องกลับมาแก้เลขตรงนี้)
+  final _signs = List.generate(
+      kSlipTypes.fold<int>(1, (m, t) => t.signers.length > m ? t.signers.length : m),
+      (_) => SignatureController());
 
   List<PrinterDevice> _devices = [];
   String? _mac;
@@ -46,7 +50,9 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
 
   @override
   void dispose() {
-    _sign.dispose();
+    for (final c in _signs) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -273,7 +279,12 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _sign.clear(),
+                    onPressed: () {
+                      for (final c in _signs) {
+                        c.clear();
+                      }
+                      setState(() {});
+                    },
                     child: const Text('ล้างลายเซ็น'),
                   ),
                 ),
@@ -339,7 +350,7 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
               child: FittedBox(
                 child: RepaintBoundary(
                   key: _slipKey,
-                  child: DamageNoticeSlip(data: _slipData(), signature: _sign),
+                  child: DamageNoticeSlip(data: _slipData(), signatures: _signs),
                 ),
               ),
             ),
