@@ -30,6 +30,22 @@ class _SignaturePadState extends State<SignaturePad> {
     widget.controller.addListener(_redraw);
   }
 
+  /// ⛔ **ขาดตัวนี้ไปแล้วแผ่นเซ็นจะ "เขียนได้แต่ไม่ขึ้นเส้น"**
+  ///
+  /// ใบบันทึกรับเงินมี 3 แผ่นในใบเดียว พอสลับแบบใบ จำนวนแผ่น (และของที่อยู่เหนือแผ่น)
+  /// เปลี่ยน → Flutter เอา State เดิมไปใช้กับแผ่นที่ถือ controller คนละตัว ผลคือ
+  /// เส้นถูกเขียนลง controller ตัวใหม่ (`widget.controller`) แต่ listener ที่สั่งวาดใหม่
+  /// ยังผูกกับตัวเก่า → เส้นเก็บครบแต่จอไม่อัปเดต และคนเซ็นเห็นว่า "เซ็นไม่ติด"
+  /// (เจอจริงตอนทดสอบพิมพ์บนเครื่อง 26/08/69 — ช่องที่ 3 เซ็นไม่ขึ้น)
+  @override
+  void didUpdateWidget(SignaturePad old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.controller, widget.controller)) {
+      old.controller.removeListener(_redraw);
+      widget.controller.addListener(_redraw);
+    }
+  }
+
   @override
   void dispose() {
     widget.controller.removeListener(_redraw);

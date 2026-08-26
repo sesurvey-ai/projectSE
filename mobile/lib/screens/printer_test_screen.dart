@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 
 import '../data/damage_notice_catalog.dart';
+import '../data/damage_notice_demo.dart';
 import '../services/damage_notice_builder.dart';
 import '../services/thermal_printer.dart';
 import '../widgets/damage_notice_slip.dart';
@@ -368,44 +369,9 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
   ///
   /// จงใจไม่ hardcode ใบสำเร็จรูป — ให้เดินผ่าน [DamageNoticeBuilder] ตัวเดียวกับของจริง
   /// หน้าทดสอบจึงพิสูจน์ "เส้นทางข้อมูล" ด้วย ไม่ใช่แค่พิสูจน์เครื่องพิมพ์
-  static const _demoReport = <String, dynamic>{
-    'insurance_company': 'บริษัท ไอโออิ กรุงเทพ ประกันภัย จำกัด (มหาชน)',
-    'claim_no': '2026013700512',
-    'survey_job_no': 'SEABI-210260B00041',
-    'policy_no': '1230137300',
-    'policy_type': 'ประกัน 1 ซ่อมห้าง',
-    'license_plate': 'ขง6693',
-    'car_province': 'พิษณุโลก',
-    'car_brand': 'TOYOTA',
-    'car_model': '',
-    'car_color': 'ขาว',
-    'acc_fault': 'รถประกันเป็นฝ่ายผิด',
-    'repair_shop': 'บริษัท โตโยต้า เมืองสองแคว จำกัด',
-    'deductible': 2000,
-    'insured_damage': [
-      {'part': 'กันชนหน้า(กันชน)', 'pos': 'A', 'level': 'L'},
-      {'part': 'ฝากระโปรงหน้า', 'pos': 'A', 'level': 'L'},
-      {'part': 'คานหน้า', 'pos': 'L', 'level': 'X'},
-    ],
-    'opposing_parties': [
-      {
-        'plate': '7ขต308',
-        'province': 'กรุงเทพฯ',
-        'car_brand': 'HONDA',
-        'car_model': '',
-        'car_color': 'ดำ',
-        'policy_no': '',
-        'policy_type': '',
-        'damage': [
-          {'part': 'ประตูหลังซ้าย+มือเปิด', 'pos': 'L', 'level': 'M'},
-        ],
-      },
-    ],
-  };
-
   DamageNoticeData _slipData() => const DamageNoticeBuilder(
-        report: _demoReport,
-        operatorName: 'SE206 นายศิริเทพ ทรงวิชาญสกุล',
-        operatorPhone: '096-1436568',
+        report: kDemoReport,
+        operatorName: kDemoOperator,
+        operatorPhone: kDemoOperatorPhone,
       ).build(_type);
 }

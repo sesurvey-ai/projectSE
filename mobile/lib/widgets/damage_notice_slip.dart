@@ -126,7 +126,10 @@ class DamageNoticeSlip extends StatelessWidget {
             if (i > 0) const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(border: Border.all(color: Colors.black, width: 1)),
+              // key ผูกแผ่นเซ็นกับลำดับช่องให้ชัด — ใบมีจำนวนช่องไม่เท่ากัน ถ้าไม่ผูก
+              // Flutter จะจับคู่ State เดิมกับช่องที่ถือ controller คนละตัวตอนสลับแบบใบ
               child: SignaturePad(
+                key: ValueKey('sign-$i'),
                 controller: signatures[i],
                 // หลายช่องในใบเดียวต้องเตี้ยลง ไม่งั้นใบยาวจนเปลืองกระดาษ
                 height: data.signers.length > 1 ? 76 : 96,

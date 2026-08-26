@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:se_survey/widgets/damage_notice_slip.dart';
 import 'package:se_survey/widgets/signature_pad.dart';
 import 'package:se_survey/data/damage_notice_catalog.dart';
+import 'package:se_survey/data/damage_notice_demo.dart';
 import 'package:se_survey/services/damage_notice_builder.dart';
 
 /// ใบเอกสารหน้างาน — **คนนอกเซ็นรับรองใบนี้แล้วถือกลับ** และไฟล์เดียวกันเข้าสำนวนประกัน
@@ -250,6 +251,61 @@ void main() {
         c.dispose();
       }
     }
+  });
+
+  /// ⛔ **ข้อมูลตัวอย่างของหน้าทดสอบเครื่องพิมพ์ต้องครบทุกช่อง**
+  ///
+  /// เจอจริง 26/08/69: พิมพ์ใบบันทึกรับเงินออกกระดาษแล้ว "เลขที่รับแจ้ง / รับเงินจำนวน /
+  /// รับเงินจาก" ว่างหมด เพราะตัวอย่างไม่มีข้อมูล — ทำให้แยกไม่ออกว่าโค้ดพังหรือข้อมูลขาด
+  /// เทสพิมพ์ที่แยกสองอย่างนี้ไม่ได้ = เทสที่เชื่อผลไม่ได้
+  test('ข้อมูลตัวอย่างเติมได้ครบทุกช่องของทุกใบที่เปิดใช้', () {
+    const b = DamageNoticeBuilder(
+        report: kDemoReport,
+        operatorName: kDemoOperator,
+        operatorPhone: kDemoOperatorPhone);
+    for (final t in kSlipTypes.where((t) => t.ready)) {
+      final blank = b
+          .build(t)
+          .fields
+          .where((f) => f.value != null && f.value!.trim().isEmpty)
+          .map((f) => f.label)
+          // "เขต/อำเภอ" + "จังหวัด" ของทรัพย์สินยังไม่มีช่องเก็บในแอป — ตั้งใจให้ว่าง
+          .where((l) => l != 'เขต/อำเภอ' && l != 'จังหวัด')
+          .toList();
+      expect(blank, isEmpty, reason: '${t.id} มีช่องว่าง: $blank');
+    }
+  });
+
+  /// ⛔ **บั๊กที่เจอตอนทดสอบพิมพ์จริง 26/08/69 — ช่องเซ็นที่ 3 "เซ็นไม่ติด"**
+  ///
+  /// อาการหลอกมาก: เส้นถูกเก็บลง controller ครบ (`strokes` เพิ่มจริง) แต่จอไม่วาดใหม่
+  /// เพราะ `_SignaturePadState` ไม่มี `didUpdateWidget` — พอ Flutter เอา State เดิมไปใช้
+  /// กับแผ่นที่ถือ controller คนละตัว (เกิดตอนสลับแบบใบ เพราะจำนวนแผ่นไม่เท่ากัน)
+  /// listener ยังผูกกับ controller ตัวเก่าอยู่ · คนเซ็นจะเห็นว่าเซ็นแล้วไม่ขึ้นเส้น
+  /// แล้วเซ็นซ้ำ ๆ จนยอมแพ้ ทั้งที่ข้อมูลเข้าไปแล้ว
+  testWidgets('สลับ controller แล้วแผ่นเซ็นยังวาดตามตัวใหม่', (tester) async {
+    final first = SignatureController();
+    final second = SignatureController();
+    Widget wrap(SignatureController c) =>
+        MaterialApp(home: Scaffold(body: SignaturePad(controller: c)));
+
+    await tester.pumpWidget(wrap(first));
+    await tester.pumpWidget(wrap(second));   // State เดิม แต่ controller คนละตัว
+
+    final g = await tester.startGesture(tester.getCenter(find.byType(SignaturePad)));
+    await g.moveBy(const Offset(20, 6));
+    await g.moveBy(const Offset(20, -6));
+    await g.up();
+    await tester.pump();
+
+    expect(second.isNotEmpty, isTrue, reason: 'เส้นต้องเข้า controller ตัวใหม่');
+    expect(first.isEmpty, isTrue, reason: 'ตัวเก่าต้องไม่ได้เส้น');
+    // ⭐ ข้อที่จับบั๊กจริง — ถ้า listener ยังค้างที่ตัวเก่า จอจะไม่วาดใหม่ คำใบ้จะยังอยู่
+    expect(find.text('เซ็นชื่อในกรอบนี้'), findsNothing,
+        reason: 'เซ็นแล้วคำใบ้ต้องหาย = จอวาดใหม่จริง');
+
+    first.dispose();
+    second.dispose();
   });
 
   /// ⛔ ท้ายใบ (เบอร์ติดต่อ/กำหนดวัน) ต่างกันรายบริษัท — เดาไม่ได้ ต้องหยุด
