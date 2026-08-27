@@ -47,7 +47,12 @@ void main() {
       },
     ],
     'injured_persons': [
-      {'name': 'นายพงษ์ดนัย อินคุ้ม', 'car_reg': '1กก1', 'symptom': 'บาดเจ็บบริเวณขา'},
+      {
+        'name': 'นายพงษ์ดนัย อินคุ้ม',
+        'person_type': 'ผู้โดยสาร - รถคู่กรณี',
+        'car_reg': '1กก1',
+        'symptom': 'บาดเจ็บบริเวณขา',
+      },
     ],
     'damaged_property': [
       {
@@ -66,6 +71,10 @@ void main() {
 
   SlipType typeOf(String id) => kSlipTypes.firstWhere((t) => t.id == id);
 
+  /// ค่าที่แอปเก็บจริงในเคสตัวอย่าง (มีขีดคั่นตามป้าย master ของระบบประกัน)
+  final kPersonTypesSample =
+      (report['injured_persons'] as List).first['person_type'] as String;
+
   /// ค่าของบรรทัด `label` บนใบ — null = ไม่มีบรรทัดนั้น
   String? lineOf(String id, String label, {int index = 0}) {
     final fields = builder().build(typeOf(id), index: index).fields;
@@ -82,17 +91,25 @@ void main() {
       }
     });
 
-    /// ⏳ แบบที่ยังไม่เคยเห็นใบจริงต้องกดพิมพ์ไม่ได้ — เดาเนื้อเอกสารที่คนนอกเซ็นไม่ได้
-    test('แบบที่ยังไม่เห็นใบจริงถูกปิดไว้', () {
-      expect(typeOf('inj_evidence').ready, isFalse);
-      expect(typeOf('pay_receipt_prop').ready, isFalse);
+    /// ⛔ **ทุกแบบในทะเบียนต้องมีใบจริงรองรับ ห้ามเติมให้ครบตาราง**
+    ///
+    /// เคยพลาด: ตอนวางทะเบียนครั้งแรกจัดเป็น "5 หมวด × 2 แบบ" แล้วเติม
+    /// `pay_receipt_prop` (ใบบันทึกรับเงินฝั่งทรัพย์สิน) เข้าไปให้ครบช่อง ทั้งที่
+    /// ไม่เคยเห็นใบจริง — user ทักเอง 27/08/69 จึงถอดออก
+    /// เอกสารที่คนนอกต้องเซ็นรับรอง เดาจากรูปแบบไม่ได้
+    test('ไม่มีแบบใบที่ไม่มีใบจริงรองรับ', () {
+      expect(kSlipTypes.map((t) => t.id), isNot(contains('pay_receipt_prop')));
+      expect(kSlipTypes.every((t) => t.ready), isTrue,
+          reason: 'แบบที่ยังไม่เห็นใบจริงให้ถอดออก ไม่ใช่ปล่อยค้างเป็น ready:false');
     });
 
-    test('แบบที่ได้ใบจริงแล้วเปิดใช้ครบ', () {
+    test('แบบที่ได้ใบจริงแล้วเปิดใช้ครบ 9 แบบ', () {
       for (final id in ['ins_damage', 'ins_contact', 'opp_damage', 'opp_contact',
-                        'inj_contact', 'prop_evidence', 'prop_contact', 'pay_receipt_car']) {
+                        'inj_evidence', 'inj_contact', 'prop_evidence', 'prop_contact',
+                        'pay_receipt_car']) {
         expect(typeOf(id).ready, isTrue, reason: id);
       }
+      expect(kSlipTypes.length, 9);
     });
 
     /// ⛔ ใบรถมีบรรทัด "*หมายเหตุ" เว้นไว้ให้เขียนมือ — ใบ 3 หมวดใหม่ไม่มีบรรทัดนี้
@@ -150,8 +167,31 @@ void main() {
       expect(lineOf('inj_contact', 'ทะเบียนรถ'), '1กก1');
     });
 
+    /// หัวเรื่องคือชื่อเอกสาร ต้องตรงกับใบเดิมที่คนเคยเซ็น ไม่ใช่ชื่อที่เราตั้งเอง
+    test('หัวเรื่องตรงกับใบจริง', () {
+      final e = builder().build(typeOf('inj_evidence'));
+      expect('${e.title} ${e.subtitle}', 'ใบหลักฐาน ผู้บาดเจ็บ');
+      final c = builder().build(typeOf('inj_contact'));
+      expect('${c.title} ${c.subtitle}', 'ใบติดต่อ ผู้บาดเจ็บ');
+    });
+
     test('ป้ายใต้ช่องเซ็นตรงกับใบจริง', () {
       expect(builder().build(typeOf('inj_contact')).signers, ['ผู้รับหลักฐาน ผู้บาดเจ็บ']);
+      expect(builder().build(typeOf('inj_evidence')).signers, ['ผู้รับหลักฐาน ผู้บาดเจ็บ']);
+    });
+
+    /// ⛔ ใบหลักฐานกับใบติดต่อของผู้บาดเจ็บต่างกัน **บรรทัดเดียว** — ใส่ผิดฝั่งแล้ว
+    /// เอกสารที่ลูกค้าเซ็นจะไม่ตรงกับของเดิมที่เคยใช้ (เทียบใบจริงอย่างละ 2 ใบ)
+    test('ตำแหน่งขณะเกิดเหตุ มีเฉพาะใบหลักฐาน ไม่มีในใบติดต่อ', () {
+      expect(lineOf('inj_evidence', 'ตำแหน่งขณะเกิดเหตุ'), 'ผู้โดยสารรถคู่กรณี');
+      expect(lineOf('inj_contact', 'ตำแหน่งขณะเกิดเหตุ'), isNull);
+    });
+
+    /// ใบจริงเขียนติดกัน "ผู้โดยสารรถคู่กรณี" แต่แอปเก็บตามป้าย master ของระบบประกัน
+    /// "ผู้โดยสาร - รถคู่กรณี" — ตัดขีดเฉพาะตอนพิมพ์ ค่าที่เก็บต้องไม่เปลี่ยน
+    test('ตัดขีดออกตอนพิมพ์ ไม่แตะค่าที่เก็บ', () {
+      expect(kPersonTypesSample, contains(' - '));
+      expect(lineOf('inj_evidence', 'ตำแหน่งขณะเกิดเหตุ'), isNot(contains(' - ')));
     });
   });
 

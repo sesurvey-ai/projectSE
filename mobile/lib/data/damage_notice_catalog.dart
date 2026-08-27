@@ -77,6 +77,7 @@ class SlipType {
     this.showDamages = true,
     this.showDeductible = false,
     this.showNote = true,
+    this.showInjuredRole = false,
     this.note,
     this.docsTitle,
     this.docs = const [],
@@ -102,6 +103,10 @@ class SlipType {
 
   /// ใบรถมีบรรทัด "*หมายเหตุ" เสมอ (เว้นให้เขียนมือ) — ใบทรัพย์สิน/ผู้บาดเจ็บ/รับเงินไม่มี
   final bool showNote;
+
+  /// บรรทัด "ตำแหน่งขณะเกิดเหตุ" (ผู้ขับขี่/ผู้โดยสาร รถประกัน/คู่กรณี)
+  /// **มีเฉพาะใบหลักฐานผู้บาดเจ็บ · ใบติดต่อผู้บาดเจ็บไม่มี** (เทียบใบจริงอย่างละ 2 ใบ)
+  final bool showInjuredRole;
   final String? note;
   final String? docsTitle;
   final List<String> docs;
@@ -131,9 +136,12 @@ const _kContactDocs = [
 
 const _kContactFootnote = 'เอกสารนี้ใช้เพื่ออ้างอิงการติดต่อกับบริษัทฯเท่านั้น';
 
-/// 10 แบบ = 5 หมวด × (ใบหลักฐาน/แจ้งความเสียหาย + ใบติดต่อ)
+/// ⛔ **ทุกแบบในนี้ต้องมีใบจริงรองรับ ห้ามเติมให้ครบตาราง**
 ///
-/// ✅ 4 แบบแรกมีตัวอย่างใบจริงครบทั้งใบ · ⏳ ที่เหลือเห็นแค่หัวกระดาษ (`ready: false`)
+/// เคยพลาดมาแล้ว: ตอนวางทะเบียนครั้งแรก (`32987d7`) ผมจัดเป็นตาราง "5 หมวด × 2 แบบ"
+/// แล้วเติม `pay_receipt_prop` (ใบบันทึกรับเงินฝั่งทรัพย์สิน) เข้าไปให้ครบช่อง
+/// **ทั้งที่ไม่เคยเห็นใบจริง** — user ทักเอง 27/08/69 จึงถอดออก
+/// เอกสารที่คนนอกต้องเซ็นรับรอง เดาจากรูปแบบไม่ได้
 const List<SlipType> kSlipTypes = [
   SlipType(
     id: 'ins_damage',
@@ -182,13 +190,14 @@ const List<SlipType> kSlipTypes = [
   SlipType(
     id: 'inj_evidence',
     title: 'ใบหลักฐาน',
-    subtitle: 'การบาดเจ็บ/เสียชีวิต',
+    // ใบจริงพิมพ์ว่า "ผู้บาดเจ็บ" เฉย ๆ ไม่ใช่ "การบาดเจ็บ/เสียชีวิต" ที่ผมเดาไว้ตอนแรก
+    subtitle: 'ผู้บาดเจ็บ',
     subject: SlipSubject.injured,
     signers: ['ผู้รับหลักฐาน ผู้บาดเจ็บ'],
     showDamages: false,
     showNote: false,
-    // ⏳ ยังไม่เคยเห็นใบจริงของแบบนี้ — ชุดที่ได้มา 26/08/69 มีแต่ "ใบติดต่อ ผู้บาดเจ็บ"
-    ready: false,
+    // ต่างจากใบติดต่อผู้บาดเจ็บ **บรรทัดเดียว** คือ "ตำแหน่งขณะเกิดเหตุ" (ใบจริง 27/08/69)
+    showInjuredRole: true,
   ),
   SlipType(
     id: 'inj_contact',
@@ -233,17 +242,5 @@ const List<SlipType> kSlipTypes = [
     showDamages: false,
     showNote: false,
     certifyText: kCertifyPayment,
-  ),
-  SlipType(
-    id: 'pay_receipt_prop',
-    title: 'ใบบันทึกรับเงินค่าเสียหาย',
-    subtitle: 'ทรัพย์สิน',
-    subject: SlipSubject.payment,
-    signers: ['ผู้รับเงิน', 'ผู้ชำระเงิน', 'ผู้ขับขี่รถประกัน/พยาน'],
-    showDamages: false,
-    showNote: false,
-    certifyText: kCertifyPayment,
-    // ⏳ ยังไม่รู้ว่าฝั่งทรัพย์สินมีใบรับเงินแยกจริงไหม — ใบจริงที่ได้มามีแบบเดียว (ฝั่งรถ)
-    ready: false,
   ),
 ];
