@@ -66,7 +66,9 @@ const kDemoReport = <String, dynamic>{
     'damaged_property': [
       {
         'item': 'โทรศัพท์มือถือ iPhone 12 Pro Max',
+        'owner_name': 'นางสาวจันทิมา ผ่องแผ้ว',
         'owner_address': '71 หมู่ 3',
+        'owner_phone': '081-2345678',
         'detail': 'หน้ากากหลังแตกและมุมหน้าแตก - เสนอคุ้มราคาก่อนจัดซ่อม',
       },
     ],

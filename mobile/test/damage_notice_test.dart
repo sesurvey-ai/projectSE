@@ -57,7 +57,9 @@ void main() {
     'damaged_property': [
       {
         'item': 'โทรศัพท์มือถือ iphone รุ่น SE 2020',
+        'owner_name': 'นางสาวมาลี ศรีสุข',
         'owner_address': '366 หมู่ที่ 18',
+        'owner_phone': '0891112222',
         'detail': 'บอดี้หลังแตก เปิดเครื่องไม่ติด',
       },
     ],
@@ -70,6 +72,15 @@ void main() {
       );
 
   SlipType typeOf(String id) => kSlipTypes.firstWhere((t) => t.id == id);
+
+  /// รายการแบบใบที่ **เห็นใบจริงแล้ว** — เพิ่มชื่อในนี้ได้ต่อเมื่อมีใบจริงในมือ
+  /// (10 แบบนี้ = ทุกใบที่ระบบเก่าออกให้เคลมเดียว ตรวจจากเคส 2026013114944 ครบทั้ง 4 หมวด)
+  const kIdsWithRealForm = [
+    'ins_damage', 'ins_contact',                    // PICTURES/INS
+    'opp_damage', 'opp_contact', 'pay_receipt_car', // PICTURES/TP_VEH
+    'inj_evidence', 'inj_contact',                  // PICTURES/TP_PERSON
+    'prop_evidence', 'prop_contact', 'pay_receipt_prop', // PICTURES/TP_PROP
+  ];
 
   /// ค่าที่แอปเก็บจริงในเคสตัวอย่าง (มีขีดคั่นตามป้าย master ของระบบประกัน)
   final kPersonTypesSample =
@@ -97,24 +108,28 @@ void main() {
     /// `pay_receipt_prop` (ใบบันทึกรับเงินฝั่งทรัพย์สิน) เข้าไปให้ครบช่อง ทั้งที่
     /// ไม่เคยเห็นใบจริง — user ทักเอง 27/08/69 จึงถอดออก
     /// เอกสารที่คนนอกต้องเซ็นรับรอง เดาจากรูปแบบไม่ได้
+    ///
+    /// ใบนั้นกลับเข้ามาวันเดียวกันหลัง user ชี้เคสจริงให้ดู (เคลม 2026013114944)
+    /// — สิ่งที่เปลี่ยนคือ "มีหลักฐานแล้ว" ไม่ใช่ "เดาถูก" · การ์ดจึงเปลี่ยนจาก
+    /// "ห้ามมี id นี้" เป็น "ทะเบียนต้องเท่ากับรายการที่มีใบจริงเป๊ะ ๆ"
     test('ไม่มีแบบใบที่ไม่มีใบจริงรองรับ', () {
-      expect(kSlipTypes.map((t) => t.id), isNot(contains('pay_receipt_prop')));
+      expect(kSlipTypes.map((t) => t.id).toSet(), kIdsWithRealForm.toSet(),
+          reason: 'เพิ่ม/ลบแบบใบต้องมีใบจริงรองรับก่อน แล้วค่อยแก้รายการนี้');
       expect(kSlipTypes.every((t) => t.ready), isTrue,
           reason: 'แบบที่ยังไม่เห็นใบจริงให้ถอดออก ไม่ใช่ปล่อยค้างเป็น ready:false');
     });
 
-    test('แบบที่ได้ใบจริงแล้วเปิดใช้ครบ 9 แบบ', () {
-      for (final id in ['ins_damage', 'ins_contact', 'opp_damage', 'opp_contact',
-                        'inj_evidence', 'inj_contact', 'prop_evidence', 'prop_contact',
-                        'pay_receipt_car']) {
+    test('แบบที่ได้ใบจริงแล้วเปิดใช้ครบ 10 แบบ', () {
+      for (final id in kIdsWithRealForm) {
         expect(typeOf(id).ready, isTrue, reason: id);
       }
-      expect(kSlipTypes.length, 9);
+      expect(kSlipTypes.length, 10);
     });
 
     /// ⛔ ใบรถมีบรรทัด "*หมายเหตุ" เว้นไว้ให้เขียนมือ — ใบ 3 หมวดใหม่ไม่มีบรรทัดนี้
     test('ใบทรัพย์สิน/ผู้บาดเจ็บ/รับเงิน ไม่มีบรรทัดหมายเหตุ', () {
-      for (final id in ['inj_contact', 'prop_evidence', 'prop_contact', 'pay_receipt_car']) {
+      for (final id in ['inj_contact', 'prop_evidence', 'prop_contact',
+                        'pay_receipt_car', 'pay_receipt_prop']) {
         expect(typeOf(id).showNote, isFalse, reason: id);
       }
       expect(typeOf('ins_damage').showNote, isTrue);
@@ -227,9 +242,61 @@ void main() {
 
     /// "ตัวแทนบริษัท" อยู่ระหว่างคำรับรองกับช่องเซ็น ไม่ใช่ในกลุ่มข้อมูลด้านบน
     test('มีบรรทัดตัวแทนบริษัทก่อนช่องเซ็น', () {
-      expect(builder().build(typeOf('pay_receipt_car')).preSignLines,
-          ['ตัวแทนบริษัท : SE79 นายธนภัทร ชัยสงคราม']);
+      for (final id in ['pay_receipt_car', 'pay_receipt_prop']) {
+        expect(builder().build(typeOf(id)).preSignLines,
+            ['ตัวแทนบริษัท : SE79 นายธนภัทร ชัยสงคราม'], reason: id);
+      }
       expect(builder().build(typeOf('prop_evidence')).preSignLines, isEmpty);
+    });
+  });
+
+  /// ใบบันทึกรับเงินฝั่ง "บุคคล/ทรัพย์สิน" — คนหรือบริษัทที่**ไม่ได้ขับรถมาชน**
+  /// แต่ไปทำรถประกันเสียหายแล้วจ่ายเงินชดใช้ (กติกา user 27/08/69)
+  /// เทียบทีละบรรทัดกับใบจริง `prop_print_report_pay` ของเคลม 2026013114944
+  group('ใบบันทึกรับเงิน (บุคคล/ทรัพย์สิน)', () {
+    /// ⛔ **จุดที่พลาดง่ายที่สุด: ดึงชื่อผิดฝั่ง**
+    /// ใบนี้เงินมาจาก "เจ้าของทรัพย์สิน" (`owner_*`) ไม่ใช่คู่กรณีคนขับรถ
+    /// ถ้าหลุดไปหยิบ `opposing_parties` จะได้ใบที่ให้คนผิดคนเซ็นรับว่าจ่ายเงินแล้ว
+    test('ดึงคนจ่ายเงินจากหมวดทรัพย์สิน ไม่ใช่หมวดคู่กรณี', () {
+      expect(lineOf('pay_receipt_prop', 'รับเงินจาก'), 'นางสาวมาลี ศรีสุข');
+      expect(lineOf('pay_receipt_prop', 'ที่อยู่'), '366 หมู่ที่ 18');
+      expect(lineOf('pay_receipt_prop', 'โทรศัพท์'), '0891112222');
+      // ของคู่กรณีคือคนละคน — กันสองใบนี้สลับแหล่งข้อมูลกัน
+      expect(lineOf('pay_receipt_car', 'รับเงินจาก'), 'สมหญิง รักดี');
+    });
+
+    test('บรรทัดที่เหมือนใบคู่กรณีต้องเหมือนจริง', () {
+      expect(lineOf('pay_receipt_prop', 'เลขที่อุบัติเหตุ'), '2026013135962');
+      expect(lineOf('pay_receipt_prop', 'เลขเรื่อง Survey'), 'SEABI-310260501742');
+      expect(lineOf('pay_receipt_prop', 'เลขที่รับแจ้ง'), '2026078253');
+      expect(lineOf('pay_receipt_prop', 'รับเงินจำนวน'), '200 บาท');
+      expect(lineOf('pay_receipt_prop', 'ทะเบียนรถประกัน'), '4ขภ3362');
+      expect(lineOf('pay_receipt_prop', 'ของ'), 'นายสมชาย ใจดี');
+      expect(lineOf('pay_receipt_prop', 'เหตุเกิดที่'), 'หน้า รร.บ้านบางประม้า');
+      expect(builder().build(typeOf('pay_receipt_prop')).signers,
+          ['ผู้รับเงิน', 'ผู้ชำระเงิน', 'ผู้ขับขี่รถประกัน/พยาน']);
+    });
+
+    /// ⛔ ประโยคคั่นคนละประโยคกับใบคู่กรณี — ฝั่งนี้ไม่ได้ขับรถมาชน
+    /// และบรรทัด "ทรัพย์สิน:" ใบจริงพิมพ์โคลอนติดกัน ไม่ใช่ " : " เหมือนบรรทัดอื่น
+    test('ประโยคคั่น + บรรทัดทรัพย์สิน ตรงตามใบจริง', () {
+      final f = builder().build(typeOf('pay_receipt_prop')).fields;
+      expect(f.any((x) => x.label == 'ทำความเสียหายให้รถ' && x.value == null), isTrue);
+      expect(f.any((x) => x.label == 'ขับรถโดยประมาทได้ชนรถ'), isFalse,
+          reason: 'ประโยคของใบคู่กรณี ห้ามหลุดมาใบนี้');
+      final prop = f.firstWhere((x) => x.label.startsWith('ทรัพย์สิน'));
+      expect(prop.value, isNull);
+      expect(prop.label, 'ทรัพย์สิน: โทรศัพท์มือถือ iphone รุ่น SE 2020');
+    });
+
+    /// หัวใบจริงของสองใบนี้**เหมือนกันเป๊ะ** ต่างกันแค่บล็อกกลาง →
+    /// ถ้าเมนูใช้หัวเรื่องเป็นชื่อ พนักงานจะเห็น 2 บรรทัดเหมือนกันแล้วเลือกผิดใบ
+    test('หัวใบเหมือนกัน แต่ชื่อในเมนูต้องแยกออก', () {
+      expect(typeOf('pay_receipt_prop').title, typeOf('pay_receipt_car').title);
+      expect(typeOf('pay_receipt_prop').subtitle, '');
+      expect(typeOf('pay_receipt_prop').name,
+          isNot(typeOf('pay_receipt_car').name));
+      expect(typeOf('pay_receipt_prop').name, contains('บุคคล'));
     });
   });
 
@@ -258,6 +325,9 @@ void main() {
       // ใบรับเงินผูกกับคู่กรณี (เงินรับมาจากคู่กรณีคันนั้น)
       expect(b.subjectsOf(typeOf('pay_receipt_car')).length, 1);
       expect(b.subjectsOf(typeOf('ins_damage')), isEmpty);
+      // ⭐ ใบรับเงินอีกใบดึงคนละรายการ — ต้องเป็นตัวเดียวกับที่ใบทรัพย์สินดึง
+      expect(b.subjectsOf(typeOf('pay_receipt_prop')),
+          b.subjectsOf(typeOf('prop_evidence')));
     });
 
     test('ป้ายตัวเลือกชี้ตัวได้', () {

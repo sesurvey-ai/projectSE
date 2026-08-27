@@ -62,7 +62,11 @@ enum SlipSubject {
   opponentCar('รถคู่กรณี'),
   injured('ผู้บาดเจ็บ/เสียชีวิต'),
   property('ทรัพย์สิน'),
-  payment('รับเงินค่าเสียหาย');
+  payment('รับเงินค่าเสียหาย'),
+
+  /// ใบบันทึกรับเงินอีกฝั่ง — เงินมาจาก**เจ้าของทรัพย์สิน/บุคคล** ที่ไปทำรถประกัน
+  /// เสียหาย (ไม่ได้ขับรถมาชน) จึงดึงรายชื่อจากหมวดทรัพย์สิน ไม่ใช่หมวดคู่กรณี
+  paymentProperty('รับเงินค่าเสียหาย (บุคคล/ทรัพย์สิน)');
 
   const SlipSubject(this.label);
   final String label;
@@ -86,12 +90,19 @@ class SlipType {
     this.docs = const [],
     this.docsFootnote,
     this.certifyText = kCertifyDamage,
+    this.menuLabel,
   });
 
   final String id;
   final String title;
   final String subtitle;
   final SlipSubject subject;
+
+  /// ชื่อในเมนู "จะพิมพ์ใบแบบไหน" เมื่อหัวใบซ้ำกับใบอื่น
+  ///
+  /// ใบบันทึกรับเงิน 2 ใบ (คู่กรณี/บุคคล) **พิมพ์หัวเรื่องเหมือนกันเป๊ะบนใบจริง**
+  /// ต่างกันแค่บล็อกกลาง → ถ้าใช้หัวเรื่องเป็นชื่อเมนู พนักงานจะเห็น 2 บรรทัดเหมือนกัน
+  final String? menuLabel;
 
   /// ป้ายใต้ช่องเซ็น — ใบทั่วไปมีช่องเดียว **ใบบันทึกรับเงินมี 3 ช่อง**
   /// (ผู้รับเงิน · ผู้ชำระเงิน · ผู้ขับขี่รถประกัน/พยาน)
@@ -116,7 +127,7 @@ class SlipType {
   final String? docsFootnote;
   final String? certifyText;
 
-  String get name => '$title $subtitle';
+  String get name => menuLabel ?? '$title $subtitle'.trim();
 }
 
 const kCertifyDamage = 'ข้าพเจ้าได้ตรวจสอบรายการความเสียหายที่ระบุไว้ข้างต้น '
@@ -145,6 +156,11 @@ const _kContactFootnote = 'เอกสารนี้ใช้เพื่อ�
 /// แล้วเติม `pay_receipt_prop` (ใบบันทึกรับเงินฝั่งทรัพย์สิน) เข้าไปให้ครบช่อง
 /// **ทั้งที่ไม่เคยเห็นใบจริง** — user ทักเอง 27/08/69 จึงถอดออก
 /// เอกสารที่คนนอกต้องเซ็นรับรอง เดาจากรูปแบบไม่ได้
+///
+/// ใบนั้น**มีจริง** และกลับเข้ามาในทะเบียนวันเดียวกัน หลัง user ชี้เคสจริงให้ดู
+/// (เคลม 2026013114944 / SEABI-173260800206) — ระบบเก่าสร้างไว้ที่
+/// `PICTURES/TP_PROP/<ikey ทรัพย์สิน>/…prop_print_report_pay…` คือออกจาก
+/// **หมวดทรัพย์สิน** ไม่ใช่หมวดที่ผมเดาไว้ · ต่างกันที่ "หลักฐานมาทีหลัง" ไม่ใช่ที่การเดาถูก
 const List<SlipType> kSlipTypes = [
   SlipType(
     id: 'ins_damage',
@@ -241,6 +257,20 @@ const List<SlipType> kSlipTypes = [
     title: 'ใบบันทึกรับเงินค่าเสียหาย',
     subtitle: '',
     subject: SlipSubject.payment,
+    menuLabel: 'ใบบันทึกรับเงินค่าเสียหาย · รถคู่กรณี',
+    signers: ['ผู้รับเงิน', 'ผู้ชำระเงิน', 'ผู้ขับขี่รถประกัน/พยาน'],
+    showDamages: false,
+    showNote: false,
+    certifyText: kCertifyPayment,
+  ),
+  SlipType(
+    // ใบเดียวกับข้างบนทุกอย่าง — หัวเรื่อง คำรับรอง ช่องเซ็น ท้ายใบ เหมือนเป๊ะ
+    // ต่างกันแค่ "เงินมาจากใคร": คู่กรณีขับรถมาชน vs เจ้าของทรัพย์สิน/บุคคลทำรถเสียหาย
+    id: 'pay_receipt_prop',
+    title: 'ใบบันทึกรับเงินค่าเสียหาย',
+    subtitle: '',
+    subject: SlipSubject.paymentProperty,
+    menuLabel: 'ใบบันทึกรับเงินค่าเสียหาย · บุคคล/ทรัพย์สิน',
     signers: ['ผู้รับเงิน', 'ผู้ชำระเงิน', 'ผู้ขับขี่รถประกัน/พยาน'],
     showDamages: false,
     showNote: false,

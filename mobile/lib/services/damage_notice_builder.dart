@@ -56,6 +56,7 @@ class DamageNoticeBuilder {
       case SlipSubject.injured:
         return injured;
       case SlipSubject.property:
+      case SlipSubject.paymentProperty:
         return properties;
       case SlipSubject.insuredCar:
         return const [];
@@ -68,12 +69,12 @@ class DamageNoticeBuilder {
     final detail = switch (subject) {
       SlipSubject.opponentCar || SlipSubject.payment => v('plate'),
       SlipSubject.injured => v('name'),
-      SlipSubject.property => v('item'),
+      SlipSubject.property || SlipSubject.paymentProperty => v('item'),
       SlipSubject.insuredCar => '',
     };
-    final head = subject == SlipSubject.injured || subject == SlipSubject.property
-        ? 'รายการที่ ${i + 1}'
-        : 'คันที่ ${i + 1}';
+    final head = subject == SlipSubject.opponentCar || subject == SlipSubject.payment
+        ? 'คันที่ ${i + 1}'
+        : 'รายการที่ ${i + 1}';
     return detail.isEmpty ? head : '$head · $detail';
   }
 
@@ -161,6 +162,31 @@ class DamageNoticeBuilder {
           SlipField('เหตุเกิดวันที่', accWhen),
           SlipField('เหตุเกิดที่', _s('acc_place')),
         ]);
+      case SlipSubject.paymentProperty:
+        final amount = _money(report['acc_claim_amount']);
+        fields.addAll([
+          printedLine,
+          SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
+          SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
+          SlipField('เลขที่รับแจ้ง', _s('claim_ref_no')),
+          SlipField('รับเงินจำนวน', amount == null ? '' : '${_thousands(amount)} บาท'),
+          // เงินมาจาก**เจ้าของทรัพย์สิน** (คนจ่าย) ส่วน 'ทรัพย์สิน' คือชื่อสิ่งที่เสียหาย
+          // — ในเคสแบบ "บุคคล" สองช่องนี้เป็นคนละคนได้ (เช่น ลูกจ้างทำ นายจ้างจ่าย)
+          SlipField('รับเงินจาก', o('owner_name')),
+          SlipField('ที่อยู่', o('owner_address')),
+          SlipField('โทรศัพท์', o('owner_phone')),
+          // ⚠️ ใบจริงพิมพ์ "ทรัพย์สิน:" ติดกัน ไม่เว้นวรรคหน้าโคลอนเหมือนบรรทัดอื่น
+          // (ความไม่สม่ำเสมอของระบบเก่าเอง) — คงไว้ให้ใบหน้าตาเหมือนที่คนเคยเซ็น
+          SlipField.plain('ทรัพย์สิน: ${o('item')}'),
+          const SlipField.blank(),
+          // คู่กรณีใช้ "ขับรถโดยประมาทได้ชนรถ" — ฝั่งนี้ไม่ได้ขับรถมาชน
+          const SlipField.plain('ทำความเสียหายให้รถ'),
+          SlipField('ทะเบียนรถประกัน', _s('license_plate')),
+          SlipField('ยี่ห้อ/รุ่น', insuredModel),
+          SlipField('ของ', _s('assured_name')),
+          SlipField('เหตุเกิดวันที่', accWhen),
+          SlipField('เหตุเกิดที่', _s('acc_place')),
+        ]);
       case SlipSubject.opponentCar:
         fields.addAll([
           printedLine,
@@ -216,7 +242,8 @@ class DamageNoticeBuilder {
       certifyText: type.certifyText,
       // ใบบันทึกรับเงินมีบรรทัด "ตัวแทนบริษัท" คั่นระหว่างคำรับรองกับช่องเซ็น
       // (คนที่รับเงินแทนบริษัทคือผู้สำรวจคนเดียวกับที่ออกใบ)
-      preSignLines: type.subject == SlipSubject.payment
+      preSignLines: type.subject == SlipSubject.payment ||
+              type.subject == SlipSubject.paymentProperty
           ? ['ตัวแทนบริษัท : $operatorName']
           : const [],
       signers: type.signers,
