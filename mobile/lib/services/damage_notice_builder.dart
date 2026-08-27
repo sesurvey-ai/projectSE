@@ -171,7 +171,7 @@ class DamageNoticeBuilder {
           SlipField('รถคู่กรณีทะเบียน', o('plate')),
           SlipField('จังหวัด', o('province')),
           SlipField('ยี่ห้อ/รุ่น', '${o('car_brand')}/${o('car_model')}'),
-          SlipField('สี', o('car_color')),
+          SlipField('สีรถ', o('car_color')),
         ]);
       case SlipSubject.insuredCar:
         fields.addAll([
@@ -183,7 +183,7 @@ class DamageNoticeBuilder {
           SlipField('ทะเบียนรถ', _s('license_plate')),
           SlipField('จังหวัด', _s('car_province')),
           SlipField('ยี่ห้อ/รุ่น', insuredModel),
-          SlipField('สี', _s('car_color')),
+          SlipField('สีรถ', _s('car_color')),
           SlipField('ฝ่ายใดเป็นฝ่ายถูก/ผิด', _s('acc_fault')),
           SlipField('ซ่อมที่', _s('repair_shop')),
         ]);
