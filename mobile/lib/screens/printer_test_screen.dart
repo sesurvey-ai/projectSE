@@ -41,6 +41,9 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
   bool _busy = false;
   PrintLang _lang = PrintLang.tspl;
   SlipType _type = kSlipTypes.first;
+
+  /// ขนาดตัวอักษรที่กำลังลอง (หน้าทดสอบเท่านั้น) — เริ่มที่ค่าที่ใบจริงใช้
+  double _size = kSlipBodySize;
   final List<String> _log = [];
 
   @override
@@ -313,6 +316,27 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
               onChanged: (v) => setState(() => _type = v ?? kSlipTypes.first),
             ),
             const SizedBox(height: 8),
+            // ลองขนาดตัวอักษรได้หลายขนาดต่อกันโดยไม่ต้อง build ใหม่ — ใบจริงใช้
+            // ค่า kSlipBodySize เสมอ ตัวเลือกนี้มีเฉพาะหน้าทดสอบ
+            DropdownButtonFormField<double>(
+              initialValue: _size,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                  labelText: 'ขนาดตัวอักษร (เฉพาะหน้าทดสอบ)',
+                  border: OutlineInputBorder()),
+              items: DamageNoticeSlip.testSizes
+                  .map((s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(
+                            s == kSlipBodySize
+                                ? '${s.toStringAsFixed(0)}  (ที่ใช้จริงตอนนี้)'
+                                : s.toStringAsFixed(0),
+                            style: const TextStyle(fontSize: 13)),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _size = v ?? kSlipBodySize),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -351,7 +375,8 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
               child: FittedBox(
                 child: RepaintBoundary(
                   key: _slipKey,
-                  child: DamageNoticeSlip(data: _slipData(), signatures: _signs),
+                  child: DamageNoticeSlip(
+                      data: _slipData(), signatures: _signs, bodySize: _size),
                 ),
               ),
             ),
