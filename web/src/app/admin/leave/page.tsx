@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { useSocket } from '@/hooks/useSocket';
 
 type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all';
 
@@ -71,6 +72,9 @@ export default function LeaveAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  // อนุมัติแล้วแต่แจ้งเตือนไปไม่ถึงเครื่องพนักงาน — ต้องบอกให้โทรตาม ไม่ใช่เงียบไป
+  const [pushWarning, setPushWarning] = useState('');
+  const { socket } = useSocket();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -90,6 +94,19 @@ export default function LeaveAdminPage() {
     load();
   }, [load]);
 
+  /**
+   * มีคนยื่นใบลาใหม่ / แอดมินอีกคนเพิ่งกดอนุมัติ → โหลดรายการใหม่เอง
+   *
+   * เดิมหน้านี้โหลดครั้งเดียวตอนเปิด — ใบลาที่ยื่นเข้ามาระหว่างเปิดหน้าค้างอยู่จะไม่โผล่
+   * จนกว่าจะกดสลับแท็บหรือ F5 (เป็นเหตุผลหลักที่ใบลาค้างข้ามวัน)
+   */
+  useEffect(() => {
+    if (!socket) return;
+    const onChange = () => load();
+    socket.on('leave_changed', onChange);
+    return () => { socket.off('leave_changed', onChange); };
+  }, [socket, load]);
+
   const review = async (row: LeaveRow, status: 'approved' | 'rejected') => {
     let note = '';
     if (status === 'rejected') {
@@ -98,8 +115,14 @@ export default function LeaveAdminPage() {
     setBusyId(row.id);
     try {
       const res = await api.patch(`/api/leave/${row.id}/review`, { status, review_note: note || undefined });
-      if (res.data.success) load();
-      else alert('ดำเนินการไม่สำเร็จ');
+      if (res.data.success) {
+        // บันทึกผลแล้ว ≠ พนักงานรู้ตัว — ถ้าแจ้งเตือนไปไม่ถึงต้องบอกให้โทรตาม
+        const push = res.data.data?.push as { status?: string; reason?: string } | undefined;
+        setPushWarning(push && push.status !== 'sent'
+          ? (push.reason || 'แจ้งเตือนไปไม่ถึงเครื่องพนักงาน')
+          : '');
+        load();
+      } else alert('ดำเนินการไม่สำเร็จ');
     } catch {
       alert('ดำเนินการไม่สำเร็จ');
     } finally {
@@ -111,6 +134,17 @@ export default function LeaveAdminPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">ใบลาพนักงาน</h1>
       <p className="text-sm text-gray-500 mb-6">ตรวจสอบและอนุมัติคำขอลาของพนักงาน</p>
+
+      {pushWarning && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-lg text-sm mb-5">
+          <div className="font-semibold mb-1">⚠️ บันทึกผลแล้ว แต่แจ้งเตือนไปไม่ถึงเครื่องพนักงาน</div>
+          <div className="text-amber-800">{pushWarning} — <strong>โทรแจ้งพนักงานด้วย</strong> ไม่งั้นเขาจะไม่รู้ผล</div>
+          <button type="button" onClick={() => setPushWarning('')}
+            className="mt-2 px-4 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+            รับทราบ
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-5">
         {TABS.map((t) => (

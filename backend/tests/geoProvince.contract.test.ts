@@ -118,9 +118,11 @@ check('ส่งพิกัดกลับไปให้ฟอร์มสร�
  * ⛔ มีพิกัดแล้วต้อง **ไม่** แบ่งกลุ่มจังหวัดซ้อนอีก — คนที่ห่างแค่ 3 กม. แต่คนละฝั่ง
  *    เส้นแบ่งจังหวัดจะถูกพับไปอยู่ใน "ช่างคนอื่น" ซึ่งกลับหัวกลับหางกับที่ต้องการ
  */
+// (28/08/69 การแบ่งจังหวัดย้ายไปกรองจาก `free` แทน `sorted` เพราะมีชั้น "ว่าง/ถืองาน"
+//  คั่นก่อนหน้า — กติกาเดิมยังเหมือนเดิมทุกอย่าง: มีพิกัด = ไม่แบ่งจังหวัดซ้อน)
 check('มีพิกัด → เรียงระยะทางล้วน ไม่แบ่งจังหวัดซ้อน',
       /const byDistance = incidentLat !== undefined && incidentLng !== undefined/.test(assign)
-      && /!byDistance && incidentProvince \? sorted\.filter/.test(assign));
+      && /!byDistance && incidentProvince \? free\.filter/.test(assign));
 check('ไม่มีพิกัด → กลับไปจัดกลุ่มตามจังหวัดเหมือนเดิม',
       /\{!byDistance && incidentProvince && others\.length > 0 && \(/.test(assign));
 

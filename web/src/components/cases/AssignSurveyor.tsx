@@ -62,6 +62,15 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const [incidentLng, setIncidentLng] = useState<number | undefined>();
   // โหลดพิกัดเคสเสร็จหรือยัง — กัน race: ต้องได้พิกัดก่อน auto-request ถึงจะเข้า path เรียงตามระยะทาง
   const [caseLoaded, setCaseLoaded] = useState(false);
+  /**
+   * งานในมือของแต่ละคน `{ user_id: { assigned, surveyed } }`
+   *
+   * `null` = ยังไม่รู้ (กำลังโหลด หรือโหลดไม่สำเร็จ) → **ถือว่าทุกคนว่าง ไม่ซ่อนใครทั้งนั้น**
+   * ซ่อนคนเพราะข้อมูลที่เราไม่มี = คนจ่ายงานเห็นรายชื่อหาย แล้วจ่ายงานไม่ได้ทั้งที่คนว่างอยู่
+   */
+  const [workload, setWorkload] = useState<Record<string, { assigned: number; surveyed: number }> | null>(null);
+  /** เผยคนที่ถืองานอยู่ — ค่าเริ่มต้นซ่อนไว้ ตามที่ user ขอ "แสดงเฉพาะคนที่ว่าง" */
+  const [showBusy, setShowBusy] = useState(false);
 
   // Fetch case coordinates on mount
   useEffect(() => {
@@ -79,6 +88,23 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
       .catch(() => {})
       .finally(() => setCaseLoaded(true));
   }, [caseIdStr]);
+
+  // งานในมือของช่างทุกคน — โหลดครั้งเดียวตอนเปิด แล้วโหลดซ้ำหลังมอบหมายสำเร็จ
+  const loadWorkload = useCallback(() => {
+    api.get('/api/cases/workload')
+      .then((res) => {
+        const rows = (res.data?.data ?? []) as { user_id: number | string; assigned?: number; surveyed?: number }[];
+        const map: Record<string, { assigned: number; surveyed: number }> = {};
+        rows.forEach((w) => {
+          map[String(w.user_id)] = { assigned: Number(w.assigned) || 0, surveyed: Number(w.surveyed) || 0 };
+        });
+        setWorkload(map);
+      })
+      // โหลดไม่ได้ = ไม่รู้ว่าใครถืองาน → คงค่า null ไว้ แล้วโชว์ทุกคน (ดูคอมเมนต์ที่ state)
+      .catch(() => setWorkload(null));
+  }, []);
+
+  useEffect(() => { loadWorkload(); }, [loadWorkload]);
 
   // Listen for real-time location updates via socket
   useEffect(() => {
@@ -137,6 +163,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
     try {
       const res = await api.post(`/api/cases/${caseIdStr}/assign`, { surveyor_id: Number(surveyorUserId) });
       if (res.data.success) {
+        loadWorkload();   // คนที่เพิ่งรับงานต้องหลุดจากรายชื่อ "ว่าง" ทันที
         // มอบหมายสำเร็จ ≠ ช่างรู้ตัว — ถ้าแจ้งเตือนไปไม่ถึง ต้องบอกคนจ่ายงานให้โทรตาม
         // (เดิมเด้งออกจากหน้าทันทีเหมือนกันหมด ทั้งที่ push อาจล้มเงียบ)
         const push = res.data.data?.push as { status?: string; reason?: string } | undefined;
@@ -178,8 +205,26 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const byDistance = incidentLat !== undefined && incidentLng !== undefined;
   /** รู้ว่าวัดจากจุดกลางอำเภอไหน — บอกชื่ออำเภอบนหน้าจอได้ */
   const fromDistrict = coordSource === 'district';
-  const inProvince = !byDistance && incidentProvince ? sorted.filter((x) => x.province === incidentProvince) : [];
-  const others = !byDistance && incidentProvince ? sorted.filter((x) => x.province !== incidentProvince) : sorted;
+
+  /**
+   * "ว่าง" = **ยังไม่ได้รับมอบหมายงาน** (กติกา user 24/08/69)
+   *
+   * งานที่ช่างส่งแล้วรอหัวหน้าตรวจ **ไม่นับว่าไม่ว่าง** — ช่างทำจบแล้ว รับงานใหม่ได้
+   * (โชว์เป็นข้อมูลข้างชื่อแทน) · ยังไม่รู้ workload = ถือว่าว่างไว้ก่อน ไม่ซ่อนใคร
+   */
+  const jobsOf = (s: SurveyorLocation) => workload?.[String(s.user_id)] ?? null;
+  const isFree = (s: SurveyorLocation) => (jobsOf(s)?.assigned ?? 0) === 0;
+
+  /**
+   * ⛔ **ไม่ตัดคนที่ถืองานทิ้ง แค่ยุบเก็บ** — บางวันช่างในพื้นที่ถืองานกันหมด
+   *    ถ้าตัดออกจริง คนจ่ายงานจะเจอรายชื่อว่างเปล่าแล้วจ่ายงานไม่ได้เลย
+   *    (เหตุผลเดียวกับที่ไม่กรองด้วยพิกัด — ดูคอมเมนต์กลุ่ม "ช่างคนอื่น")
+   */
+  const free = sorted.filter(isFree);
+  const busy = sorted.filter((s) => !isFree(s));
+
+  const inProvince = !byDistance && incidentProvince ? free.filter((x) => x.province === incidentProvince) : [];
+  const others = !byDistance && incidentProvince ? free.filter((x) => x.province !== incidentProvince) : free;
   const [showOthers, setShowOthers] = useState(false);
 
   /** พิกัดอัปเดตเมื่อไหร่ — ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน */
@@ -197,6 +242,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   /** แถวช่าง 1 คน — ใช้ซ้ำทั้งกลุ่ม "ในจังหวัด" และ "คนอื่น" จะได้ไม่ต้องดูแล 2 ที่ */
   const row = (s: SurveyorLocation) => {
     const fresh = freshness(s.recorded_at);
+    const jobs = jobsOf(s);
     return (
       <div key={s.user_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
         <div className="min-w-0">
@@ -206,9 +252,22 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
               <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-mono tracking-tight">{s.code}</span>
             )}
             <span className="truncate">{s.first_name ? `${s.first_name} ${s.last_name || ''}` : s.username}</span>
+            {/* งานที่ยังไม่ส่ง = เหตุผลที่คนนี้ไม่ถือว่าว่าง — ต้องเห็นตอนตัดสินใจว่าจะจ่ายซ้ำไหม */}
+            {(jobs?.assigned ?? 0) > 0 && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium shrink-0"
+                title="งานที่รับไปแล้วแต่ยังไม่ส่ง">
+                ถืองาน {jobs!.assigned} ใบ
+              </span>
+            )}
           </h3>
           <p className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
             {s.province && <span>{s.province}</span>}
+            {/* ส่งแล้วรอหัวหน้าตรวจ = ไม่นับว่าไม่ว่าง แสดงเป็นข้อมูลเฉย ๆ (กติกา user) */}
+            {(jobs?.surveyed ?? 0) > 0 && (
+              <span className="text-gray-400" title="ส่งงานแล้ว รอหัวหน้าตรวจ — ไม่นับว่าไม่ว่าง">
+                ส่งแล้วรอตรวจ {jobs!.surveyed} ใบ
+              </span>
+            )}
             {/* ตำแหน่งเมื่อ 10 วันก่อนกับเมื่อ 10 นาทีก่อน เชื่อได้ไม่เท่ากัน — ต้องเห็น */}
             {fresh && <span className={fresh.cls}>อัปเดต {fresh.text}</span>}
             {s.distance !== undefined && (
@@ -264,7 +323,11 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           รายชื่อช่างสำรวจ
-          {sorted.length > 0 && <span className="ml-2 text-sm font-normal text-gray-400">{sorted.length} คน</span>}
+          {sorted.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-gray-400">
+              {workload ? `ว่าง ${free.length} จาก ${sorted.length} คน` : `${sorted.length} คน`}
+            </span>
+          )}
         </h2>
         {sorted.length === 0 ? (
           <div className="text-center py-8 text-gray-500">{requestSent ? 'กำลังรอข้อมูลพิกัดจากช่างสำรวจ...' : 'กดปุ่ม "เรียกพิกัด" เพื่อดูตำแหน่งช่างสำรวจ'}</div>
@@ -300,6 +363,24 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
               </>
             )}
             {(byDistance || !incidentProvince) && others.map(row)}
+
+            {/* คนที่ถืองานอยู่ — ยุบไว้ท้ายรายการ ยังกดมอบหมายได้ถ้าจำเป็น */}
+            {busy.length > 0 && (
+              <>
+                <button type="button" onClick={() => setShowBusy((v) => !v)}
+                  className="w-full text-left text-sm text-gray-500 hover:text-gray-700 border-t border-gray-200 pt-3">
+                  {showBusy ? '▾' : '▸'} ช่างที่ถืองานอยู่ {busy.length} คน
+                  <span className="text-gray-400"> (ยังมอบหมายได้ถ้าจำเป็น)</span>
+                </button>
+                {showBusy && busy.map(row)}
+              </>
+            )}
+
+            {free.length === 0 && busy.length > 0 && !showBusy && (
+              <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                ตอนนี้ไม่มีช่างที่ว่างเลย — กดดูรายชื่อข้างบนเพื่อมอบหมายให้คนที่ถืองานอยู่
+              </div>
+            )}
           </div>
         )}
         </div>

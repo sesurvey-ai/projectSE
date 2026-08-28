@@ -1588,10 +1588,20 @@ export const caseService = {
     }
   },
 
-  // จำนวนงานที่ "ถืออยู่" ของแต่ละพนักงานสำรวจ (assigned/surveyed = ยังไม่ปิด) — ใช้เรียงคิวบอร์ดเข้างาน
+  // จำนวนงานที่ "ถืออยู่" ของแต่ละพนักงานสำรวจ — ใช้ 2 ที่คนละนิยาม จึงคืนมาทั้งคู่
+  //
+  //   active   = assigned + surveyed (ยังไม่ปิดเรื่อง) — บอร์ดเข้างานใช้ตัวนี้ ห้ามเปลี่ยนความหมาย
+  //   assigned = **ยังไม่ได้ส่งงาน** — หน้าจ่ายงานใช้ตัวนี้ตัดสินว่า "ว่าง" หรือไม่
+  //   surveyed = ส่งงานแล้วรอหัวหน้าตรวจ — งานในมือที่ช่างทำจบแล้ว
+  //
+  // นิยาม "ว่าง" ที่ user เคาะไว้ 24/08/69 = **ยังไม่ได้รับมอบหมายงาน** ·
+  // เคสที่ส่งงานแล้วรอตรวจ = แสดงเป็นข้อมูล **ไม่นับว่าไม่ว่าง** (ช่างรับงานใหม่ได้)
   async activeWorkload() {
     const { rows } = await db.query(
-      `SELECT u.id AS user_id, u.code, COUNT(c.id)::int AS active
+      `SELECT u.id AS user_id, u.code,
+              COUNT(c.id)::int                                          AS active,
+              COUNT(c.id) FILTER (WHERE c.status = 'assigned')::int     AS assigned,
+              COUNT(c.id) FILTER (WHERE c.status = 'surveyed')::int     AS surveyed
          FROM users u
          LEFT JOIN cases c ON c.assigned_to = u.id AND c.status IN ('assigned','surveyed')
         WHERE u.role = 'surveyor'

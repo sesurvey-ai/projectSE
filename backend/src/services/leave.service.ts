@@ -1,5 +1,79 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
+import { isFirebaseReady } from '../config/firebase';
+import { fcmService } from './fcm.service';
+import { notifyLeaveChanged } from './leaveEvents';
+
+const LEAVE_LABEL: Record<string, string> = {
+  sick: 'ลาป่วย',
+  personal: 'ลากิจ',
+  vacation: 'ลาพักร้อน',
+  other: 'ลา',
+};
+
+/** 'YYYY-MM-DD' → '5 ก.ย.' — ใบลาส่วนใหญ่ยาว 1-2 วัน เลยไม่ต้องมีปีให้รก */
+function thaiDay(iso?: string | null): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));
+  if (!m) return String(iso ?? '');
+  const month = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][Number(m[2]) - 1] ?? m[2];
+  return `${Number(m[3])} ${month}`;
+}
+
+export type PushStatus = { status: 'sent' | 'no_token' | 'failed' | 'no_fcm'; reason?: string };
+
+/**
+ * แจ้งผลอนุมัติกลับไปที่เครื่องพนักงาน
+ *
+ * ใช้ FCM แบบ `notification` (ไม่ใช่ data-only เหมือนการ์ดงาน) — แอนดรอยด์แสดงเองได้เลย
+ * ตอนแอปอยู่เบื้องหลัง **จึงไม่ต้องแก้แอปมือถือ/แจก APK ใหม่** เพื่อให้แจ้งเตือนนี้ขึ้น
+ *
+ * ⛔ ห้ามให้การส่งแจ้งเตือนล้มแล้วทำให้ "อนุมัติไม่สำเร็จ" — ใบลาอนุมัติไปแล้วในฐานข้อมูล
+ *    แต่ต้อง**คืนสถานะให้คนกดเห็น** ไม่ใช่ log เงียบ ๆ (ปัญหาเดียวกับตอนจ่ายงาน:
+ *    ผู้สำรวจ active 144 คนมี fcm_token แค่ 84 — ที่เหลือไม่มีทางได้รับอะไรเลย)
+ */
+async function pushLeaveResult(row: {
+  id: number; user_id: number; status: string; leave_type: string;
+  start_date: string; end_date: string; review_note?: string | null;
+}): Promise<PushStatus> {
+  if (!isFirebaseReady()) {
+    return { status: 'no_fcm', reason: 'ระบบแจ้งเตือนยังไม่ได้ตั้งค่าบนเซิร์ฟเวอร์' };
+  }
+  const { rows } = await db.query(
+    'SELECT id, fcm_token FROM users WHERE id = $1',
+    [row.user_id]
+  );
+  const token = rows[0]?.fcm_token;
+  if (!token) {
+    return { status: 'no_token', reason: 'เครื่องของพนักงานยังไม่เคยลงทะเบียนรับแจ้งเตือน' };
+  }
+
+  const kind = LEAVE_LABEL[row.leave_type] ?? 'ใบลา';
+  const span = row.start_date === row.end_date
+    ? thaiDay(row.start_date)
+    : `${thaiDay(row.start_date)} – ${thaiDay(row.end_date)}`;
+  const ok = row.status === 'approved';
+  const title = ok ? `อนุมัติ${kind}แล้ว` : `${kind}ไม่ได้รับอนุมัติ`;
+  const body = `${span}` + (row.review_note ? ` — ${row.review_note}` : '');
+
+  try {
+    await fcmService.sendNotification(token, title, body, {
+      type: 'leave_reviewed',
+      leave_id: String(row.id),
+      status: String(row.status),
+    });
+    return { status: 'sent' };
+  } catch (err) {
+    const code = (err as { code?: string })?.code || '';
+    // token ตายแล้ว (ถอนแอป/ล้างข้อมูล) → ล้างทิ้ง ไม่งั้นค้างหลอกว่ามี token
+    if (code.includes('registration-token-not-registered') || code.includes('invalid-argument')) {
+      await db.query('UPDATE users SET fcm_token = NULL WHERE id = $1', [row.user_id]).catch(() => {});
+      return { status: 'no_token', reason: 'เครื่องของพนักงานถอนการลงทะเบียนแจ้งเตือนไปแล้ว' };
+    }
+    console.error('[FCM] แจ้งผลใบลาไม่สำเร็จ:', err);
+    return { status: 'failed', reason: 'ส่งแจ้งเตือนไม่สำเร็จ' };
+  }
+}
 
 interface CreateLeaveInput {
   leave_type: string;
@@ -57,6 +131,8 @@ export const leaveService = {
         [userId, data.leave_type, data.start_date, data.end_date, data.reason ?? null]
       );
       await client.query('COMMIT');
+      // บอกหน้าแอดมินว่ามีใบลาใหม่เข้ามา — หลัง COMMIT เท่านั้น ไม่งั้นอาจเตือนเรื่องที่ rollback ทิ้ง
+      notifyLeaveChanged('created', userId);
       return rows[0];
     } catch (err) {
       await client.query('ROLLBACK');
@@ -141,6 +217,10 @@ export const leaveService = {
           to_char(created_at,  'YYYY-MM-DD HH24:MI') AS created_at`,
       [status, reviewerId, note ?? null, id]
     );
-    return rows[0] ?? null;
+    const row = rows[0];
+    if (!row) return null;
+    notifyLeaveChanged('reviewed', reviewerId);
+    // ผลการส่งไหลกลับไปถึงคนกดอนุมัติ — ถ้าไปไม่ถึงเครื่องพนักงาน หัวหน้าจะได้โทรบอกเอง
+    return { ...row, push: await pushLeaveResult(row) };
   },
 };
