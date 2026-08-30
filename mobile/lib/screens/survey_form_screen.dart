@@ -16,7 +16,7 @@ import '../widgets/car_damage_diagram.dart';
 import 'damage_notice_screen.dart';
 import '../data/survey_master.dart'
     show cidChecksum, kWounds, kLicenseTypes, kCarColors, carBrandsFor, kEmcsPhotoQuota, kEmcsPhotoWarn,
-         kTitles, kRelations, kCarTypeCodeToLabel, kEvCodeToLabel;
+         kTitles, kRelations, kCarTypeCodeToLabel, kEvCodeToLabel, kPolicyTypes;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/form_kit.dart' show kCidField, kPhoneFormatters;
@@ -3089,13 +3089,22 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
             formatters: [LengthLimitingTextInputFormatter(200)]),
       ];
 
-  // ประเภทประกัน = ช่องพิมพ์อิสระ ไม่ใช่ dropdown
-  // EMCS เองก็ไม่มีรายการให้เลือก (รถประกันเป็นป้ายอ่านอย่างเดียว คู่กรณีเป็นช่องพิมพ์)
-  // และของจริงมีมากกว่าที่ลิสต์ไว้ — ใบแจ้งความเสียหายเขียน "ประเภท 2+ ซ่อมอู่"
-  // ซึ่งไม่ตรงตัวเลือกไหนเลย เคยต้องโชว์เป็น "(ค่าเดิม)" ค้างไว้
-  Widget _policyTypeField() =>
-      _txt(_policyTypeCtl, 'ประเภทประกัน', req: true,
-          formatters: [LengthLimitingTextInputFormatter(50)]);
+  // ประเภทประกัน = dropdown ชุดเดียวกับ ISURVEY (30/08/69) — เดิมเป็นช่องพิมพ์อิสระ
+  // เพราะของจริงมีนอกลิสต์ ("ประเภท 2+ ซ่อมอู่") แต่พิมพ์เองทำให้แต่ละคนเขียนคนละแบบ
+  // ('ชั้น 1' / 'ประเภท 1' / '52' / '2EXTRA' อยู่ในฐานข้อมูลจริงทั้งหมด) แล้วแปลงเป็น
+  // รหัสส่ง EMCS ไม่ได้ → ตกเป็นข้อความดิบเงียบ ๆ
+  // ⚠️ ค่าเก่าที่ไม่อยู่ในลิสต์ต้องยังโชว์ได้ ไม่งั้นเปิดเคสเก่ามาช่องจะว่างแล้วหายตอนบันทึก
+  Widget _policyTypeField() => _dd(
+      'ประเภทประกัน', _policyTypeCtl.text,
+      _withCurrent(kPolicyTypes, _policyTypeCtl.text),
+      (v) => setState(() => _policyTypeCtl.text = v ?? ''),
+      req: true);
+
+  /// คงค่าเดิมที่ไม่อยู่ในลิสต์ไว้เป็นตัวเลือกด้วย (เคสเก่า/ค่าที่นำเข้าจากระบบอื่น)
+  List<String> _withCurrent(List<String> items, String current) {
+    final c = current.trim();
+    return (c.isEmpty || items.contains(c)) ? items : [...items, c];
+  }
 
   List<Widget> _secCar() => [
         _row2(

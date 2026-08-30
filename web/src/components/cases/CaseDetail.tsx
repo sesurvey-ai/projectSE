@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS, POLICY_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -1522,8 +1522,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   มีมากกว่าที่ลิสต์ไว้ (ใบจริงเขียน "ประเภท 2+ ซ่อมอู่" = รหัส 52)
                   ตอนส่งออก policyTypeCode แปลงป้ายไทยที่รู้จัก ที่เหลือส่งตามที่กรอก */}
               <F label="ประกันประเภท" req={<Req of="policy_type" />}>
-                <input type="text" disabled={d} name="policy_type" defaultValue={report.policy_type || ''}
-                  placeholder="เช่น ชั้น 1 หรือ 52" className={CTL(d)} />
+                {/* dropdown ชุดเดียวกับ ISURVEY (30/08/69) — เดิมเป็นช่องพิมพ์ ทำให้คำเขียน
+                    ไม่ตรงกัน ('ชั้น 1' / 'ประเภท 1' / '52' / '2EXTRA' อยู่ใน DB จริงทั้งหมด)
+                    แล้วแปลงเป็นรหัสส่ง EMCS ไม่ได้ · withCurrent คงค่าเดิมของเคสเก่าไว้ */}
+                <select disabled={d} name="policy_type" defaultValue={report.policy_type || '-- ระบุ --'} className={CTL(d)}>
+                  {withCurrent(POLICY_TYPE_OPTIONS, report.policy_type).map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
               </F>
               <F label="วันที่เริ่มต้น">
                 <input type="text" disabled={d} name="policy_start" defaultValue={report.policy_start || ''} className={CTL(d)} />

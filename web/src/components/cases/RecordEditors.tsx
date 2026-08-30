@@ -15,7 +15,7 @@
  * รวมสองตัวไว้ไฟล์เดียวเพราะใช้ layout/primitive ชุดเดียวกัน (การ์ดต่อ 1 ระเบียน + ปุ่มลบ + ปุ่มเพิ่ม)
  */
 import React, { useState } from 'react';
-import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
+import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, carBrandOptions } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import { insurerOptions, isEmcsInsurer } from './insurerOptions';
 import DamageDialog from './DamageDialog';
@@ -74,6 +74,13 @@ const LICENSE_TYPES = [
 
 /** ข้อความ placeholder ที่ปนอยู่ในลิสต์ตัวเลือก — ต้องไม่กลายเป็นค่าที่เลือกได้จริง */
 const PLACEHOLDERS = new Set(['-- ระบุ --', '-- เลือก --', '-- เขต --']);
+
+/** คงค่าเดิมที่ไม่อยู่ในลิสต์ไว้เป็นตัวเลือกด้วย — เคสเก่า/ค่าที่นำเข้าจากระบบอื่น
+ *  ถ้าไม่คง <select> จะไม่มี option ที่ตรง value → โชว์ว่างแล้วหายตอนบันทึก */
+function withCurrentOption(list: string[], current: unknown): string[] {
+  const cur = String(current ?? '').trim();
+  return cur && !PLACEHOLDERS.has(cur) && !list.includes(cur) ? [...list, cur] : list;
+}
 
 type FieldDef = {
   k: string;
@@ -330,10 +337,11 @@ const OPPONENT_FIELDS: FieldDef[] = [
   // fuzzy_select · สะกดเองเพี้ยนนิดเดียว บอทข้ามช่องนี้เงียบ ๆ (ดู insurerOptions.ts)
   { k: 'insurer', label: 'มีประกันภัยที่ *', optionsFrom: (r) => insurerOptions(String(r.insurer ?? '')) },
   { k: 'policy_no', label: 'เลขกรมธรรม์ *' },
-  // ปลายทางดึงเฉพาะตัวเลขจากข้อความ — พิมพ์ "ชั้นหนึ่ง" ได้ค่าว่าง
-  // ช่องพิมพ์ ไม่ใช่ dropdown — บน EMCS ช่องนี้ของคู่กรณีก็เป็นช่องพิมพ์ (txtPolicy_Type)
-  // และของจริงมีนอกลิสต์ เช่น "ประเภท 2+ ซ่อมอู่"
-  { k: 'policy_type', label: 'ประเภทประกัน' },
+  // dropdown ชุดเดียวกับ ISURVEY (30/08/69) — เดิมเป็นช่องพิมพ์ ทำให้คำเขียนไม่ตรงกัน
+  // แล้ว backend แปลงเป็นรหัสส่ง EMCS ไม่ได้ · optionsFrom คงค่าเดิมของเคสเก่าไว้ในลิสต์
+  // (ตัว renderer เลือกตาม value ตรงตัว ค่าที่ไม่อยู่ในลิสต์จะกลายเป็นช่องว่างแล้วหายตอนบันทึก)
+  { k: 'policy_type', label: 'ประเภทประกัน',
+    optionsFrom: (r) => withCurrentOption(POLICY_TYPE_OPTIONS, r.policy_type) },
   { k: 'claim_no', label: 'เลขเคลมคู่กรณี' },
   { k: 'owner_name', label: 'เจ้าของรถ *' },
   { k: 'owner_address', label: 'ที่อยู่เจ้าของ', wide: true },

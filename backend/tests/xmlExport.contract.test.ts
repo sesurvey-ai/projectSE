@@ -10,6 +10,7 @@
  *
  * รัน: npm test   (backend/)
  */
+import fs from 'fs';
 import { generateSurveyXml } from '../src/services/xmlExport.service';
 
 let failed = 0;
@@ -281,6 +282,52 @@ console.log('\n── การ์ด: เงินฝั่งพนักง�
         !fn.includes('survey_pay'));
   check('⛔ ห้าม SELECT * จาก survey_expenses (phone_fee/bail_fee ชนกับ survey_pay)',
         !/SELECT\s+\*\s+FROM\s+survey_expenses/i.test(fn));
+}
+
+// ── ประเภทกรมธรรม์ → รหัส (ครบ 8 ค่าตามตาราง masterPolicyType ของ ISURVEY) ─────
+// EMCS เก็บช่องนี้เป็น "รหัส" (เคสจริง 000098 = '01') และ XML ที่ ISURVEY ส่งเข้า EMCS
+// มาตลอดก็เป็นรหัส (ตรวจไฟล์จริง 7 ใบ เจอ 01/02/03/52) — คำที่แปลงไม่ออกจะหลุดดิบเข้าไป
+{
+  const codeOf = (v: string) => {
+    const x = generateSurveyXml({ ...row, policy_type: v, opposing_parties: [], injured_persons: [], damaged_property: [] } as never);
+    return (x.match(/<POLICY_TYPE>([^<]*)<\/POLICY_TYPE>/) || [])[1] ?? '';
+  };
+  const TABLE: Array<[string, string]> = [
+    ['ประเภท 1', '01'], ['ประเภท 2', '02'], ['ประเภท 3', '03'], ['พรบ.', '04'],
+    ['ประเภท 5', '05'], ['ไม่พบความคุ้มครอง', '10'], ['ประเภท 2+', '52'], ['ประเภท 3+', '53'],
+  ];
+  for (const [label, code] of TABLE)
+    check(`ประเภทกรมธรรม์: '${label}' → ${code}`, codeOf(label) === code, codeOf(label));
+  // คำเก่าที่ยังค้างใน DB (ก่อนเปลี่ยนเป็น dropdown 30/08/69) ต้องแปลงได้ด้วย
+  const OLD: Array<[string, string]> = [['ชั้น 1', '01'], ['ชั้น 2+', '52'], ['ชั้น 3+', '53'], ['2+', '52']];
+  for (const [label, code] of OLD)
+    check(`ประเภทกรมธรรม์ (คำเก่า): '${label}' → ${code}`, codeOf(label) === code, codeOf(label));
+  // ⛔ คำนอกลิสต์ห้ามถูกเดา — ส่งดิบไปให้คนเห็นดีกว่าส่งรหัสผิดเงียบ ๆ
+  check('ประเภทกรมธรรม์: คำนอกลิสต์ส่งดิบ ไม่เดารหัส', codeOf('2EXTRA') === '2EXTRA', codeOf('2EXTRA'));
+  // ⚠️ tag ว่างของไฟล์นี้เป็น "เว้นวรรค 1 ตัว" ไม่ใช่ค่าว่างจริง (แบบเดียวกับทุก tag
+  //    และตรงกับ XML จริงของ ISURVEY) — บอทจะข้ามช่องนี้ ไม่ไปล้างของเดิมใน EMCS
+  check('ประเภทกรมธรรม์: ว่าง → ไม่เดารหัสให้ (tag ว่าง)', codeOf('').trim() === '', JSON.stringify(codeOf('')));
+}
+
+// ⛔ ลิสต์บนเว็บต้องตรงกับ key ในตารางแปลง — ไม่ตรง = เลือกจาก dropdown แล้วได้ข้อความดิบ
+{
+  const opts = fs.readFileSync('../web/src/components/cases/caseOptions.ts', 'utf8');
+  const listBlock = (opts.match(/export const POLICY_TYPE_OPTIONS = \[([\s\S]*?)\];/) || [])[1] ?? '';
+  const list = [...listBlock.matchAll(/'([^']+)'/g)].map(m => m[1]).filter(v => !v.startsWith('--'));
+  const src = fs.readFileSync('src/services/xmlExport.service.ts', 'utf8');
+  const map = (src.match(/const POLICY_TYPE_CODE[^{]*\{([\s\S]*?)\n\};/) || [])[1] ?? '';
+  check('ลิสต์เว็บมี 8 ค่า', list.length === 8, String(list.length));
+  for (const v of list)
+    check(`ลิสต์เว็บ '${v}' มีในตารางแปลง`, map.includes(`'${v}':`));
+
+  // ⛔ ลิสต์มือถือต้องเป็นชุดเดียวกับเว็บเป๊ะ — ต่างกันเมื่อไหร่ ช่างเลือกค่าที่หัวหน้า
+  //    เลือกไม่ได้ (หรือกลับกัน) แล้วค่าที่แปลงไม่ออกจะหลุดดิบเข้า EMCS
+  const dart = fs.readFileSync('../mobile/lib/data/survey_master.dart', 'utf8');
+  const dartBlock = (dart.match(/const List<String> kPolicyTypes = \[([\s\S]*?)\];/) || [])[1] ?? '';
+  const mobileList = [...dartBlock.matchAll(/'([^']+)'/g)].map(m => m[1]);
+  check('ลิสต์มือถือ = ลิสต์เว็บ (ไม่นับ placeholder)',
+        JSON.stringify(mobileList) === JSON.stringify(list),
+        `มือถือ ${mobileList.length} / เว็บ ${list.length}`);
 }
 
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);

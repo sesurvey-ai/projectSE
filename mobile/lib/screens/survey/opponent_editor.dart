@@ -24,7 +24,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
   late final Map<String, TextEditingController> _c;
   final _damage = <Map<String, String>>[];
   String _evType = '';
-  String _carType = '', _carBrand = '', _carColor = '', _province = '', _homeProvince = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '';
+  String _carType = '', _carBrand = '', _carColor = '', _province = '', _homeProvince = '', _district = '', _gender = '', _title = '', _relation = '', _insurer = '', _licenseType = '', _policyType = '';
   bool _kfk = false;
   bool _pending = false;  // "รอตรวจสอบ" — คู่กรณีหลบหนี / ยังไม่มีรายละเอียด
   bool _cidThai = true;   // true = คนไทย (13 หลัก+checksum) / false = ต่างชาติ
@@ -38,9 +38,10 @@ class _OpponentEditorState extends State<OpponentEditor> {
     _c = {};
     for (final k in ['owner_name', 'owner_address', 'car_model', 'plate', 'reg_year', 'mileage', 'vin',
       'first_name', 'last_name', 'birthdate', 'age', 'phone', 'address', 'cid', 'license_no', 'license_place', 'license_start', 'license_end',
-      'policy_no', 'claim_no', 'policy_type', 'estimated_cost']) {
+      'policy_no', 'claim_no', 'estimated_cost']) {
       _c[k] = TextEditingController(text: (widget.data[k] ?? '').toString());
     }
+    _policyType = (widget.data['policy_type'] ?? '').toString();
     _carType = (widget.data['car_type'] ?? '').toString();
     _carBrand = (widget.data['car_brand'] ?? '').toString();
     _carColor = (widget.data['car_color'] ?? '').toString();
@@ -116,7 +117,7 @@ class _OpponentEditorState extends State<OpponentEditor> {
         // แต่ "อื่นๆ" = มีประกันกับบริษัทนอกลิสต์ (backend นับ HAVE_INSURANCE=1) — คงค่าที่พิมพ์ไว้
         'policy_no': _noInsurance ? '' : _ctl('policy_no').text.trim(),
         'claim_no': _noInsurance ? '' : _ctl('claim_no').text.trim(),
-        'policy_type': _noInsurance ? '' : _ctl('policy_type').text.trim(),
+        'policy_type': _noInsurance ? '' : _policyType.trim(),
         'damage': _damage,
         'damage_description': _ctl('damage_description').text.trim(),
         'estimated_cost': _ctl('estimated_cost').text.trim(),
@@ -390,9 +391,11 @@ class _OpponentEditorState extends State<OpponentEditor> {
             })),
         if (_hasInsurance) ...[
           kRow2(kText(_ctl('policy_no'), 'เลขกรมธรรม์', req: true), kText(_ctl('claim_no'), 'เลขเคลม', req: true)),
-          // ช่องพิมพ์ ไม่ใช่ picker — บน EMCS ช่องนี้ของคู่กรณีก็เป็นช่องพิมพ์ (txtPolicy_Type)
-          // และของจริงมีนอกลิสต์ เช่น "ประเภท 2+ ซ่อมอู่" (= รหัส 52)
-          kText(_ctl('policy_type'), 'ประเภทประกัน', req: true),
+          // picker ชุดเดียวกับ ISURVEY (30/08/69) — เดิมเป็นช่องพิมพ์ ทำให้แต่ละคนเขียน
+          // คนละแบบแล้วแปลงเป็นรหัสส่ง EMCS ไม่ได้ · KPickerField โชว์ค่าเดิมที่อยู่นอกลิสต์
+          // ได้อยู่แล้ว (ไม่ล้างทิ้ง) เคสเก่าจึงไม่หาย
+          KPickerField(label: 'ประเภทประกัน', value: _policyType, options: kPolicyTypes,
+              req: true, onSelected: (v) => setState(() => _policyType = v)),
           GestureDetector(
             onTap: () => setState(() => _kfk = !_kfk),
             child: Row(children: [
