@@ -21,8 +21,8 @@ export const caseController = {
 
   assign: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const { surveyor_id } = req.body;
-    const result = await caseService.assign(caseId, surveyor_id);
+    const { surveyor_id, claim_type } = req.body;
+    const result = await caseService.assign(caseId, surveyor_id, claim_type);
     sendSuccess(res, result);
   }),
 

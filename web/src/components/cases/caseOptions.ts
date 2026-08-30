@@ -142,6 +142,22 @@ export const POLICY_TYPE_OPTIONS = [
   'ประเภท 5', 'ไม่พบความคุ้มครอง', 'ประเภท 2+', 'ประเภท 3+',
 ];
 
+/**
+ * ประเภทเคลม — รหัสตัวอักษรที่ใช้ตรงกันทั้งแอปมือถือ · หน้าตรวจ · XML → EMCS
+ * ⛔ ชุดนี้ตรงกับ radio 4 ตัวบน EMCS (`rdoSurv_Claim_Type`) ห้ามเพิ่ม/ลด
+ *    โดยเฉพาะ **ห้ามใส่ "เจรจาสินไหม"** — EMCS ไม่มีตัวเลือกนั้น บอทติ๊กให้ไม่ได้
+ *    (งานติดตาม/เจรจา = "งานครั้งถัดไป" ของเคลมเดิม ไม่ใช่ประเภทบนหน้าแรก)
+ * ⚠️ แก้ที่นี่ต้องแก้ mobile/lib/screens/survey_form_screen.dart (_claimTypeChips) ด้วย
+ */
+export const CLAIM_TYPE_OPTIONS: Array<{ code: string; label: string }> = [
+  { code: 'F', label: 'เคลมสด' },
+  { code: 'D', label: 'เคลมแห้ง' },
+  { code: 'A', label: 'งานนัดหมาย' },
+  { code: 'C', label: 'งานติดตาม' },
+];
+export const CLAIM_TYPE_LABELS: Record<string, string> =
+  Object.fromEntries(CLAIM_TYPE_OPTIONS.map((o) => [o.code, o.label]));
+
 export const CAR_COLOR_OPTIONS = [
   '-- ระบุ --', 'ขาว', 'เทา', 'เงิน', 'ทอง', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง',
   'แดง', 'ส้ม', 'เลือดหมู', 'ดำ', 'ขาว / ทอง', 'เทา / เงิน', 'เหลือง / เงิน', 'เขียว / เงิน',

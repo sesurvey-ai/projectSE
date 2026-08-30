@@ -77,6 +77,14 @@ const createCaseSchema = z.object({
 
 const assignCaseSchema = z.object({
   surveyor_id: z.number().int().positive(),
+  /**
+   * ประเภทเคลมที่คนจ่ายงานเลือก — รหัสเดียวกับที่แอป/หน้าตรวจ/EMCS ใช้
+   * F เคลมสด · D เคลมแห้ง · A งานนัดหมาย · C งานติดตาม
+   * ⛔ อย่าเพิ่ม 'เจรจาสินไหม' — EMCS ไม่มีตัวเลือกนั้น (บอทติ๊กให้ไม่ได้)
+   *    งานเจรจา/ติดตามเป็น "งานครั้งถัดไป" ของเคลมเดิม ไม่ใช่ประเภทบนหน้าแรก
+   * optional: จ่ายงานโดยไม่เลือกก็ได้ (ช่างเลือกเองบนแอปได้อยู่แล้ว)
+   */
+  claim_type: z.enum(['F', 'D', 'A', 'C']).optional(),
 });
 
 const optStr = z.string().nullish();

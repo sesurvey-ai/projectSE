@@ -1,3 +1,4 @@
+import fs from 'fs';
 /**
  * การ์ดของ 2 เรื่องที่ทำพร้อมกัน 28/08/69
  *
@@ -95,6 +96,37 @@ check('ส่งเฉพาะห้องแอดมิน (คนอื่�
       /io\.to\('role:admin'\)\.emit/.test(leaveEvents));
 check('หน้าแอดมินฟังสัญญาณแล้วโหลดใหม่',
       /socket\.on\('leave_changed'/.test(leavePage) && /socket\.off\('leave_changed'/.test(leavePage));
+
+// ── ประเภทเคลมจากหน้าจ่ายงาน (30/08/69) ───────────────────────────────────────
+// คนรับแจ้งรู้ประเภทเคลมตั้งแต่ต้นสาย แต่เดิมมีที่ให้กรอกแค่บนแอปกับหน้าตรวจ
+{
+  const routes = fs.readFileSync('src/routes/case.routes.ts', 'utf8');
+  const svc = fs.readFileSync('src/services/case.service.ts', 'utf8');
+  const ctl = fs.readFileSync('src/controllers/case.controller.ts', 'utf8');
+  const opts = fs.readFileSync('../web/src/components/cases/caseOptions.ts', 'utf8');
+
+  // ⛔ ชุดต้องตรงกับ radio 4 ตัวบน EMCS เป๊ะ — โดยเฉพาะห้ามมี 'เจรจาสินไหม'
+  //    (EMCS ไม่มีตัวเลือกนั้น บอทติ๊กให้ไม่ได้ → CLAIM_TYPE_TO_EMCS['4'] = None)
+  check('assign รับ claim_type เฉพาะ 4 รหัสของ EMCS',
+        routes.includes("claim_type: z.enum(['F', 'D', 'A', 'C']).optional()"));
+  const ctBlock = (opts.match(/export const CLAIM_TYPE_OPTIONS[\s\S]*?\];/) || [''])[0];
+  const ctCodes = [...ctBlock.matchAll(/\{ code: '([A-Z])'/g)].map((m) => m[1]);
+  check('ลิสต์ประเภทเคลมบนเว็บ = 4 รหัสของ EMCS ไม่มีเจรจาสินไหม',
+        JSON.stringify(ctCodes) === JSON.stringify(['F', 'D', 'A', 'C'])
+        && !ctBlock.includes('เจรจาสินไหม'), ctCodes.join(','));
+  check('หน้าจ่ายงานกับหน้าตรวจใช้ลิสต์เดียวกัน (กันสองหน้าเพี้ยนจากกัน)',
+        fs.readFileSync('../web/src/components/cases/AssignSurveyor.tsx', 'utf8').includes('CLAIM_TYPE_OPTIONS')
+        && fs.readFileSync('../web/src/components/cases/CaseDetail.tsx', 'utf8').includes('CLAIM_TYPE_OPTIONS'));
+  check('controller ส่ง claim_type ต่อเข้า service', ctl.includes('caseService.assign(caseId, surveyor_id, claim_type)'));
+  // ⛔ ไม่เลือก = ต้องไม่ล้างค่าเดิม (reassign หลังช่างปฏิเสธ จะได้ไม่ลบของที่กรอกไว้)
+  check('ไม่เลือกประเภทเคลม = ไม่ทับของเดิม (COALESCE)',
+        svc.includes('claim_type = COALESCE($2, claim_type)'));
+  check('ค่าที่ไม่อยู่ใน 4 รหัส ถูกปัดเป็น null ก่อนเขียน',
+        svc.includes("['F', 'D', 'A', 'C'].includes(String(claimType ?? '')) ? claimType : null"));
+  // หน้าจ่ายงานต้องเห็นค่าเดิม ไม่งั้นกดจ่ายซ้ำแล้วเผลอทับ
+  check('getById คืน claim_type ให้หน้าจ่ายงานโชว์ค่าเดิม',
+        svc.includes('sr.acc_province, sr.acc_district, sr.claim_type'));
+}
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);

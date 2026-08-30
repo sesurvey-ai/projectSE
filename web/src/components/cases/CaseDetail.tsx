@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PhotoGallery from './PhotoGallery';
 import ReviewForm from '@/components/review/ReviewForm';
-import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS, POLICY_TYPE_OPTIONS } from './caseOptions';
+import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, CLAIM_TYPE_LABELS, CLAIM_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,7 +59,7 @@ const INSURER_OPTIONS = [
   'ไอโออิกรุงเทพประกันภัย',
 ];
 
-const CLAIM_TYPE_LABELS: Record<string, string> = { F: 'เคลมสด', D: 'เคลมแห้ง', A: 'งานนัดหมาย', C: 'งานติดตาม' };
+// ป้ายประเภทเคลม — ใช้ตัวกลางร่วมกับหน้าจ่ายงาน (กันสองหน้าเพี้ยนจากกัน)
 const DAMAGE_LEVEL_COLORS: Record<string, string> = { 'หนัก': 'bg-red-100 text-red-800', 'เบา': 'bg-green-100 text-green-800' };
 
 // ===== Phase 3: multi-record display helpers (opposing_parties / injured_persons / damaged_property / insured_damage) =====
@@ -1391,7 +1391,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 missing.includes('claim_type') ? 'border-red-400 bg-red-50' : 'border-transparent'}`}>
                 <span className="font-bold">ประเภทเคลม :</span>
                 <span className={missing.includes('claim_type') ? 'text-red-600 font-bold' : 'text-red-500'}>*</span>
-                {['F','D','A','C'].map(v => (
+                {CLAIM_TYPE_OPTIONS.map(({ code: v }) => (
                   <label key={v} className="flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="claim_type" value={v} disabled={d} defaultChecked={report.claim_type === v} className="peer w-3.5 h-3.5" />
                     <span className="peer-checked:font-semibold">{CLAIM_TYPE_LABELS[v]}</span>

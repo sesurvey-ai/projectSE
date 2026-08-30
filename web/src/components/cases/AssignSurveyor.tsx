@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { CLAIM_TYPE_OPTIONS } from './caseOptions';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useSocket } from '@/hooks/useSocket';
@@ -71,6 +72,12 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const [workload, setWorkload] = useState<Record<string, { assigned: number; surveyed: number }> | null>(null);
   /** เผยคนที่ถืองานอยู่ — ค่าเริ่มต้นซ่อนไว้ ตามที่ user ขอ "แสดงเฉพาะคนที่ว่าง" */
   const [showBusy, setShowBusy] = useState(false);
+  /**
+   * ประเภทเคลมที่คนจ่ายงานเลือก → ส่งไปกับการมอบหมาย แล้วโผล่บนแอปช่าง
+   * ว่าง = ไม่ระบุ (ไม่แตะค่าเดิม) · ช่างยังแก้เองบนแอปได้ตามปกติ
+   * งานครั้งแรกปกติเป็น เคลมสด/เคลมแห้ง · งานนัดหมาย/ติดตาม มักเป็นครั้งถัดไปของเคลมเดิม
+   */
+  const [claimType, setClaimType] = useState('');
 
   // Fetch case coordinates on mount
   useEffect(() => {
@@ -83,6 +90,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           if (c.acc_province) setIncidentProvince(String(c.acc_province));
           if (c.acc_district) setIncidentDistrict(String(c.acc_district));
           if (c.incident_coord_source) setCoordSource(c.incident_coord_source);
+          if (c.claim_type) setClaimType(String(c.claim_type));
         }
       })
       .catch(() => {})
@@ -161,7 +169,10 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const handleAssign = async (surveyorUserId: string) => {
     setAssigning(surveyorUserId); setError('');
     try {
-      const res = await api.post(`/api/cases/${caseIdStr}/assign`, { surveyor_id: Number(surveyorUserId) });
+      const res = await api.post(`/api/cases/${caseIdStr}/assign`, {
+        surveyor_id: Number(surveyorUserId),
+        ...(claimType ? { claim_type: claimType } : {}),   // ไม่เลือก = ไม่ส่ง = ไม่ทับของเดิม
+      });
       if (res.data.success) {
         loadWorkload();   // คนที่เพิ่งรับงานต้องหลุดจากรายชื่อ "ว่าง" ทันที
         // มอบหมายสำเร็จ ≠ ช่างรู้ตัว — ถ้าแจ้งเตือนไปไม่ถึง ต้องบอกคนจ่ายงานให้โทรตาม
@@ -287,6 +298,27 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   return (
     <div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">{error}</div>}
+
+      {/* ประเภทเคลม — คนรับแจ้งรู้ตั้งแต่ต้นสาย จึงเลือกตรงนี้แล้วส่งไปโผล่บนแอปช่าง
+          (เดิมมีให้กรอกแค่บนแอปกับหน้าตรวจ = คนที่รู้ก่อนกลับไม่มีที่ให้บอก)
+          ⛔ ไม่บังคับ — ไม่เลือกก็จ่ายงานได้ ช่างเลือกเองบนแอปได้เหมือนเดิม */}
+      <div className="mb-6 p-4 bg-white border border-gray-200 rounded-xl">
+        <label htmlFor="claim_type" className="block text-sm font-semibold text-gray-800 mb-1">ประเภทเคลม</label>
+        <select
+          id="claim_type"
+          value={claimType}
+          onChange={(e) => setClaimType(e.target.value)}
+          className="w-full md:w-72 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">-- ไม่ระบุ --</option>
+          {CLAIM_TYPE_OPTIONS.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
+        </select>
+        <p className="mt-1.5 text-xs text-gray-500">
+          งานครั้งแรกปกติเป็น <strong>เคลมสด</strong> หรือ <strong>เคลมแห้ง</strong> ·
+          งานนัดหมาย/ติดตาม มักเป็นงานครั้งถัดไปของเคลมเดิม ·
+          ช่างแก้เองบนแอปได้ถ้าหน้างานไม่ตรง
+        </p>
+      </div>
 
       {pushWarning && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-lg text-sm mb-6">

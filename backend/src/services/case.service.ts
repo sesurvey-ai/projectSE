@@ -276,7 +276,7 @@ export const caseService = {
     return result.rows;
   },
 
-  async assign(caseId: number, surveyorId: number) {
+  async assign(caseId: number, surveyorId: number, claimType?: string) {
     // ดึง claim_no + insurance_company จาก survey_reports มาด้วย (โชว์บนการ์ดงานมือถือ)
     const caseResult = await db.query(
       `SELECT c.*, sr.claim_no AS sr_claim_no, sr.insurance_company AS sr_insurance_company
@@ -315,11 +315,21 @@ export const caseService = {
            FROM (SELECT NOW() AT TIME ZONE 'Asia/Bangkok' AS n) s`
       );
       const notifyTime = tRes.rows[0].ts as string;
+      // ประเภทเคลมที่คนจ่ายงานเลือก — เขียนพร้อมกันในบล็อกเดียว (แถวเดียวกัน)
+      // ⛔ ไม่เลือก = ไม่แตะของเดิม (COALESCE) — reassign หลังช่างปฏิเสธจะได้ไม่ล้าง
+      //    ค่าที่ช่างคนก่อนกรอกไว้ทิ้ง · ช่างยังเลือกเองบนแอปได้เหมือนเดิม
+      const ct = ['F', 'D', 'A', 'C'].includes(String(claimType ?? '')) ? claimType : null;
       const existingReport = await db.query('SELECT id FROM survey_reports WHERE case_id = $1', [caseId]);
       if (existingReport.rows.length > 0) {
-        await db.query('UPDATE survey_reports SET acc_insurance_notify_date = $1 WHERE case_id = $2', [notifyTime, caseId]);
+        await db.query(
+          'UPDATE survey_reports SET acc_insurance_notify_date = $1, claim_type = COALESCE($2, claim_type) WHERE case_id = $3',
+          [notifyTime, ct, caseId]
+        );
       } else {
-        await db.query('INSERT INTO survey_reports (case_id, acc_insurance_notify_date) VALUES ($1, $2)', [caseId, notifyTime]);
+        await db.query(
+          'INSERT INTO survey_reports (case_id, acc_insurance_notify_date, claim_type) VALUES ($1, $2, $3)',
+          [caseId, notifyTime, ct]
+        );
       }
     } catch (err) {
       console.error('[assign] เขียน acc_insurance_notify_date ไม่สำเร็จ (ไม่บล็อกการมอบหมาย):', err);
@@ -820,7 +830,7 @@ export const caseService = {
     // ดึงจังหวัด/อำเภอที่เกิดเหตุมาด้วย — หน้าจ่ายงานใช้จัดกลุ่มช่างที่อยู่จังหวัดเดียวกัน
     // (อยู่คนละตารางกับ cases จึงต้อง join ไม่ใช่ SELECT * เฉย ๆ)
     const result = await db.query(
-      `SELECT c.*, sr.acc_province, sr.acc_district
+      `SELECT c.*, sr.acc_province, sr.acc_district, sr.claim_type
          FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id
         WHERE c.id = $1`, [caseId]);
     if (result.rows.length === 0) throw new NotFoundError('Case not found');
