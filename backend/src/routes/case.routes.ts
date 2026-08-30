@@ -256,6 +256,8 @@ router.get('/:id', auth, requireRole('callcenter', 'checker'), caseController.ge
 router.get('/:id/detail', auth, requireRole('checker', 'surveyor'), caseController.getDetail);
 router.get('/:id/export-xml', auth, requireRole('surveyor', 'checker', 'admin', 'callcenter'), caseController.exportXml);
 router.post('/:id/assign', auth, requireRole('callcenter'), validate(assignCaseSchema), caseController.assign);
+// เปิดงานครั้งถัดไปของเคลมเดิม (ติดตาม/นัดหมาย/เจรจา) — ก๊อปเฉพาะตัวตนของเคลม ไม่ก๊อปผลสำรวจ
+router.post('/:id/followup', auth, requireRole('callcenter', 'admin'), caseController.createFollowup);
 router.post('/:id/folder', auth, requireRole('surveyor'), caseController.createCaseFolder);
 // เพดาน 500 ต่อคำขอ (เดิม 100 — เคสรูปเยอะจากแอปเก่าที่ส่งทีเดียวทั้งชุดชนเพดานแล้วส่งงานไม่ได้เลย)
 router.post('/:id/upload-folder', auth, requireRole('surveyor'), upload.array('photos', 500), caseController.uploadCaseFolder);

@@ -19,6 +19,12 @@ export const caseController = {
     sendSuccess(res, cases);
   }),
 
+  createFollowup: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.createFollowup(caseId, req.user!.id);
+    sendSuccess(res, result);
+  }),
+
   assign: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const { surveyor_id, claim_type } = req.body;

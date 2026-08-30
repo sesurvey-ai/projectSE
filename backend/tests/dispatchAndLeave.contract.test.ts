@@ -1,4 +1,3 @@
-import fs from 'fs';
 /**
  * การ์ดของ 2 เรื่องที่ทำพร้อมกัน 28/08/69
  *
@@ -100,10 +99,10 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
 // ── ประเภทเคลมจากหน้าจ่ายงาน (30/08/69) ───────────────────────────────────────
 // คนรับแจ้งรู้ประเภทเคลมตั้งแต่ต้นสาย แต่เดิมมีที่ให้กรอกแค่บนแอปกับหน้าตรวจ
 {
-  const routes = fs.readFileSync('src/routes/case.routes.ts', 'utf8');
-  const svc = fs.readFileSync('src/services/case.service.ts', 'utf8');
-  const ctl = fs.readFileSync('src/controllers/case.controller.ts', 'utf8');
-  const opts = fs.readFileSync('../web/src/components/cases/caseOptions.ts', 'utf8');
+  const routes = read('src', 'routes', 'case.routes.ts');
+  const svc = read('src', 'services', 'case.service.ts');
+  const ctl = read('src', 'controllers', 'case.controller.ts');
+  const opts = read('..', 'web', 'src', 'components', 'cases', 'caseOptions.ts');
 
   // ⛔ ชุดต้องตรงกับ radio 4 ตัวบน EMCS เป๊ะ — โดยเฉพาะห้ามมี 'เจรจาสินไหม'
   //    (EMCS ไม่มีตัวเลือกนั้น บอทติ๊กให้ไม่ได้ → CLAIM_TYPE_TO_EMCS['4'] = None)
@@ -115,8 +114,8 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
         JSON.stringify(ctCodes) === JSON.stringify(['F', 'D', 'A', 'C'])
         && !ctBlock.includes('เจรจาสินไหม'), ctCodes.join(','));
   check('หน้าจ่ายงานกับหน้าตรวจใช้ลิสต์เดียวกัน (กันสองหน้าเพี้ยนจากกัน)',
-        fs.readFileSync('../web/src/components/cases/AssignSurveyor.tsx', 'utf8').includes('CLAIM_TYPE_OPTIONS')
-        && fs.readFileSync('../web/src/components/cases/CaseDetail.tsx', 'utf8').includes('CLAIM_TYPE_OPTIONS'));
+        read('..', 'web', 'src', 'components', 'cases', 'AssignSurveyor.tsx').includes('CLAIM_TYPE_OPTIONS')
+        && read('..', 'web', 'src', 'components', 'cases', 'CaseDetail.tsx').includes('CLAIM_TYPE_OPTIONS'));
   check('controller ส่ง claim_type ต่อเข้า service', ctl.includes('caseService.assign(caseId, surveyor_id, claim_type)'));
   // ⛔ ไม่เลือก = ต้องไม่ล้างค่าเดิม (reassign หลังช่างปฏิเสธ จะได้ไม่ลบของที่กรอกไว้)
   check('ไม่เลือกประเภทเคลม = ไม่ทับของเดิม (COALESCE)',
@@ -126,6 +125,38 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
   // หน้าจ่ายงานต้องเห็นค่าเดิม ไม่งั้นกดจ่ายซ้ำแล้วเผลอทับ
   check('getById คืน claim_type ให้หน้าจ่ายงานโชว์ค่าเดิม',
         svc.includes('sr.acc_province, sr.acc_district, sr.claim_type'));
+}
+
+// ── งานครั้งถัดไปของเคลมเดิม (1.9 · 30/08/69) ────────────────────────────────
+// เดิมต้องสร้างเคสใหม่แล้วพิมพ์เลขเคลมเดิมเอง — พิมพ์ผิดตัวเดียวสายงานขาดเงียบ ๆ
+// ("ครั้งที่" นับจาก claim_no ที่ซ้ำกัน ไม่มีคอลัมน์เก็บรอบ)
+{
+  const svc = read('src', 'services', 'case.service.ts');
+  const routes = read('src', 'routes', 'case.routes.ts');
+  const fn = (svc.match(/async createFollowup[\s\S]*?\n  \},/) || [''])[0];
+  const carry = (fn.match(/const CARRY = \[[\s\S]*?\];/) || [''])[0];
+
+  check('มี endpoint เปิดงานครั้งถัดไป (callcenter/admin)',
+        routes.includes("router.post('/:id/followup', auth, requireRole('callcenter', 'admin')"));
+  // ⛔ เลขเซอร์เวย์ = เลขใบวางบิล ห้ามซ้ำ — ครั้งใหม่ต้องได้เลขใหม่
+  check('⛔ ไม่ก๊อปเลขเซอร์เวย์ไปงานครั้งถัดไป',
+        !carry.includes('survey_job_no'));
+  // ⛔ ครั้งถัดไปมักเป็นติดตาม/นัดหมาย — ปล่อยว่างให้คนจ่ายงานเลือกที่หน้าจ่ายงาน
+  check('⛔ ไม่ก๊อปประเภทเคลม (ให้เลือกใหม่ตอนจ่ายงาน)',
+        !carry.includes('claim_type'));
+  // ⛔ ครั้งใหม่ต้องสำรวจใหม่ ไม่ใช่ลอกผลเก่ามาส่งซ้ำ
+  check('⛔ ไม่ก๊อปผลสำรวจ (ความเสียหาย/คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน/เงิน/ความเห็น)',
+        !/damage|opposing|injured|damaged_property|_fee|comment|survey_result/.test(carry));
+  check('ก๊อปตัวตนของเคลมมาให้ (เลขเคลม/กรมธรรม์/รถ)',
+        ["'claim_no'", "'policy_no'", "'license_plate'", "'car_brand'"].every(k => carry.includes(k)));
+  check('เปิดได้เฉพาะงานที่ส่งแล้ว (surveyed/reviewed)',
+        fn.includes("['surveyed', 'reviewed'].includes(String(row.status))"));
+  check('ไม่มีเลขเคลม = เปิดไม่ได้ (ผูกงานเข้ากับเคลมเดิมไม่ได้)',
+        fn.includes('เคสนี้ไม่มีเลขเคลม'));
+  check('กันกดซ้ำ: มีงานของเคลมนี้ค้างอยู่ = ไม่สร้างใบใหม่',
+        fn.includes("c.status IN ('pending','assigned')"));
+  check('หน้ารายการเคสมีปุ่มเปิดงานครั้งถัดไป',
+        read('..', 'web', 'src', 'app', 'callcenter', 'cases', 'page.tsx').includes('handleFollowup'));
 }
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);

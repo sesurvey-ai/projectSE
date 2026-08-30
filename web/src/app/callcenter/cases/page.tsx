@@ -38,7 +38,28 @@ export default function CallcenterCasesPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [xmlBusyId, setXmlBusyId] = useState<number | null>(null);
+  /** กำลังเปิดงานครั้งถัดไปของเคสไหน — กันกดรัวจนได้ 2 ใบ */
+  const [followBusyId, setFollowBusyId] = useState<number | null>(null);
   const reqSeq = useRef(0); // กัน response เก่าทับใหม่ (พิมพ์เร็ว → คำขอเก่ามาช้า)
+
+  /**
+   * เปิดงานครั้งถัดไปของเคลมเดิม แล้วพาไปหน้าจ่ายงานทันที
+   * (ประเภทเคลมของครั้งใหม่เลือกที่หน้านั้น — ปกติเป็นงานติดตาม/นัดหมาย)
+   */
+  const handleFollowup = async (c: CaseRow) => {
+    if (followBusyId !== null) return;
+    setFollowBusyId(c.id);
+    try {
+      const res = await api.post(`/api/cases/${c.id}/followup`);
+      const newId = res.data?.data?.id;
+      if (res.data?.success && newId) router.push(`/callcenter/cases/${newId}/assign`);
+      else alert(res.data?.message || 'เปิดงานครั้งถัดไปไม่สำเร็จ');
+    } catch (e) {
+      // backend บอกเหตุผลมาเป็นภาษาคน (เช่น มีงานค้างอยู่แล้ว) — ส่งต่อให้ผู้ใช้เห็น
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      alert(msg || 'เปิดงานครั้งถัดไปไม่สำเร็จ');
+    } finally { setFollowBusyId(null); }
+  };
 
   const handleXml = async (c: CaseRow) => {
     if (xmlBusyId !== null) return;
@@ -175,14 +196,26 @@ export default function CallcenterCasesPage() {
                       <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{formatDate(c.created_at)}</td>
                       <td className="px-5 py-3">
                         {(c.status === 'surveyed' || c.status === 'reviewed') ? (
-                          <button
-                            onClick={() => handleXml(c)}
-                            disabled={xmlBusyId !== null}
-                            title="ดาวน์โหลดไฟล์ XML สำหรับ import เข้าพอร์ทัลประกัน (EMCS)"
-                            className="px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                          >
-                            {xmlBusyId === c.id ? 'กำลังสร้าง...' : '⬇ XML'}
-                          </button>
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleXml(c)}
+                              disabled={xmlBusyId !== null}
+                              title="ดาวน์โหลดไฟล์ XML สำหรับ import เข้าพอร์ทัลประกัน (EMCS)"
+                              className="px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                              {xmlBusyId === c.id ? 'กำลังสร้าง...' : '⬇ XML'}
+                            </button>
+                            {/* งานครั้งถัดไปของเคลมเดิม — ก๊อปเลขเคลม/กรมธรรม์/รถให้ ไม่ต้องพิมพ์ซ้ำ
+                                (พิมพ์เลขเคลมผิดตัวเดียว = ระบบไม่รู้ว่าเป็นงานเดียวกัน "ครั้งที่" กลับเป็น 1) */}
+                            <button
+                              onClick={() => handleFollowup(c)}
+                              disabled={followBusyId !== null}
+                              title="เปิดงานครั้งถัดไปของเคลมนี้ (ติดตาม/นัดหมาย/เจรจา) — ข้อมูลเคลมก๊อปให้ ไม่ต้องพิมพ์ซ้ำ"
+                              className="px-2.5 py-1 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                            >
+                              {followBusyId === c.id ? 'กำลังเปิด...' : '+ งานครั้งถัดไป'}
+                            </button>
+                          </div>
                         ) : isPending ? (
                           <Link
                             href={`/callcenter/cases/${c.id}/assign`}

@@ -276,6 +276,70 @@ export const caseService = {
     return result.rows;
   },
 
+  /**
+   * เปิด "งานครั้งถัดไป" ของเคลมเดิม (งานติดตาม/นัดหมาย/เจรจา)
+   *
+   * กติกาที่ user อธิบาย 30/08/69: งานครั้งแรกเป็นเคลมสด/เคลมแห้ง · พอยังไม่ได้ข้อสรุป
+   * ก็นัดครั้งที่ 2 **บนเลขเคลมเดิม** → ระบบนับ "ครั้งที่" จาก claim_no ที่ซ้ำกันอยู่แล้ว
+   * (ROW_NUMBER OVER PARTITION BY claim_no) จึงไม่ต้องมีคอลัมน์เก็บรอบ
+   *
+   * ⛔ **ก๊อปเฉพาะ "ตัวตนของเคลม"** — เลขเคลม/กรมธรรม์/รถ/ผู้เอาประกัน/สถานที่เกิดเหตุ
+   *    ไม่ก๊อปสิ่งที่ช่างไปสำรวจมา (ความเสียหาย · คู่กรณี · ผู้บาดเจ็บ · ทรัพย์สิน · รูป ·
+   *    ยอดเงิน · ความเห็น) เพราะครั้งใหม่ต้องสำรวจใหม่ ไม่ใช่ลอกของเก่ามาส่งซ้ำ
+   * ⛔ **ไม่ก๊อปเลขเซอร์เวย์** — เป็นเลขใบวางบิล ห้ามซ้ำ ครั้งใหม่ต้องได้เลขใหม่
+   * ⛔ **ไม่ก๊อปประเภทเคลม** — ครั้งถัดไปมักเป็นงานติดตาม/นัดหมาย ให้คนจ่ายงานเลือกเอง
+   *    ที่หน้าจ่ายงาน (ปล่อยว่างดีกว่าใส่ค่าเดิมผิด ๆ แล้วไม่มีใครสังเกต)
+   */
+  async createFollowup(caseId: number, createdBy: number) {
+    const src = await db.query(
+      `SELECT c.*, sr.* FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id WHERE c.id = $1`,
+      [caseId]
+    );
+    if (src.rows.length === 0) throw new NotFoundError('Case not found');
+    const row = src.rows[0];
+
+    // ต้องเป็นงานที่ช่างส่งแล้ว — เปิดครั้งถัดไปทั้งที่ครั้งนี้ยังไม่เสร็จ = งานซ้อนกันเปล่า ๆ
+    if (!['surveyed', 'reviewed'].includes(String(row.status))) {
+      throw new ForbiddenError('เปิดงานครั้งถัดไปได้เมื่องานครั้งนี้ส่งแล้วเท่านั้น');
+    }
+    const claimNo = String(row.claim_no ?? '').trim();
+    if (!claimNo) throw new ForbiddenError('เคสนี้ไม่มีเลขเคลม จึงผูกงานครั้งถัดไปไม่ได้');
+
+    // กันกดซ้ำ/กดพร้อมกัน — ถ้ามีงานของเคลมนี้ที่ยังไม่เริ่มค้างอยู่ ให้ใช้ใบนั้นแทน
+    const pendingDup = await db.query(
+      `SELECT c.id FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
+        WHERE sr.claim_no = $1 AND c.status IN ('pending','assigned') LIMIT 1`,
+      [claimNo]
+    );
+    if (pendingDup.rows.length > 0) {
+      throw new ForbiddenError(
+        `เคลมนี้มีงานที่ยังไม่เสร็จอยู่แล้ว (เคส #${pendingDup.rows[0].id}) — ใช้ใบนั้นต่อได้เลย`
+      );
+    }
+
+    /** ตัวตนของเคลม/รถ/กรมธรรม์ — ก๊อปได้ เพราะไม่เปลี่ยนระหว่างครั้ง */
+    const CARRY = [
+      'survey_company', 'survey_company_address',
+      'claim_no', 'claim_ref_no', 'insurance_company', 'insurance_branch', 'car_lost',
+      'policy_no', 'policy_type', 'policy_start', 'policy_end', 'assured_name', 'prb_number', 'deductible',
+      'car_brand', 'car_model', 'car_type', 'car_color', 'license_plate', 'car_province',
+      'chassis_no', 'engine_no', 'car_reg_year',
+      'driver_first_name', 'driver_last_name', 'driver_phone',
+      'acc_date', 'acc_time', 'acc_place', 'acc_subdistrict', 'acc_province', 'acc_district',
+      'acc_cause', 'acc_detail', 'acc_reporter', 'reporter_phone',
+    ];
+    const payload: Record<string, unknown> = {
+      customer_name: row.customer_name ?? '',
+      incident_location: row.incident_location ?? '',
+      incident_lat: row.incident_lat ?? null,
+      incident_lng: row.incident_lng ?? null,
+    };
+    for (const f of CARRY) if (row[f] !== null && row[f] !== undefined && row[f] !== '') payload[f] = row[f];
+
+    const created = await this.create(payload as never, createdBy);
+    return { ...created, from_case_id: caseId, claim_no: claimNo };
+  },
+
   async assign(caseId: number, surveyorId: number, claimType?: string) {
     // ดึง claim_no + insurance_company จาก survey_reports มาด้วย (โชว์บนการ์ดงานมือถือ)
     const caseResult = await db.query(
