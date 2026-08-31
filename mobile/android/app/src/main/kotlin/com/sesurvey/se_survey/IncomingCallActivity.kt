@@ -182,11 +182,11 @@ class IncomingCallActivity : Activity() {
         val btn = findViewById<ImageButton>(R.id.btn_mute)
         if (muted) {
             NotificationHelper.stopAlarm()
-            btn.setImageResource(android.R.drawable.ic_lock_silent_mode)
+            btn.setImageResource(R.drawable.ic_bell_off)
             btn.contentDescription = "เปิดเสียงแจ้งเตือน"
         } else {
             NotificationHelper.startAlarm(this)
-            btn.setImageResource(android.R.drawable.ic_popup_reminder)
+            btn.setImageResource(R.drawable.ic_bell)
             btn.contentDescription = "ปิดเสียงแจ้งเตือน"
         }
     }

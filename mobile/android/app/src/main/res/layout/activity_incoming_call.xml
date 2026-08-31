@@ -28,14 +28,15 @@
             android:paddingTop="20dp"
             android:paddingBottom="14dp">
 
+            <!-- ไอคอนกระดิ่งของเราเอง (ic_bell / ic_bell_off) — ไอคอนระบบหน้าตาเพี้ยนตามยี่ห้อเครื่อง
+                 marginStart 0: -6dp ทำให้ปุ่มโดนขอบจอตัด บนเครื่องที่ขอบจอโค้ง -->
             <ImageButton
                 android:id="@+id/btn_mute"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="-6dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:padding="6dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_popup_reminder"
-                android:tint="#7D7979"
+                android:src="@drawable/ic_bell"
                 android:scaleType="fitCenter"
                 android:contentDescription="ปิดเสียงแจ้งเตือน" />
 
