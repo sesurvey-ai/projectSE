@@ -9,6 +9,7 @@ import type { XmlImportResult } from './xmlImport.service';
 import { assertReportRev } from './reportRev';
 import { notifyCaseChanged } from './caseEvents';
 import { provinceOf } from './geoProvince';
+import { standardPhotoFee } from './photoFee.service';
 import { districtCentroid } from './geoDistrict';
 import { recordMoneyChanges } from './moneyAudit';
 import { getIO } from '../socket';
@@ -1161,6 +1162,17 @@ export const caseService = {
       visits,
       expenses,
       linked_cases: linkedCases,
+      /**
+       * ค่ารูปตามกติกาเหมา — ให้หน้าตรวจเติมให้อัตโนมัติ (หัวหน้าแก้ทับได้)
+       *
+       * ⛔ **ไม่เสนอกับงานที่นำเข้าจากไฟล์ ISURVEY** (`isurvey_xml`) — งานพวกนั้นหัวหน้า
+       *    กรอกยอดจบที่ ISURVEY แล้ว ยอดติดมากับไฟล์ การเติมทับ = เขียนทับของจริง
+       * null = ตัดสินไม่ได้ (ยังไม่รู้จังหวัดออกสำรวจ) → ปล่อยให้คนกรอกเอง ห้ามเดา
+       */
+      photo_fee_suggest:
+        report && caseResult.rows[0]?.source !== 'isurvey_xml'
+          ? standardPhotoFee(report)
+          : null,
       // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้ง — เตือนคนตรวจก่อนส่งเข้า EMCS
       emcs_name_warnings: report ? emcsNameWarnings(report) : [],
     };

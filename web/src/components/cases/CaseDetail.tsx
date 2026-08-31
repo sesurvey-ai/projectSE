@@ -35,6 +35,7 @@ interface CaseDetailProps {
   /** ครั้งที่ทั้งหมดของเลขเคลมนี้ (คนละเคสกัน) — ดู getDetail ฝั่ง backend */
   visits?: { id: number; visit_no: number | string; survey_job_no: string | null; status: string; created_on: string }[];
   expenses?: any;
+  photoFeeSuggest?: { count: number; price: number; reason: string } | null;
   onReviewSubmitted: () => void;
 }
 
@@ -403,7 +404,7 @@ const isBlank = (el: HTMLElement) => {
   return !v.trim();
 };
 
-export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, visits = [], expenses, onReviewSubmitted }: CaseDetailProps) {
+export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, visits = [], expenses, photoFeeSuggest = null, onReviewSubmitted }: CaseDetailProps) {
   const ex = expenses || {};
   // ประเภทรถ → ตัวเลือกยี่ห้อ (EMCS กรองลิสต์ยี่ห้อตามประเภทรถ; เดิมโชว์ชุดของ
   // 'เก๋งเอเชีย' ชุดเดียวกับทุกประเภท → กระบะ/มอเตอร์ไซค์เลือกยี่ห้อที่ EMCS ไม่รับ)
@@ -547,6 +548,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const pvv = previewing ? (pv as Record<string, any>) : null;
   /** ค่าที่รางขวาใช้แสดง — ครั้งปัจจุบันใช้ของเคสนี้ · ครั้งอื่นใช้ของครั้งนั้น */
   const exV = pvv ?? ex;
+  /**
+   * ค่ารูปตามกติกาเหมา — **เติมให้เฉพาะตอนยังไม่เคยกรอก** (หัวหน้าแก้ทับได้ตลอด)
+   *
+   * ⛔ ห้ามเติมทับค่าที่บันทึกไว้แล้ว — หัวหน้าอาจแก้ด้วยเหตุผลเฉพาะเคส
+   *    เติมทับทุกครั้งที่เปิดหน้า = การแก้ของคนหายเงียบ (แก้ได้ก็เท่ากับแก้ไม่ได้)
+   * ⛔ ดูครั้งอื่นอยู่ (previewing) = อ่านอย่างเดียว ไม่เติมอะไรทั้งนั้น
+   */
+  const photoFeeUnset = !exV.photo_fee_count && !Number(exV.photo_fee_price ?? 0);
+  const photoFee = (!previewing && photoFeeSuggest && photoFeeUnset) ? photoFeeSuggest : null;
   /**
    * ⛔ คอลัมน์ฝั่งจ่ายพนักงานถูก alias เป็น `pay_*` ตอน query (เพราะ phone_fee/bail_fee
    *    ชนกับฝั่งเรียกเก็บประกัน) — ต้องแมปกลับเป็นชื่อเดิมก่อนส่งให้ช่องกรอกอ่าน
@@ -2461,13 +2471,22 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">รูป</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">รูป</span></div></td>
                     {/* ⛔ ล็อกถาวร — **พนักงานไม่มีค่ารูป** ค่ารูปเป็นของฝั่งเรียกเก็บประกันเท่านั้น
                         (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
                         ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled name="pay_photo_fee" defaultValue="" title="พนักงานไม่มีค่ารูป — ค่ารูปเบิกได้เฉพาะฝั่งประกัน" className="w-full border rounded px-2 py-1 text-sm text-right bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed" /></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee ? String(photoFee.price) : '')} title={photoFee?.reason} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
+                  {/* บอกที่มาของตัวเลขที่เติมให้ — ไม่งั้นหัวหน้าเห็น 10/5 โผล่มาเองแล้วไม่รู้ว่ามาจากไหน
+                      (ขึ้นเฉพาะตอนเป็นค่าที่ระบบเติม ไม่ใช่ตอนหัวหน้ากรอกเอง) */}
+                  {photoFee && (
+                    <tr className="border-b border-gray-100">
+                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
+                        ค่ารูปเติมให้ตามกติกาเหมา: {photoFee.reason} — แก้ทับได้ถ้าเคสนี้ต่างออกไป
+                      </td>
+                    </tr>
+                  )}
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>

@@ -18,6 +18,8 @@ export default function CaseDetailPage() {
   /** ครั้งที่ทั้งหมดของเลขเคลมนี้ — แต่ละครั้งเป็นคนละเคส (ดู getDetail) */
   const [visits, setVisits] = useState([]);
   const [expenses, setExpenses] = useState(null);
+  /** ค่ารูปตามกติกาเหมา ที่ backend คิดให้ — null = ตัดสินไม่ได้ ให้คนกรอกเอง */
+  const [photoFeeSuggest, setPhotoFeeSuggest] = useState<{count:number;price:number;reason:string}|null>(null);
   // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้งตอนหัวหน้าคลิกโดน (backend คำนวณให้)
   const [nameWarnings, setNameWarnings] = useState<
     { tag: string; label: string; value: string; bad: string }[]>([]);
@@ -46,6 +48,7 @@ export default function CaseDetailPage() {
         setVisitCount(res.data.data.visit_count || 1);
         setVisits(res.data.data.visits || []);
         setExpenses(res.data.data.expenses || null);
+        setPhotoFeeSuggest(res.data.data.photo_fee_suggest || null);
         setNameWarnings(res.data.data.emcs_name_warnings || []);
       }
     } catch { setError('ไม่สามารถโหลดข้อมูลเคสได้'); }
@@ -116,7 +119,7 @@ export default function CaseDetailPage() {
           </ul>
         </div>
       )}
-      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} visits={visits} expenses={expenses} onReviewSubmitted={fetchDetail} />
+      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} visits={visits} expenses={expenses} photoFeeSuggest={photoFeeSuggest} onReviewSubmitted={fetchDetail} />
     </div>
   );
 }
