@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- กรอบเหลี่ยม 2dp สีตัวหนังสือ — ปุ่มรองในแบบใหม่ (ไม่มีมุมโค้งทั้งหน้า) -->
+<!-- ปุ่มรอง "ยกเลิก" — กรอบ 2dp โค้งเท่าปุ่มหลัก -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="@android:color/transparent" />
     <stroke android:width="2dp" android:color="#201E1D" />
+    <corners android:radius="12dp" />
 </shape>

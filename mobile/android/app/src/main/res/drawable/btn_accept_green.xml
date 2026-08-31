@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ปุ่ม "รับงาน" — มุมโค้งพอให้ดูเป็นปุ่ม แต่ไม่เป็นแคปซูล (user 31/08/69) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#008A3E" />
+    <corners android:radius="12dp" />
+</shape>

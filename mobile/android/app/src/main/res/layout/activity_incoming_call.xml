@@ -261,7 +261,7 @@
                 android:layout_marginTop="10dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="#008A3E"
+                android:background="@drawable/btn_accept_green"
                 android:paddingStart="18dp"
                 android:paddingEnd="18dp"
                 android:paddingTop="16dp"
@@ -352,7 +352,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:background="#EC3013"
+                    android:background="@drawable/btn_confirm_red"
                     android:paddingTop="14dp"
                     android:paddingBottom="14dp"
                     android:text="ยืนยันปฏิเสธ"
@@ -431,19 +431,10 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="#F3F2F2"
+        android:background="#EC3013"
         android:clickable="true"
         android:focusable="true"
         android:visibility="gone">
-
-        <!-- แถบแดงขอบบน — ใช้ View จริงแทน stroke ของ shape
-             ⛔ stroke วาดกรอบครบ 4 ด้านเสมอ ดันด้านที่ไม่ต้องการออกด้วยค่าติดลบแล้ว
-                ยังเหลือเส้นขอบซ้าย/ขวาให้เห็น (เจอจากการเทสจริง) — View ตรง ๆ คุมได้แน่นอน -->
-        <View
-            android:id="@+id/declined_accent"
-            android:layout_width="match_parent"
-            android:layout_height="8dp"
-            android:background="#EC3013" />
 
         <LinearLayout
             android:id="@+id/declined_body"
@@ -464,7 +455,7 @@
             android:textSize="13sp"
             android:textStyle="bold"
             android:letterSpacing="0.1"
-            android:textColor="#7D7979" />
+            android:textColor="#FFFFFF" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -473,7 +464,7 @@
             android:textSize="40sp"
             android:textStyle="bold"
             android:lineSpacingMultiplier="1.1"
-            android:textColor="#201E1D" />
+            android:textColor="#FFFFFF" />
 
         <TextView
             android:id="@+id/txt_declined_reason"
@@ -481,7 +472,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:textSize="16sp"
-            android:textColor="#605D5D" />
+            android:alpha="0.9"
+            android:textColor="#FFFFFF" />
         </LinearLayout>
     </LinearLayout>
 

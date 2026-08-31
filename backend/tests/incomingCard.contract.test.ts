@@ -146,11 +146,18 @@ const declineBody = declineFn.slice(0, declineFn.indexOf('\n    private fun', 10
 check('ปฏิเสธแล้วไม่เปิดแอป', !declineBody.includes('startActivity'));
 check('รายการงานรีเฟรชเองตอนกลับเข้าแอป',
       /didChangeAppLifecycleState[\s\S]{0,260}fetchMyCases\(\)/.test(caseList));
-/**
- * ⛔ แถบแดงขอบบนต้องเป็น View จริง — shape stroke วาดกรอบครบ 4 ด้านเสมอ
- *    ดันด้านที่ไม่ต้องการออกด้วยค่าติดลบแล้วยังเหลือเส้นซ้าย/ขวา (เจอจากการเทสจริง)
- */
-check('แถบแดงขอบบนเป็น View ไม่ใช่ stroke', /android:id="@\+id\/declined_accent"/.test(layout));
+/** user 31/08/69: หน้าปฏิเสธแดงเต็มจอให้คู่กับหน้ารับงานที่เขียวเต็มจอ */
+check('หน้าปฏิเสธแดงเต็มจอ ตัวหนังสือขาว',
+      /declined_screen"[\s\S]{0,200}android:background="#EC3013"/.test(layout)
+      && /android:text="ปฏิเสธงานแล้ว"[\s\S]{0,200}android:textColor="#FFFFFF"/.test(layout));
+/** ปุ่มทั้งชุดโค้งเท่ากัน — โค้งไม่เท่ากันจะดูเหมือนคนละระบบ */
+const btnGreen = read('..', 'mobile', 'android', 'app', 'src', 'main', 'res', 'drawable', 'btn_accept_green.xml');
+const btnRed = read('..', 'mobile', 'android', 'app', 'src', 'main', 'res', 'drawable', 'btn_confirm_red.xml');
+const btnOutline = read('..', 'mobile', 'android', 'app', 'src', 'main', 'res', 'drawable', 'border_dark_2dp.xml');
+check('ปุ่มรับงาน/ยืนยันปฏิเสธ/ยกเลิก โค้งเท่ากันทั้ง 3',
+      [btnGreen, btnRed, btnOutline].every((f) => /android:radius="12dp"/.test(f)));
+check('ปุ่มในหน้าจอใช้พื้นโค้งจริง',
+      layout.includes('@drawable/btn_accept_green') && layout.includes('@drawable/btn_confirm_red'));
 check('หน้าสรุปเว้นที่ให้แถบระบบด้วย',
       /accepted\.setPadding\(dp\(24\), bars\.top/.test(activity)
       && /declinedBody\.setPadding\(dp\(24\), 0, dp\(24\), dp\(28\) \+ bars\.bottom\)/.test(activity));
