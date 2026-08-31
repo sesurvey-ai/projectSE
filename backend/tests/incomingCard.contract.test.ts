@@ -31,8 +31,13 @@ check('เอาค่าขึ้นจอจริง', /R\.id\.txt_claim_no\)
  *    งานที่ยังไม่มีเลขเคลมมีจริง (callcenter เปิดเคสก่อนได้เลขจากบริษัทประกัน)
  *    เส้นคั่นกับหัวข้อลอยอยู่โดยไม่มีค่า = ดูเหมือนจอค้าง/โหลดไม่ขึ้น
  */
-check('ไม่มีเลขเคลม → ซ่อนทั้งแถว', /claimRow\.visibility = View\.GONE/.test(activity));
-check('แถวเริ่มต้นซ่อนไว้ใน layout', /android:id="@\+id\/row_claim"[\s\S]{0,200}android:visibility="gone"/.test(layout));
+check('ไม่มีเลขเคลม → ซ่อนทั้งแถว',
+      /row_claim\)\.visibility = if \(hasClaim\) View\.VISIBLE else View\.GONE/.test(activity));
+/** เส้นคั่นเหนือ "สถานที่เกิดเหตุ" ต้องหายไปด้วย ไม่งั้นเหลือเส้นลอยไม่มีอะไรอยู่ข้างบน */
+check('ซ่อนเส้นคั่นตามไปด้วยเมื่อไม่มีเลขเคลม',
+      /div_incident\)\.visibility = if \(hasClaim\) View\.VISIBLE else View\.GONE/.test(activity));
+check('แถวเริ่มต้นซ่อนไว้ใน layout',
+      /android:id="@\+id\/row_claim"[\s\S]{0,400}android:visibility="gone"/.test(layout));
 
 console.log('\n── เสียงเตือนหยุดเองเมื่อครบเวลา ──');
 check('มีเพดานเวลา 60 วินาที', /ALARM_MAX_MS = 60_000L/.test(helper));
@@ -70,6 +75,47 @@ check('จับชื่อไอโออิได้ทั้งไทยแ�
       /contains\("ไอโออิ"\)/.test(helper) && /contains\("AIOI", ignoreCase = true\)/.test(helper));
 check('บริษัทที่ไม่มีโลโก้ → ซ่อนรูป ไม่ค้างโลโก้เจ้าอื่น',
       /else -> null/.test(helper) && /logoView\.visibility = View\.GONE/.test(activity));
+
+console.log('\n── ปฏิเสธงานพร้อมเหตุผล ──');
+const svc = read('src', 'services', 'case.service.ts');
+const migration = read('src', 'db', 'migrations', '047_decline_reason.sql');
+const dash = read('..', 'web', 'src', 'app', 'callcenter', 'page.tsx');
+const notifDart = read('..', 'mobile', 'lib', 'services', 'notification_service.dart');
+check('มีที่เก็บครบ 3 ช่อง (เหตุผล/ใคร/เมื่อไหร่)',
+      /declined_reason TEXT/.test(migration) && /declined_by\s+INTEGER/.test(migration)
+      && /declined_at\s+TIMESTAMPTZ/.test(migration));
+/**
+ * ⛔ declined_by ต้องเก็บแยก — คำสั่งเดียวกันล้าง assigned_to เป็น NULL
+ *    ไม่เก็บ = ผู้จ่ายงานไม่มีทางรู้ว่าใครไม่รับ แล้วจ่ายให้คนเดิมซ้ำโดยไม่รู้ตัว
+ */
+check('บันทึกทั้งเหตุผลและคนที่ปฏิเสธตอนล้าง assigned_to',
+      /assigned_to = NULL,[\s\S]{0,80}declined_reason = \$2, declined_by = \$3, declined_at = NOW\(\)/.test(svc));
+/** APK เก่าไม่ส่ง reason มา ต้องปฏิเสธได้ตามปกติ ไม่ใช่ 400 */
+check('ไม่มีเหตุผลก็ยังปฏิเสธได้ (APK เก่า)', /reason\?: string/.test(svc));
+check('หน้าจ่ายงาน join ชื่อคนที่ปฏิเสธมาโชว์', /LEFT JOIN users d ON c\.declined_by = d\.id/.test(svc));
+check('หน้าจ่ายงานแสดงว่าใครไม่รับ + เพราะอะไร',
+      dash.includes('declined_first_name') && dash.includes('ไม่รับงาน'));
+check('มี 4 เหตุผลบนแอป',
+      activity.includes('"อยู่ระหว่างปฏิบัติงานอื่น"') && activity.includes('"ติดภารกิจ ไม่สะดวกรับงาน"'));
+/** ยังไม่เลือกเหตุผล = กดยืนยันไม่ทำอะไร — ไม่งั้นได้เหตุผลเปล่าซึ่งคือปัญหาเดิมที่กำลังแก้ */
+check('ยังไม่เลือกเหตุผล → ยืนยันไม่ได้', /if \(reasonIdx < 0\) return/.test(activity));
+/** ยิงจาก native เพราะหน้าเต็มจอเด้งได้แม้แอปตายสนิท — Flutter isolate อาจไม่มีชีวิตอยู่ */
+check('ยิงปฏิเสธจาก native เอง', /LocationHelper\.postDecline\(this, caseId, reason\)/.test(activity));
+check('Flutter รับ declined_done แล้วแค่รีเฟรช ไม่ยิงซ้ำ',
+      /action == 'declined_done'/.test(notifDart) && /_onRefreshOnly\?\.call/.test(notifDart));
+
+console.log('\n── หน้าจอตามแบบใหม่ ──');
+check('นับถอยหลังเท่ากับเพดานเสียง',
+      /COUNTDOWN_SEC = 60/.test(activity) && /ALARM_MAX_MS = 60_000L/.test(helper));
+check('มีปุ่มปิดเสียงบนหัวจอ', /R\.id\.btn_mute/.test(activity));
+/**
+ * ⛔ หน้านี้วาดเต็มจอทับ lock screen — ไม่เว้น inset = หัวจอโดนนาฬิกาทับ
+ *    และ **ปุ่มรับงานโดนแถบนำทางกินครึ่งปุ่ม** (เจอจากการเทสจริง 31/08/69)
+ */
+check('เว้นที่ให้แถบสถานะ/แถบนำทาง',
+      /applySystemBarInsets\(\)/.test(activity)
+      && /content\.setPadding\(0, bars\.top, 0, bars\.bottom\)/.test(activity));
+check('ชื่ออังกฤษเทียบจากชื่อไทย ไม่เก็บใน DB', /fun insurerEnglish\(/.test(helper));
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);

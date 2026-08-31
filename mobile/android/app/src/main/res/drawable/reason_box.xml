@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ช่องสี่เหลี่ยมของตัวเลือกเหตุผล (แทน radio กลม — ทั้งหน้าใช้มุมเหลี่ยม) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="2dp" android:color="#201E1D" />
+</shape>

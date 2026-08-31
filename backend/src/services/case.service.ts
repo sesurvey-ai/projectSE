@@ -497,16 +497,28 @@ export const caseService = {
     return r.rows[0];
   },
 
-  async declineCase(caseId: number, surveyorId: number) {
+  async declineCase(caseId: number, surveyorId: number, reason?: string) {
     const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
     const caseData = caseResult.rows[0];
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
 
+    /**
+     * เหตุผลที่ปฏิเสธ — ไม่ล็อกไว้แค่ 4 ข้อที่แอปมีวันนี้ (เพิ่มตัวเลือกทีหลังจะได้ไม่ต้องแก้ 2 ที่)
+     * แค่ตัดความยาวกันข้อความยาวผิดปกติ · APK เก่าไม่ส่งมา = null (ไม่ใช่ error)
+     */
+    const cleanReason = typeof reason === 'string' && reason.trim() ? reason.trim().slice(0, 200) : null;
+
     // เคลียร์ assigned_to ด้วย — งานที่ถูกปฏิเสธจะได้ไม่ค้างในรายการของคนที่ปฏิเสธ (getMyCases กรองด้วย assigned_to)
+    //
+    // ⛔ declined_by ต้องเก็บแยกจาก assigned_to เพราะบรรทัดนี้ล้าง assigned_to ทิ้ง —
+    //    ไม่เก็บ = ผู้จ่ายงานไม่มีทางรู้ว่าใครไม่รับ แล้วจ่ายให้คนเดิมซ้ำโดยไม่รู้ตัว
     const result = await db.query(
-      "UPDATE cases SET status = 'declined', assigned_to = NULL WHERE id = $1 RETURNING *",
-      [caseId]
+      `UPDATE cases
+          SET status = 'declined', assigned_to = NULL,
+              declined_reason = $2, declined_by = $3, declined_at = NOW()
+        WHERE id = $1 RETURNING *`,
+      [caseId, cleanReason, surveyorId]
     );
     // ปฏิเสธงาน = เลิกเป็นเจ้าของ → ล้าง cache สิทธิ์ดูรูป (ไม่งั้นยังเปิดรูปเคสนี้ได้อีกพักหนึ่ง)
     invalidateCaseOwner(caseId);
@@ -961,9 +973,13 @@ export const caseService = {
   async getById(caseId: number) {
     // ดึงจังหวัด/อำเภอที่เกิดเหตุมาด้วย — หน้าจ่ายงานใช้จัดกลุ่มช่างที่อยู่จังหวัดเดียวกัน
     // (อยู่คนละตารางกับ cases จึงต้อง join ไม่ใช่ SELECT * เฉย ๆ)
+    // ชื่อคนที่ปฏิเสธ join แยก — assigned_to ถูกล้างตอนปฏิเสธ จึงหาจากตรงนั้นไม่ได้
     const result = await db.query(
-      `SELECT c.*, sr.acc_province, sr.acc_district, sr.claim_type
-         FROM cases c LEFT JOIN survey_reports sr ON sr.case_id = c.id
+      `SELECT c.*, sr.acc_province, sr.acc_district, sr.claim_type,
+              d.first_name AS declined_first_name, d.last_name AS declined_last_name, d.code AS declined_code
+         FROM cases c
+         LEFT JOIN survey_reports sr ON sr.case_id = c.id
+         LEFT JOIN users d ON d.id = c.declined_by
         WHERE c.id = $1`, [caseId]);
     if (result.rows.length === 0) throw new NotFoundError('Case not found');
     const row = result.rows[0];
@@ -1806,11 +1822,15 @@ export const caseService = {
 
     const [dataResult, countResult] = await Promise.all([
       db.query(
+        // ⛔ ต้อง join ชื่อคนที่ปฏิเสธแยกอีกครั้ง — declineCase ล้าง assigned_to ทิ้ง
+        //    join เดิม (u) จึงว่างเสมอสำหรับงานที่ถูกปฏิเสธ ผู้จ่ายงานเห็นแค่สถานะลอย ๆ
         `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
+                d.first_name AS declined_first_name, d.last_name AS declined_last_name, d.code AS declined_code,
                 sr.claim_no, sr.survey_job_no, sr.claim_ref_no,
                 ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
          FROM cases c
          LEFT JOIN users u ON c.assigned_to = u.id
+         LEFT JOIN users d ON c.declined_by = d.id
          LEFT JOIN survey_reports sr ON sr.case_id = c.id
          ${where}
          ORDER BY c.created_at DESC

@@ -4,16 +4,38 @@ import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 
 class IncomingCallActivity : Activity() {
+
+    companion object {
+        /**
+         * เหตุผลที่ปฏิเสธงาน — user กำหนด 31/08/69
+         * ⛔ ข้อความที่นี่ถูกส่งขึ้นเซิร์ฟเวอร์ตรง ๆ แล้วโชว์ให้ผู้จ่ายงานอ่าน
+         *    แก้คำเมื่อไหร่ ของเก่าในฐานข้อมูลยังเป็นคำเดิม (เก็บเป็นข้อความ ไม่ใช่รหัส)
+         */
+        private val REASONS = listOf(
+            "อยู่ระหว่างปฏิบัติงานอื่น",
+            "ระยะทางไกลเกินไป",
+            "ยานพาหนะ/อุปกรณ์ขัดข้อง",
+            "ติดภารกิจ ไม่สะดวกรับงาน",
+        )
+        /** เวลานับถอยหลังบนหัวจอ — ล็อกให้เท่ากับเพดานเสียงเตือน (NotificationHelper.ALARM_MAX_MS) */
+        private const val COUNTDOWN_SEC = 60
+    }
 
     private var caseId: Int = 0
     private var notificationId: Int = 0
@@ -21,6 +43,12 @@ class IncomingCallActivity : Activity() {
     private var claimNo: String = ""
     private var insuranceCompany: String = ""
     private var actionTaken = false // กดรับ/ปฏิเสธแล้วหรือยัง — กันโพสต์ bar หลังจบงาน
+
+    private var muted = false
+    private var reasonIdx = -1
+    private var secondsLeft = COUNTDOWN_SEC
+    private val ticker = Handler(Looper.getMainLooper())
+    private var tick: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,13 +70,19 @@ class IncomingCallActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContentView(R.layout.activity_incoming_call)
+        applySystemBarInsets()
 
         bindData(intent)
+        buildReasonList()
+        startCountdown()
 
-        // ปุ่มรับงาน
-        findViewById<Button>(R.id.btn_accept).setOnClickListener {
-            handleAction("accept")
-        }
+        findViewById<View>(R.id.btn_accept).setOnClickListener { handleAction("accept") }
+        findViewById<View>(R.id.btn_decline).setOnClickListener { showDeclineSheet(true) }
+        findViewById<View>(R.id.btn_cancel_decline).setOnClickListener { showDeclineSheet(false) }
+        findViewById<View>(R.id.btn_confirm_decline).setOnClickListener { confirmDecline() }
+        findViewById<ImageButton>(R.id.btn_mute).setOnClickListener { toggleMute() }
+        // แตะฉากหลังของแผ่นเลือกเหตุผล = ปิด (ไม่ใช่ปฏิเสธ) — ทางออกที่คาดเดาได้
+        findViewById<View>(R.id.decline_sheet).setOnClickListener { showDeclineSheet(false) }
 
         Log.d("IncomingCall", "Activity created: caseId=$caseId claim=$claimNo")
     }
@@ -61,23 +95,28 @@ class IncomingCallActivity : Activity() {
         claimNo = source.getStringExtra("claim_no") ?: claimNo
         insuranceCompany = source.getStringExtra("insurance_company") ?: insuranceCompany
 
-        // การ์ด: สถานที่เกิดเหตุ (ว่าง = "ไม่ระบุสถานที่")
-        findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "ไม่ระบุสถานที่"
-        // เลขเคลม — ส่งมากับ push อยู่แล้ว เดิมรับค่ามาแต่ไม่ได้เอาขึ้นจอเลย (user 31/08/69)
-        // ⛔ ไม่มีเลข = ซ่อนทั้งแถว ไม่ใส่ "-" — งานที่ยังไม่มีเลขเคลมมีจริง (callcenter
-        //    เปิดเคสก่อนได้เลขจากบริษัทประกัน) โชว์ขีดเปล่า ๆ ไม่ได้บอกอะไรนอกจากกินที่
-        val claimRow = findViewById<View>(R.id.row_claim)
-        if (claimNo.isNotBlank()) {
-            findViewById<TextView>(R.id.txt_claim_no).text = claimNo
-            claimRow.visibility = View.VISIBLE
-        } else {
-            claimRow.visibility = View.GONE
-        }
-        // ชื่อย่อบริษัทประกัน (ใต้โลโก้)
+        findViewById<TextView>(R.id.txt_incident).text =
+            if (incidentLocation.isNotBlank()) incidentLocation else "ไม่ระบุสถานที่"
+
+        // เลขเคลม — ⛔ ไม่มีเลข = ซ่อนทั้งบล็อก ไม่ใส่ "-" (งานที่เปิดก่อนได้เลขจากบริษัทประกันมีจริง)
+        val hasClaim = claimNo.isNotBlank()
+        findViewById<View>(R.id.row_claim).visibility = if (hasClaim) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.div_incident).visibility = if (hasClaim) View.VISIBLE else View.GONE
+        if (hasClaim) findViewById<TextView>(R.id.txt_claim_no).text = claimNo
+
         val shortName = NotificationHelper.shortInsurer(insuranceCompany)
         findViewById<TextView>(R.id.txt_insurance_name).text = if (shortName.isNotBlank()) shortName else "-"
 
-        // โลโก้บริษัทประกัน (ไทยไพบูลย์ / ไอโออิ) — บริษัทที่ไม่มีโลโก้ = ซ่อน เหลือชื่อย่อบอกว่าใคร
+        // ชื่ออังกฤษ — ไม่ได้เก็บในฐานข้อมูล เทียบจากชื่อไทยเอา (user ตัดสิน 31/08/69)
+        val en = findViewById<TextView>(R.id.txt_insurance_en)
+        val enName = NotificationHelper.insurerEnglish(insuranceCompany)
+        if (enName != null) {
+            en.text = enName
+            en.visibility = View.VISIBLE
+        } else {
+            en.visibility = View.GONE
+        }
+
         val logoView = findViewById<ImageView>(R.id.img_logo)
         val logo = NotificationHelper.logoFor(insuranceCompany)
         if (logo != null) {
@@ -87,6 +126,172 @@ class IncomingCallActivity : Activity() {
             logoView.visibility = View.GONE
         }
     }
+
+    /**
+     * เว้นที่ให้แถบสถานะ (บน) และแถบนำทาง (ล่าง)
+     *
+     * ⛔ หน้านี้เปิดทับ lock screen จึงวาดเต็มจอจริง ๆ — ไม่เว้นเอง = หัวจอโดนนาฬิกาทับ
+     *    และ **ปุ่มรับงานโดนแถบนำทางกินไปครึ่งปุ่ม** (เจอจากการเทสจริง 31/08/69)
+     * ⛔ ตั้ง listener ที่ root ตัวเดียวแล้วกระจายเอง — ตั้งที่ลูกสองตัวจะแย่งกันรับ
+     *    แล้วตัวหลังไม่ได้ inset
+     */
+    private fun applySystemBarInsets() {
+        val root = findViewById<View>(R.id.root_frame)
+        val content = findViewById<View>(R.id.content_root)
+        val sheet = findViewById<View>(R.id.sheet_panel)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            content.setPadding(0, bars.top, 0, bars.bottom)
+            sheet.setPadding(dp(20), dp(20), dp(20), dp(24) + bars.bottom)
+            insets
+        }
+    }
+
+    // ── นับถอยหลัง ────────────────────────────────────────────────
+    /**
+     * บอกว่างานเพิ่งเข้ามากี่วินาทีแล้ว — ตัวเลขเดินคู่กับเสียงเตือนที่หยุดเองเมื่อครบ 60 วิ
+     * ครบแล้วเหลือแค่คำว่า "เข้ามาใหม่" (โชว์ "0 วิ" ค้างไว้ไม่ได้บอกอะไร)
+     */
+    private fun startCountdown() {
+        val label = findViewById<TextView>(R.id.txt_countdown)
+        val dot = findViewById<View>(R.id.dot_live)
+        val r = object : Runnable {
+            override fun run() {
+                if (secondsLeft > 0) {
+                    label.text = "เข้ามาใหม่ · $secondsLeft วิ"
+                    secondsLeft--
+                    ticker.postDelayed(this, 1000)
+                } else {
+                    label.text = "เข้ามาใหม่"
+                    dot.setBackgroundColor(Color.parseColor("#7D7979"))
+                }
+            }
+        }
+        tick = r
+        ticker.post(r)
+    }
+
+    private fun stopCountdown() {
+        tick?.let { ticker.removeCallbacks(it) }
+        tick = null
+    }
+
+    // ── ปิด/เปิดเสียง ─────────────────────────────────────────────
+    private fun toggleMute() {
+        muted = !muted
+        val btn = findViewById<ImageButton>(R.id.btn_mute)
+        if (muted) {
+            NotificationHelper.stopAlarm()
+            btn.setImageResource(android.R.drawable.ic_lock_silent_mode)
+            btn.contentDescription = "เปิดเสียงแจ้งเตือน"
+        } else {
+            NotificationHelper.startAlarm(this)
+            btn.setImageResource(android.R.drawable.ic_popup_reminder)
+            btn.contentDescription = "ปิดเสียงแจ้งเตือน"
+        }
+    }
+
+    // ── แผ่นเลือกเหตุผลปฏิเสธ ─────────────────────────────────────
+    private fun buildReasonList() {
+        val list = findViewById<LinearLayout>(R.id.reason_list)
+        val dark = Color.parseColor("#201E1D")
+        val green = Color.parseColor("#006A29")
+        REASONS.forEachIndexed { i, label ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(4), dp(13), dp(4), dp(13))
+                isClickable = true
+                setOnClickListener { pickReason(i) }
+            }
+            val fill = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply {
+                    // จุดตรงกลางกล่อง — โผล่เมื่อเลือกข้อนี้
+                    marginStart = dp(4)
+                    topMargin = dp(4)
+                }
+                setBackgroundColor(Color.TRANSPARENT)
+                tag = "fill$i"
+            }
+            val boxWrap = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(16), dp(16))
+                setBackgroundResource(R.drawable.reason_box)
+                addView(fill)
+            }
+            val text = TextView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { marginStart = dp(12) }
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextColor(dark)
+                setLineSpacing(0f, 1.5f)
+                setText(label)
+                tag = "label$i"
+            }
+            row.addView(boxWrap)
+            row.addView(text)
+            list.addView(row)
+            // เส้นคั่นบาง ๆ ระหว่างข้อ
+            list.addView(View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+                setBackgroundColor(Color.parseColor("#D7D3D3"))
+            })
+        }
+        // เก็บสีไว้ใช้ตอนเลือก
+        list.tag = intArrayOf(dark, green)
+    }
+
+    private fun pickReason(i: Int) {
+        reasonIdx = i
+        val list = findViewById<LinearLayout>(R.id.reason_list)
+        val (dark, green) = (list.tag as IntArray).let { it[0] to it[1] }
+        REASONS.indices.forEach { n ->
+            val chosen = n == i
+            list.findViewWithTag<View>("fill$n")
+                ?.setBackgroundColor(if (chosen) green else Color.TRANSPARENT)
+            list.findViewWithTag<TextView>("label$n")
+                ?.setTextColor(if (chosen) green else dark)
+        }
+        // ปุ่มยืนยันเพิ่งใช้ได้ตอนนี้ — จาง 45% จนกว่าจะเลือก (ตรงกับแบบ)
+        findViewById<TextView>(R.id.btn_confirm_decline).alpha = 1f
+    }
+
+    private fun showDeclineSheet(show: Boolean) {
+        findViewById<View>(R.id.decline_sheet).visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) {
+            reasonIdx = -1
+            findViewById<TextView>(R.id.btn_confirm_decline).alpha = 0.45f
+            val list = findViewById<LinearLayout>(R.id.reason_list)
+            val dark = Color.parseColor("#201E1D")
+            REASONS.indices.forEach { n ->
+                list.findViewWithTag<View>("fill$n")?.setBackgroundColor(Color.TRANSPARENT)
+                list.findViewWithTag<TextView>("label$n")?.setTextColor(dark)
+            }
+        }
+    }
+
+    private fun confirmDecline() {
+        // ⛔ ยังไม่เลือกเหตุผล = ไม่ทำอะไร (ปุ่มจางอยู่แล้ว) — ปฏิเสธโดยไม่มีเหตุผล
+        //    ทำให้ผู้จ่ายงานได้ข้อมูลเปล่า ๆ ซึ่งเป็นปัญหาเดิมที่กำลังแก้อยู่
+        if (reasonIdx < 0) return
+        val reason = REASONS[reasonIdx]
+        actionTaken = true
+        stopCountdown()
+        NotificationHelper.cancelNotification(this, notificationId)
+        // ยิงจาก native เอง — หน้าเต็มจอเด้งได้แม้แอปตาย จะพึ่ง Flutter ให้ยิงแทนไม่ได้
+        LocationHelper.postDecline(this, caseId, reason)
+        // บอก Flutter ให้รีเฟรชรายการงาน (ไม่ต้องยิง API ซ้ำ)
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        launchIntent?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra("notification_action", "declined_done")
+            putExtra("case_id", caseId)
+        }
+        startActivity(launchIntent)
+        finish()
+    }
+
+    private fun dp(v: Int): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -99,6 +304,11 @@ class IncomingCallActivity : Activity() {
         }
         setIntent(intent)
         bindData(intent)
+        // งานใบใหม่ = เริ่มนับใหม่ และปิดแผ่นเหตุผลของใบเก่าทิ้ง (ไม่งั้นกดยืนยันไปโดนเคสผิด)
+        showDeclineSheet(false)
+        stopCountdown()
+        secondsLeft = COUNTDOWN_SEC
+        startCountdown()
     }
 
     override fun onResume() {
@@ -115,8 +325,14 @@ class IncomingCallActivity : Activity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        stopCountdown()
+    }
+
     private fun handleAction(action: String) {
         actionTaken = true
+        stopCountdown()
         // หยุดเสียง + ปิด notification
         NotificationHelper.cancelNotification(this, notificationId)
 
@@ -133,6 +349,11 @@ class IncomingCallActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        // เปิดแผ่นเหตุผลอยู่ → ปิดแผ่นก่อน (ไม่ใช่ปิดทั้งหน้า)
+        if (findViewById<View>(R.id.decline_sheet).visibility == View.VISIBLE) {
+            showDeclineSheet(false)
+            return
+        }
         // ไม่ให้กด back ปิดได้ — ต้องกดปุ่มรับ/ปฏิเสธ
     }
 }

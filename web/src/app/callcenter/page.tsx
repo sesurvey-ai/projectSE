@@ -15,6 +15,11 @@ interface CaseRow {
   created_at: string;
   surveyor_first_name?: string;
   surveyor_last_name?: string;
+  /** งานที่ถูกปฏิเสธ — assigned_to ถูกล้างทิ้ง จึงต้องมีชุดนี้แยกถึงจะรู้ว่าใครไม่รับและทำไม */
+  declined_first_name?: string;
+  declined_last_name?: string;
+  declined_code?: string;
+  declined_reason?: string;
   claim_no?: string;
   survey_job_no?: string;
   claim_ref_no?: string;
@@ -147,7 +152,18 @@ export default function CallcenterDashboard() {
                         <td className="px-5 py-3 text-gray-600">{c.survey_job_no || '-'}</td>
                         <td className="px-5 py-3 text-gray-600">{c.claim_ref_no || '-'}</td>
                         <td className="px-5 py-3 text-gray-600">
-                          {c.surveyor_first_name ? `${c.surveyor_first_name} ${c.surveyor_last_name || ''}` : '-'}
+                          {c.surveyor_first_name ? (
+                            `${c.surveyor_first_name} ${c.surveyor_last_name || ''}`
+                          ) : c.declined_first_name ? (
+                            /* ปฏิเสธแล้ว — ต้องเห็นว่า "ใคร" ไม่รับ ไม่งั้นจ่ายให้คนเดิมซ้ำโดยไม่รู้ตัว */
+                            <span className="text-red-700">
+                              {c.declined_code ? `${c.declined_code} ` : ''}
+                              {c.declined_first_name} {c.declined_last_name || ''}
+                              <span className="block text-xs text-gray-500">
+                                ไม่รับงาน{c.declined_reason ? ` — ${c.declined_reason}` : ''}
+                              </span>
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="px-5 py-3 text-gray-500">{c.visit_count || 1}</td>
                         <td className="px-5 py-3">

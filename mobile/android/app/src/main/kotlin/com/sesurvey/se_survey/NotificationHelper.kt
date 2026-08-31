@@ -35,6 +35,19 @@ object NotificationHelper {
         else -> null
     }
 
+    /**
+     * ชื่อภาษาอังกฤษของบริษัทประกัน — **ไม่เก็บในฐานข้อมูล** เทียบจากชื่อไทยเอา (user ตัดสิน 31/08/69)
+     *
+     * ⛔ ใส่เฉพาะชื่อที่ยืนยันได้จากโลโก้/เอกสารของบริษัทเอง — ไม่รู้ = คืน null แล้วซ่อนบรรทัดนั้น
+     *    เดาคำแปลไปแปะบนจอที่พนักงานเห็นทุกวัน แย่กว่าไม่มีบรรทัดนั้นเลย
+     *    (ไทยไพบูลย์ยังไม่มี — โลโก้ในโปรเจกต์เป็นภาษาไทยล้วน รอ user ยืนยันคำที่ถูก)
+     */
+    fun insurerEnglish(insuranceCompany: String): String? = when {
+        insuranceCompany.contains("ไอโออิ") ||
+            insuranceCompany.contains("AIOI", ignoreCase = true) -> "AIOI BANGKOK INSURANCE"
+        else -> null
+    }
+
     // ชื่อย่อบริษัทประกัน — ตัด "บริษัท" นำหน้า และ "จำกัด (มหาชน)" ท้าย
     // เช่น "บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)" → "ไทยไพบูลย์ประกันภัย"
     fun shortInsurer(name: String): String {

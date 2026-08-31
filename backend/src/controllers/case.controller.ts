@@ -218,7 +218,8 @@ export const caseController = {
 
   declineCase: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const result = await caseService.declineCase(caseId, req.user!.id);
+    // reason ไม่บังคับ — APK เก่ายังยิง body ว่างมา ต้องไม่พังทั้งที่ปฏิเสธได้ตามปกติ
+    const result = await caseService.declineCase(caseId, req.user!.id, req.body?.reason);
     sendSuccess(res, result);
   }),
 

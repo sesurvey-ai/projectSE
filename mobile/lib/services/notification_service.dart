@@ -36,13 +36,17 @@ class NotificationService {
   // Callbacks
   void Function(int caseId)? _onAcceptAction;
   void Function(int caseId)? _onDeclineAction;
+  /// ปฏิเสธไปแล้วจากฝั่ง native (พร้อมเหตุผล) — ที่นี่แค่รีเฟรชรายการ ห้ามยิง API ซ้ำ
+  void Function(int caseId)? _onRefreshOnly;
 
   void setCallbacks({
     void Function(int caseId)? onAccept,
     void Function(int caseId)? onDecline,
+    void Function(int caseId)? onRefreshOnly,
   }) {
     _onAcceptAction = onAccept;
     _onDeclineAction = onDecline;
+    _onRefreshOnly = onRefreshOnly;
   }
 
   Future<void> initialize() async {
@@ -77,7 +81,12 @@ class NotificationService {
         await stopAlarm();
         try { await FlutterOverlayWindow.closeOverlay(); } catch (_) {}
 
-        if (action == 'decline') {
+        // ⛔ ต้องแยก 'declined_done' ออกมาก่อน else — ไม่งั้นตกไปเข้าทาง "รับงาน"
+        //    ทั้งที่ช่างเพิ่งกดปฏิเสธ (หน้าเต็มจอยิง API ปฏิเสธเองไปแล้วจาก native
+        //    เพราะตอนนั้น Flutter อาจไม่มีชีวิตอยู่เลย) — ฝั่งนี้แค่รีเฟรชรายการพอ
+        if (action == 'declined_done') {
+          _onRefreshOnly?.call(caseId);
+        } else if (action == 'decline') {
           _onDeclineAction?.call(caseId);
         } else {
           _onAcceptAction?.call(caseId);

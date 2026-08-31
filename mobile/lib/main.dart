@@ -117,6 +117,8 @@ class _SeSurveyAppState extends State<SeSurveyApp> {
         } catch (_) {}
         _caseProvider.fetchMyCases();
       },
+      // หน้าเต็มจอยิงปฏิเสธ (พร้อมเหตุผล) ไปเองแล้วจาก native — ยิงซ้ำจะโดน 403 เปล่า ๆ
+      onRefreshOnly: (_) => _caseProvider.fetchMyCases(),
     );
 
     // หลังแอปขึ้นแล้ว: restore session (เร็ว) + init บริการหนัก + ขอ overlay permission (ไม่บล็อก)

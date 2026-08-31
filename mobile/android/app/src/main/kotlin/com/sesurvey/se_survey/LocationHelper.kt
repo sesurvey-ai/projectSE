@@ -207,6 +207,57 @@ object LocationHelper {
         }.start()
     }
 
+    /**
+     * ปฏิเสธงานพร้อมเหตุผล — ยิงจาก native เพราะหน้าเต็มจอเด้งได้แม้แอปตายสนิท
+     * (พึ่ง Flutter ให้ยิงแทนไม่ได้ isolate อาจไม่มีชีวิตอยู่เลยตอนนั้น)
+     *
+     * ⛔ retry เฉพาะ 5xx — 4xx แปลว่างานถูก reassign ไปคนอื่นแล้ว/ไม่ใช่งานเรา
+     *    ยิงซ้ำไปก็เหมือนเดิม และอาจไปแย่งปฏิเสธงานที่เป็นของคนอื่นแล้ว
+     */
+    fun postDecline(context: Context, caseId: Int, reason: String) {
+        Thread {
+            val baseUrl = getBaseUrl(context)
+            val token = getAuthToken(context)
+            if (token == null) {
+                Log.w(TAG, "No auth token, skip decline")
+                return@Thread
+            }
+            val json = try {
+                JSONObject().apply { put("reason", reason) }
+            } catch (e: Exception) {
+                Log.e(TAG, "decline build error: $e")
+                return@Thread
+            }
+            var delay = 2000L
+            for (attempt in 1..3) {
+                try {
+                    val url = URL("$baseUrl/api/cases/$caseId/decline")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.setRequestProperty("Authorization", "Bearer $token")
+                    conn.doOutput = true
+                    conn.connectTimeout = 10000
+                    conn.readTimeout = 10000
+                    val writer = OutputStreamWriter(conn.outputStream)
+                    writer.write(json.toString())
+                    writer.flush()
+                    writer.close()
+                    val code = conn.responseCode
+                    Log.d(TAG, "POST decline case=$caseId response: $code (attempt $attempt)")
+                    conn.disconnect()
+                    if (code < 500) return@Thread
+                } catch (e: Exception) {
+                    Log.w(TAG, "decline attempt $attempt failed: $e")
+                }
+                if (attempt < 3) {
+                    try { Thread.sleep(delay) } catch (_: InterruptedException) { return@Thread }
+                    delay *= 2
+                }
+            }
+        }.start()
+    }
+
     fun postFcmTokenToServer(context: Context, fcmToken: String) {
         Thread {
             try {

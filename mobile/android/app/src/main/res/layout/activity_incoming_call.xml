@@ -1,174 +1,382 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  หน้าจอแจ้งเตือนงานใหม่ — ตามแบบที่ user ออกแบบด้วย Claude Design (31/08/69)
+
+  ภาษาภาพ: ขอบเหลี่ยมทั้งหมด ไม่มีมุมโค้ง · เส้นคั่นหนา 2dp · ตัวหนังสือใหญ่
+  ⛔ ไม่ระบุ fontFamily โดยตั้งใจ — user เลือกใช้ฟอนต์ไทยของเครื่อง (ไม่ฝังฟอนต์เพิ่มใน APK)
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_frame"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F4F6F9">
+    android:background="#F3F2F2">
 
-    <!-- Center section: title + logo + ชื่อบริษัท + การ์ดสถานที่ (จัดกึ่งกลาง) -->
     <LinearLayout
-        android:id="@+id/top_section"
+        android:id="@+id/content_root"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:layout_centerInParent="true"
-        android:layout_marginBottom="64dp"
-        android:paddingHorizontal="32dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <!-- Title (อยู่บนโลโก้) -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="งานสำรวจใหม่"
-            android:textSize="32sp"
-            android:textColor="#1A2733"
-            android:textStyle="bold"
-            android:layout_marginBottom="20dp" />
-
-        <!-- โลโก้บริษัทประกัน (แสดงตามบริษัทในเคส) -->
-        <ImageView
-            android:id="@+id/img_logo"
-            android:layout_width="86dp"
-            android:layout_height="86dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="10dp"
-            android:scaleType="fitCenter"
-            android:adjustViewBounds="true"
-            android:contentDescription="company logo"
-            android:visibility="gone" />
-
-        <!-- ชื่อย่อบริษัทประกัน (ใต้โลโก้) -->
-        <TextView
-            android:id="@+id/txt_insurance_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textSize="18sp"
-            android:textColor="#1A2733"
-            android:textStyle="bold"
-            android:layout_marginBottom="22dp" />
-
-        <!-- Info card: สถานที่เกิดเหตุ + เลขเคลม -->
+        <!-- ── หัวจอ: ปิดเสียง + นับถอยหลัง ─────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/card_bg_light"
-            android:padding="20dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="14dp">
 
-            <!-- สถานที่เกิดเหตุ (แสดงเต็ม ไม่ตัด) -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <ImageButton
+                android:id="@+id/btn_mute"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="-6dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_popup_reminder"
+                android:tint="#7D7979"
+                android:scaleType="fitCenter"
+                android:contentDescription="ปิดเสียงแจ้งเตือน" />
+
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="top">
+                android:layout_marginStart="10dp"
+                android:text="แจ้งเตือนงาน"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:textColor="#7D7979" />
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginTop="2dp"
-                    android:src="@android:drawable/ic_menu_compass"
-                    android:tint="#FF9800"
-                    android:contentDescription="location" />
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="10dp">
+            <View
+                android:id="@+id/dot_live"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginEnd="6dp"
+                android:background="#008A3E" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="สถานที่เกิดเหตุ"
-                        android:textSize="12sp"
-                        android:textColor="#64748B" />
+            <TextView
+                android:id="@+id/txt_countdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#006A29" />
+        </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/txt_incident"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textSize="16sp"
-                        android:textColor="#1A2733" />
-                </LinearLayout>
-            </LinearLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#26BAB6B6" />
 
-            <!-- เลขเคลม — ส่งมากับแจ้งเตือนอยู่แล้วแต่เดิมไม่ได้แสดง (user 31/08/69)
-                 ทั้งบล็อกซ่อนเมื่อไม่มีเลข: เส้นคั่นลอยอยู่เฉย ๆ ดูเหมือนจอค้าง -->
+        <!-- ── เนื้อหา ──────────────────────────────────────────────── -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
             <LinearLayout
-                android:id="@+id/row_claim"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:visibility="gone">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="28dp">
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="งานสำรวจใหม่"
+                    android:textSize="34sp"
+                    android:textStyle="bold"
+                    android:lineSpacingMultiplier="1.15"
+                    android:textColor="#201E1D" />
+
+                <!-- บริษัทประกัน — คั่นบน/ล่างด้วยเส้นหนา -->
                 <View
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#E2E8F0"
-                    android:layout_marginTop="14dp"
-                    android:layout_marginBottom="14dp" />
+                    android:layout_height="2dp"
+                    android:layout_marginTop="20dp"
+                    android:background="#66201E1D" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="top">
+                    android:gravity="center_vertical"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp">
 
                     <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:layout_marginTop="2dp"
-                        android:src="@android:drawable/ic_menu_agenda"
-                        android:tint="#FF9800"
-                        android:contentDescription="claim number" />
+                        android:id="@+id/img_logo"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:scaleType="fitCenter"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="โลโก้บริษัทประกัน"
+                        android:visibility="gone" />
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="10dp">
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
 
                         <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="เลขเคลม"
-                            android:textSize="12sp"
-                            android:textColor="#64748B" />
-
-                        <TextView
-                            android:id="@+id/txt_claim_no"
+                            android:id="@+id/txt_insurance_name"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:textSize="16sp"
-                            android:textColor="#1A2733" />
+                            android:textStyle="bold"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:textColor="#201E1D" />
+
+                        <TextView
+                            android:id="@+id/txt_insurance_en"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:textSize="12sp"
+                            android:letterSpacing="0.04"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:textColor="#7D7979"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="#66201E1D" />
+
+                <!-- เลขเคลม -->
+                <LinearLayout
+                    android:id="@+id/row_claim"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="24dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="เลขเคลม"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.08"
+                        android:textColor="#7D7979" />
+
+                    <TextView
+                        android:id="@+id/txt_claim_no"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.03"
+                        android:textColor="#201E1D" />
+                </LinearLayout>
+
+                <!-- สถานที่เกิดเหตุ -->
+                <View
+                    android:id="@+id/div_incident"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="18dp"
+                    android:background="#D7D3D3" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="16dp"
+                    android:paddingBottom="24dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="สถานที่เกิดเหตุ"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.08"
+                        android:textColor="#7D7979" />
+
+                    <TextView
+                        android:id="@+id/txt_incident"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="18sp"
+                        android:lineSpacingMultiplier="1.45"
+                        android:textColor="#201E1D" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ── ปุ่มล่าง ─────────────────────────────────────────────── -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#26BAB6B6" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="20dp">
+
+            <!-- ปฏิเสธ = ปุ่มรอง ตัวหนังสือล้วน ชิดซ้าย · กันนิ้วไปโดนโดยบังเอิญตอนหยิบเครื่อง -->
+            <TextView
+                android:id="@+id/btn_decline"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:gravity="center_vertical"
+                android:paddingStart="2dp"
+                android:paddingEnd="12dp"
+                android:text="ปฏิเสธงาน"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#7D7979"
+                android:background="?android:attr/selectableItemBackground" />
+
+            <LinearLayout
+                android:id="@+id/btn_accept"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="#008A3E"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="รับงาน"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="→"
+                    android:textSize="20sp"
+                    android:textColor="#FFFFFF" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Bottom button -->
+    <!-- ── แผ่นเลือกเหตุผลปฏิเสธ (ทับอยู่บนหน้าเดิม) ──────────────── -->
     <LinearLayout
+        android:id="@+id/decline_sheet"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:paddingHorizontal="40dp"
-        android:paddingBottom="80dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="bottom"
+        android:background="#8C201E1D"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
 
-        <Button
-            android:id="@+id/btn_accept"
+        <LinearLayout
+            android:id="@+id/sheet_panel"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="รับงาน"
-            android:textSize="18sp"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:background="@drawable/btn_accept_fullscreen"
-            android:textAllCaps="false" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#F3F2F2"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="24dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:layout_marginBottom="18dp"
+                android:background="#201E1D" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="เหตุผลที่ปฏิเสธงาน"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#201E1D" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="เลือก 1 ข้อ เพื่อยืนยันการปฏิเสธ"
+                android:textSize="13.5sp"
+                android:textColor="#7D7979" />
+
+            <LinearLayout
+                android:id="@+id/reason_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="14dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="18dp">
+
+                <TextView
+                    android:id="@+id/btn_confirm_decline"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:background="#EC3013"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:text="ยืนยันปฏิเสธ"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:alpha="0.45" />
+
+                <TextView
+                    android:id="@+id/btn_cancel_decline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:gravity="center"
+                    android:background="@drawable/border_dark_2dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:text="ยกเลิก"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#201E1D" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
-</RelativeLayout>
+</FrameLayout>
