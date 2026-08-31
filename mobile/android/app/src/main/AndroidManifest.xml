@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- ขอยกเว้นตัวประหยัดแบต — สาเหตุอันดับ 1 ที่แจ้งเตือนงานไม่เข้าบนเครื่อง Samsung/จีน
+         (ระบบเอาแอปเข้าโหมดหลับ FCM ไปไม่ถึงเลย ไม่มี error ที่ไหนให้เห็น) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- เครื่องพิมพ์พกพา (TSC) ต่อผ่าน Bluetooth Classic SPP -->
     <!-- Android ≤11 ใช้ 2 ตัวบน / Android 12+ ใช้ BLUETOOTH_CONNECT แทน (ขอ runtime) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

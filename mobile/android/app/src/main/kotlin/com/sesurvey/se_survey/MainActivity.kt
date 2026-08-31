@@ -49,6 +49,15 @@ class MainActivity : FlutterActivity() {
                     NotificationHelper.cancelNotification(this, id)
                     result.success(true)
                 }
+                // ── ตัวประหยัดแบตยกเว้นแอปเราหรือยัง ──────────────────────────
+                // ⛔ นี่คือสาเหตุอันดับหนึ่งที่แจ้งเตือนไม่เข้าบนเครื่อง Samsung/จีน:
+                //    ระบบเอาแอปเข้า "โหมดหลับ" แล้ว FCM ไปไม่ถึงเลย โดยไม่มี error ที่ไหน
+                "isIgnoringBatteryOptimizations" -> {
+                    result.success(isIgnoringBatteryOptimizations())
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    result.success(requestIgnoreBatteryOptimizations())
+                }
                 else -> result.notImplemented()
             }
         }
@@ -57,6 +66,40 @@ class MainActivity : FlutterActivity() {
         PrinterBridge.register(
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PRINTER_CHANNEL)
         )
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        return try {
+            val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            pm.isIgnoringBatteryOptimizations(packageName)
+        } catch (e: Exception) {
+            // อ่านไม่ได้ = อย่าเดาว่าแย่ ไม่งั้นแบนเนอร์เตือนจะขึ้นค้างตลอดบนเครื่องที่ปกติดี
+            true
+        }
+    }
+
+    /**
+     * เปิดหน้าต่างระบบให้ผู้ใช้กดยกเว้น
+     *
+     * ใช้ ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (ป๊อปอัป กดครั้งเดียวจบ) ถ้าเปิดไม่ได้
+     * ค่อยถอยไปหน้ารายการทั้งหมด — บางรุ่น/บาง ROM บล็อกตัวแรกไว้
+     */
+    private fun requestIgnoreBatteryOptimizations(): Boolean {
+        if (isIgnoringBatteryOptimizations()) return true
+        try {
+            startActivity(Intent(
+                android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                android.net.Uri.parse("package:$packageName")
+            ))
+            return true
+        } catch (e: Exception) {
+            return try {
+                startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                true
+            } catch (e2: Exception) {
+                false
+            }
+        }
     }
 
     override fun onUserLeaveHint() {

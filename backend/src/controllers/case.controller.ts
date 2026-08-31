@@ -222,6 +222,20 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  /** เครื่องช่างยืนยันว่าแจ้งเตือนถึงเครื่องแล้ว (ยิงจาก native ทันทีที่ FCM เข้า) */
+  ackPush: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.ackPush(caseId, req.user!.id);
+    sendSuccess(res, result);
+  }),
+
+  /** หน้าจ่ายงานถามว่าแจ้งเตือนถึงเครื่องหรือยัง — ตอบเบา ๆ เพราะถูก poll ทุก 2 วินาที */
+  getPushStatus: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.getPushStatus(caseId);
+    sendSuccess(res, result);
+  }),
+
   confirmArrival: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const { photo_path, lat, lng, province, district } = req.body;

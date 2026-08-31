@@ -158,6 +158,55 @@ object LocationHelper {
 
     // ส่ง FCM token ใหม่ขึ้น server — เรียกจาก onNewToken (token หมุนตอนแอปถูก kill ฝั่ง Dart ไม่ทันเห็น)
     // ต้องมี JWT ค้างอยู่ (= ยังล็อกอิน) ไม่งั้นข้าม — Dart จะส่งเองตอน login ครั้งถัดไป
+    /**
+     * ยืนยันกลับเซิร์ฟเวอร์ว่า "แจ้งเตือนงานถึงเครื่องแล้ว"
+     *
+     * ⛔ ทำไมต้องมี: FCM ตอบ success = Google รับเรื่องไว้ ไม่ได้แปลว่าเครื่องได้รับ
+     *    ถ้าเครื่องหลับลึก/โดนตัวประหยัดแบตดับแอป/ไม่มีเน็ต push หายเงียบ ไม่มีใครรู้เลย
+     *    ทั้งช่างและคนจ่ายงาน — ตัวนี้ทำให้ออฟฟิศเห็นว่า "ยังไม่ถึงเครื่อง" แล้วโทรตามได้
+     *
+     * ยิงทันทีที่ FCM เข้า **ก่อนช่างกดอะไรทั้งสิ้น** = วัด "ถึงเครื่อง" ไม่ใช่ "ช่างเห็นแล้ว"
+     * retry 3 ครั้งเหมือน postLocationToServer เพราะเหตุผลเดียวกัน (หน้าต่างเน็ตใน Doze)
+     */
+    fun postPushAck(context: Context, caseId: Int) {
+        Thread {
+            val baseUrl = getBaseUrl(context)
+            val token = getAuthToken(context)
+            if (token == null) {
+                Log.w(TAG, "No auth token, skip push ack")
+                return@Thread
+            }
+            var delay = 2000L
+            for (attempt in 1..3) {
+                try {
+                    val url = URL("$baseUrl/api/cases/$caseId/push-ack")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.setRequestProperty("Authorization", "Bearer $token")
+                    conn.doOutput = true
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
+                    val writer = OutputStreamWriter(conn.outputStream)
+                    writer.write("{}")
+                    writer.flush()
+                    writer.close()
+                    val code = conn.responseCode
+                    Log.d(TAG, "POST push-ack case=$caseId response: $code (attempt $attempt)")
+                    conn.disconnect()
+                    // 2xx สำเร็จ; 4xx = สิทธิ์/เคสไม่ตรง retry ไปก็เหมือนเดิม — หยุดทั้งคู่
+                    if (code < 500) return@Thread
+                } catch (e: Exception) {
+                    Log.w(TAG, "push-ack attempt $attempt failed: $e")
+                }
+                if (attempt < 3) {
+                    try { Thread.sleep(delay) } catch (_: InterruptedException) { return@Thread }
+                    delay *= 2
+                }
+            }
+        }.start()
+    }
+
     fun postFcmTokenToServer(context: Context, fcmToken: String) {
         Thread {
             try {

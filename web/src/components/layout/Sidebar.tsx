@@ -24,6 +24,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'สร้างเคสใหม่', href: '/callcenter/cases/new' },
     { label: 'รายการเคสทั้งหมด', href: '/callcenter/cases' },
     { label: 'พนักงานทั้งหมด', href: '/callcenter/employees' },
+    { label: 'ความพร้อมรับแจ้งเตือน', href: '/callcenter/notification-readiness' },
     { label: 'เวลาเข้างานพนักงาน · ประจำจุด', href: '/callcenter/checkin-board' },
     { label: 'เวลาเข้า–ออกงาน', href: '/callcenter/attendance' },
     { label: 'ตารางเวรประจำจุด', href: '/callcenter/duty-roster' },

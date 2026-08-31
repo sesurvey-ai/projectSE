@@ -20,6 +20,11 @@ export const userController = {
     sendSuccess(res, { message: 'FCM token updated' });
   }),
 
+  /** ใครรับแจ้งเตือนงานใหม่ได้บ้าง — ออฟฟิศใช้ไล่ตามคนที่ยังไม่พร้อม */
+  notificationReadiness: asyncHandler(async (_req: Request, res: Response) => {
+    sendSuccess(res, await userService.notificationReadiness());
+  }),
+
   updateLocation: asyncHandler(async (req: Request, res: Response) => {
     const { latitude, longitude, request_id } = req.body;
     const userId = req.user!.id;

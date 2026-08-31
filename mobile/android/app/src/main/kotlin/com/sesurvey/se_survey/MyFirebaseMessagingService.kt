@@ -23,6 +23,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun handleNewSurvey(data: Map<String, String>) {
         val caseIdStr = data["case_id"] ?: ""
         val caseId = caseIdStr.toIntOrNull() ?: (System.currentTimeMillis() / 1000).toInt()
+
+        // ตอบกลับเซิร์ฟเวอร์ว่าถึงเครื่องแล้ว — ต้องถือ wakelock คร่อมไว้ด้วยเหตุผลเดียวกับ
+        // handleRequestLocation: onMessageReceived คืนแล้ว process โดน freeze ใน Doze
+        // ก่อน POST เสร็จ = ออฟฟิศเห็นเป็น "ยังไม่ถึง" ทั้งที่ถึงแล้ว (false alarm ที่ทำให้คนเลิกเชื่อ)
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "se_survey:push_ack").acquire(20_000L)
+        } catch (e: Exception) {
+            Log.w("FCM-Native", "wakelock acquire failed: $e")
+        }
+        // เฉพาะเคสจริง — caseId ที่ generate จากนาฬิกา (ไม่มี case_id มากับ push) ไม่มีอยู่บนเซิร์ฟเวอร์
+        if (caseIdStr.toIntOrNull() != null) LocationHelper.postPushAck(this, caseId)
         // การ์ดงานโชว์ 3 รายการ: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน
         val incidentLocation = data["incident_location"] ?: ""
         val claimNo = data["claim_no"] ?: ""

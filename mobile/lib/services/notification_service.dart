@@ -212,4 +212,29 @@ class NotificationService {
     await stopAlarm();
     try { await FlutterOverlayWindow.closeOverlay(); } catch (_) {}
   }
+
+  /// ตัวประหยัดแบตยกเว้นแอปเราหรือยัง
+  ///
+  /// ⛔ ถ้าไม่ยกเว้น ระบบจะเอาแอปเข้าโหมดหลับแล้ว **แจ้งเตือนงานใหม่ไม่เข้าเลย**
+  ///    ไม่ใช่แค่ช้า — และไม่มี error ที่ไหนให้ใครเห็น เจอบ่อยสุดบนเครื่อง Samsung
+  ///
+  /// อ่านไม่ได้ (เครื่องเก่า/ROM แปลก) → คืน true เพื่อไม่ให้แบนเนอร์เตือนขึ้นค้างมั่ว
+  Future<bool> isBatteryOptimizationIgnored() async {
+    try {
+      return await _nativeChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ?? true;
+    } catch (e) {
+      debugPrint('[Notification] battery check failed: $e');
+      return true;
+    }
+  }
+
+  /// เปิดหน้าต่างระบบให้ผู้ใช้กดยกเว้น (ผู้ใช้กดเอง เรากดแทนไม่ได้)
+  Future<bool> requestIgnoreBatteryOptimization() async {
+    try {
+      return await _nativeChannel.invokeMethod<bool>('requestIgnoreBatteryOptimizations') ?? false;
+    } catch (e) {
+      debugPrint('[Notification] battery request failed: $e');
+      return false;
+    }
+  }
 }

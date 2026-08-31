@@ -271,6 +271,10 @@ router.post('/:id/upload-folder-v2', auth, requireRole('surveyor'), upload.array
 router.get('/:id/upload-folder', auth, requireRole('surveyor'), caseController.listCaseFolder);
 router.post('/:id/arrival', auth, requireRole('surveyor'), caseController.confirmArrival);
 router.post('/:id/decline', auth, requireRole('surveyor'), caseController.declineCase);
+// เครื่องช่างยืนยันว่าแจ้งเตือนถึงแล้ว (native ยิงทันทีที่ FCM เข้า ก่อนช่างกดอะไร)
+router.post('/:id/push-ack', auth, requireRole('surveyor'), caseController.ackPush);
+// หน้าจ่ายงาน poll ถามว่าถึงเครื่องหรือยัง — callcenter/admin เท่านั้น
+router.get('/:id/push-status', auth, requireRole('callcenter', 'admin'), caseController.getPushStatus);
 router.get('/:id/arrival', auth, requireRole('surveyor', 'checker'), caseController.getArrivalPhotos);
 router.post('/:id/survey', auth, requireRole('surveyor'), validate(submitSurveySchema), caseController.submitSurvey);
 router.put('/:id/survey', auth, requireRole('surveyor'), caseController.updateSurvey);

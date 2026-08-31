@@ -439,6 +439,17 @@ export const caseService = {
       }
     }
 
+    // บันทึกผลการส่ง เพื่อให้ "แจ้งเตือนไม่ถึง" กลายเป็นเรื่องที่ระบบรู้ตัวเองได้
+    //
+    // ⚠️ push.status === 'sent' แปลว่า **FCM รับเรื่องไว้** เท่านั้น ไม่ได้แปลว่าเครื่องได้รับ
+    //    ตัวที่บอกว่าถึงจริงคือ push_delivered_at ซึ่งเครื่องช่างเป็นคนยิงกลับมาเอง (ackPush)
+    // ⛔ ต้องล้าง push_delivered_at ทุกครั้ง — reassign หลังช่างคนก่อนปฏิเสธ ถ้าไม่ล้าง
+    //    เวลาตอบรับของคนเก่าจะค้างมาหลอกว่างานรอบใหม่ถึงเครื่องคนใหม่แล้ว
+    await db.query(
+      'UPDATE cases SET push_sent_at = $1, push_delivered_at = NULL WHERE id = $2',
+      [push.status === 'sent' ? new Date() : null, caseId]
+    ).catch((err) => console.error('[assign] บันทึกสถานะ push ไม่สำเร็จ (ไม่บล็อกการมอบหมาย):', err));
+
     // Send real-time notification via Socket.io
     const io = getIO();
     if (io) {
@@ -453,6 +464,37 @@ export const caseService = {
     // แนบผลการส่งแจ้งเตือนไปกับแถวเคส — หน้าเว็บใช้ตัดสินว่าจะเตือนคนจ่ายงานไหม
     // (เพิ่มฟิลด์ ไม่เปลี่ยนรูปทรงเดิม ที่อ่าน res.data.data อยู่แล้วจึงไม่พัง)
     return { ...updated.rows[0], push };
+  },
+
+  /**
+   * เครื่องช่างยืนยันว่าได้รับแจ้งเตือนงานแล้ว — ยิงจาก native ทันทีที่ FCM เข้าเครื่อง
+   * (ก่อนช่างจะกดอะไรทั้งสิ้น — นี่คือ "ถึงเครื่อง" ไม่ใช่ "ช่างเห็นแล้ว")
+   *
+   * ⛔ ห้าม throw ถ้าไม่เข้าเงื่อนไข: เครื่องยิงซ้ำได้ (FCM ส่งซ้ำเองได้) และงานอาจถูก
+   *    reassign ไปคนอื่นแล้วระหว่างทาง — ตอบ 200 เสมอ ไม่งั้น native จะ retry รัวเปล่า ๆ
+   */
+  async ackPush(caseId: number, surveyorId: number) {
+    const r = await db.query(
+      `UPDATE cases SET push_delivered_at = NOW()
+         WHERE id = $1 AND assigned_to = $2 AND push_delivered_at IS NULL
+       RETURNING push_sent_at, push_delivered_at`,
+      [caseId, surveyorId]
+    );
+    if (r.rowCount === 0) return { acked: false };
+    return { acked: true, ...r.rows[0] };
+  },
+
+  /** สถานะแจ้งเตือนของเคสเดียว — คิวรีเบาสุดเท่าที่พอใช้ เพราะหน้าจ่ายงาน poll ถี่ */
+  async getPushStatus(caseId: number) {
+    const r = await db.query(
+      `SELECT c.push_sent_at, c.push_delivered_at, c.assigned_to,
+              u.first_name, u.last_name, (u.fcm_token IS NOT NULL) AS has_token
+         FROM cases c LEFT JOIN users u ON u.id = c.assigned_to
+        WHERE c.id = $1`,
+      [caseId]
+    );
+    if (r.rows.length === 0) throw new NotFoundError('Case not found');
+    return r.rows[0];
   },
 
   async declineCase(caseId: number, surveyorId: number) {

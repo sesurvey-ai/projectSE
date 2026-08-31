@@ -53,6 +53,28 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const [error, setError] = useState('');
   // แจ้งเตือนงานใหม่ไปไม่ถึงเครื่องช่าง — มอบหมายสำเร็จแล้วแต่ต้องโทรตาม
   const [pushWarning, setPushWarning] = useState('');
+  /**
+   * รอเครื่องช่างตอบรับว่าแจ้งเตือน **ถึงเครื่องจริง**
+   *
+   * ⛔ ส่งสำเร็จ ≠ ถึงเครื่อง — FCM ตอบ success แค่ว่า Google รับเรื่องไว้
+   *    ถ้าเครื่องหลับลึก/โดนตัวประหยัดแบตดับแอป/ไม่มีเน็ต งานจะเงียบไปเลยโดยไม่มีใครรู้
+   *    ตัวนี้ทำให้คนจ่ายงานรู้ตัวใน 20 วินาที แล้วโทรตามได้ทันแทนที่จะรู้ตอนลูกค้าโทรมาถาม
+   */
+  const [ackState, setAckState] = useState<'waiting' | 'ok' | 'timeout' | null>(null);
+  // ช่างที่เพิ่งมอบหมายให้ — ปุ่ม "รับทราบ" ตอน timeout ต้องรู้ว่าจะส่งใครกลับไปให้หน้าแม่
+  const [ackSurveyorId, setAckSurveyorId] = useState(0);
+  // ออกจากหน้าไปแล้วต้องหยุด poll + ห้าม setState (กัน memory leak / เด้งหน้าหลังผู้ใช้ไปทำอย่างอื่น)
+  //
+  // ⛔ **ต้องรีเซ็ตเป็น false ตอน mount ด้วย** ไม่ใช่ตั้งแต่ประกาศ useRef อย่างเดียว —
+  //    React StrictMode (dev) รัน effect สองรอบแบบ mount → unmount → mount ทำให้ cleanup
+  //    ยิง ackAbort = true ค้างไว้ตั้งแต่ยังไม่ได้ใช้ แล้ว poll จะ return ทิ้งทุกครั้ง
+  //    ผลคือแบนเนอร์ค้าง "กำลังรอเครื่องช่างตอบรับ" ตลอดกาล ไม่เคยขึ้นทั้งเขียวและเหลือง
+  //    (เจอจากการเทสจริง — ไม่มี error ที่ไหนเลย) · เคสรีมาวต์จริงก็พังแบบเดียวกัน
+  const ackAbort = useRef(false);
+  useEffect(() => {
+    ackAbort.current = false;
+    return () => { ackAbort.current = true; };
+  }, []);
   const [requestSent, setRequestSent] = useState(false);
   // จังหวัดที่เกิดเหตุ — ใช้จัดกลุ่มช่าง ไม่ใช่กรองทิ้ง (ดูเหตุผลที่กลุ่ม "ช่างคนอื่น")
   const [incidentProvince, setIncidentProvince] = useState<string | null>(null);
@@ -166,6 +188,43 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
     }
   }, [socket, caseLoaded, handleRequestLocation]);
 
+  /** ไปต่อหลังจบเรื่องแจ้งเตือน (กดรับทราบ / ตอบรับแล้ว) */
+  const leaveAfterAssign = useCallback((surveyorUserId: number) => {
+    if (onAssigned) onAssigned(surveyorUserId);
+    else router.push('/callcenter');
+  }, [onAssigned, router]);
+
+  /**
+   * ถามเซิร์ฟเวอร์ทุก 2 วินาที (สูงสุด 20 วินาที) ว่าเครื่องช่างตอบรับหรือยัง
+   *
+   * ทำไม 20 วินาที: เครื่องที่ตื่นอยู่ตอบกลับใน 1-3 วินาที ส่วนเครื่องที่หลับใน Doze
+   * อาจใช้เวลาถึงหลักสิบวินาที — ยาวกว่านี้คนจ่ายงานก็ไม่รออยู่แล้ว และ "ยังไม่ถึง"
+   * ก็ยังค้างอยู่ในฐานข้อมูลให้ตามทีหลังได้ ไม่ได้หายไปไหน
+   *
+   * ⛔ poll ล้ม (เน็ตออฟฟิศสะดุด) ห้ามสรุปว่า "ไม่ถึง" — ข้ามรอบนั้นไปเฉย ๆ
+   *    ไม่งั้นจะเตือนผิดจนคนเลิกเชื่อคำเตือน แล้วคำเตือนก็หมดค่า
+   */
+  const waitForAck = async (surveyorUserId: number) => {
+    setAckState('waiting');
+    setAckSurveyorId(surveyorUserId);
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 2000));
+      if (ackAbort.current) return;
+      try {
+        const r = await api.get(`/api/cases/${caseIdStr}/push-status`);
+        if (r.data?.data?.push_delivered_at) {
+          if (ackAbort.current) return;
+          setAckState('ok');
+          // ให้เห็นผลสักครู่ก่อนเด้งออก — เด้งทันทีคนจ่ายงานจะไม่ทันเห็นว่าถึงแล้ว
+          setTimeout(() => { if (!ackAbort.current) leaveAfterAssign(surveyorUserId); }, 1400);
+          return;
+        }
+      } catch { /* อ่านสถานะไม่ได้รอบนี้ ≠ ไม่ถึง — รอรอบหน้า */ }
+    }
+    if (!ackAbort.current) setAckState('timeout');
+  };
+
   const handleAssign = async (surveyorUserId: string) => {
     setAssigning(surveyorUserId); setError('');
     try {
@@ -182,8 +241,10 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           setPushWarning(push.reason || 'แจ้งเตือนไปไม่ถึงเครื่องช่าง');
           return;   // ค้างหน้าไว้ให้เห็นคำเตือน ไม่เด้งออก
         }
-        if (onAssigned) onAssigned(Number(surveyorUserId));
-        else router.push('/callcenter');
+        // ยิงออกจากเซิร์ฟเวอร์แล้ว — แต่ยังไม่รู้ว่าถึงเครื่องไหม รอเครื่องช่างตอบรับก่อนเด้งออก
+        setAssigning(null);
+        await waitForAck(Number(surveyorUserId));
+        return;
       } else setError(res.data.message || 'ไม่สามารถมอบหมายงานได้');
     } catch { setError('เกิดข้อผิดพลาด กรุณาลองใหม่'); }
     finally { setAssigning(null); }
@@ -319,6 +380,36 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           ช่างแก้เองบนแอปได้ถ้าหน้างานไม่ตรง
         </p>
       </div>
+
+      {ackState === 'waiting' && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-lg text-sm mb-6 flex items-center gap-3">
+          <span className="inline-block w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <span>มอบหมายงานแล้ว — กำลังรอเครื่องช่างตอบรับว่าแจ้งเตือนถึงแล้ว…</span>
+        </div>
+      )}
+
+      {ackState === 'ok' && (
+        <div className="bg-green-50 border border-green-300 text-green-900 px-4 py-3 rounded-lg text-sm mb-6">
+          ✅ <strong>แจ้งเตือนถึงเครื่องช่างแล้ว</strong> — มอบหมายงานเรียบร้อย
+        </div>
+      )}
+
+      {ackState === 'timeout' && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-lg text-sm mb-6">
+          <div className="font-semibold mb-1">⚠️ มอบหมายงานแล้ว แต่เครื่องช่างยังไม่ตอบรับ</div>
+          <div className="text-amber-800">
+            งานถูกส่งออกจากระบบแล้ว แต่ยังไม่มีสัญญาณว่าถึงเครื่อง (เครื่องอาจปิด/ไม่มีเน็ต/ถูกตัวประหยัดแบตดับแอป)
+            — <strong>โทรแจ้งช่างด้วย</strong> ไม่งั้นอาจไม่มีใครรู้ว่ามีงาน
+          </div>
+          <button
+            type="button"
+            onClick={() => { setAckState(null); leaveAfterAssign(ackSurveyorId); }}
+            className="mt-2 px-4 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+          >
+            รับทราบ
+          </button>
+        </div>
+      )}
 
       {pushWarning && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-lg text-sm mb-6">

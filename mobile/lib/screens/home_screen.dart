@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/notification_service.dart';
 
 // ── tokens (match survey-form / app design) ──
 const _primary = Color(0xFF2F6BD8);
@@ -142,6 +143,8 @@ class HomeScreen extends StatelessWidget {
                 ),
               ]),
             ),
+            // เตือนเมื่อตัวประหยัดแบตยังไม่ยกเว้นแอป — เฉพาะช่าง (คนเดียวที่รอรับงาน)
+            if (user?.role == 'surveyor') const _BatteryWarningBanner(),
             const SizedBox(height: 24),
             const Padding(
               padding: EdgeInsets.only(left: 4, bottom: 12),
@@ -226,6 +229,90 @@ class HomeScreen extends StatelessWidget {
             const Icon(Icons.chevron_right, color: _muted),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+/// แบนเนอร์เตือน "แจ้งเตือนอาจไม่เข้า" เมื่อตัวประหยัดแบตยังไม่ยกเว้นแอปนี้
+///
+/// ⛔ ทำไมต้องเป็นแบนเนอร์ค้าง ไม่ใช่ป๊อปอัปตอนล็อกอิน: ป๊อปอัปเด้งครั้งเดียวแล้วคนกดปิด
+///    ทิ้งโดยไม่อ่าน (และเด้งซ้ำทุกครั้งก็กวน) — แบนเนอร์อยู่เงียบ ๆ จนกว่าจะแก้จริง
+///    แล้วหายไปเอง ไม่ต้องมีปุ่ม "ไม่ต้องเตือนอีก" ที่จะกลบปัญหาถาวร
+class _BatteryWarningBanner extends StatefulWidget {
+  const _BatteryWarningBanner();
+
+  @override
+  State<_BatteryWarningBanner> createState() => _BatteryWarningBannerState();
+}
+
+class _BatteryWarningBannerState extends State<_BatteryWarningBanner> with WidgetsBindingObserver {
+  bool _ok = true; // เริ่มที่ "ปกติ" — ยังไม่รู้ผลก็อย่าเพิ่งเตือน (กันแบนเนอร์กระพริบตอนเปิดหน้า)
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // กลับจากหน้าตั้งค่าของระบบ → เช็คใหม่ ไม่งั้นแบนเนอร์ค้างทั้งที่ผู้ใช้กดยกเว้นให้แล้ว
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final ok = await NotificationService().isBatteryOptimizationIgnored();
+    if (mounted) setState(() => _ok = ok);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_ok) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _amberTint,
+        border: Border.all(color: _amber.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.battery_alert, color: _amber, size: 20),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('แจ้งเตือนงานใหม่อาจไม่เข้าเครื่องนี้',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: _ink)),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          const Text(
+            'ระบบประหยัดแบตของเครื่องยังปิดแอปตอนไม่ได้ใช้งานอยู่ ทำให้งานที่จ่ายมาอาจเงียบไปเลย',
+            style: TextStyle(fontSize: 13, color: _muted, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _amber),
+              onPressed: () async {
+                await NotificationService().requestIgnoreBatteryOptimization();
+                // ผลจริงรู้ตอนกลับเข้าแอป (didChangeAppLifecycleState) — ผู้ใช้เป็นคนกดยืนยันบนหน้าต่างระบบ
+              },
+              child: const Text('ตั้งค่าให้แจ้งเตือนเข้าเสมอ'),
+            ),
+          ),
+        ],
       ),
     );
   }
