@@ -360,7 +360,7 @@ export const caseService = {
     // มอบหมายแบบ atomic — กัน race (callcenter 2 คนกดพร้อมกัน จ่ายคนละคน) ด้วย guard status ใน UPDATE
     // และรองรับ reassign เคสที่ถูกปฏิเสธ ('declined') ไม่ใช่แค่ 'pending'
     const updated = await db.query(
-      `UPDATE cases SET assigned_to = $1, status = 'assigned'
+      `UPDATE cases SET assigned_to = $1, status = 'assigned', assigned_at = NOW()
          WHERE id = $2 AND status IN ('pending','declined') RETURNING *`,
       [surveyorId, caseId]
     );

@@ -159,5 +159,35 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
         read('..', 'web', 'src', 'app', 'callcenter', 'cases', 'page.tsx').includes('handleFollowup'));
 }
 
+// ── KPI 24 ชม. นับจากเวลาจ่ายงาน (1.7 · 31/08/69) ────────────────────────────
+// user เคาะ: นับจาก "เวลาจ่ายงาน" · เป็น KPI ภายใน **ไม่มีค่าปรับ** → เตือนให้เห็น ไม่ขวางงาน
+{
+  const svc = read('src', 'services', 'case.service.ts');
+  const list = read('..', 'web', 'src', 'app', 'callcenter', 'cases', 'page.tsx');
+  const mig = read('src', 'db', 'migrations', '044_assigned_at.sql');
+
+  // ⛔ TIMESTAMPTZ เท่านั้น — TIMESTAMP ธรรมดา node-postgres อ่านเป็น "เวลาเครื่องที่รัน"
+  //    รันบนเครื่องไทยจะเพี้ยน 7 ชม. เงียบ ๆ (เจอจริงตอนเทส: ตั้ง 26 ชม. โชว์ 33)
+  check('เวลาจ่ายงานเป็น TIMESTAMPTZ (ผูกโซนเวลา ไม่ขึ้นกับเครื่องที่รัน)',
+        /assigned_at TIMESTAMPTZ/.test(mig) && !/assigned_at TIMESTAMP;/.test(mig));
+  check('จ่ายงานแล้วบันทึกเวลาลง assigned_at',
+        svc.includes("status = 'assigned', assigned_at = NOW()"));
+  // ⛔ ห้ามคำนวณ KPI จาก acc_insurance_notify_date — เป็นข้อความ D/M/พ.ศ. เวลาไทย
+  //    ระดับนาที ไม่มีโซนเวลา (ทำไว้ให้มือถือแสดง) เอามาลบเวลา = พังเงียบวันรูปแบบเปลี่ยน
+  check('หน้าเว็บไม่คำนวณอายุงานจากข้อความไทม์ไลน์',
+        !list.includes('acc_insurance_notify_date'));
+  // นาฬิกาเดินเฉพาะช่วงที่ยังทำอะไรได้ — ส่งงานแล้วไม่ต้องเตือนอีก
+  check('นับเฉพาะงานที่จ่ายแล้วช่างยังไม่ส่ง (assigned)',
+        /if \(c\.status !== 'assigned'\) return null;/.test(list));
+  check('เกิน 24 ชม. = แดง · ใกล้ครบ 18 ชม. = เหลือง',
+        /hrs >= 24/.test(list) && /hrs >= 18/.test(list));
+  // ⛔ แถบที่ขึ้นทุกวันจนคนชิน = เตือนไม่ได้อีก
+  check('ไม่มีงานเกิน = ไม่ขึ้นแถบเตือน', /\{overdue > 0 && \(/.test(list));
+  check('ป้ายเวลาเดินต่อเองแม้เปิดหน้าค้างไว้ (ticker)', /setInterval\(\(\) => setTick/.test(list));
+  // งานเก่าไม่มี assigned_at → ถอยไป created_at แต่ต้องบอกว่าเป็นค่าประมาณ
+  check('งานเก่าที่ยังไม่มีเวลาจ่ายงาน = บอกว่าเป็นค่าประมาณ',
+        list.includes('c.assigned_at || c.created_at') && list.includes('ค่าประมาณ'));
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);

@@ -17,6 +17,7 @@ interface CaseRow {
   survey_job_no?: string;
   claim_ref_no?: string;
   visit_count?: number;
+  assigned_at?: string | null;
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -40,12 +41,42 @@ export default function CallcenterCasesPage() {
   const [xmlBusyId, setXmlBusyId] = useState<number | null>(null);
   /** กำลังเปิดงานครั้งถัดไปของเคสไหน — กันกดรัวจนได้ 2 ใบ */
   const [followBusyId, setFollowBusyId] = useState<number | null>(null);
+  /** ดัน "ตอนนี้" ทุก 60 วิ — ป้ายอายุงานต้องเดินต่อแม้เปิดหน้าค้างไว้ทั้งวัน */
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const reqSeq = useRef(0); // กัน response เก่าทับใหม่ (พิมพ์เร็ว → คำขอเก่ามาช้า)
 
   /**
    * เปิดงานครั้งถัดไปของเคลมเดิม แล้วพาไปหน้าจ่ายงานทันที
    * (ประเภทเคลมของครั้งใหม่เลือกที่หน้านั้น — ปกติเป็นงานติดตาม/นัดหมาย)
    */
+  /**
+   * อายุงานนับจาก **เวลาจ่ายงาน** (กติกา user 31/08/69) — KPI ภายใน 24 ชม.
+   * ไม่มีค่าปรับจากประกัน จึงเตือนให้เห็น ไม่ขวางงาน ไม่มีนับถอยหลังเร้าใจ
+   *
+   * นับเฉพาะงานที่ **จ่ายแล้วแต่ช่างยังไม่ส่ง** (`assigned`) — ช่วงเดียวที่ยังทำอะไรได้
+   * ส่งแล้ว/ตรวจแล้ว นาฬิกาหยุด ไม่ต้องเตือนอีก
+   * งานเก่าที่ยังไม่มี assigned_at ถอยไปใช้เวลาสร้างเคส (ทำเครื่องหมาย ~ ว่าเป็นค่าประมาณ)
+   */
+  const ageOf = (c: CaseRow): { text: string; cls: string; over: boolean } | null => {
+    if (c.status !== 'assigned') return null;
+    const base = c.assigned_at || c.created_at;
+    if (!base) return null;
+    const ms = Date.now() - new Date(base).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    const hrs = ms / 3_600_000;
+    const approx = c.assigned_at ? '' : '~';
+    const text = hrs < 1 ? `${approx}${Math.max(1, Math.round(ms / 60_000))} นาที` : `${approx}${Math.floor(hrs)} ชม.`;
+    if (hrs >= 24) return { text, cls: 'bg-red-100 text-red-700', over: true };
+    if (hrs >= 18) return { text, cls: 'bg-amber-100 text-amber-800', over: false };
+    return { text, cls: 'bg-gray-100 text-gray-500', over: false };
+  };
+  /** งานที่จ่ายแล้วเกิน 24 ชม. — โชว์เป็นแถบสรุปบนสุด ถ้าไม่มีก็ไม่ต้องขึ้นอะไร */
+  const overdue = cases.filter((c) => ageOf(c)?.over).length;
+
   const handleFollowup = async (c: CaseRow) => {
     if (followBusyId !== null) return;
     setFollowBusyId(c.id);
@@ -125,6 +156,15 @@ export default function CallcenterCasesPage() {
         </Link>
       </div>
 
+      {/* งานที่จ่ายแล้วเกิน 24 ชม. — KPI ภายใน ไม่มีค่าปรับ จึงบอกให้เห็น ไม่ขวางงาน
+          ⛔ ไม่มีงานเกิน = ไม่ต้องขึ้นอะไรเลย (แถบที่ขึ้นทุกวันจนคนชิน = เตือนไม่ได้อีก) */}
+      {overdue > 0 && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-2.5 rounded-lg text-sm mb-4">
+          <strong>{overdue} เคส</strong> จ่ายงานไปเกิน 24 ชม. แล้วช่างยังไม่ส่งงาน —
+          ดูป้ายเวลาสีแดงในคอลัมน์ &quot;วันที่&quot;
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4 flex flex-wrap gap-4">
         <input
@@ -193,7 +233,23 @@ export default function CallcenterCasesPage() {
                         {c.surveyor_first_name ? `${c.surveyor_first_name} ${c.surveyor_last_name || ''}` : '-'}
                       </td>
                       <td className="px-5 py-3 text-gray-500">{c.visit_count || 1}</td>
-                      <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{formatDate(c.created_at)}</td>
+                      <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                        {formatDate(c.created_at)}
+                        {(() => {
+                          const a = ageOf(c);
+                          if (!a) return null;
+                          return (
+                            <span
+                              title={c.assigned_at
+                                ? 'เวลาที่ผ่านไปนับจากจ่ายงาน (KPI ภายใน 24 ชม.)'
+                                : 'งานนี้จ่ายก่อนระบบเก็บเวลาจ่ายงาน — นับจากเวลาสร้างเคสแทน (ค่าประมาณ)'}
+                              className={`ml-2 inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${a.cls}`}
+                            >
+                              {a.text}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-5 py-3">
                         {(c.status === 'surveyed' || c.status === 'reviewed') ? (
                           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
