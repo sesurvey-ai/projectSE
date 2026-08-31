@@ -54,5 +54,22 @@ check('หมดเวลาแล้วปิดแค่เสียง ไม
       /Runnable \{[\s\S]{0,160}stopAlarm\(\)\s*\n\s*\}/.test(helper)
       && !/Runnable \{[\s\S]{0,160}cancelNotification/.test(helper));
 
+console.log('\n── โลโก้บริษัทประกัน ──');
+const drawables = fs.readdirSync(
+  path.join(__dirname, '..', '..', 'mobile', 'android', 'app', 'src', 'main', 'res', 'drawable-nodpi'));
+check('มีไฟล์โลโก้ไทยไพบูลย์', drawables.includes('logo_tpb.png'));
+check('มีไฟล์โลโก้ไอโออิ', drawables.includes('logo_aioi.png'));
+check('มีตัวเลือกโลโก้ตัวเดียว ไม่กระจายเงื่อนไข', /fun logoFor\(insuranceCompany: String\): Int\?/.test(helper));
+check('หน้าเต็มจอเรียกตัวเลือกนั้น', /NotificationHelper\.logoFor\(insuranceCompany\)/.test(activity));
+/**
+ * ⛔ ต้องเทียบแบบ contains ห้ามเทียบเป๊ะ — ชื่อบริษัทที่บันทึกจริงมีหลายแบบปนกัน
+ *    ('ไอโออิกรุงเทพประกันภัย' · 'บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)')
+ *    เทียบเป๊ะเมื่อไหร่ = โลโก้หายเงียบโดยไม่มีอะไรฟ้อง
+ */
+check('จับชื่อไอโออิได้ทั้งไทยและอังกฤษ',
+      /contains\("ไอโออิ"\)/.test(helper) && /contains\("AIOI", ignoreCase = true\)/.test(helper));
+check('บริษัทที่ไม่มีโลโก้ → ซ่อนรูป ไม่ค้างโลโก้เจ้าอื่น',
+      /else -> null/.test(helper) && /logoView\.visibility = View\.GONE/.test(activity));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);

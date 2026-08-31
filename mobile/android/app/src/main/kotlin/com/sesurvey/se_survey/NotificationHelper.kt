@@ -20,6 +20,21 @@ object NotificationHelper {
     private const val CHANNEL_ID = "incoming_call_channel_v5"
     private var mediaPlayer: MediaPlayer? = null
 
+    /**
+     * โลโก้บริษัทประกันจากชื่อในเคส — ไม่มีโลโก้ = null (ซ่อนรูป เหลือชื่อย่อบอกว่าบริษัทไหน)
+     *
+     * ⛔ ต้องเทียบแบบ "มีคำนี้อยู่ในชื่อ" ห้ามเทียบเป๊ะ — ชื่อที่บันทึกจริงมีหลายแบบปนกัน
+     *    ("ไอโออิกรุงเทพประกันภัย" · "บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)")
+     *    เทียบเป๊ะเมื่อไหร่ = โลโก้หายเงียบโดยไม่มีอะไรฟ้อง
+     */
+    fun logoFor(insuranceCompany: String): Int? = when {
+        insuranceCompany.contains("ไทยไพบูลย์") ||
+            insuranceCompany.contains("TPB", ignoreCase = true) -> R.drawable.logo_tpb
+        insuranceCompany.contains("ไอโออิ") ||
+            insuranceCompany.contains("AIOI", ignoreCase = true) -> R.drawable.logo_aioi
+        else -> null
+    }
+
     // ชื่อย่อบริษัทประกัน — ตัด "บริษัท" นำหน้า และ "จำกัด (มหาชน)" ท้าย
     // เช่น "บริษัท ไทยไพบูลย์ประกันภัย จำกัด (มหาชน)" → "ไทยไพบูลย์ประกันภัย"
     fun shortInsurer(name: String): String {

@@ -77,10 +77,11 @@ class IncomingCallActivity : Activity() {
         val shortName = NotificationHelper.shortInsurer(insuranceCompany)
         findViewById<TextView>(R.id.txt_insurance_name).text = if (shortName.isNotBlank()) shortName else "-"
 
-        // โลโก้บริษัทประกัน — ตอนนี้มี TPB; บริษัทที่ไม่มีโลโก้ = ซ่อน (เหลือชื่อย่อบอก identity)
+        // โลโก้บริษัทประกัน (ไทยไพบูลย์ / ไอโออิ) — บริษัทที่ไม่มีโลโก้ = ซ่อน เหลือชื่อย่อบอกว่าใคร
         val logoView = findViewById<ImageView>(R.id.img_logo)
-        if (insuranceCompany.contains("ไทยไพบูลย์") || insuranceCompany.contains("TPB", ignoreCase = true)) {
-            logoView.setImageResource(R.drawable.logo_tpb)
+        val logo = NotificationHelper.logoFor(insuranceCompany)
+        if (logo != null) {
+            logoView.setImageResource(logo)
             logoView.visibility = View.VISIBLE
         } else {
             logoView.visibility = View.GONE
