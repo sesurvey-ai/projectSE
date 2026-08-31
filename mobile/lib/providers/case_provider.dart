@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/case_model.dart';
 import '../services/api_service.dart';
 import '../services/survey_queue.dart';
@@ -27,6 +29,19 @@ class CaseProvider extends ChangeNotifier {
     }
   }
 
+  /// รายการงานชุดล่าสุดที่โหลดสำเร็จ — เก็บไว้เปิดดูตอนไม่มีเน็ต
+  static const _kCacheKey = 'my_cases_cache';
+  static const _kCacheAtKey = 'my_cases_cache_at';
+
+  /// กำลังแสดงข้อมูลจาก cache อยู่ไหม (ยิงไม่ผ่าน) + โหลดสำเร็จครั้งล่าสุดเมื่อไหร่
+  ///
+  /// ⛔ **ต้องบอกผู้ใช้ว่ากำลังดูของเก่า** — ช่างที่ไม่รู้จะทำงานบนข้อมูลที่หัวหน้าแก้ไปแล้ว
+  ///    (เช่นงานถูกยกเลิก/ย้ายคน) แล้วไปถึงที่เกิดเหตุฟรี
+  bool _fromCache = false;
+  DateTime? _cachedAt;
+  bool get fromCache => _fromCache;
+  DateTime? get cachedAt => _cachedAt;
+
   Future<void> fetchMyCases() async {
     _isLoading = true;
     _error = null;
@@ -39,12 +54,38 @@ class CaseProvider extends ChangeNotifier {
           ? (responseData['data'] ?? [])
           : responseData;
       _cases = list.map((json) => CaseModel.fromJson(json)).toList();
+      _fromCache = false;
+      _cachedAt = DateTime.now();
+      // เก็บชุดที่โหลดสำเร็จไว้ — ครั้งหน้าที่ไม่มีเน็ตจะได้มีอะไรให้ดู
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_kCacheKey, jsonEncode(list));
+        await prefs.setString(_kCacheAtKey, _cachedAt!.toIso8601String());
+      } catch (_) {/* เขียน cache ไม่ได้ = ไม่ใช่เหตุให้โหลดงานล้ม */}
     } catch (e) {
-      _error = 'ไม่สามารถโหลดข้อมูลได้';
+      // โหลดไม่ได้ → ถอยไปใช้ชุดล่าสุดที่เคยโหลดสำเร็จ ดีกว่าปล่อยหน้าว่าง
+      final restored = await _loadCachedCases();
+      _error = restored ? null : 'ไม่สามารถโหลดข้อมูลได้';
     }
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// คืน true เมื่อกู้รายการจาก cache ได้ — ตั้งธง _fromCache ให้หน้าจอเอาไปเตือน
+  Future<bool> _loadCachedCases() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kCacheKey);
+      if (raw == null) return false;
+      final list = jsonDecode(raw) as List<dynamic>;
+      _cases = list.map((json) => CaseModel.fromJson(json)).toList();
+      _fromCache = true;
+      _cachedAt = DateTime.tryParse(prefs.getString(_kCacheAtKey) ?? '');
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // throw เมื่อโหลดไม่สำเร็จ (network/รูปแบบ response ผิด) — คืน null เฉพาะ "server ยืนยันว่าเคสนี้

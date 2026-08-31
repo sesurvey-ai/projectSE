@@ -231,5 +231,30 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
         /'lat': lat/.test(api) && /'province': province/.test(api));
 }
 
+// ── ทำงานตอนไม่มีเน็ต (2.9 · 31/08/69) ───────────────────────────────────────
+// คิวส่งงานออฟไลน์มีอยู่แล้ว (survey_queue.dart) แต่ทำงาน **เงียบสนิท** ไม่มีอะไรบนหน้าจอ
+// ช่างกดส่งแล้วเห็นว่าส่งแล้ว ทั้งที่งานยังค้างในเครื่อง — ติด 400/409 = ค้างถาวรแบบไม่มีใครรู้
+{
+  const list = read('..', 'mobile', 'lib', 'screens', 'case_list_screen.dart');
+  const prov = read('..', 'mobile', 'lib', 'providers', 'case_provider.dart');
+
+  check('หน้ารายการงานบอกว่ามีงานค้างคิว/ส่งไม่ผ่าน',
+        list.includes('queuedSurveyCount()') && list.includes('blockedSurveys()')
+        && list.includes('_queueBanner'));
+  check('งานที่ส่งไม่ผ่านบอกเหตุผลจากเซิร์ฟเวอร์ ไม่ใช่แค่ว่าล้ม',
+        /เคลม #\$\{e\.key\}: \$\{e\.value\}/.test(list));
+  // ⛔ รายการงานว่าง ≠ ไม่มีงานค้าง — ต้องโชว์แถบในหน้าว่างด้วย ไม่งั้นไม่มีวันเห็น
+  check('หน้าว่างก็ยังโชว์แถบงานค้าง', /return ListView\(children: \[\s*_offlineBanner/.test(list));
+  check('ดึงรีเฟรช = ลองส่งคิวด้วย', /flushSurveyQueue\(\);/.test(list));
+
+  check('โหลดสำเร็จแล้วเก็บรายการงานไว้ในเครื่อง', prov.includes("_kCacheKey"));
+  check('โหลดไม่ผ่าน = ถอยไปใช้ของที่เก็บไว้ ไม่ปล่อยหน้าว่าง',
+        /_loadCachedCases\(\)/.test(prov));
+  // ⛔ ต้องบอกว่ากำลังดูของเก่า — ช่างที่ไม่รู้จะทำงานบนข้อมูลที่หัวหน้าแก้ไปแล้ว
+  check('บอกผู้ใช้ว่ากำลังดูข้อมูลเก่า + เก่าแค่ไหน',
+        prov.includes('bool get fromCache') && list.includes('กำลังดูข้อมูลที่เก็บไว้ในเครื่อง')
+        && list.includes('อัปเดตล่าสุด'));
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);
