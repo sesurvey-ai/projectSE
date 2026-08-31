@@ -81,6 +81,7 @@ const svc = read('src', 'services', 'case.service.ts');
 const migration = read('src', 'db', 'migrations', '047_decline_reason.sql');
 const dash = read('..', 'web', 'src', 'app', 'callcenter', 'page.tsx');
 const notifDart = read('..', 'mobile', 'lib', 'services', 'notification_service.dart');
+const caseList = read('..', 'mobile', 'lib', 'screens', 'case_list_screen.dart');
 check('มีที่เก็บครบ 3 ช่อง (เหตุผล/ใคร/เมื่อไหร่)',
       /declined_reason TEXT/.test(migration) && /declined_by\s+INTEGER/.test(migration)
       && /declined_at\s+TIMESTAMPTZ/.test(migration));
@@ -122,6 +123,37 @@ check('เว้นที่ให้แถบสถานะ/แถบนำท
       /applySystemBarInsets\(\)/.test(activity)
       && /content\.setPadding\(0, bars\.top, 0, bars\.bottom\)/.test(activity));
 check('ชื่ออังกฤษเทียบจากชื่อไทย ไม่เก็บใน DB', /fun insurerEnglish\(/.test(helper));
+
+console.log('\n── หน้าสรุปหลังกดรับ/ปฏิเสธ ──');
+check('มีทั้งหน้ารับงานและหน้าปฏิเสธ',
+      /android:id="@\+id\/accepted_screen"/.test(layout) && /android:id="@\+id\/declined_screen"/.test(layout));
+check('โชว์เลขเคลมบนหน้าสรุปทั้งคู่',
+      /txt_accepted_claim\)\.text/.test(activity) && /txt_declined_claim\)\.text/.test(activity));
+check('หน้าปฏิเสธบอกเหตุผลที่ส่งขึ้นระบบจริง', /txt_declined_reason\)\.text = "เหตุผล: \$reason"/.test(activity));
+/** รับงาน: โชว์สรุปก่อน แล้วค่อยเปิดแอป — กดแล้วกระโดดเข้าฟอร์มทันทีจะไม่ทันเห็นว่าใบไหน */
+const acceptFn = activity.slice(activity.indexOf('private fun handleAction'));
+const acceptBody = acceptFn.slice(0, acceptFn.indexOf('\n    @Deprecated'));
+check('รับงาน = โชว์สรุปก่อนแล้วค่อยเปิดแอป',
+      acceptBody.includes('accepted_screen).visibility = View.VISIBLE')
+      && acceptBody.includes('startActivity(launchIntent)')
+      && acceptBody.indexOf('accepted_screen') < acceptBody.indexOf('startActivity'));
+/**
+ * ⛔ ปฏิเสธแล้ว **ห้ามเปิดแอป** — ช่างเพิ่งบอกว่าไม่รับงาน การเด้งแอปขึ้นมาสวนความตั้งใจ
+ *    (รายการงานรีเฟรชเองตอนกลับเข้าแอปแทน — didChangeAppLifecycleState ที่หน้ารายการ)
+ */
+const declineFn = activity.slice(activity.indexOf('private fun confirmDecline'));
+const declineBody = declineFn.slice(0, declineFn.indexOf('\n    private fun', 10));
+check('ปฏิเสธแล้วไม่เปิดแอป', !declineBody.includes('startActivity'));
+check('รายการงานรีเฟรชเองตอนกลับเข้าแอป',
+      /didChangeAppLifecycleState[\s\S]{0,260}fetchMyCases\(\)/.test(caseList));
+/**
+ * ⛔ แถบแดงขอบบนต้องเป็น View จริง — shape stroke วาดกรอบครบ 4 ด้านเสมอ
+ *    ดันด้านที่ไม่ต้องการออกด้วยค่าติดลบแล้วยังเหลือเส้นซ้าย/ขวา (เจอจากการเทสจริง)
+ */
+check('แถบแดงขอบบนเป็น View ไม่ใช่ stroke', /android:id="@\+id\/declined_accent"/.test(layout));
+check('หน้าสรุปเว้นที่ให้แถบระบบด้วย',
+      /accepted\.setPadding\(dp\(24\), bars\.top/.test(activity)
+      && /declinedBody\.setPadding\(dp\(24\), 0, dp\(24\), dp\(28\) \+ bars\.bottom\)/.test(activity));
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);

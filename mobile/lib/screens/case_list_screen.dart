@@ -13,7 +13,7 @@ class CaseListScreen extends StatefulWidget {
   State<CaseListScreen> createState() => _CaseListScreenState();
 }
 
-class _CaseListScreenState extends State<CaseListScreen> {
+class _CaseListScreenState extends State<CaseListScreen> with WidgetsBindingObserver {
   /// งานที่กรอกแล้วแต่ยังส่งไม่ถึงเซิร์ฟเวอร์ (ไม่มีเน็ต/เซิร์ฟเวอร์ล่ม) — ลองส่งเองอยู่
   int _queued = 0;
   /// งานที่ส่งไม่ผ่านแบบ **ลองใหม่เองไม่ได้** {caseId: เหตุผลจากเซิร์ฟเวอร์}
@@ -30,9 +30,28 @@ class _CaseListScreenState extends State<CaseListScreen> {
     } catch (_) {/* อ่านคิวไม่ได้ = ไม่ใช่เหตุให้หน้าจอพัง */}
   }
 
+  /// กลับเข้าแอปแล้วโหลดรายการใหม่
+  ///
+  /// ⛔ เดิม fetch แค่ตอนเปิดหน้า — ช่างกดปฏิเสธจากหน้าแจ้งเตือน (ซึ่งยิง API เองจาก native
+  ///    แล้วปิดไปโดยไม่เปิดแอป) พอสลับกลับมาที่แอปจะยังเห็นงานที่ปฏิเสธไปแล้วค้างอยู่
+  ///    จนกว่าจะดึงหน้าจอลงเอง — งานที่หัวหน้าเรียกคืน/ย้ายคนก็ค้างแบบเดียวกัน
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    context.read<CaseProvider>().fetchMyCases();
+    _refreshQueueStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // fetch ครั้งเดียวตอนเปิดหน้า — เดิมมีทั้ง postFrameCallback (initState) และ
     // didChangeDependencies (รันทันทีหลัง initState เสมอ) → ยิง GET /cases/my ซ้ำ 2 รอบทุกครั้ง
     WidgetsBinding.instance.addPostFrameCallback((_) {

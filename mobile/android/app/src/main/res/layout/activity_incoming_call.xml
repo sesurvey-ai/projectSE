@@ -380,4 +380,109 @@
         </LinearLayout>
     </LinearLayout>
 
+
+    <!-- ── หน้าสรุปหลังกดรับงาน ─────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/accepted_screen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="bottom"
+        android:background="#008A3E"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="28dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/txt_accepted_claim"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="รับงานแล้ว"
+            android:textSize="40sp"
+            android:textStyle="bold"
+            android:lineSpacingMultiplier="1.1"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="กำลังเปิดรายละเอียดงาน…"
+            android:textSize="16sp"
+            android:alpha="0.9"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <!-- ── หน้าสรุปหลังปฏิเสธงาน ────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/declined_screen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#F3F2F2"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <!-- แถบแดงขอบบน — ใช้ View จริงแทน stroke ของ shape
+             ⛔ stroke วาดกรอบครบ 4 ด้านเสมอ ดันด้านที่ไม่ต้องการออกด้วยค่าติดลบแล้ว
+                ยังเหลือเส้นขอบซ้าย/ขวาให้เห็น (เจอจากการเทสจริง) — View ตรง ๆ คุมได้แน่นอน -->
+        <View
+            android:id="@+id/declined_accent"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:background="#EC3013" />
+
+        <LinearLayout
+            android:id="@+id/declined_body"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="bottom"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="28dp">
+
+        <TextView
+            android:id="@+id/txt_declined_claim"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:textColor="#7D7979" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ปฏิเสธงานแล้ว"
+            android:textSize="40sp"
+            android:textStyle="bold"
+            android:lineSpacingMultiplier="1.1"
+            android:textColor="#201E1D" />
+
+        <TextView
+            android:id="@+id/txt_declined_reason"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textSize="16sp"
+            android:textColor="#605D5D" />
+        </LinearLayout>
+    </LinearLayout>
+
 </FrameLayout>

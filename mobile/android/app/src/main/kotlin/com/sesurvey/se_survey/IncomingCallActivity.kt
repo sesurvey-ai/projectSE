@@ -35,6 +35,8 @@ class IncomingCallActivity : Activity() {
         )
         /** เวลานับถอยหลังบนหัวจอ — ล็อกให้เท่ากับเพดานเสียงเตือน (NotificationHelper.ALARM_MAX_MS) */
         private const val COUNTDOWN_SEC = 60
+        /** หน้าสรุปค้างไว้กี่มิลลิวินาที — นานพอให้อ่านเลขเคลมทัน สั้นพอไม่ขวางทาง */
+        private const val SUMMARY_MS = 1800L
     }
 
     private var caseId: Int = 0
@@ -139,10 +141,18 @@ class IncomingCallActivity : Activity() {
         val root = findViewById<View>(R.id.root_frame)
         val content = findViewById<View>(R.id.content_root)
         val sheet = findViewById<View>(R.id.sheet_panel)
+        // หน้าสรุปวางเนื้อหาชิดล่าง — ไม่เว้น inset = ตัวหนังสือมุดใต้แถบนำทาง
+        val accepted = findViewById<View>(R.id.accepted_screen)
+        val declined = findViewById<View>(R.id.declined_screen)
+        val declinedBody = findViewById<View>(R.id.declined_body)
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             content.setPadding(0, bars.top, 0, bars.bottom)
             sheet.setPadding(dp(20), dp(20), dp(20), dp(24) + bars.bottom)
+            accepted.setPadding(dp(24), bars.top, dp(24), dp(28) + bars.bottom)
+            // หน้าปฏิเสธเว้นด้านบนที่ตัวนอก เพื่อให้แถบแดงอยู่ "ใต้แถบสถานะ" ไม่ใช่ถูกมันทับ
+            declined.setPadding(0, bars.top, 0, 0)
+            declinedBody.setPadding(dp(24), 0, dp(24), dp(28) + bars.bottom)
             insets
         }
     }
@@ -279,15 +289,16 @@ class IncomingCallActivity : Activity() {
         NotificationHelper.cancelNotification(this, notificationId)
         // ยิงจาก native เอง — หน้าเต็มจอเด้งได้แม้แอปตาย จะพึ่ง Flutter ให้ยิงแทนไม่ได้
         LocationHelper.postDecline(this, caseId, reason)
-        // บอก Flutter ให้รีเฟรชรายการงาน (ไม่ต้องยิง API ซ้ำ)
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        launchIntent?.apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra("notification_action", "declined_done")
-            putExtra("case_id", caseId)
-        }
-        startActivity(launchIntent)
-        finish()
+
+        // หน้าสรุป: ยืนยันให้ช่างเห็นว่ากดอะไรไป + เหตุผลที่ส่งขึ้นระบบจริง
+        // ⛔ ปฏิเสธแล้ว **ไม่เปิดแอป** — ช่างเพิ่งบอกว่าไม่รับงาน การเด้งแอปขึ้นมาสวนความตั้งใจ
+        //    (รายการงานฝั่ง Flutter รีเฟรชเองตอนกลับเข้าแอป)
+        findViewById<TextView>(R.id.txt_declined_claim).text =
+            if (claimNo.isNotBlank()) "เลขเคลม $claimNo" else "งานสำรวจ"
+        findViewById<TextView>(R.id.txt_declined_reason).text = "เหตุผล: $reason"
+        showDeclineSheet(false)
+        findViewById<View>(R.id.declined_screen).visibility = View.VISIBLE
+        ticker.postDelayed({ finish() }, SUMMARY_MS)
     }
 
     private fun dp(v: Int): Int =
@@ -336,15 +347,23 @@ class IncomingCallActivity : Activity() {
         // หยุดเสียง + ปิด notification
         NotificationHelper.cancelNotification(this, notificationId)
 
-        // เปิดแอปหลักพร้อมส่ง action กลับ Flutter
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        launchIntent?.apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra("notification_action", action)
-            putExtra("case_id", caseId)
-        }
-        startActivity(launchIntent)
-        finish()
+        // หน้าสรุป "รับงานแล้ว" คั่นสั้น ๆ ก่อนเข้าแอป — กดแล้วจอกระโดดเข้าฟอร์มทันที
+        // ช่างไม่ทันเห็นว่ากดโดนใบไหน (งานเข้าติด ๆ กันแล้วกดพลาดจะไม่รู้ตัวเลย)
+        findViewById<TextView>(R.id.txt_accepted_claim).text =
+            if (claimNo.isNotBlank()) "เลขเคลม $claimNo" else "งานสำรวจ"
+        findViewById<View>(R.id.accepted_screen).visibility = View.VISIBLE
+
+        ticker.postDelayed({
+            // เปิดแอปหลักพร้อมส่ง action กลับ Flutter
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            launchIntent?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra("notification_action", action)
+                putExtra("case_id", caseId)
+            }
+            startActivity(launchIntent)
+            finish()
+        }, SUMMARY_MS)
     }
 
     @Deprecated("Deprecated in Java")
