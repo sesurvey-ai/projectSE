@@ -38,11 +38,13 @@ object NotificationHelper {
     /**
      * ชื่อภาษาอังกฤษของบริษัทประกัน — **ไม่เก็บในฐานข้อมูล** เทียบจากชื่อไทยเอา (user ตัดสิน 31/08/69)
      *
-     * ⛔ ใส่เฉพาะชื่อที่ยืนยันได้จากโลโก้/เอกสารของบริษัทเอง — ไม่รู้ = คืน null แล้วซ่อนบรรทัดนั้น
-     *    เดาคำแปลไปแปะบนจอที่พนักงานเห็นทุกวัน แย่กว่าไม่มีบรรทัดนั้นเลย
-     *    (ไทยไพบูลย์ยังไม่มี — โลโก้ในโปรเจกต์เป็นภาษาไทยล้วน รอ user ยืนยันคำที่ถูก)
+     * ⛔ ใส่เฉพาะชื่อที่ยืนยันได้จากโลโก้/เอกสารของบริษัทเอง หรือ user ยืนยันมาเอง —
+     *    ไม่รู้ = คืน null แล้วซ่อนบรรทัดนั้น · เดาคำแปลไปแปะบนจอที่พนักงานเห็นทุกวัน
+     *    แย่กว่าไม่มีบรรทัดนั้นเลย (บริษัทที่ 3 เพิ่มทีหลังก็มาต่อที่นี่จุดเดียว)
      */
     fun insurerEnglish(insuranceCompany: String): String? = when {
+        insuranceCompany.contains("ไทยไพบูลย์") ||
+            insuranceCompany.contains("TPB", ignoreCase = true) -> "THAIPAIBOON INSURANCE"
         insuranceCompany.contains("ไอโออิ") ||
             insuranceCompany.contains("AIOI", ignoreCase = true) -> "AIOI BANGKOK INSURANCE"
         else -> null
