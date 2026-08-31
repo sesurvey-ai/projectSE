@@ -92,7 +92,13 @@ check('บันทึกทั้งเหตุผลและคนที่�
       /assigned_to = NULL,[\s\S]{0,80}declined_reason = \$2, declined_by = \$3, declined_at = NOW\(\)/.test(svc));
 /** APK เก่าไม่ส่ง reason มา ต้องปฏิเสธได้ตามปกติ ไม่ใช่ 400 */
 check('ไม่มีเหตุผลก็ยังปฏิเสธได้ (APK เก่า)', /reason\?: string/.test(svc));
-check('หน้าจ่ายงาน join ชื่อคนที่ปฏิเสธมาโชว์', /LEFT JOIN users d ON c\.declined_by = d\.id/.test(svc));
+/**
+ * ⛔ มี **2 คิวรี** ที่ป้อนหน้าจอฝั่ง callcenter: getStats (การ์ด "เคสล่าสุด" บนแดชบอร์ด)
+ *    กับ list (หน้ารายการเคสทั้งหมด) — แก้ตัวเดียวอีกหน้าจะโชว์ "-" ต่อไปโดยไม่มีอะไรฟ้อง
+ *    (เจอจากการเปิดหน้าจริงบน prod ดู ไม่ใช่จากอ่านโค้ด)
+ */
+check('ทั้ง 2 คิวรีของ callcenter join ชื่อคนที่ปฏิเสธ',
+      (svc.match(/LEFT JOIN users d ON c\.declined_by = d\.id/g) || []).length === 2);
 check('หน้าจ่ายงานแสดงว่าใครไม่รับ + เพราะอะไร',
       dash.includes('declined_first_name') && dash.includes('ไม่รับงาน'));
 check('มี 4 เหตุผลบนแอป',

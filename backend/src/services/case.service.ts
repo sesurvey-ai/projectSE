@@ -1790,10 +1790,14 @@ export const caseService = {
       FROM cases
     `);
     const recentResult = await db.query(
+      // ⛔ "เคสล่าสุด" บนแดชบอร์ดใช้คิวรีตัวนี้ **คนละตัวกับ list()** — แก้ list อย่างเดียว
+      //    หน้าแดชบอร์ดจะยังโชว์ "-" เหมือนเดิมโดยไม่มีอะไรฟ้อง (เจอจากการเปิดหน้าจริงดู)
       `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
+              d.first_name AS declined_first_name, d.last_name AS declined_last_name, d.code AS declined_code,
               sr.claim_no, sr.survey_job_no, sr.claim_ref_no,
               ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
        FROM cases c LEFT JOIN users u ON c.assigned_to = u.id
+       LEFT JOIN users d ON c.declined_by = d.id
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
        ORDER BY c.created_at DESC LIMIT 10`
     );
