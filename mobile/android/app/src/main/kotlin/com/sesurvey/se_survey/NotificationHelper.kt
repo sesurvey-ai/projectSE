@@ -232,10 +232,45 @@ object NotificationHelper {
     }
 
     // ── Alarm ─────────────────────────────────────────────────────
+    /**
+     * เพดานเวลาเสียงเตือน — ครบแล้วเงียบเอง **แต่แจ้งเตือนยังค้างอยู่บนแถบให้กดรับได้**
+     *
+     * ⛔ เดิมวนไม่มีจุดจบ: ช่างที่ติดประชุม/กำลังขับรถ/วางเครื่องไว้ที่บ้าน ไม่มีทางหยุดเสียง
+     *    นอกจากกดรับงานที่ไปไม่ได้ (กด back บนหน้าเต็มจอก็ถูกปิดไว้) — เสียงดังยาวจน
+     *    คนรอบข้างรำคาญ แล้วลงเอยด้วยการปิดเสียงแอปทั้งตัว ซึ่งแย่กว่าเดิมมาก
+     * ⛔ ห้ามยกเลิก notification ตอนหมดเวลา — งานยังไม่ถูกรับ ต้องเหลือร่องรอยไว้เสมอ
+     */
+    private const val ALARM_MAX_MS = 60_000L
+    private var stopHandler: android.os.Handler? = null
+    private var stopRunnable: Runnable? = null
+
+    /** ตั้ง/ต่อเวลานับถอยหลังปิดเสียง — งานใบใหม่เข้ามาระหว่างเสียงดังอยู่ต้องได้เวลาเต็มของมันเอง */
+    private fun scheduleAutoStop() {
+        cancelAutoStop()
+        val h = android.os.Handler(android.os.Looper.getMainLooper())
+        val r = Runnable {
+            Log.d("NotifHelper", "Alarm auto-stopped after ${ALARM_MAX_MS / 1000}s")
+            stopAlarm()
+        }
+        stopHandler = h
+        stopRunnable = r
+        h.postDelayed(r, ALARM_MAX_MS)
+    }
+
+    private fun cancelAutoStop() {
+        stopRunnable?.let { stopHandler?.removeCallbacks(it) }
+        stopHandler = null
+        stopRunnable = null
+    }
+
     fun startAlarm(context: Context) {
+        // ต่อเวลาก่อนเช็ค isPlaying — งานใบที่ 2 เข้ามาตอนใบแรกยังดังอยู่ ต้องไม่โดนตัดกลางคัน
+        // ด้วยนาฬิกาของใบแรก (early-return ข้างล่างจะข้ามการตั้งเวลาไปทั้งดุ้น)
+        scheduleAutoStop()
         if (mediaPlayer?.isPlaying == true) return
         try {
             stopAlarm()
+            scheduleAutoStop()   // stopAlarm ข้างบนล้างนาฬิกาทิ้ง — ตั้งใหม่ให้รอบนี้
             val soundUri = Uri.parse("android.resource://${context.packageName}/raw/alarm_loop")
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(
@@ -256,6 +291,7 @@ object NotificationHelper {
     }
 
     fun stopAlarm() {
+        cancelAutoStop()   // หยุดเองแล้ว (กดรับ/กดปิดเสียง) → นาฬิกาที่ค้างอยู่ไม่มีงานทำแล้ว
         try {
             mediaPlayer?.let {
                 if (it.isPlaying) it.stop()

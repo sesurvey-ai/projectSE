@@ -48,7 +48,7 @@
             android:textStyle="bold"
             android:layout_marginBottom="22dp" />
 
-        <!-- Info card: สถานที่เกิดเหตุ อย่างเดียว -->
+        <!-- Info card: สถานที่เกิดเหตุ + เลขเคลม -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -91,6 +91,60 @@
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
                         android:textColor="#1A2733" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- เลขเคลม — ส่งมากับแจ้งเตือนอยู่แล้วแต่เดิมไม่ได้แสดง (user 31/08/69)
+                 ทั้งบล็อกซ่อนเมื่อไม่มีเลข: เส้นคั่นลอยอยู่เฉย ๆ ดูเหมือนจอค้าง -->
+            <LinearLayout
+                android:id="@+id/row_claim"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E2E8F0"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="14dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="top">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginTop="2dp"
+                        android:src="@android:drawable/ic_menu_agenda"
+                        android:tint="#FF9800"
+                        android:contentDescription="claim number" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="10dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="เลขเคลม"
+                            android:textSize="12sp"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/txt_claim_no"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="16sp"
+                            android:textColor="#1A2733" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

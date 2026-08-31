@@ -61,8 +61,18 @@ class IncomingCallActivity : Activity() {
         claimNo = source.getStringExtra("claim_no") ?: claimNo
         insuranceCompany = source.getStringExtra("insurance_company") ?: insuranceCompany
 
-        // การ์ด: สถานที่เกิดเหตุ อย่างเดียว (ว่าง = "ไม่ระบุสถานที่")
+        // การ์ด: สถานที่เกิดเหตุ (ว่าง = "ไม่ระบุสถานที่")
         findViewById<TextView>(R.id.txt_incident).text = if (incidentLocation.isNotBlank()) incidentLocation else "ไม่ระบุสถานที่"
+        // เลขเคลม — ส่งมากับ push อยู่แล้ว เดิมรับค่ามาแต่ไม่ได้เอาขึ้นจอเลย (user 31/08/69)
+        // ⛔ ไม่มีเลข = ซ่อนทั้งแถว ไม่ใส่ "-" — งานที่ยังไม่มีเลขเคลมมีจริง (callcenter
+        //    เปิดเคสก่อนได้เลขจากบริษัทประกัน) โชว์ขีดเปล่า ๆ ไม่ได้บอกอะไรนอกจากกินที่
+        val claimRow = findViewById<View>(R.id.row_claim)
+        if (claimNo.isNotBlank()) {
+            findViewById<TextView>(R.id.txt_claim_no).text = claimNo
+            claimRow.visibility = View.VISIBLE
+        } else {
+            claimRow.visibility = View.GONE
+        }
         // ชื่อย่อบริษัทประกัน (ใต้โลโก้)
         val shortName = NotificationHelper.shortInsurer(insuranceCompany)
         findViewById<TextView>(R.id.txt_insurance_name).text = if (shortName.isNotBlank()) shortName else "-"
