@@ -851,45 +851,61 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     );
   }
 
+  /// ดูรูปเต็มจอ — ใบเคลม/หน้าการ์ดเป็นเอกสารตัวหนังสือเล็ก ยิ่งได้พื้นที่มากยิ่งอ่านออก
+  ///
+  /// ⛔ เดิมเป็น `Dialog` ซึ่ง **ไม่มีวันเต็มจอ**: มันเป็นกล่องลอยกลางจอ มีขอบเว้นรอบ
+  ///    และถูกบีบตามขนาดเนื้อหา รูปเลยไปโผล่เล็ก ๆ ตรงกลางโดยเห็นหน้าเดิมทะลุอยู่ข้างหลัง
+  ///    (user แจ้ง 31/08/69) → เปลี่ยนเป็น "หน้า" เต็มจอจริงแทน
   void _showFullImage(String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
+    Navigator.of(context).push(PageRouteBuilder<void>(
+      opaque: true,
+      barrierColor: Colors.black,
+      pageBuilder: (ctx, _, __) => Scaffold(
         backgroundColor: Colors.black,
-        insetPadding: const EdgeInsets.all(8),
-        child: Stack(
+        body: Stack(
           children: [
-            InteractiveViewer(
-              child: Image.network(
-                imageUrl,
-                headers: AuthToken.imageHeaders,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) =>
-                    progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
-                errorBuilder: (context, error, stackTrace) => const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.image_not_supported_outlined, color: Colors.white54, size: 48),
-                      SizedBox(height: 12),
-                      Text('ไม่พบรูปภาพ', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    ],
+            // เต็มจอจริง รวมพื้นที่ใต้แถบสถานะ — เอกสารแนวตั้งจะได้กว้างเต็มจอ
+            // แล้วบีบนิ้วซูมอ่านตัวเล็กต่อได้ (maxScale 6 พอสำหรับตัวหนังสือบนการ์ด)
+            Positioned.fill(
+              child: InteractiveViewer(
+                minScale: 1,
+                maxScale: 6,
+                child: Image.network(
+                  imageUrl,
+                  headers: AuthToken.imageHeaders,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
+                  errorBuilder: (context, error, stackTrace) => const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.image_not_supported_outlined, color: Colors.white54, size: 48),
+                        SizedBox(height: 12),
+                        Text('ไม่พบรูปภาพ', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
+            // ⛔ ต้องบวก padding.top — เต็มจอแล้วปุ่มปิดจะไปซ้อนใต้นาฬิกา/สัญญาณ กดไม่โดน
             Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                onPressed: () => Navigator.pop(ctx),
-                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              top: MediaQuery.of(ctx).padding.top + 4,
+              right: 4,
+              child: Container(
+                decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                child: IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  tooltip: 'ปิด',
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _inputField(String label, String value, {String? fieldKey, int maxLines = 1}) {
