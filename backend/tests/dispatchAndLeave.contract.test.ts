@@ -224,6 +224,9 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
   // ⛔ GPS จับไม่ได้ (ในอาคาร) ต้องเลือกเองแล้วไปต่อได้ ห้ามค้าง
   check('GPS จับไม่ได้ = ยังยืนยันได้ ไม่ค้าง',
         /timeout\(const Duration\(seconds: 10\)\)/.test(app) && app.includes('จับพิกัดไม่ได้'));
+  // ⛔ เจอจริงบนเครื่อง: ปุ่มยืนยันไปอยู่ใต้แถบนำทาง Android กดไม่โดน
+  check('หน้าจอยืนยันเผื่อแถบนำทาง Android (ไม่ใช่แค่คีย์บอร์ด)',
+        /viewInsets\.bottom \+ MediaQuery\.of\(ctx\)\.padding\.bottom/.test(app));
   check('แอปส่งพิกัด+พื้นที่ไปกับการยืนยัน',
         /'lat': lat/.test(api) && /'province': province/.test(api));
 }

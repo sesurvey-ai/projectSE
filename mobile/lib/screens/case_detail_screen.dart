@@ -200,7 +200,12 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
         final districts = _provincesData[prov] ?? <String>[];
         return Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          // ⛔ ต้องเผื่อ **แถบนำทางของ Android** ด้วย (padding.bottom) ไม่ใช่แค่คีย์บอร์ด
+          //    (viewInsets) — ไม่งั้นปุ่มยืนยันไปอยู่ใต้แถบนำทาง กดไม่โดน (เจอจริงบนเครื่องเทส)
+          padding: EdgeInsets.fromLTRB(
+            16, 16, 16,
+            MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 16,
+          ),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('ยืนยันพื้นที่ที่ออกสำรวจ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
