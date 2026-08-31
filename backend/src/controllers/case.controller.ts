@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import { provinceOf } from '../services/geoProvince';
+import { nearestDistrict } from '../services/geoDistrict';
 import { caseService } from '../services/case.service';
 import * as payService from '../services/pay.service';
 import { buildPayWorkbook } from '../services/payExport.service';
@@ -17,6 +19,24 @@ export const caseController = {
   getMyCases: asyncHandler(async (req: Request, res: Response) => {
     const cases = await caseService.getMyCases(req.user!.id);
     sendSuccess(res, cases);
+  }),
+
+  /**
+   * พิกัด → จังหวัด/อำเภอ **สำหรับเสนอให้คนยืนยัน** บนหน้าจอมือถือ
+   *
+   * ⛔ จังหวัดมาจากขอบเขตจริง (เชื่อได้) แต่ **อำเภอเป็นการเดาจากจุดกลาง** —
+   *    คืน `district_guess` ชื่อนี้โดยตั้งใจ ให้คนเรียกรู้ว่าต้องให้คนยืนยันก่อนใช้
+   */
+  resolveArea: asyncHandler(async (req: Request, res: Response) => {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    // GPS จับไม่ได้ (ในอาคาร/ห้าง) = คืนค่าว่าง ให้คนเลือกเอง — ห้ามล้มให้แอปค้าง
+    const ok = Number.isFinite(lat) && Number.isFinite(lng);
+    const province = ok ? provinceOf(lat, lng) : null;
+    sendSuccess(res, {
+      province,
+      district_guess: province ? nearestDistrict(lat, lng, province) : null,
+    });
   }),
 
   createFollowup: asyncHandler(async (req: Request, res: Response) => {
@@ -204,8 +224,11 @@ export const caseController = {
 
   confirmArrival: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
-    const { photo_path } = req.body;
-    const result = await caseService.confirmArrival(caseId, req.user!.id, photo_path);
+    const { photo_path, lat, lng, province, district } = req.body;
+    const num = (v: unknown) => (v === null || v === undefined || v === '' ? null : Number(v));
+    const result = await caseService.confirmArrival(caseId, req.user!.id, photo_path, {
+      lat: num(lat), lng: num(lng), province, district,
+    });
     sendSuccess(res, result);
   }),
 

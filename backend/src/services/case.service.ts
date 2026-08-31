@@ -661,7 +661,17 @@ export const caseService = {
     return { folder: folderName, path: folderPath };
   },
 
-  async confirmArrival(caseId: number, surveyorId: number, photoPath: string) {
+  /**
+   * ยืนยันถึงที่เกิดเหตุ — รูป + **พิกัด** + จังหวัด/อำเภอที่ผู้สำรวจยืนยันบนหน้าจอ
+   *
+   * ⛔ `province`/`district` คือค่าที่ **คนกดยืนยัน** ไม่ใช่ค่าที่ GPS เดา — เก็บแยกจาก
+   *    พิกัดดิบเสมอ (ดูคอมเมนต์ใน migration 045) · GPS จับไม่ได้ก็ยังยืนยันได้
+   *    ห้ามบล็อกการทำงานเพราะไม่มีพิกัด (ในอาคาร/ห้างจับไม่ติดเป็นเรื่องปกติ)
+   */
+  async confirmArrival(
+    caseId: number, surveyorId: number, photoPath: string,
+    loc?: { lat?: number | null; lng?: number | null; province?: string | null; district?: string | null },
+  ) {
     const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
     const caseData = caseResult.rows[0];
@@ -680,6 +690,21 @@ export const caseService = {
       await db.query(
         'INSERT INTO case_images (case_id, file_path, image_type) VALUES ($1, $2, $3)',
         [caseId, photoPath, 'arrival']
+      );
+    }
+
+    // พิกัด + พื้นที่ที่ยืนยัน — เขียนเฉพาะค่าที่ส่งมา (COALESCE) กันการกดยืนยันซ้ำ
+    // แบบไม่มีพิกัด (เช่นถ่ายรูปใหม่ในอาคาร) ไปล้างพิกัดที่เคยจับได้ทิ้ง
+    if (loc && (loc.lat != null || loc.province || loc.district)) {
+      await db.query(
+        `UPDATE cases SET arrival_lat = COALESCE($1, arrival_lat),
+                          arrival_lng = COALESCE($2, arrival_lng),
+                          arrival_province = COALESCE($3, arrival_province),
+                          arrival_district = COALESCE($4, arrival_district),
+                          arrival_at = NOW()
+           WHERE id = $5`,
+        [loc.lat ?? null, loc.lng ?? null,
+         (loc.province ?? '').trim() || null, (loc.district ?? '').trim() || null, caseId]
       );
     }
 

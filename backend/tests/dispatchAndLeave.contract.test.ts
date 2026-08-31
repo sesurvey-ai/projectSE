@@ -189,5 +189,44 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
         list.includes('c.assigned_at || c.created_at') && list.includes('ค่าประมาณ'));
 }
 
+// ── พิกัด + ยืนยันพื้นที่ตอนถึงที่เกิดเหตุ (2.2 · 31/08/69) ───────────────────
+// เดิมส่งมาแค่ path รูป — ถ่ายจากที่ไหนก็ได้ ไม่มีอะไรผูกกับสถานที่จริง
+// จังหวัดที่ยืนยันตรงนี้จะถูกใช้ต่อในเรื่องออกเลขเซอร์เวย์ (หลักแรกของ SEABI = พื้นที่)
+{
+  const svc = read('src', 'services', 'case.service.ts');
+  const ctl = read('src', 'controllers', 'case.controller.ts');
+  const routes = read('src', 'routes', 'case.routes.ts');
+  const mig = read('src', 'db', 'migrations', '045_arrival_location.sql');
+  const app = read('..', 'mobile', 'lib', 'screens', 'case_detail_screen.dart');
+  const api = read('..', 'mobile', 'lib', 'services', 'api_service.dart');
+  const geo = read('src', 'services', 'geoDistrict.ts');
+
+  check('เก็บพิกัดดิบ + พื้นที่ที่คนยืนยัน แยกคอลัมน์กัน',
+        /arrival_lat/.test(mig) && /arrival_province/.test(mig) && /arrival_district/.test(mig));
+  check('เวลาถึงที่เกิดเหตุเป็น TIMESTAMPTZ', /arrival_at\s+TIMESTAMPTZ/.test(mig));
+  check('backend รับพิกัด+พื้นที่จากแอป',
+        ctl.includes('const { photo_path, lat, lng, province, district } = req.body;'));
+  // ⛔ ยืนยันซ้ำโดยไม่มีพิกัด (ถ่ายใหม่ในอาคาร) ต้องไม่ล้างพิกัดที่เคยจับได้
+  check('ยืนยันซ้ำแบบไม่มีพิกัด = ไม่ล้างของเดิม (COALESCE)',
+        svc.includes('arrival_lat = COALESCE($1, arrival_lat)'));
+  check('มี endpoint เสนอจังหวัด/อำเภอจากพิกัด',
+        routes.includes("router.get('/resolve-area'") && ctl.includes('district_guess'));
+  // ⛔ อำเภอมาจากจุดกลาง = การเดา ชื่อฟิลด์ต้องบอกให้รู้ ห้ามเรียกเฉย ๆ ว่า district
+  check('ชื่อฟิลด์บอกว่าอำเภอเป็นการเดา (district_guess)',
+        !/district:\s*nearestDistrict/.test(ctl));
+  check('หาอำเภอเฉพาะในจังหวัดที่ขอบเขตจริงบอก (ไม่ข้ามจังหวัด)',
+        /code\.startsWith\(pcode\)/.test(geo));
+  // ⛔ GPS เสนอ คนยืนยัน — ห้ามส่งค่าที่ GPS เดาเข้าไปตรง ๆ
+  check('แอปมีหน้าจอให้คนยืนยันพื้นที่ก่อนบันทึก',
+        app.includes('_confirmArrivalArea') && app.includes('ยืนยันพื้นที่ที่ออกสำรวจ'));
+  check('เลือกไม่ครบ = กดยืนยันไม่ได้',
+        /prov\.isEmpty \|\| dist\.isEmpty\) \? null/.test(app));
+  // ⛔ GPS จับไม่ได้ (ในอาคาร) ต้องเลือกเองแล้วไปต่อได้ ห้ามค้าง
+  check('GPS จับไม่ได้ = ยังยืนยันได้ ไม่ค้าง',
+        /timeout\(const Duration\(seconds: 10\)\)/.test(app) && app.includes('จับพิกัดไม่ได้'));
+  check('แอปส่งพิกัด+พื้นที่ไปกับการยืนยัน',
+        /'lat': lat/.test(api) && /'province': province/.test(api));
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด\n' : `\n❌ ไม่ผ่าน ${failed} ข้อ\n`);
 process.exit(failed === 0 ? 0 : 1);

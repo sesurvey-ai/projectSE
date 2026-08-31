@@ -249,6 +249,8 @@ router.post('/', auth, requireRole('callcenter'), validate(createCaseSchema), ca
 router.post('/import-xml', auth, requireRole('callcenter', 'checker', 'admin'),
   uploadXmlZip, caseController.importXml);
 router.get('/my', auth, requireRole('surveyor'), caseController.getMyCases);
+// พิกัด → จังหวัด/อำเภอ ไว้ "เสนอ" บนหน้ายืนยันถึงที่เกิดเหตุ (อำเภอเป็นการเดา ต้องให้คนยืนยัน)
+router.get('/resolve-area', auth, requireRole('surveyor', 'callcenter', 'admin'), caseController.resolveArea);
 router.get('/review', auth, requireRole('checker'), caseController.getForReview);
 // ใบเบิกเงิน (.xlsx) — ต้องอยู่ก่อน '/:id/...' ไม่งั้น 'pay' จะถูกจับเป็น id
 router.get('/pay/export.xlsx', auth, requireRole('checker', 'admin'), caseController.exportPayXlsx);

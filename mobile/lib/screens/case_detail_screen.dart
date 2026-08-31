@@ -8,7 +8,9 @@ import 'package:provider/provider.dart';
 import '../providers/case_provider.dart';
 import '../models/case_model.dart';
 import '../config/api_config.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
+import '../services/location_service.dart';
 import '../services/auth_token.dart';
 
 class CaseDetailScreen extends StatefulWidget {
@@ -174,6 +176,78 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
     return downloadDir.path;
   }
 
+  /// ขอพิกัดแบบ **ไม่ค้าง** — จับไม่ได้ก็คืน null แล้วให้คนเลือกพื้นที่เอง
+  /// (ในอาคาร/ห้างจับไม่ติดเป็นเรื่องปกติ ห้ามให้ช่างติดอยู่ตรงนี้)
+  Future<Position?> _tryGetPosition() async {
+    try {
+      return await LocationService().getCurrentPosition().timeout(const Duration(seconds: 10));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// หน้าจอ "ยืนยันพื้นที่ที่ออกสำรวจ" — GPS เติมให้ก่อน คนแก้ได้ แล้วกดยืนยัน
+  /// คืน null = กดยกเลิก · คืน (จังหวัด, อำเภอ) = ค่าที่คนยืนยัน
+  Future<(String, String)?> _confirmArrivalArea(String? gpsProv, String? gpsDist, {required bool hasGps}) async {
+    final names = _provincesData.keys.toList()..sort();
+    String prov = (gpsProv != null && names.contains(gpsProv)) ? gpsProv : '';
+    String dist = '';
+    if (prov.isNotEmpty && gpsDist != null && (_provincesData[prov] ?? []).contains(gpsDist)) dist = gpsDist;
+
+    return showModalBottomSheet<(String, String)?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        final districts = _provincesData[prov] ?? <String>[];
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('ยืนยันพื้นที่ที่ออกสำรวจ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(
+              hasGps
+                  ? 'ระบบเดาจากพิกัดให้แล้ว — ถ้าไม่ตรงกับที่คุณยืนอยู่ แก้ได้เลย'
+                  : 'จับพิกัดไม่ได้ (อยู่ในอาคาร?) — เลือกพื้นที่ที่คุณกำลังออกสำรวจ',
+              style: TextStyle(fontSize: 12.5, color: hasGps ? Colors.grey.shade600 : Colors.orange.shade800),
+            ),
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              initialValue: prov.isEmpty ? null : prov,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'จังหวัด', border: OutlineInputBorder(), isDense: true),
+              hint: const Text('-- เลือกจังหวัด --'),
+              items: names.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+              onChanged: (v) => setSheet(() { prov = v ?? ''; dist = ''; }),   // เปลี่ยนจังหวัด = ล้างอำเภอ
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              key: ValueKey('arrival_dist_$prov'),
+              initialValue: dist.isEmpty ? null : dist,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'อำเภอ / เขต', border: OutlineInputBorder(), isDense: true),
+              hint: Text(prov.isEmpty ? '-- เลือกจังหวัดก่อน --' : '-- เลือกอำเภอ --'),
+              items: districts.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+              onChanged: districts.isEmpty ? null : (v) => setSheet(() => dist = v ?? ''),
+            ),
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('ยกเลิก'),
+              )),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: FilledButton(
+                // ต้องเลือกให้ครบก่อน — พื้นที่ว่างแปลว่าไม่มีใครยืนยันอะไรเลย
+                onPressed: (prov.isEmpty || dist.isEmpty) ? null : () => Navigator.pop(ctx, (prov, dist)),
+                child: const Text('ยืนยันถึงที่เกิดเหตุ'),
+              )),
+            ]),
+          ]),
+        );
+      }),
+    );
+  }
+
   Future<void> _takeArrivalPhoto() async {
     try {
       final photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80, maxWidth: 1920);
@@ -190,9 +264,34 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
         _arrivalPhotoPath = localPath;
         _uploadingArrival = true;
       });
-      // บันทึกเวลาถึงที่เกิดเหตุ (ไม่อัปโหลดรูปขึ้น server — จะอัปโหลดตอนส่งงาน)
+      // ── พิกัด + ให้คนยืนยันพื้นที่ ──
+      // ⛔ **GPS เสนอ คนยืนยัน** — ห้ามเชื่อพิกัดดิบอย่างเดียว ยืนใกล้เส้นแบ่งจังหวัด
+      //    หรือสัญญาณเพี้ยน = พื้นที่ผิดแบบเงียบ ๆ · จังหวัดนี้จะถูกใช้ต่อในเรื่องเลขเซอร์เวย์
+      // ⛔ GPS จับไม่ได้ (ในอาคาร/ห้าง) ต้องเลือกเองแล้วไปต่อได้ **ห้ามค้าง**
       final apiService = ApiService();
-      await apiService.confirmArrival(widget.caseId, 'arrival.jpg');
+      final pos = await _tryGetPosition();
+      String? gp, gd;
+      if (pos != null) {
+        try {
+          final r = await apiService.resolveArea(pos.latitude, pos.longitude);
+          final d = r.data?['data'] ?? {};
+          gp = d['province'] as String?;
+          gd = d['district_guess'] as String?;
+        } catch (_) { /* หาพื้นที่ไม่ได้ = ให้คนเลือกเองจากลิสต์ ไม่ใช่เหตุให้ล้ม */ }
+      }
+      if (!mounted) return;
+      final area = await _confirmArrivalArea(gp, gd, hasGps: pos != null);
+      if (area == null) {                       // กดยกเลิก = ไม่บันทึกอะไรเลย
+        setState(() { _arrivalPhotoPath = null; _uploadingArrival = false; });
+        return;
+      }
+
+      // บันทึกเวลาถึงที่เกิดเหตุ (ไม่อัปโหลดรูปขึ้น server — จะอัปโหลดตอนส่งงาน)
+      await apiService.confirmArrival(
+        widget.caseId, 'arrival.jpg',
+        lat: pos?.latitude, lng: pos?.longitude,
+        province: area.$1, district: area.$2,
+      );
       if (mounted) {
         setState(() {
           _arrivalConfirmed = true;

@@ -231,10 +231,31 @@ class ApiService {
   }
 
   // Arrival confirmation
-  Future<Response> confirmArrival(int caseId, String photoPath) async {
+  //
+  // lat/lng = พิกัดดิบตอนกดยืนยัน (หลักฐาน) · province/district = ที่ "คนยืนยัน" บนหน้าจอ
+  // ⛔ เก็บแยกกันโดยตั้งใจ — ยืนใกล้เส้นแบ่งจังหวัด/สัญญาณเพี้ยน พิกัดชี้ผิดจังหวัดได้
+  //    ส่ง null ได้ทั้งคู่ (GPS จับไม่ได้ในอาคาร) — เซิร์ฟเวอร์ไม่บล็อกการยืนยัน
+  Future<Response> confirmArrival(
+    int caseId,
+    String photoPath, {
+    double? lat,
+    double? lng,
+    String? province,
+    String? district,
+  }) async {
     return _dio.post('/api/cases/$caseId/arrival', data: {
       'photo_path': photoPath,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      if (province != null && province.isNotEmpty) 'province': province,
+      if (district != null && district.isNotEmpty) 'district': district,
     });
+  }
+
+  /// พิกัด → จังหวัด/อำเภอ ที่เซิร์ฟเวอร์ "เสนอ" ให้คนยืนยัน
+  /// ⚠️ อำเภอเป็นการเดาจากจุดกลาง (`district_guess`) ห้ามใช้โดยไม่ให้คนยืนยัน
+  Future<Response> resolveArea(double lat, double lng) async {
+    return _dio.get('/api/cases/resolve-area', queryParameters: {'lat': lat, 'lng': lng});
   }
 
   Future<Response> getArrivalPhotos(int caseId) async {

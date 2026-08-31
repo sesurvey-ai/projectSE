@@ -1,5 +1,6 @@
 import centroids from '../data/thaiDistrictCentroids.json';
-import { amphurCode } from './areaCode.service';
+import { amphurCode, provinceCode } from './areaCode.service';
+import { TH_AMPHURS } from '../data/thaiAreaCodes';
 
 /**
  * ชื่อจังหวัด+อำเภอ → **จุดกลางของอำเภอนั้น**
@@ -49,3 +50,30 @@ export function districtCentroid(
 
 /** มีพิกัดของอำเภอกี่แห่ง — ไว้ให้เทสยืนยันว่าไฟล์ข้อมูลไม่ได้หายไปตอน build */
 export const DISTRICT_COUNT = Object.keys(DATA).length;
+
+/**
+ * พิกัด → **อำเภอที่ใกล้ที่สุดภายในจังหวัดนั้น** (ใช้เป็น "ข้อเสนอ" ให้คนยืนยัน)
+ *
+ * ⚠️ **นี่คือการเดาจากจุดกลางอำเภอ ไม่ใช่การหาว่าพิกัดตกในขอบเขตอำเภอไหนจริง ๆ**
+ *    เรามีแค่จุดกลาง ไม่มีรูปร่างขอบเขตรายอำเภอ — อำเภอรูปยาว/พิกัดใกล้รอยต่อ
+ *    ตอบผิดได้ · จึงห้ามเอาไปตัดสินใจอะไรเองเด็ดขาด ต้องให้คนยืนยันเสมอ
+ *    (จังหวัดต่างกัน — `provinceOf()` ใช้ขอบเขตจริง เชื่อได้)
+ *
+ * คืน null เมื่อไม่รู้จังหวัด หรือจังหวัดนั้นไม่มีข้อมูลอำเภอ — ผู้เรียกต้องให้คนเลือกเอง
+ */
+export function nearestDistrict(
+  lat: number, lng: number, province?: string | null,
+): string | null {
+  const pcode = provinceCode(province);
+  if (!pcode) return null;
+  let best: { code: string; d2: number } | null = null;
+  for (const [code, [dlat, dlng]] of Object.entries(DATA)) {
+    if (!code.startsWith(pcode)) continue;
+    // ระยะกำลังสองแบบหยาบ ๆ พอ — เทียบกันเองในจังหวัดเดียว ไม่ได้เอาไปโชว์เป็นกิโลเมตร
+    const dy = dlat - lat;
+    const dx = (dlng - lng) * Math.cos((lat * Math.PI) / 180);
+    const d2 = dy * dy + dx * dx;
+    if (!best || d2 < best.d2) best = { code, d2 };
+  }
+  return best ? (TH_AMPHURS[best.code] ?? null) : null;
+}
