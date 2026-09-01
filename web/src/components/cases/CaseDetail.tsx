@@ -17,7 +17,13 @@ import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEm
  *  แยกกันเพื่อให้เห็นว่าผู้ตรวจปรับจากยอดที่ระบบแนะนำไปเท่าไหร่ */
 interface PayData {
   saved: Record<string, number | string | boolean | null> | null;
-  suggest: { service_fee: number | null; snapshot: Record<string, unknown> } | null;
+  suggest: {
+    service_fee: number | null;
+    /** เรทฝั่งเรียกเก็บประกันจากตารางเรท (ต่อครั้ง) — null = ไม่มีเรทของพื้นที่นี้ */
+    ins_service_fee?: number | null;
+    ins_travel_fee?: number | null;
+    snapshot: Record<string, unknown>;
+  } | null;
   area: {
     province_code: string | null; amphur_code: string | null; team: string | null;
     province_name: string | null; district_name: string | null;
@@ -593,6 +599,23 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const photoFeeUnset = !exV.photo_fee_count && !Number(exV.photo_fee_price ?? 0);
   const photoFee = (!previewing && photoFeeSuggest && photoFeeUnset) ? photoFeeSuggest : null;
+  /**
+   * ── เรทฝั่งเรียกเก็บประกัน ── (user สั่งเปิดใช้ 01/09/69)
+   *
+   * ตารางเรทรู้คำตอบอยู่แล้วครบทุกอำเภอ เดิมหัวหน้าต้องพิมพ์เองทุกช่องทุกเคส
+   * กติกาเติมเหมือนค่ารูปเหมาเป๊ะ:
+   *   ⛔ เติมเฉพาะตอนช่องยังว่าง ไม่ทับของที่บันทึกไว้ (หัวหน้าแก้ด้วยเหตุผลเฉพาะเคสได้)
+   *   ⛔ ดูครั้งอื่นอยู่ = อ่านอย่างเดียว ไม่เติมอะไรทั้งนั้น
+   * ค่ารูปไม่อยู่ในชุดนี้ — มีกติกาเหมาของตัวเองอยู่แล้ว (photoFee ข้างบน)
+   */
+  const insFill = (n: keyof NonNullable<PayData['suggest']>, cur: unknown) => {
+    if (previewing) return null;
+    const v = pay?.suggest?.[n];
+    if (typeof v !== 'number' || v <= 0) return null;
+    return Number(String(cur ?? '').replace(/,/g, '')) ? null : v;
+  };
+  const insService = insFill('ins_service_fee', exV.service_fee_price);
+  const insTravel = insFill('ins_travel_fee', exV.travel_fee_price);
   /**
    * ⛔ คอลัมน์ฝั่งจ่ายพนักงานถูก alias เป็น `pay_*` ตอน query (เพราะ phone_fee/bail_fee
    *    ชนกับฝั่งเรียกเก็บประกัน) — ต้องแมปกลับเป็นชื่อเดิมก่อนส่งให้ช่องกรอกอ่าน
@@ -2593,13 +2616,24 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าบริการ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="service_fee_count" defaultValue={exV.service_fee_count || (previewing ? '' : '1')} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(payV?.saved?.service_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="service_fee_price" defaultValue={zeroBlank(exV.service_fee_price)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(payV?.saved?.service_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="service_fee_price" defaultValue={zeroBlank(exV.service_fee_price) || (insService ? String(insService) : '')} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="travel_fee_count" defaultValue={exV.travel_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(payV?.saved?.travel_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="travel_fee_price" defaultValue={zeroBlank(exV.travel_fee_price)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(payV?.saved?.travel_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="travel_fee_price" defaultValue={zeroBlank(exV.travel_fee_price) || (insTravel ? String(insTravel) : '')} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
+                  {/* บอกที่มาของเรทฝั่งประกันที่เติมให้ — ไม่งั้นหัวหน้าเห็นเลขโผล่มาเองแล้วไม่รู้ว่าเชื่อได้ไหม
+                      (ขึ้นเฉพาะตอนเป็นค่าที่ระบบเติม ไม่ใช่ตอนหัวหน้ากรอกเอง — แบบเดียวกับค่ารูปเหมา) */}
+                  {(insService || insTravel) && (
+                    <tr className="border-b border-gray-100">
+                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
+                        {`เรทฝั่งประกันเติมให้จากตารางเรท${pay?.area?.district_name ? ` ${pay.area.district_name}` : ''}`}
+                        {repV?.claim_type ? ` · ${CLAIM_TYPE_LABELS[repV.claim_type as keyof typeof CLAIM_TYPE_LABELS] ?? repV.claim_type}` : ''}
+                        {' — แก้ทับได้ถ้าเคสนี้ต่างออกไป'}
+                      </td>
+                    </tr>
+                  )}
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee?.count ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">รูป</span></div></td>

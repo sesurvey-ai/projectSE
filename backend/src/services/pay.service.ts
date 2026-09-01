@@ -200,11 +200,13 @@ export async function getCasePay(caseId: number) {
   const saved = (await db.query('SELECT * FROM survey_pay WHERE case_id = $1', [caseId])).rows[0] ?? null;
 
   const r = (await db.query(
-    `SELECT sr.acc_province, sr.acc_district, sr.acc_surveyor, sr.claim_type,
+    `SELECT sr.acc_province, sr.acc_district, sr.acc_surveyor, sr.claim_type, c.source,
             (SELECT count(*) FROM survey_photos sp WHERE sp.report_id = sr.id) AS photo_count
-       FROM survey_reports sr WHERE sr.case_id = $1`, [caseId])).rows[0] as
+       FROM survey_reports sr
+       JOIN cases c ON c.id = sr.case_id
+      WHERE sr.case_id = $1`, [caseId])).rows[0] as
     | { acc_province?: string; acc_district?: string; acc_surveyor?: string;
-        claim_type?: string; photo_count?: string }
+        claim_type?: string; photo_count?: string; source?: string }
     | undefined;
 
   if (!r) return { saved, suggest: null, area: null };
@@ -234,10 +236,24 @@ export async function getCasePay(caseId: number) {
    * เรทฐานล้วนตรงกับทั้งสูตรรวมยอดและคอลัมน์แยกของใบเบิกเงิน (payExport)
    */
   const baseRate = pay.snapshot?.base_rate;
+  /**
+   * ── เรทฝั่งเรียกเก็บประกัน ──
+   *
+   * ตารางเรทมีข้อมูลฝั่งนี้ครบ 337/337 อำเภอ แต่เดิมคำนวณแล้วทิ้ง ไม่เคยส่งให้หน้าเว็บ
+   * → หัวหน้าพิมพ์มือทุกช่องทุกเคส ทั้งที่ระบบรู้คำตอบอยู่แล้ว (user สั่งเปิดใช้ 01/09/69)
+   *
+   * ⛔ **ไม่เสนอกับงานที่นำเข้าจากไฟล์ ISURVEY** — ยอดกรอกจบที่ต้นทางแล้วและติดมากับไฟล์
+   *    เติมทับ = เขียนทับของจริง (กติกาเดียวกับค่ารูปเหมา ดู case.service.ts)
+   * ⛔ ค่ารูปไม่อยู่ในนี้ — มีกติกาเหมาของตัวเองที่ user เคาะไว้แล้ว (photoFee.service)
+   *    ins_photo_12 ในตารางเป็นคนละฐานกัน อย่าเอามาปนโดยไม่ได้ตรวจสอบก่อน
+   */
+  const fromIsurveyFile = r.source === 'isurvey_xml';
   return {
     saved,
     suggest: {
       service_fee: pay.surInvest === null ? null : (typeof baseRate === 'number' ? baseRate : null),
+      ins_service_fee: fromIsurveyFile ? null : pay.insInvest,
+      ins_travel_fee: fromIsurveyFile ? null : pay.insTrans,
       snapshot: pay.snapshot,
     },
     area: {

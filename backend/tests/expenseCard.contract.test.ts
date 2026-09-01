@@ -263,5 +263,44 @@ check('⛔ เติมตอนเลือกเท่านั้น ไม�
 /** เลือก "ไม่มี" = ล้างยอดทั้ง 2 ฝั่ง ไม่ใช่ค้างเลขของผลก่อนหน้า */
 check('เลือก "ไม่มี" แล้วล้างยอด', ui.includes("v ? String(DAILY_FEE_PAY) : ''"));
 
+
+console.log('\n── เรทฝั่งเรียกเก็บประกัน: เติมให้เอง ──');
+/**
+ * user สั่งเปิดใช้ 01/09/69 — ตารางเรทรู้คำตอบครบ 337/337 อำเภอ แต่เดิมคำนวณแล้วทิ้ง
+ * หัวหน้าจึงพิมพ์มือทุกช่องทุกเคส
+ */
+{
+  const paySvc2 = read('src', 'services', 'pay.service.ts');
+  check('backend ส่งเรทฝั่งประกันไปให้หน้าเว็บ',
+        paySvc2.includes('ins_service_fee:') && paySvc2.includes('ins_travel_fee:'));
+  /**
+   * ⛔ งานที่นำเข้าจากไฟล์ ISURVEY ยอดกรอกจบที่ต้นทางและติดมากับไฟล์ — เติมทับ = เขียนทับของจริง
+   *    (กติกาเดียวกับค่ารูปเหมา)
+   */
+  check('⛔ ไม่เสนอกับงานที่นำเข้าจากไฟล์ ISURVEY',
+        paySvc2.includes("const fromIsurveyFile = r.source === 'isurvey_xml';")
+        && paySvc2.includes('fromIsurveyFile ? null : pay.insInvest'));
+  /** ต้อง join cases มาด้วย ไม่งั้นไม่รู้ที่มาของงาน */
+  check('อ่านที่มาของงานมาจริง', paySvc2.includes('JOIN cases c ON c.id = sr.case_id'));
+}
+check('หน้าเว็บเติมช่องค่าบริการ/ค่าเดินทางฝั่งประกัน',
+      ui.includes("insFill('ins_service_fee', exV.service_fee_price)")
+      && ui.includes("insFill('ins_travel_fee', exV.travel_fee_price)")
+      && ui.includes("(insService ? String(insService) : '')")
+      && ui.includes("(insTravel ? String(insTravel) : '')"));
+/** ⛔ กติกาเดียวกับค่ารูปเหมา — ไม่ทับของที่บันทึกไว้ · ดูครั้งอื่นอยู่ไม่เติม */
+check('⛔ เติมเฉพาะช่องที่ยังว่าง ไม่ทับของที่บันทึกไว้',
+      ui.includes("return Number(String(cur ?? '').replace(/,/g, '')) ? null : v;"));
+check('⛔ ดูครั้งอื่นอยู่ → ไม่เติม', ui.includes('if (previewing) return null;'));
+/** เรทเป็น 0 หรือติดลบ = ข้อมูลเสีย ไม่ใช่ "ฟรี" — อย่าเติมลงช่องเงิน */
+check('เรท 0 ไม่ถือเป็นเรท', ui.includes("if (typeof v !== 'number' || v <= 0) return null;"));
+check('บอกที่มาของเลขที่เติมให้', ui.includes('เรทฝั่งประกันเติมให้จากตารางเรท'));
+/**
+ * ⛔ ค่ารูปห้ามเอาเรทตารางมาเติม — มีกติกาเหมาของตัวเองที่ user เคาะไว้ (10×5=50)
+ *    ins_photo_12 ในตารางเป็นคนละฐาน เอามาปนแล้วยอดเรียกเก็บเพี้ยนโดยไม่มีอะไรฟ้อง
+ */
+check('⛔ ไม่แตะช่องค่ารูป (มีกติกาเหมาของตัวเองแล้ว)',
+      !ui.includes('ins_photo') && !/insFill\([^)]*photo/.test(ui));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
