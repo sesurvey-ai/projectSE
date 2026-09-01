@@ -2673,15 +2673,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           · ช่อง "เหตุผลอื่น" ที่พิมพ์เองก็นับ ไม่ใช่บังคับให้ติ๊กเท่านั้น
                           · เตือนเฉย ๆ ไม่บล็อกการบันทึก — สีแดงบนหน้านี้แปลว่า "ยังกรอกไม่ครบ" */}
                       {liveSum.deduct > 0 && !liveSum.reasoned && (
-                        <div className="mt-1 text-[11px] text-red-600">
-                          ⚠ หักเงินแล้วยังไม่ได้ระบุเหตุผล — ติ๊กข้อใดข้อหนึ่ง หรือกรอกช่อง &quot;เหตุผลอื่น&quot;
-                        </div>
+                        <div className="mt-1 text-[11px] text-red-600">{'⚠ เลือกเหตุผล "หักเงิน"'}</div>
                       )}
                     </td>
                     {/* สลับให้ตรงกับแถวอื่น: คอลัมน์ 3 = ฝั่งพนักงาน · คอลัมน์ 4 = ฝั่งเรียกเก็บประกัน */}
                     <td className="px-3 min-[1500px]:px-2 py-2">
                       <input type="text" disabled={dDeduct} name="pay_deduct_fee" defaultValue={zeroBlank(payV?.saved?.deduct_fee)}
                         className={`w-full border rounded px-2 py-1 text-sm text-right ${dDeduct ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`} />
+                      {/* ขากลับ: เลือกเหตุผลไว้แล้วแต่ยังไม่ใส่ยอด = ตั้งใจจะหักแต่ลืมกรอก
+                          ยอดจะเป็น 0 ทั้งที่ในบันทึกมีเหตุผลหักเงินค้างอยู่ (user ขอ 01/09/69) */}
+                      {liveSum.deduct === 0 && liveSum.reasoned && (
+                        <div className="mt-1 text-[11px] text-red-600">{'⚠ กรอกยอด "หักเงิน"'}</div>
+                      )}
                     </td>
                     <td className="px-3 min-[1500px]:px-2 py-2">
                       <input type="text" disabled={dDeduct} name="deduct_reason" placeholder="เหตุผลอื่น"
@@ -2704,29 +2707,47 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               ว่างไว้ = ใช้ค่าตั้งต้น (กติกาเดียวกับฝั่ง backend) */}
                           <div className="flex items-center gap-1.5">
                             <label className="flex items-center gap-1.5">
-                              <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
+                              <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)}
+                                onChange={(e) => {
+                                  const amt = railRef.current?.querySelector<HTMLInputElement>('[name="out_of_area_amt"]');
+                                  if (amt) amt.value = e.currentTarget.checked ? (amt.value.trim() || String(OUT_OF_AREA_AMT)) : '';
+                                  /** ⛔ ต้องเรียกเอง — ตัวฟังที่รางทำงาน**ก่อน** onChange ของ React
+                                   *  (native bubble ถึง div ก่อนถึง root) ยอดจะคิดจากค่าเก่าไปหนึ่งจังหวะ */
+                                  recalcSums();
+                                }} />
                               <span className="text-gray-700">นอกพื้นที่</span>
                             </label>
                             {/* ⛔ ช่องยอดต้องอยู่ **นอก** <label> — อยู่ในนั้นคลิกเพื่อพิมพ์จะไปสลับช่องติ๊กแทน
                                 ⛔ key จำเป็นเหมือนช่องติ๊ก ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา
                                    defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
-                            <input type="text" disabled={dPay} name="out_of_area_amt" key={`ooa-${String(payV?.saved?.out_of_area_amt ?? '')}`}
-                              defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)} placeholder="50"
-                              title="ว่างไว้ = ใช้ค่าตั้งต้น 50 บาท · กรอกเองได้ถ้าเคสนี้จ่ายมากกว่านั้น"
+                            <input type="text" disabled={dPay} name="out_of_area_amt"
+                              key={`ooa-${String(payV?.saved?.out_of_area ?? '')}-${String(payV?.saved?.out_of_area_amt ?? '')}`}
+                              defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)
+                                || (payV?.saved?.out_of_area ? String(OUT_OF_AREA_AMT) : '')}
+                              title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 50 บาท)"
                               className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <label className="flex items-center gap-1.5">
-                              <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
+                              <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)}
+                                onChange={(e) => {
+                                  const amt = railRef.current?.querySelector<HTMLInputElement>('[name="out_of_hours_amt"]');
+                                  if (amt) amt.value = e.currentTarget.checked ? (amt.value.trim() || String(OUT_OF_HOURS_AMT)) : '';
+                                  /** ⛔ ต้องเรียกเอง — ตัวฟังที่รางทำงาน**ก่อน** onChange ของ React
+                                   *  (native bubble ถึง div ก่อนถึง root) ยอดจะคิดจากค่าเก่าไปหนึ่งจังหวะ */
+                                  recalcSums();
+                                }} />
                               <span className="text-gray-700">นอกเวลา</span>
                             </label>
                             {/* ⛔ ช่องยอดต้องอยู่ **นอก** <label> — อยู่ในนั้นคลิกเพื่อพิมพ์จะไปสลับช่องติ๊กแทน
                                 ⛔ key จำเป็นเหมือนช่องติ๊ก ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา
                                    defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
-                            <input type="text" disabled={dPay} name="out_of_hours_amt" key={`ooh-${String(payV?.saved?.out_of_hours_amt ?? '')}`}
-                              defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)} placeholder="100"
-                              title="ว่างไว้ = ใช้ค่าตั้งต้น 100 บาท · กรอกเองได้ถ้าเคสนี้จ่ายมากกว่านั้น"
+                            <input type="text" disabled={dPay} name="out_of_hours_amt"
+                              key={`ooh-${String(payV?.saved?.out_of_hours ?? '')}-${String(payV?.saved?.out_of_hours_amt ?? '')}`}
+                              defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)
+                                || (payV?.saved?.out_of_hours ? String(OUT_OF_HOURS_AMT) : '')}
+                              title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 100 บาท)"
                               className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>

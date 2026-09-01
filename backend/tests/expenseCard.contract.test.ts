@@ -164,9 +164,9 @@ check('⛔ ช่องยอดอยู่นอก <label> ของช่อ
  *    เปลี่ยน ช่องจะว่างค้าง แล้วกดบันทึกทีเดียวทับยอดที่กรอกเองด้วยค่าตั้งต้น
  *    (แกนเดียวกับบั๊ก daily_check / deduct_late ที่เคยเจอ 19/08/69)
  */
-check('ช่องยอดมี key ผูกกับค่าที่โหลดมา',
-      /key=\{`ooa-\$\{String\(payV\?\.saved\?\.out_of_area_amt/.test(ui)
-      && /key=\{`ooh-\$\{String\(payV\?\.saved\?\.out_of_hours_amt/.test(ui));
+check('ช่องยอดมี key ผูกกับทั้งช่องติ๊กและยอดที่โหลดมา',
+      ui.includes("ooa-${String(payV?.saved?.out_of_area ?? '')}-${String(payV?.saved?.out_of_area_amt ?? '')}")
+      && ui.includes("ooh-${String(payV?.saved?.out_of_hours ?? '')}-${String(payV?.saved?.out_of_hours_amt ?? '')}"));
 /** ว่าง = ใช้ค่าตั้งต้น (กติกาเดียวกับ num() ?? 50 ฝั่ง backend) */
 check('ว่างไว้ = ใช้ค่าตั้งต้น ทั้งตอนคิดยอดสดและตอนบันทึก',
       ui.includes("amt('out_of_area_amt', OUT_OF_AREA_AMT)")
@@ -192,14 +192,44 @@ console.log('\n── หักเงินต้องมีเหตุผล 
  * user ขอ 01/09/69 — หักเงินโดยไม่มีเหตุผลกำกับ ผู้สำรวจถามกลับมาก็ตอบไม่ได้
  * และย้อนดูทีหลังไม่รู้ว่าหักเพราะอะไร
  */
-check('เตือนเมื่อใส่ยอดหักเงินแล้วยังไม่ระบุเหตุผล',
-      ui.includes('{liveSum.deduct > 0 && !liveSum.reasoned && ('));
+check('ใส่ยอดแล้วไม่มีเหตุผล → เตือน',
+      ui.includes('{liveSum.deduct > 0 && !liveSum.reasoned && (')
+      && ui.includes(String.raw`{'⚠ เลือกเหตุผล "หักเงิน"'}`));
+/**
+ * ขากลับก็ต้องเตือน (user ขอ 01/09/69) — เลือกเหตุผลไว้แล้วแต่ลืมใส่ยอด
+ * = ตั้งใจจะหักแต่ยอดเป็น 0 ทั้งที่เหตุผลหักเงินค้างอยู่ในบันทึก
+ */
+check('มีเหตุผลแล้วไม่ใส่ยอด → เตือน',
+      ui.includes('{liveSum.deduct === 0 && liveSum.reasoned && (')
+      && ui.includes(String.raw`{'⚠ กรอกยอด "หักเงิน"'}`));
 /** พิมพ์ "เหตุผลอื่น" เองก็ถือว่าระบุแล้ว — ไม่บังคับว่าต้องติ๊ก 2 ข้อนี้เท่านั้น */
 check('ช่องเหตุผลอื่นที่พิมพ์เองก็นับ',
       ui.includes("on('deduct_late') || on('deduct_docs') || txt('deduct_reason') !== ''"));
 /** เตือนเฉย ๆ — user ขอแค่ "แจ้งเตือน" ไม่ได้ขอให้บล็อก */
 check('เป็นคำเตือน ไม่บล็อกการบันทึก',
       !/reasoned[\s\S]{0,200}?(return false|setSaveMsg\('บันทึกไม่)/.test(ui));
+
+
+console.log('\n── ช่องยอดตัวปรับ: ไม่ติ๊ก = ว่าง · ติ๊ก = เลขจริง ──');
+/**
+ * user ขอ 01/09/69: เลขจาง ๆ (placeholder) อ่านแล้วไม่รู้ว่าเป็นค่าที่ใช้จริงหรือแค่ตัวอย่าง
+ * → ไม่ติ๊ก = ช่องว่างเปล่า · ติ๊ก = เติมเลขจริงลงช่อง แก้ทับได้
+ */
+check('ไม่มี placeholder ตัวจางในช่องยอดแล้ว',
+      !/name="out_of_(area|hours)_amt"[sS]{0,300}?placeholder=/.test(ui));
+check('ติ๊กแล้วเติมเลขจริง · เอาติ๊กออกแล้วล้างช่อง',
+      ui.includes(String.raw`amt.value = e.currentTarget.checked ? (amt.value.trim() || String(OUT_OF_AREA_AMT)) : ''`)
+      && ui.includes(String.raw`amt.value = e.currentTarget.checked ? (amt.value.trim() || String(OUT_OF_HOURS_AMT)) : ''`));
+/** แถวที่บันทึกไว้ก่อนมีช่องนี้: ติ๊กไว้แต่ไม่มียอด → ต้องโชว์ค่าตั้งต้น ไม่ใช่ช่องว่าง */
+check('งานเก่าที่ติ๊กไว้แต่ยังไม่มียอด โชว์ค่าตั้งต้น',
+      ui.includes(String.raw`|| (payV?.saved?.out_of_area ? String(OUT_OF_AREA_AMT) : '')`));
+/**
+ * ⛔ ตัวฟัง input ที่ผูกไว้กับ<div>รางทำงาน **ก่อน** onChange ของ React เสมอ
+ *    (native event bubble ถึง div ก่อนถึง root ที่ React ดัก) — ถ้าไม่เรียก recalcSums
+ *    เองหลังแก้ค่า ยอดรวมจะช้าไปหนึ่งจังหวะ (ติ๊กแล้วยอดยังไม่ขยับจนกว่าจะแตะช่องอื่น)
+ */
+check('⛔ onChange เรียก recalcSums เองหลังเติม/ล้างยอด',
+      ui.split('recalcSums();').length - 1 >= 4);
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
