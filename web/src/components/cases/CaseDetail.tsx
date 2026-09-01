@@ -598,6 +598,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       deduct_fee: pvv.pay_deduct_fee, deduct_late: pvv.deduct_late,
       deduct_docs: pvv.deduct_docs, deduct_reason: pvv.deduct_reason,
       out_of_area: pvv.out_of_area, out_of_hours: pvv.out_of_hours,
+      out_of_area_amt: pvv.out_of_area_amt, out_of_hours_amt: pvv.out_of_hours_amt,
       special_tumbon: pvv.special_tumbon, daily_check: pvv.daily_check,
       total: pvv.pay_total,
     },
@@ -653,22 +654,33 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *    ถูกบันทึก → ไหลต่อไปถึง XML และหน้าค่าใช้จ่าย EMCS ทั้งที่ EMCS คิดยอดรวมเอง
    *    (บอทกรอกแต่ช่องรายแถวฝั่งเสนอ แล้วกด Tab ให้ EMCS รวมเอง — user ย้ำ 01/09/69)
    */
-  const [liveSum, setLiveSum] = useState({ pay: 0, ins: 0, area: 0, hours: 0, deduct: 0 });
+  const [liveSum, setLiveSum] = useState(
+    { pay: 0, ins: 0, area: 0, hours: 0, deduct: 0, reasoned: false });
   const recalcSums = useCallback(() => {
     const root = railRef.current;
     if (!root) return;
     const el = (n: string) => root.querySelector<HTMLInputElement>(`[name="${n}"]`);
     const num = (n: string) => Number(String(el(n)?.value ?? '').replace(/,/g, '')) || 0;
     const on = (n: string) => Boolean(el(n)?.checked);
+    const txt = (n: string) => String(el(n)?.value ?? '').trim();
+    /** ว่าง = ใช้ค่าตั้งต้น · 0 ที่กรอกเองถือเป็น 0 จริง — ให้ตรงกับ num() ฝั่ง backend */
+    const amt = (n: string, dflt: number) => {
+      const t = txt(n).replace(/,/g, '');
+      if (t === '') return dflt;
+      const v = Number(t);
+      return Number.isFinite(v) ? v : dflt;
+    };
     const r2 = (v: number) => Math.round(v * 100) / 100;
     const ins = r2(INS_MONEY_INPUTS.reduce((t, k) => t + num(k), 0));
-    const area = on('out_of_area') ? OUT_OF_AREA_AMT : 0;
-    const hours = on('out_of_hours') ? OUT_OF_HOURS_AMT : 0;
+    const area = on('out_of_area') ? amt('out_of_area_amt', OUT_OF_AREA_AMT) : 0;
+    const hours = on('out_of_hours') ? amt('out_of_hours_amt', OUT_OF_HOURS_AMT) : 0;
     const deduct = Math.abs(num('pay_deduct_fee'));
+    /** หักเงินต้องมีเหตุผลกำกับ — ติ๊กข้อใดข้อหนึ่ง หรือพิมพ์เหตุผลอื่นก็นับ */
+    const reasoned = on('deduct_late') || on('deduct_docs') || txt('deduct_reason') !== '';
     const pay = r2(PAY_MONEY_INPUTS.reduce((t, k) => t + num(k), 0) + area + hours - deduct);
     setLiveSum((prev) => (prev.pay === pay && prev.ins === ins && prev.area === area
-      && prev.hours === hours && prev.deduct === deduct)
-      ? prev : { pay, ins, area, hours, deduct });
+      && prev.hours === hours && prev.deduct === deduct && prev.reasoned === reasoned)
+      ? prev : { pay, ins, area, hours, deduct, reasoned });
   }, []);
   /**
    * พิมพ์ที่ช่องไหนในรางขวาก็คิดใหม่ — ฟังที่รางทั้งราง ไม่ต้องแขวน onChange ทีละช่อง
@@ -1183,6 +1195,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
         }
         for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
+        /**
+         * ยอดนอกพื้นที่/นอกเวลาที่กรอกเอง — ว่างไว้ = null แล้ว backend ใช้ค่าตั้งต้น 50/100
+         * ⛔ ต้องส่งทุกครั้ง (แม้ค่าว่าง) เพราะ survey_pay เป็น upsert ทั้งแถว —
+         *    ไม่ส่ง = คอลัมน์ถูกเขียนทับเป็น null ยอดที่เคยกรอกเองหายเงียบ
+         */
+        for (const f of ['out_of_area_amt', 'out_of_hours_amt']) {
+          payBody[f] = String(data[f] ?? '').replace(/,/g, '').trim() || null;
+        }
         // ⛔ ไม่บังคับให้ระบุเหตุผลตอนหักเงิน (user เคาะ 17/08/69) — เดิมบล็อกการบันทึกทั้งหน้า
         // เคสที่ไม่มีใครแตะยอดเลย ไม่ต้องยิง — กันไม่ให้เกิดแถว survey_pay เปล่าทุกครั้งที่กดบันทึก
         // แต่ถ้าเคยมีแถวอยู่แล้วต้องยิงเสมอ ไม่งั้นลบยอดที่กรอกผิดไว้ไม่ได้
@@ -2648,6 +2668,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           <input type="checkbox" disabled={dDeduct} key={`deduct_docs-${String(payV?.saved?.deduct_docs ?? "")}`} name="deduct_docs" defaultChecked={Boolean(payV?.saved?.deduct_docs)} />งานไม่เรียบร้อย
                         </label>
                       </div>
+                      {/* หักเงินแล้วต้องบอกเหตุผล (user ขอ 01/09/69) — ยอดที่หักไปโดยไม่มีเหตุผล
+                          กำกับ ผู้สำรวจถามกลับมาก็ตอบไม่ได้ และ audit ย้อนหลังไม่รู้ว่าหักเพราะอะไร
+                          · ช่อง "เหตุผลอื่น" ที่พิมพ์เองก็นับ ไม่ใช่บังคับให้ติ๊กเท่านั้น
+                          · เตือนเฉย ๆ ไม่บล็อกการบันทึก — สีแดงบนหน้านี้แปลว่า "ยังกรอกไม่ครบ" */}
+                      {liveSum.deduct > 0 && !liveSum.reasoned && (
+                        <div className="mt-1 text-[11px] text-red-600">
+                          ⚠ หักเงินแล้วยังไม่ได้ระบุเหตุผล — ติ๊กข้อใดข้อหนึ่ง หรือกรอกช่อง &quot;เหตุผลอื่น&quot;
+                        </div>
+                      )}
                     </td>
                     {/* สลับให้ตรงกับแถวอื่น: คอลัมน์ 3 = ฝั่งพนักงาน · คอลัมน์ 4 = ฝั่งเรียกเก็บประกัน */}
                     <td className="px-3 min-[1500px]:px-2 py-2">
@@ -2670,14 +2699,37 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2">
                       <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                          <label className="flex items-center gap-1.5">
-                            <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
-                            <span className="text-gray-700">นอกพื้นที่</span>
-                          </label>
-                          <label className="flex items-center gap-1.5">
-                            <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
-                            <span className="text-gray-700">นอกเวลา</span>
-                          </label>
+                          {/* ── ยอดนอกพื้นที่/นอกเวลาแก้เองได้ ── (user ขอ 01/09/69)
+                              ค่าตั้งต้น 50/100 เป็นแค่ค่าปกติ บางเคสจ่ายมากกว่านั้น
+                              ว่างไว้ = ใช้ค่าตั้งต้น (กติกาเดียวกับฝั่ง backend) */}
+                          <div className="flex items-center gap-1.5">
+                            <label className="flex items-center gap-1.5">
+                              <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
+                              <span className="text-gray-700">นอกพื้นที่</span>
+                            </label>
+                            {/* ⛔ ช่องยอดต้องอยู่ **นอก** <label> — อยู่ในนั้นคลิกเพื่อพิมพ์จะไปสลับช่องติ๊กแทน
+                                ⛔ key จำเป็นเหมือนช่องติ๊ก ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา
+                                   defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
+                            <input type="text" disabled={dPay} key={`ooa-${String(payV?.saved?.out_of_area_amt ?? '')}`}
+                              name="out_of_area_amt" defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)} placeholder="50"
+                              title="ว่างไว้ = ใช้ค่าตั้งต้น 50 บาท · กรอกเองได้ถ้าเคสนี้จ่ายมากกว่านั้น"
+                              className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
+                            <span className="text-xs text-gray-400">บาท</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <label className="flex items-center gap-1.5">
+                              <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
+                              <span className="text-gray-700">นอกเวลา</span>
+                            </label>
+                            {/* ⛔ ช่องยอดต้องอยู่ **นอก** <label> — อยู่ในนั้นคลิกเพื่อพิมพ์จะไปสลับช่องติ๊กแทน
+                                ⛔ key จำเป็นเหมือนช่องติ๊ก ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา
+                                   defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
+                            <input type="text" disabled={dPay} key={`ooh-${String(payV?.saved?.out_of_hours_amt ?? '')}`}
+                              name="out_of_hours_amt" defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)} placeholder="100"
+                              title="ว่างไว้ = ใช้ค่าตั้งต้น 100 บาท · กรอกเองได้ถ้าเคสนี้จ่ายมากกว่านั้น"
+                              className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
+                            <span className="text-xs text-gray-400">บาท</span>
+                          </div>
                           <label className="flex items-center gap-1.5">
                             <input type="checkbox" disabled={dPay} key={`special_tumbon-${String(payV?.saved?.special_tumbon ?? "")}`} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
                             <span className="text-gray-700">ตำบลพิเศษ</span>

@@ -1188,6 +1188,7 @@ export const caseService = {
                 sp.daily_fee AS pay_daily_fee, sp.other_fee AS pay_other_fee,
                 sp.deduct_fee AS pay_deduct_fee, sp.deduct_late, sp.deduct_docs,
                 sp.deduct_reason, sp.out_of_area, sp.out_of_hours,
+                sp.out_of_area_amt, sp.out_of_hours_amt,
                 sp.special_tumbon, sp.daily_check, sp.total AS pay_total
            FROM cases c
            JOIN survey_reports sr ON sr.case_id = c.id

@@ -144,5 +144,62 @@ console.log('\n── ป้ายเหตุผลหักเงิน ──
         paySv.includes('deduct_docs=EXCLUDED.deduct_docs') && ui.includes('name="deduct_docs"'));
 }
 
+
+console.log('\n── นอกพื้นที่/นอกเวลา: กรอกยอดเองได้ ──');
+/**
+ * user แจ้ง 01/09/69: 50/100 เป็นแค่ยอดปกติ บางเคสจ่ายมากกว่านั้น
+ * คอลัมน์ out_of_area_amt / out_of_hours_amt กับตัวรับฝั่ง backend **มีอยู่แล้ว**
+ * (migration 037) — ที่ขาดคือช่องกรอกบนหน้าเว็บกับการส่งค่าไป
+ */
+check('มีช่องกรอกยอดทั้ง 2 ตัว',
+      ui.includes('name="out_of_area_amt"') && ui.includes('name="out_of_hours_amt"'));
+/**
+ * ⛔ ช่องยอดต้องอยู่ **นอก** <label> ของช่องติ๊ก — <label> ส่งคลิกต่อให้ control ตัวแรก
+ *    คลิกเพื่อพิมพ์ยอดจะกลายเป็นสลับช่องติ๊กแทน
+ */
+check('⛔ ช่องยอดอยู่นอก <label> ของช่องติ๊ก',
+      !/<label[^>]*>[\s\S]{0,400}?name="out_of_(area|hours)_amt"[\s\S]{0,200}?<\/label>/.test(ui));
+/**
+ * ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา defaultValue มาใส่ซ้ำเมื่อ props
+ *    เปลี่ยน ช่องจะว่างค้าง แล้วกดบันทึกทีเดียวทับยอดที่กรอกเองด้วยค่าตั้งต้น
+ *    (แกนเดียวกับบั๊ก daily_check / deduct_late ที่เคยเจอ 19/08/69)
+ */
+check('ช่องยอดมี key ผูกกับค่าที่โหลดมา',
+      /key=\{`ooa-\$\{String\(payV\?\.saved\?\.out_of_area_amt/.test(ui)
+      && /key=\{`ooh-\$\{String\(payV\?\.saved\?\.out_of_hours_amt/.test(ui));
+/** ว่าง = ใช้ค่าตั้งต้น (กติกาเดียวกับ num() ?? 50 ฝั่ง backend) */
+check('ว่างไว้ = ใช้ค่าตั้งต้น ทั้งตอนคิดยอดสดและตอนบันทึก',
+      ui.includes("amt('out_of_area_amt', OUT_OF_AREA_AMT)")
+      && ui.includes("amt('out_of_hours_amt', OUT_OF_HOURS_AMT)")
+      && /if \(t === ''\) return dflt;/.test(ui));
+/**
+ * ⛔ survey_pay เป็น upsert ทั้งแถว — ไม่ส่งช่องยอด = เขียนทับเป็น null
+ *    ยอดที่หัวหน้ากรอกเองหายเงียบตอนบันทึกครั้งถัดไป
+ */
+check('⛔ ส่งยอดทุกครั้งที่บันทึก แม้ค่าว่าง',
+      ui.includes("for (const f of ['out_of_area_amt', 'out_of_hours_amt']) {"));
+/** สลับดู "ครั้งอื่น" ต้องเห็นยอดของครั้งนั้น ไม่ใช่ช่องว่าง */
+{
+  const svc = read('src', 'services', 'case.service.ts');
+  check('query "ครั้งที่" ดึงยอดตัวปรับมาด้วย',
+        svc.includes('sp.out_of_area_amt, sp.out_of_hours_amt'));
+  check('หน้าเว็บแมปยอดของครั้งอื่นมาใส่ช่อง',
+        ui.includes('out_of_area_amt: pvv.out_of_area_amt'));
+}
+
+console.log('\n── หักเงินต้องมีเหตุผล ──');
+/**
+ * user ขอ 01/09/69 — หักเงินโดยไม่มีเหตุผลกำกับ ผู้สำรวจถามกลับมาก็ตอบไม่ได้
+ * และย้อนดูทีหลังไม่รู้ว่าหักเพราะอะไร
+ */
+check('เตือนเมื่อใส่ยอดหักเงินแล้วยังไม่ระบุเหตุผล',
+      ui.includes('{liveSum.deduct > 0 && !liveSum.reasoned && ('));
+/** พิมพ์ "เหตุผลอื่น" เองก็ถือว่าระบุแล้ว — ไม่บังคับว่าต้องติ๊ก 2 ข้อนี้เท่านั้น */
+check('ช่องเหตุผลอื่นที่พิมพ์เองก็นับ',
+      ui.includes("on('deduct_late') || on('deduct_docs') || txt('deduct_reason') !== ''"));
+/** เตือนเฉย ๆ — user ขอแค่ "แจ้งเตือน" ไม่ได้ขอให้บล็อก */
+check('เป็นคำเตือน ไม่บล็อกการบันทึก',
+      !/reasoned[\s\S]{0,200}?(return false|setSaveMsg\('บันทึกไม่)/.test(ui));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
