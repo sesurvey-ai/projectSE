@@ -1203,7 +1203,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         for (const k of Object.keys(data)) {
           if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
         }
-        for (const f of ['out_of_area', 'out_of_hours', 'special_tumbon']) payBody[f] = fd.has(f);
+        for (const f of ['out_of_area', 'out_of_hours']) payBody[f] = fd.has(f);
+        /**
+         * ⛔ ตำบลพิเศษถอดช่องออกจากการ์ดค่าใช้จ่ายแล้ว (user ขอ 01/09/69 — จะย้ายไปหมวด
+         *    สถานที่เกิดเหตุ) แต่คอลัมน์ยังอยู่ → ต้องส่ง**ค่าเดิม**กลับไป
+         *    ใช้ fd.has() ตรง ๆ ไม่ได้ ไม่มีช่องในฟอร์มก็ได้ false เสมอ แล้ว survey_pay
+         *    เป็น upsert ทั้งแถว = ค่าที่เคยติ๊กไว้ถูกล้างเงียบ ๆ ตอนบันทึกครั้งถัดไป
+         */
+        payBody.special_tumbon = fd.has('special_tumbon') || Boolean(pay?.saved?.special_tumbon);
         /**
          * ยอดนอกพื้นที่/นอกเวลาที่กรอกเอง — ว่างไว้ = null แล้ว backend ใช้ค่าตั้งต้น 50/100
          * ⛔ ต้องส่งทุกครั้ง (แม้ค่าว่าง) เพราะ survey_pay เป็น upsert ทั้งแถว —
@@ -2789,10 +2796,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
-                          <label className="flex items-center gap-1.5">
-                            <input type="checkbox" disabled={dPay} key={`special_tumbon-${String(payV?.saved?.special_tumbon ?? "")}`} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
-                            <span className="text-gray-700">ตำบลพิเศษ</span>
-                          </label>
                         </div>
                         {pay?.area && (pay.area.resolved ? (
                           <div className="mt-2 text-xs text-gray-500">

@@ -212,8 +212,15 @@ check('จอแคบกลับไปเรียงลงล่างเอ�
 const payFields = Array.from(
   src.matchAll(/name="(pay_[a-z_]+|deduct_[a-z]+|out_of_[a-z]+|special_tumbon|daily_check)"/g),
   (m) => m[1]);
+/**
+ * ⛔ ตำบลพิเศษไม่อยู่ในรายการนี้แล้ว — ถอดช่องออกจากการ์ด 01/09/69 (user จะย้ายไป
+ *    หมวดสถานที่เกิดเหตุ) คอลัมน์ยังอยู่ และ handleSave ส่งค่าเดิมกลับไปแทน fd.has()
+ */
 check('ช่องยอดเงินอยู่ครบ (ขาดช่องเดียว = ยอดช่องนั้นถูกล้างตอนบันทึก)',
-      payFields.length === 16, `${payFields.length} ช่อง`);
+      payFields.length === 15, `${payFields.length} ช่อง`);
+check('⛔ ถอดช่องแล้วต้องส่งค่าเดิมกลับ ไม่ใช่ false',
+      !/name="special_tumbon"/.test(src)
+      && src.includes("payBody.special_tumbon = fd.has('special_tumbon') || Boolean(pay?.saved?.special_tumbon)"));
 check('ไม่มีช่องยอดเงินช่องไหนถูกซ่อนตามขนาดจอ',
       payBlock.length > 0 && !/:hidden|className="hidden/.test(payBlock));
 
@@ -405,7 +412,7 @@ check('เวลา "บ.ประกันแจ้งสำรวจภัย"
  * ⛔ ไม่มี key = ช่องว่าง/ไม่ติ๊ก ทั้งที่ DB มีค่า แล้วกดบันทึกทีเดียวล้างของเดิมทิ้ง
  */
 console.log(String.fromCharCode(10) + '-- ยอดเงินที่โหลดทีหลังต้องขึ้นครบ --');
-for (const f of ['deduct_late', 'deduct_docs', 'out_of_area', 'out_of_hours', 'special_tumbon']) {
+for (const f of ['deduct_late', 'deduct_docs', 'out_of_area', 'out_of_hours']) {
   check(`ช่องติ๊ก "${f}" มี key ผูกกับค่าที่โหลดมา`,
         src.includes('key={`' + f + '-${String(payV?.saved?.' + f));
 }
