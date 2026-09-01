@@ -35,16 +35,30 @@
             android:singleLine="true"
             android:ellipsize="end" />
 
-        <TextView
+        <!-- ปุ่มปิด/เปิดเสียง — วางไอคอนไว้ 2 ตัวแล้วสลับ "ซ่อน/แสดง"
+             ⛔ ห้ามใช้ setImageViewResource สลับรูป: บนเครื่องจริง (Samsung) มันไม่อัปเดต
+                vector ใน RemoteViews เลย ตรรกะทำงานถูกแต่ไอคอนค้างที่เดิม (เจอ 01/09/69)
+                setViewVisibility ทำงานแน่นอน -->
+        <ImageView
             android:id="@+id/btn_mute"
-            android:layout_width="wrap_content"
+            android:layout_width="34dp"
             android:layout_height="30dp"
-            android:gravity="center"
-            android:paddingHorizontal="10dp"
-            android:text="🔇"
-            android:textSize="16sp"
-            android:textColor="#666666"
+            android:padding="6dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_bell"
+            android:contentDescription="ปิดเสียงแจ้งเตือน"
             android:background="@drawable/btn_mute_notif_bg" />
+
+        <ImageView
+            android:id="@+id/btn_mute_off"
+            android:layout_width="34dp"
+            android:layout_height="30dp"
+            android:padding="6dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_bell_off"
+            android:contentDescription="เปิดเสียงแจ้งเตือน"
+            android:background="@drawable/btn_mute_notif_bg"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- เลขเคลม — ส่งมากับแจ้งเตือนอยู่แล้ว เดิมถูกตัดทิ้งเพราะพื้นที่จำกัด

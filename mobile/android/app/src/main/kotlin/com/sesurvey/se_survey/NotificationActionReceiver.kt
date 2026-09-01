@@ -22,8 +22,27 @@ class NotificationActionReceiver : BroadcastReceiver() {
         Log.d("NotifAction", "Received action=$action caseId=$caseId notifId=$notificationId")
 
         if (action == ACTION_MUTE) {
-            // ปิดเสียงอย่างเดียว — ไม่ปิด notification
-            NotificationHelper.stopAlarm()
+            /**
+             * สลับปิด/เปิดเสียง — **ไม่ปิด notification** งานยังไม่ถูกรับ
+             *
+             * ⛔ ต้องโพสต์แจ้งเตือนใหม่ด้วย ไม่ใช่แค่หยุดเสียง — ไม่งั้นไอคอนเหมือนเดิม
+             *    ช่างไม่รู้ว่ากดติดไหม แล้วเปิดเสียงกลับก็ไม่ได้ (user แจ้ง 01/09/69)
+             */
+            val nextMuted = intent.getBooleanExtra("next_muted", true)
+            if (nextMuted) NotificationHelper.stopAlarm() else NotificationHelper.startAlarm(context)
+            NotificationHelper.showNotificationBar(
+                context,
+                id = notificationId,
+                title = intent.getStringExtra("title") ?: "งานสำรวจใหม่",
+                caseId = caseId,
+                incidentLocation = intent.getStringExtra("incident_location") ?: "",
+                claimNo = intent.getStringExtra("claim_no") ?: "",
+                insuranceCompany = intent.getStringExtra("insurance_company") ?: "",
+                // ⛔ ห้ามพ่วง fullScreenIntent ตอนโพสต์ทับ — จอดับอยู่ระบบจะเด้งหน้าเต็มจอ
+                //    ขึ้นมาใหม่ทั้งที่ช่างเพิ่งกดแค่ปิดเสียง
+                withFullScreen = false,
+                muted = nextMuted,
+            )
             return
         }
 

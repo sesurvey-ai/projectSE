@@ -195,5 +195,30 @@ check('ใช้ activity PendingIntent (กัน trampoline)',
 check('เปิดแผ่นเหตุผลทั้ง onCreate และ onNewIntent',
       (activity.match(/getBooleanExtra\("open_decline", false\)\) showDeclineSheet\(true\)/g) || []).length === 2);
 
+console.log('\n── ปุ่มปิด/เปิดเสียงบนแถบ ──');
+const receiver = kt('NotificationActionReceiver.kt');
+check('มีไอคอนกระดิ่ง 2 ตัวทั้งแบบย่อและขยาย',
+      [barBig, barSmall].every((f) => /@\+id\/btn_mute"/.test(f) && /@\+id\/btn_mute_off"/.test(f)));
+/**
+ * ⛔ ห้ามสลับรูปด้วย setImageViewResource — บนเครื่องจริง (Samsung) ไม่อัปเดต vector
+ *    ใน RemoteViews เลย ตรรกะทำงานถูกทุกอย่างแต่ไอคอนค้างที่เดิม ผู้ใช้นึกว่ากดไม่ติด
+ *    (เจอจากการเทสจริง 01/09/69) → ใช้ setViewVisibility สลับไอคอน 2 ตัวแทน
+ */
+check('สลับไอคอนด้วย visibility ไม่ใช่ setImageViewResource',
+      /setViewVisibility\(R\.id\.btn_mute_off/.test(helper) && !/setImageViewResource\(R\.id\.btn_mute/.test(helper));
+check('กดได้ทั้งสองไอคอน (ไม่งั้นตอนปิดเสียงแล้วกดกลับไม่ได้)',
+      /setOnClickPendingIntent\(R\.id\.btn_mute_off, mutePi\)/.test(helper));
+/** ปิดแล้วต้องเปิดกลับได้ — เดิมเป็นทางเดียว กดแล้วจบ ไม่มีทางย้อน */
+check('สลับได้จริงทั้งปิดและเปิด',
+      /if \(nextMuted\) NotificationHelper\.stopAlarm\(\) else NotificationHelper\.startAlarm\(context\)/.test(receiver));
+check('โพสต์แจ้งเตือนใหม่เพื่อสลับไอคอน', /NotificationHelper\.showNotificationBar\(/.test(receiver));
+/**
+ * ⛔ โพสต์ทับตอนกดปิดเสียง **ห้ามพ่วง fullScreenIntent** — จอดับอยู่ระบบจะเด้ง
+ *    หน้าเต็มจอขึ้นมาใหม่ทั้งที่ช่างเพิ่งกดแค่ปิดเสียง
+ */
+check('โพสต์ทับไม่พ่วงหน้าเต็มจอ', /withFullScreen = false/.test(receiver));
+/** user เคาะ 01/09/69: หน้าสรุปรับงาน 1.8 → 0.8 วิ */
+check('หน้าสรุปค้าง 0.8 วินาที', /SUMMARY_MS = 800L/.test(activity));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);

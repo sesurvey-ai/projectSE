@@ -35,8 +35,9 @@ class IncomingCallActivity : Activity() {
         )
         /** เวลานับถอยหลังบนหัวจอ — ล็อกให้เท่ากับเพดานเสียงเตือน (NotificationHelper.ALARM_MAX_MS) */
         private const val COUNTDOWN_SEC = 60
-        /** หน้าสรุปค้างไว้กี่มิลลิวินาที — นานพอให้อ่านเลขเคลมทัน สั้นพอไม่ขวางทาง */
-        private const val SUMMARY_MS = 1800L
+        /** หน้าสรุปค้างไว้กี่มิลลิวินาที — user เคาะ 0.8 วิ (01/09/69): พอกันกดพลาดตอนงานเข้าติดกัน
+         *  แต่ไม่ขวางช่างที่กำลังรีบออกหน้างาน */
+        private const val SUMMARY_MS = 800L
     }
 
     private var caseId: Int = 0

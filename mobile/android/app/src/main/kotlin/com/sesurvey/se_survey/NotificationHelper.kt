@@ -152,9 +152,9 @@ object NotificationHelper {
     }
 
     // ── Notification Bar ──────────────────────────────────────────
-    private fun showNotificationBar(context: Context, id: Int, title: String,
-                                     caseId: Int, incidentLocation: String, claimNo: String, insuranceCompany: String,
-                                     withFullScreen: Boolean = true) {
+    fun showNotificationBar(context: Context, id: Int, title: String,
+                            caseId: Int, incidentLocation: String, claimNo: String, insuranceCompany: String,
+                            withFullScreen: Boolean = true, muted: Boolean = false) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Custom layout
@@ -216,18 +216,38 @@ object NotificationHelper {
         )
         customView.setOnClickPendingIntent(R.id.btn_decline, declinePi)
 
-        // Mute button
+        // ปุ่มปิด/เปิดเสียง — **สลับได้จริง** และไอคอนบอกสถานะปัจจุบัน
+        //
+        // ⛔ เดิมเป็นทางเดียว: กดแล้วเสียงหยุด แต่ไอคอนเหมือนเดิมทุกประการ กดซ้ำก็ไม่มีอะไรเกิด
+        //    ช่างไม่มีทางรู้ว่ากดติดหรือยัง และเปิดเสียงกลับไม่ได้ (user แจ้ง 01/09/69)
+        // ⛔ ต้องส่งข้อมูลการ์ดไปกับ intent ด้วย — receiver ต้องโพสต์แจ้งเตือนใหม่เพื่อสลับไอคอน
+        //    ถ้าไม่มีข้อมูลจะโพสต์ทับด้วยการ์ดเปล่า (สถานที่/เลขเคลมหายไปเฉย ๆ)
         val muteIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = NotificationActionReceiver.ACTION_MUTE
             putExtra(NotificationActionReceiver.EXTRA_NOTIFICATION_ID, id)
             putExtra(NotificationActionReceiver.EXTRA_CASE_ID, caseId)
+            putExtra("title", title)
+            putExtra("incident_location", incidentLocation)
+            putExtra("claim_no", claimNo)
+            putExtra("insurance_company", insuranceCompany)
+            putExtra("with_full_screen", withFullScreen)
+            putExtra("next_muted", !muted)   // กดแล้วจะกลายเป็นสถานะตรงข้าม
         }
         val mutePi = PendingIntent.getBroadcast(
             context, id * 2 + 3, muteIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        customView.setOnClickPendingIntent(R.id.btn_mute, mutePi)
-        compactView.setOnClickPendingIntent(R.id.btn_mute, mutePi)
+        // ⛔ สลับด้วย "ซ่อน/แสดง" ไอคอน 2 ตัว ห้ามใช้ setImageViewResource —
+        //    บนเครื่องจริง (Samsung) มันไม่อัปเดต vector ใน RemoteViews เลย
+        //    ตรรกะทำงานถูกทุกอย่างแต่ไอคอนค้างที่เดิม ผู้ใช้เลยนึกว่ากดไม่ติด (เจอ 01/09/69)
+        val onVis = if (muted) android.view.View.GONE else android.view.View.VISIBLE
+        val offVis = if (muted) android.view.View.VISIBLE else android.view.View.GONE
+        for (v in listOf(customView, compactView)) {
+            v.setViewVisibility(R.id.btn_mute, onVis)
+            v.setViewVisibility(R.id.btn_mute_off, offVis)
+            v.setOnClickPendingIntent(R.id.btn_mute, mutePi)
+            v.setOnClickPendingIntent(R.id.btn_mute_off, mutePi)
+        }
 
         // แตะ notification → เปิดหน้าเต็มจอ (การ์ด) กลับมา
         val tapIntent = Intent(context, IncomingCallActivity::class.java).apply {
