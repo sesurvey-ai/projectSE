@@ -219,7 +219,7 @@ next.onclick=function(){if(i<L.length-1){i++;show();}};
 img.onclick=function(){img.className=img.className?'':'full';};
 if(del)del.onclick=function(){
   if(!L.length)return;
-  if(!confirm('ลบรูปนี้ออกจากเคส?\n\nลบแล้วกู้คืนไม่ได้'))return;
+  if(!confirm('ลบรูปนี้ออกจากเคส? ลบแล้วกู้คืนไม่ได้'))return;
   del.disabled=true;
   try{window.opener.__seDeletePhoto(L[i].id);}catch(e){alert('ลบไม่สำเร็จ — หน้าเว็บหลักถูกปิดไปแล้ว');del.disabled=false;}};
 // หน้าเว็บแม่ส่งรายการใหม่เข้ามาหลังลบ/เพิ่มรูป

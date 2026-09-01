@@ -60,5 +60,35 @@ check('ลบแล้วรายการในหน้าต่างอั�
 check('ยืนยันก่อนลบที่ตัวหน้าต่างเอง (confirm ของหน้าแม่จะไปโผล่ข้างหลัง)',
       winPart.includes("confirm('ลบรูปนี้ออกจากเคส"));
 
+console.log('\n── สคริปต์ในหน้าต่างต้องรันได้จริง ──');
+/**
+ * ⛔ **การ์ดสำคัญที่สุดของไฟล์นี้** — สคริปต์ของหน้าต่างดูรูปเป็น "สตริงซ้อนสองชั้น"
+ *    (TS template literal → JS ในหน้าต่าง) ตัว escape ผิดตัวเดียวทั้งสคริปต์ตายเงียบ:
+ *    หน้าต่างเปิดขึ้นมาโล่ง ๆ ไม่มีรูป ไม่มีปุ่มไหนทำงาน และ **TypeScript คอมไพล์ผ่าน**
+ *
+ *    เคยพลาดมาแล้วจริง 01/09/69: เขียน '...?\n\n...' ในข้อความยืนยันลบ → template literal
+ *    แปลง \n เป็นขึ้นบรรทัดจริง → สตริงใน JS ของหน้าต่างขาดกลางคัน → SyntaxError
+ *
+ *    เทสนี้ประกอบสคริปต์แบบเดียวกับตอนรันจริงแล้วสั่ง parse — ไม่ผ่านคือพังแน่นอน
+ */
+const tplStart = gallery.indexOf('w.document.write(`') + 'w.document.write(`'.length;
+const tplEnd = gallery.indexOf('</html>`);');
+const rawTpl = gallery.slice(tplStart, tplEnd) + '</html>';
+let genErr: string | null = null;
+try {
+  const build = new Function('list', 'start', 'canDelete', 'return `' + rawTpl + '`');
+  const html = build(
+    [{ id: 1, src: 'http://x/a.jpg?token=t', label: 'รูปรถประกัน' },
+     { id: 2, src: 'http://x/b.jpg?token=t', label: 'รูปรถคู่กรณี' }],
+    0, true,
+  ) as string;
+  const js = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
+  if (!js.trim()) throw new Error('แกะสคริปต์ออกมาไม่ได้ — ปิดแท็ก </script> ถูกต้องไหม');
+  new Function(js);
+} catch (e) {
+  genErr = (e as Error).message;
+}
+check('สคริปต์ที่ฝังลงหน้าต่าง parse ผ่าน', genErr === null, genErr ?? '');
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
