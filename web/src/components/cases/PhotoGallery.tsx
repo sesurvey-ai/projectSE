@@ -91,8 +91,67 @@ export default function PhotoGallery(
     } finally { setDeleting(null); }
   };
 
+  /**
+   * เปิดรูปใน "หน้าต่างแยก" — user สั่ง 01/09/69
+   *
+   * ทำไมไม่ใช้กล่องทับกลางจอแบบเดิม: ผู้ตรวจต้องอ่านรูปเทียบกับช่องข้อมูลบนหน้าเว็บ
+   * ไปพร้อมกัน กล่องทับจอบังฟอร์มทั้งหน้า ต้องปิด-เปิดสลับไปมาทุกช่องที่ตรวจ
+   *
+   * ⛔ **ห้ามเปิด URL รูปตรง ๆ** ด้วย window.open(url) — URL มี token ติดอยู่
+   *    (getPhotoUrl ส่ง token ทาง query เพราะ <img> แนบ header ไม่ได้) เปิดตรง ๆ
+   *    = token ไปโผล่บน address bar และค้างในประวัติเบราว์เซอร์
+   *    → เปิดหน้าต่างเปล่าแล้วเขียน <img> ลงไปแทน token อยู่แค่ในคำขอรูปเหมือนเดิม
+   *
+   * ⛔ ตั้งชื่อหน้าต่างไว้ (se_photo_viewer) เพื่อ **ใช้ซ้ำ** — ไม่ตั้งชื่อ เคสรูป 40 ใบ
+   *    จะเปิดหน้าต่างใหม่ 40 บาน
+   */
+  const openInWindow = (p: Photo) => {
+    const w = window.open('', 'se_photo_viewer', 'width=860,height=920,scrollbars=yes,resizable=yes');
+    // เบราว์เซอร์บล็อกป๊อปอัป → ถอยไปใช้กล่องทับจอแบบเดิม ดีกว่ากดแล้วไม่มีอะไรเกิดขึ้น
+    if (!w) { setSelected(p); return; }
+
+    // ค่าที่ฝังลงหน้าต่างใหม่ผ่าน JSON.stringify ทั้งหมด — ไม่ต้อง escape HTML เอง
+    const list = photos.map((x) => ({ src: getSrc(x), label: catLabel(x.category) }));
+    const start = photos.findIndex((x) => x.id === p.id);
+
+    w.document.open();
+    w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8">
+<title>รูปเคส</title><style>
+html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,sans-serif}
+#wrap{height:100%;display:flex;flex-direction:column}
+#bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1c1c1c;font-size:13px}
+#bar button{background:#333;color:#eee;border:0;border-radius:6px;padding:6px 12px;font-size:14px;cursor:pointer}
+#bar button:hover{background:#444}
+#bar button:disabled{opacity:.35;cursor:default}
+#cap{margin-left:auto;color:#bbb}
+#view{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center}
+img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
+img.full{max-width:none;max-height:none;cursor:zoom-out}
+</style></head><body><div id="wrap">
+<div id="bar"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
+<span id="cap"></span></div>
+<div id="view"><img id="img" alt=""></div></div>
+<script>
+var L=${JSON.stringify(list)},i=${start};
+var img=document.getElementById('img'),cap=document.getElementById('cap');
+var prev=document.getElementById('prev'),next=document.getElementById('next');
+function show(){var it=L[i];img.className='';img.src=it.src;
+  cap.textContent=it.label+' · '+(i+1)+' / '+L.length;
+  document.title=it.label+' '+(i+1)+'/'+L.length;
+  prev.disabled=i<=0;next.disabled=i>=L.length-1;}
+prev.onclick=function(){if(i>0){i--;show();}};
+next.onclick=function(){if(i<L.length-1){i++;show();}};
+img.onclick=function(){img.className=img.className?'':'full';};
+document.onkeydown=function(e){if(e.key==='ArrowLeft')prev.onclick();
+  else if(e.key==='ArrowRight')next.onclick();else if(e.key==='Escape')window.close();};
+show();
+<\/script></body></html>`);
+    w.document.close();
+    w.focus();
+  };
+
   // แถบเพิ่มรูปต้องอยู่**นอก** early-return ของ "ไม่มีรูปภาพ" — เคสที่ต้นทางยังไม่ส่งรูปมาเลย
-  // คือเคสที่ต้องเพิ่มรูปมากที่สุด แต่เดิมจะไม่เห็นปุ่มเพราะจอว่าง
+  // คือเคสที่ต้องเห็นปุ่มมากที่สุด แต่เดิมจะไม่เห็นเพราะจอว่าง
   if (!photos || photos.length === 0) {
     return (
       <div>
@@ -124,7 +183,7 @@ export default function PhotoGallery(
             </div>
             <div className="flex gap-4 overflow-x-auto pb-3">
               {g.items.map((p) => (
-                <div key={p.id} className="group relative cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => setSelected(p)}>
+                <div key={p.id} className="group relative cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => openInWindow(p)} title="เปิดรูปในหน้าต่างแยก — ดูรูปพร้อมกรอกข้อมูลได้">
                   <img src={getSrc(p)} alt={catLabel(p.category)} className="w-full h-48 object-cover" />
                   {/* ปุ่มลบโผล่ตอนชี้เมาส์ — ไม่โชว์ตลอดเพราะกดโดนง่ายตอนไล่ดูรูปเร็ว ๆ */}
                   {caseId ? (
