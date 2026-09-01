@@ -20,6 +20,8 @@ export default function CaseDetailPage() {
   const [expenses, setExpenses] = useState(null);
   /** ค่ารูปตามกติกาเหมา ที่ backend คิดให้ — null = ตัดสินไม่ได้ ให้คนกรอกเอง */
   const [photoFeeSuggest, setPhotoFeeSuggest] = useState<{count:number;price:number;reason:string}|null>(null);
+  /** ตำบลที่มีเรทของตัวเอง — มาจากตารางเรท ไม่ใช่รายชื่อที่เขียนไว้ในหน้าเว็บ */
+  const [tumbonOptions, setTumbonOptions] = useState<{tumbon:string;district:string;province:string}[]>([]);
   // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้งตอนหัวหน้าคลิกโดน (backend คำนวณให้)
   const [nameWarnings, setNameWarnings] = useState<
     { tag: string; label: string; value: string; bad: string }[]>([]);
@@ -49,6 +51,7 @@ export default function CaseDetailPage() {
         setVisits(res.data.data.visits || []);
         setExpenses(res.data.data.expenses || null);
         setPhotoFeeSuggest(res.data.data.photo_fee_suggest || null);
+        setTumbonOptions(res.data.data.tumbon_options || []);
         setNameWarnings(res.data.data.emcs_name_warnings || []);
       }
     } catch { setError('ไม่สามารถโหลดข้อมูลเคสได้'); }
@@ -119,7 +122,7 @@ export default function CaseDetailPage() {
           </ul>
         </div>
       )}
-      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} visits={visits} expenses={expenses} photoFeeSuggest={photoFeeSuggest} onReviewSubmitted={fetchDetail} />
+      <CaseDetail caseData={caseData} report={report} photos={photos} review={review} visitCount={visitCount} visits={visits} expenses={expenses} photoFeeSuggest={photoFeeSuggest} tumbonOptions={tumbonOptions} onReviewSubmitted={fetchDetail} />
     </div>
   );
 }

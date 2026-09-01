@@ -302,5 +302,49 @@ check('บอกที่มาของเลขที่เติมให้'
 check('⛔ ไม่แตะช่องค่ารูป (มีกติกาเหมาของตัวเองแล้ว)',
       !ui.includes('ins_photo') && !/insFill\([^)]*photo/.test(ui));
 
+
+console.log('\n── ตัวเลือก "ตำบล" ในหมวดอุบัติเหตุ ──');
+/**
+ * user ขอ 01/09/69 — ขึ้นช่องตำบลเฉพาะอำเภอที่มีตำบลคิดเรทไม่เท่าอำเภอแม่
+ * (ตอนนี้ ศรีราชา→บ่อวิน · สัตหีบ→พลูตาหลวง) · เรทยังไม่ต่อ ทำให้เห็นตัวเลือกก่อน
+ */
+{
+  const svc3 = read('src', 'services', 'billingRates.service.ts');
+  const caseSvc = read('src', 'services', 'case.service.ts');
+  /**
+   * ⛔ **รายชื่อตำบลต้องมาจากตารางเรทเท่านั้น** — เขียนไว้ในหน้าเว็บซ้ำเมื่อไหร่
+   *    เพิ่มเรทตำบลใหม่ในหน้าแอดมินแล้วตัวเลือกไม่โผล่ (หรือโผล่แต่ไม่มีเรท)
+   *    เป็นบั๊กชนิดเดียวกับที่เคยเผลอทำกับค่าคัดประจำวันมาแล้ว
+   */
+  check('รายชื่อตำบลมาจากตารางเรท ไม่ใช่รายชื่อในโค้ด',
+        svc3.includes('FROM billing_tumbon_rates')
+        && caseSvc.includes('tumbon_options: await tumbonOptions()')
+        // ชื่อตำบลปรากฏได้เฉพาะในคอมเมนต์ — เป็น "ข้อมูล" (มีเครื่องหมายคำพูด) เมื่อไหร่ = เขียนซ้ำแล้ว
+        && !/['"](บ่อวิน|พลูตาหลวง)['"]/.test(ui)
+        && ui.includes('tumbonOptions ?? []'));
+  check('แปลงรหัสอำเภอเป็นชื่อ (ฟอร์มเก็บเป็นชื่อ ไม่ใช่รหัส)',
+        svc3.includes('TH_AMPHURS[r.parent_amphur]') && svc3.includes('TH_PROVINCES[r.parent_amphur.slice(0, 2)]'));
+}
+check('มีช่องเลือกตำบลผูกกับคอลัมน์เดิม acc_subdistrict',
+      ui.includes('name="acc_subdistrict"'));
+/** ฟอร์มเก็บ "อำเภอศรีราชา"/"กรุงเทพ ฯ" ตารางเก็บ "ศรีราชา"/"กรุงเทพฯ" — ต้องตัดคำนำหน้าก่อนเทียบ */
+check('เทียบชื่อพื้นที่โดยตัดคำนำหน้า/ช่องว่าง/ฯ',
+      ui.includes("const areaKey = (v: unknown) =>")
+      && ui.includes('areaKey(t.province) === areaKey(accProv)')
+      && ui.includes('areaKey(t.district) === areaKey(accDist)'));
+/** อำเภออื่นไม่มีตำบลที่คิดเรทต่าง → ไม่ต้องโชว์ช่องให้รก */
+check('ขึ้นเฉพาะอำเภอที่มีตำบล', ui.includes('{tumbonChoices.length > 0 && ('));
+/** เปลี่ยนจังหวัด/อำเภอแล้วตำบลเดิมค้างอยู่ = ตำบลไม่ตรงอำเภอ */
+check('เปลี่ยนจังหวัดหรืออำเภอแล้วล้างตำบล',
+      ui.includes("setAccDist('-- เขต --'); setAccTumbon('');")
+      && ui.includes("setAccDist(e.target.value); setAccTumbon('');"));
+
+console.log('\n── ชื่อแท็บในหน้าเรท ──');
+{
+  const rp = read('..', 'web', 'src', 'app', 'admin', 'billing-rates', 'page.tsx');
+  /** user เคาะ 01/09/69: ไม่ได้ "พิเศษ" อะไร แค่เป็นตำบลที่มีเรทของตัวเอง */
+  check('เปลี่ยนเป็น "เรทรายตำบล"', rp.includes("label: 'เรทรายตำบล'") && !rp.includes('ตำบลพิเศษ'));
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);

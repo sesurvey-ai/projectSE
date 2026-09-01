@@ -10,6 +10,7 @@ import { assertReportRev } from './reportRev';
 import { notifyCaseChanged } from './caseEvents';
 import { provinceOf } from './geoProvince';
 import { standardPhotoFee } from './photoFee.service';
+import { tumbonOptions } from './billingRates.service';
 import { districtCentroid } from './geoDistrict';
 import { recordMoneyChanges } from './moneyAudit';
 import { getIO } from '../socket';
@@ -1234,6 +1235,11 @@ export const caseService = {
           : null,
       // ชื่อคนที่มีอักขระซึ่ง EMCS จะล้างค่าทั้งช่องทิ้ง — เตือนคนตรวจก่อนส่งเข้า EMCS
       emcs_name_warnings: report ? emcsNameWarnings(report) : [],
+      /**
+       * ตำบลที่มีเรทของตัวเอง — หน้าตรวจเอาไปทำตัวเลือก "ตำบล" ใต้เขต/อำเภอ
+       * ⛔ มาจากตารางเรทเสมอ ไม่ใช่รายชื่อที่เขียนไว้ในหน้าเว็บ (เพิ่มเรทแล้วต้องโผล่เอง)
+       */
+      tumbon_options: await tumbonOptions(),
     };
   },
 

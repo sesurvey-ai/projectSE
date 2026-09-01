@@ -262,7 +262,7 @@ export async function saveTumbonRate(
 ) {
   const old = (await db.query(
     'SELECT * FROM billing_tumbon_rates WHERE tumbon_id = $1', [tumbonId])).rows[0];
-  if (!old) throw Object.assign(new Error('ไม่พบตำบลพิเศษนี้'), { statusCode: 404 });
+  if (!old) throw Object.assign(new Error('ไม่พบเรทของตำบลนี้'), { statusCode: 404 });
 
   const next: Record<string, unknown> = {};
   for (const f of TUMBON_NUM) if (f in patch) next[f] = num(patch[f]);
@@ -332,3 +332,26 @@ export async function saveSetting(key: string, value: unknown, userId?: number) 
 /** จังหวัดทั้งหมด — หน้าเว็บใช้ทำตัวกรอง */
 export const provinceOptions = () =>
   Object.entries(TH_PROVINCES).map(([id, name]) => ({ id, name }));
+
+/**
+ * ตำบลที่มีเรทของตัวเอง — ให้หน้าตรวจเคสเอาไปทำตัวเลือก "ตำบล" (user ขอ 01/09/69)
+ *
+ * ⛔ **อ่านจากตารางเรทเท่านั้น ห้ามไปเขียนรายชื่อตำบลซ้ำไว้ในหน้าเว็บ** — เพิ่มเรทตำบลใหม่
+ *    ในหน้าแอดมินแล้วตัวเลือกต้องโผล่เองทันที ไม่ต้องแก้โค้ด 2 ที่แล้วลืมที่หนึ่ง
+ * คืนเป็น "ชื่อ" ไม่ใช่รหัส เพราะฟอร์มเก็บ acc_province / acc_district เป็นชื่อ
+ */
+export async function tumbonOptions(): Promise<
+  { tumbon: string; district: string; province: string }[]
+> {
+  const rows = (await db.query(
+    'SELECT label, parent_amphur FROM billing_tumbon_rates ORDER BY label')).rows as
+    { label: string; parent_amphur: string }[];
+  return rows
+    .map((r) => ({
+      tumbon: r.label,
+      district: TH_AMPHURS[r.parent_amphur] ?? null,
+      province: TH_PROVINCES[r.parent_amphur.slice(0, 2)] ?? null,
+    }))
+    .filter((x): x is { tumbon: string; district: string; province: string } =>
+      Boolean(x.district && x.province));
+}

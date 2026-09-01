@@ -32,7 +32,7 @@ interface ChangeRow {
 const TABS = [
   { id: 'amphur', label: 'เรทรายอำเภอ' },
   { id: 'province', label: 'เรทรายจังหวัด' },
-  { id: 'tumbon', label: 'ตำบลพิเศษ' },
+  { id: 'tumbon', label: 'เรทรายตำบล' },
   { id: 'team', label: 'ทีมผู้สำรวจ' },
   { id: 'setting', label: 'ค่าคงที่' },
   { id: 'log', label: 'ประวัติการแก้' },
@@ -311,7 +311,7 @@ function TeamBadges({ map }: { map: TeamMap | null | undefined }) {
   );
 }
 
-// ────────────────── กล่องแก้เรท (อำเภอ / ตำบลพิเศษ) ──────────────────
+// ────────────────── กล่องแก้เรท (อำเภอ / ตำบล) ──────────────────
 
 interface FieldDef { key: string; label: string; side: 'pay' | 'ins' }
 
@@ -514,7 +514,7 @@ function ProvinceTab({ rows, flash, reload }: { rows: ProvinceRow[]; flash: Flas
   );
 }
 
-// ────────────────── ตำบลพิเศษ ──────────────────
+// ────────────────── เรทรายตำบล ──────────────────
 
 function TumbonTab({ rows, flash, reload }: { rows: TumbonRow[]; flash: Flash; reload: () => Promise<void> }) {
   const [editing, setEditing] = useState<TumbonRow | null>(null);

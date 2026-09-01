@@ -42,6 +42,8 @@ interface CaseDetailProps {
   visits?: { id: number; visit_no: number | string; survey_job_no: string | null; status: string; created_on: string }[];
   expenses?: any;
   photoFeeSuggest?: { count: number; price: number; reason: string } | null;
+  /** ตำบลที่มีเรทของตัวเอง (มาจากตารางเรท) — ใช้ทำตัวเลือก "ตำบล" ใต้เขต/อำเภอ */
+  tumbonOptions?: { tumbon: string; district: string; province: string }[];
   onReviewSubmitted: () => void;
 }
 
@@ -124,6 +126,12 @@ const DRIVER_LICENSE_TYPES = [
   'ใบอนุญาตเป็นผู้ขับรถทุกประเภท',
   'อื่นๆ',
 ];
+
+/**
+ * เทียบชื่อพื้นที่ข้ามแหล่ง — ฟอร์มเก็บ "อำเภอศรีราชา"/"กรุงเทพ ฯ" ส่วนตารางเรทเก็บ
+ * "ศรีราชา"/"กรุงเทพฯ" · ตัดคำนำหน้ากับช่องว่าง/ฯ ออกก่อนเทียบ ไม่งั้นไม่มีวันตรงกัน
+ */
+const areaKey = (v: unknown) => String(v ?? '').replace(/^(อำเภอ|เขต|จังหวัด)/, '').replace(/[s ฯ]/g, '').trim();
 
 function withCurrent(list: string[], current: unknown, placeholder = '-- ระบุ --'): string[] {
   const cur = String(current ?? '').trim();
@@ -446,7 +454,7 @@ const isBlank = (el: HTMLElement) => {
   return !v.trim();
 };
 
-export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, visits = [], expenses, photoFeeSuggest = null, onReviewSubmitted }: CaseDetailProps) {
+export default function CaseDetail({ caseData, report, photos, review, visitCount = 1, visits = [], expenses, photoFeeSuggest = null, tumbonOptions = [], onReviewSubmitted }: CaseDetailProps) {
   const ex = expenses || {};
   // ประเภทรถ → ตัวเลือกยี่ห้อ (EMCS กรองลิสต์ยี่ห้อตามประเภทรถ; เดิมโชว์ชุดของ
   // 'เก๋งเอเชีย' ชุดเดียวกับทุกประเภท → กระบะ/มอเตอร์ไซค์เลือกยี่ห้อที่ EMCS ไม่รับ)
@@ -454,6 +462,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // จังหวัด → เขต/อำเภอ cascade (เดิมโชว์ 51 เขต กทม. กับทุกจังหวัด)
   const [accProv, setAccProv] = useState<string>(report.acc_province || '0');
   const [accDist, setAccDist] = useState<string>(report.acc_district || '-- เขต --');
+  const [accTumbon, setAccTumbon] = useState<string>(report.acc_subdistrict || '');
+  /**
+   * ── ตัวเลือก "ตำบล" ── (user ขอ 01/09/69)
+   *
+   * ขึ้นเฉพาะอำเภอที่มีตำบลซึ่งคิดเรทไม่เท่าอำเภอแม่ (ตอนนี้ ศรีราชา→บ่อวิน · สัตหีบ→พลูตาหลวง)
+   * รายชื่อมาจาก**ตารางเรท** ไม่ได้เขียนไว้ในโค้ด — เพิ่มเรทตำบลใหม่ในหน้าแอดมินแล้วโผล่เอง
+   *
+   * ⛔ ช่องนี้หายไปจากฟอร์มได้ (อำเภออื่นไม่มีตำบล) แต่ **ไม่ทำให้ค่าเดิมถูกล้าง** —
+   *    ฝั่ง survey_reports เขียนเฉพาะคีย์ที่ส่งมา (ต่างจาก survey_pay ที่ upsert ทั้งแถว)
+   */
+  const tumbonChoices = (tumbonOptions ?? [])
+    .filter((t) => areaKey(t.province) === areaKey(accProv) && areaKey(t.district) === areaKey(accDist))
+    .map((t) => t.tumbon);
   const [driverProv, setDriverProv] = useState<string>(report.driver_province || '0');
   const [driverDist, setDriverDist] = useState<string>(report.driver_district || '-- เขต --');
   /**
@@ -2042,15 +2063,25 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <input type="text" disabled={d} name="acc_place" defaultValue={report.acc_place || ''} className={CTL(d)} />
               </F>
               <F label="จังหวัด">
-                <select disabled={d} name="acc_province" value={accProv} onChange={e => { setAccProv(e.target.value); setAccDist('-- เขต --'); }} className={CTL(d)}>
+                <select disabled={d} name="acc_province" value={accProv} onChange={e => { setAccProv(e.target.value); setAccDist('-- เขต --'); setAccTumbon(''); }} className={CTL(d)}>
                   {withCurrent(PROVINCE_OPTIONS, accProv).map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </F>
               <F label="เขต / อำเภอ">
-                <select disabled={d} name="acc_district" value={accDist} onChange={e => setAccDist(e.target.value)} className={CTL(d)}>
+                <select disabled={d} name="acc_district" value={accDist} onChange={e => { setAccDist(e.target.value); setAccTumbon(''); }} className={CTL(d)}>
                   {districtOptions(accProv, accProv === report.acc_province ? report.acc_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
                 </select>
               </F>
+              {/* ตำบล — ขึ้นเฉพาะอำเภอที่มีตำบลคิดเรทต่างจากอำเภอแม่ (ดูหมายเหตุที่ tumbonChoices) */}
+              {tumbonChoices.length > 0 && (
+                <F label="ตำบล / แขวง">
+                  <select disabled={d} name="acc_subdistrict" value={accTumbon}
+                    onChange={e => setAccTumbon(e.target.value)} className={CTL(d)}>
+                    <option value="">— ไม่ระบุ —</option>
+                    {withCurrent(tumbonChoices, accTumbon, '').map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </F>
+              )}
 
               <F label="ลักษณะการเกิดเหตุ" req={<Req of="acc_cause" />}>
                 <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={CTL(d)}>
