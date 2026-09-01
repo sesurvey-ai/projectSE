@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  แถบแจ้งเตือนงานใหม่ "แบบขยาย" — เห็นตอนแอปเปิดอยู่ (ไม่เด้งหน้าเต็มจอทับฟอร์มที่กรอกค้าง)
+  จึงต้องมีข้อมูล+ทางเลือกครบพอ ๆ กับหน้าเต็มจอ: เลขเคลม + ปุ่มปฏิเสธ (user 01/09/69)
+
+  ⛔ ปุ่มปฏิเสธที่นี่ **ไม่ปฏิเสธทันที** — เปิดหน้าเต็มจอพร้อมแผ่นเลือกเหตุผลแทน
+     กติกา "ต้องระบุเหตุผลก่อนปฏิเสธ" ต้องเหมือนกันทุกทางเข้า ไม่งั้นช่างเลี่ยงมาทางนี้
+     แล้วผู้จ่ายงานได้เหตุผลเปล่าเหมือนเดิม
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -8,13 +16,13 @@
     android:paddingTop="14dp"
     android:paddingBottom="14dp">
 
-    <!-- Row 1: Title + Mute button -->
+    <!-- แถวบน: หัวข้อ + ปุ่มปิดเสียง -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="10dp">
+        android:layout_marginBottom="8dp">
 
         <TextView
             android:id="@+id/notification_title"
@@ -39,39 +47,61 @@
             android:background="@drawable/btn_mute_notif_bg" />
     </LinearLayout>
 
-    <!-- Subtitle: สถานที่เกิดเหตุ · เลขเคลม · บริษัทประกัน -->
+    <!-- เลขเคลม — ส่งมากับแจ้งเตือนอยู่แล้ว เดิมถูกตัดทิ้งเพราะพื้นที่จำกัด
+         ซ่อนทั้งบรรทัดเมื่อยังไม่มีเลข (งานที่เปิดก่อนได้เลขจากบริษัทประกันมีจริง) -->
+    <TextView
+        android:id="@+id/notification_claim"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="#111111"
+        android:textStyle="bold"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:visibility="gone" />
+
+    <!-- สถานที่เกิดเหตุ · บริษัทประกัน -->
     <TextView
         android:id="@+id/notification_subtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="13sp"
         android:textColor="#555555"
+        android:layout_marginTop="2dp"
         android:layout_marginBottom="10dp"
         android:maxLines="2"
         android:ellipsize="end" />
 
-    <!-- Row 2: Buttons -->
+    <!-- ปุ่ม: ปฏิเสธ (รอง) + รับงาน (หลัก) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:baselineAligned="false">
 
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+        <TextView
+            android:id="@+id/btn_decline"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="ปฏิเสธงาน"
+            android:textSize="15sp"
+            android:textColor="#444444"
+            android:background="@drawable/btn_decline_notif" />
 
-            <TextView
-                android:id="@+id/btn_accept"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:gravity="center"
-                android:text="รับงาน"
-                android:textSize="15sp"
-                android:textColor="#FFFFFF"
-                android:textStyle="bold"
-                android:background="@drawable/btn_accept_bg" />
-        </FrameLayout>
+        <TextView
+            android:id="@+id/btn_accept"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1.6"
+            android:layout_marginStart="8dp"
+            android:gravity="center"
+            android:text="รับงาน"
+            android:textSize="15sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:background="@drawable/btn_accept_notif" />
     </LinearLayout>
 
 </LinearLayout>

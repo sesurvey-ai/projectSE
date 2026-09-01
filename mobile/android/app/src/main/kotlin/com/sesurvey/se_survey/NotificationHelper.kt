@@ -167,6 +167,15 @@ object NotificationHelper {
         ).filter { it.isNotBlank() }.joinToString("  ·  ")
         customView.setTextViewText(R.id.notification_subtitle, sub)
 
+        // เลขเคลม — เห็นเฉพาะแบบขยาย (แบบย่อสูงจำกัด ใส่ไม่ลง)
+        // ⛔ set เฉพาะ customView: compactView ไม่มี id นี้ สั่งไปจะพังตอน apply
+        if (claimNo.isNotBlank()) {
+            customView.setTextViewText(R.id.notification_claim, "เลขเคลม $claimNo")
+            customView.setViewVisibility(R.id.notification_claim, android.view.View.VISIBLE)
+        } else {
+            customView.setViewVisibility(R.id.notification_claim, android.view.View.GONE)
+        }
+
         // แบบย่อ (collapsed/heads-up): หัวข้อ + ปุ่มรับงานเต็มปุ่ม — heads-up สูงจำกัด เลยตัดรายละเอียดออก
         val compactView = RemoteViews(context.packageName, R.layout.notification_incoming_compact)
         compactView.setTextViewText(R.id.notification_title, title)
@@ -187,6 +196,25 @@ object NotificationHelper {
         )
         customView.setOnClickPendingIntent(R.id.btn_accept, acceptPi)
         compactView.setOnClickPendingIntent(R.id.btn_accept, acceptPi)
+
+        // ปุ่มปฏิเสธ (แบบขยายเท่านั้น) — **ไม่ปฏิเสธทันที** แต่เปิดหน้าเต็มจอพร้อมแผ่นเลือกเหตุผล
+        // ⛔ กติกา "ต้องระบุเหตุผลก่อนปฏิเสธ" ต้องเหมือนกันทุกทางเข้า ไม่งั้นช่างเลี่ยงมาทางแถบ
+        //    แล้วผู้จ่ายงานได้เหตุผลเปล่าเหมือนเดิม (ซึ่งคือปัญหาที่เพิ่งแก้ไป)
+        // ⛔ ต้องเป็น activity PendingIntent เหมือนปุ่มรับงาน — Android 12+ บล็อก trampoline
+        val declineIntent = Intent(context, IncomingCallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("case_id", caseId)
+            putExtra("notification_id", id)
+            putExtra("incident_location", incidentLocation)
+            putExtra("claim_no", claimNo)
+            putExtra("insurance_company", insuranceCompany)
+            putExtra("open_decline", true)
+        }
+        val declinePi = PendingIntent.getActivity(
+            context, id * 2 + 4, declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        customView.setOnClickPendingIntent(R.id.btn_decline, declinePi)
 
         // Mute button
         val muteIntent = Intent(context, NotificationActionReceiver::class.java).apply {

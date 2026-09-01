@@ -77,6 +77,8 @@ class IncomingCallActivity : Activity() {
         bindData(intent)
         buildReasonList()
         startCountdown()
+        // เข้ามาจากปุ่ม "ปฏิเสธงาน" บนแถบแจ้งเตือน → เปิดแผ่นเลือกเหตุผลให้เลย
+        if (intent.getBooleanExtra("open_decline", false)) showDeclineSheet(true)
 
         findViewById<View>(R.id.btn_accept).setOnClickListener { handleAction("accept") }
         findViewById<View>(R.id.btn_decline).setOnClickListener { showDeclineSheet(true) }
@@ -320,6 +322,8 @@ class IncomingCallActivity : Activity() {
         stopCountdown()
         secondsLeft = COUNTDOWN_SEC
         startCountdown()
+        // กดปุ่มปฏิเสธบนแถบตอนหน้านี้เปิดค้างอยู่ → เข้าทาง onNewIntent ต้องเปิดแผ่นให้เหมือนกัน
+        if (intent.getBooleanExtra("open_decline", false)) showDeclineSheet(true)
     }
 
     override fun onResume() {

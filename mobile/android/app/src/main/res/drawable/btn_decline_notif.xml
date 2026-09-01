@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ปุ่ม "ปฏิเสธงาน" บนแถบแจ้งเตือน — ปุ่มรอง กรอบเปล่า ไม่ใช่ปุ่มสีคู่กับรับงาน
+     (ปฏิเสธแล้วงานหลุดจากมือทันที ย้อนเองไม่ได้ — กันนิ้วไปโดนโดยบังเอิญ) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="1.5dp" android:color="#66000000" />
+    <corners android:radius="12dp" />
+</shape>

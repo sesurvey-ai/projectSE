@@ -162,5 +162,32 @@ check('หน้าสรุปเว้นที่ให้แถบระบ�
       /accepted\.setPadding\(dp\(24\), bars\.top/.test(activity)
       && /declinedBody\.setPadding\(dp\(24\), 0, dp\(24\), dp\(28\) \+ bars\.bottom\)/.test(activity));
 
+console.log('\n── แถบแจ้งเตือน (เห็นตอนเปิดแอปอยู่) ──');
+const layoutDir = ['..', 'mobile', 'android', 'app', 'src', 'main', 'res', 'layout'];
+const barBig = read(...layoutDir, 'notification_incoming.xml');
+const barSmall = read(...layoutDir, 'notification_incoming_compact.xml');
+check('แบบขยายมีเลขเคลม', /android:id="@\+id\/notification_claim"/.test(barBig));
+check('แบบขยายมีปุ่มปฏิเสธ', /android:id="@\+id\/btn_decline"/.test(barBig));
+/** user 01/09/69: แบบย่อคงเดิม — heads-up สูงจำกัด ใส่เพิ่มแล้วโดนตัดทิ้งอยู่ดี */
+check('แบบย่อคงเดิม ไม่มีเลขเคลม/ปุ่มปฏิเสธ',
+      !/notification_claim/.test(barSmall) && !/btn_decline/.test(barSmall));
+/** ⛔ compactView ไม่มี id เหล่านี้ — สั่ง setTextViewText ใส่ไปจะพังตอน apply ทั้งใบ */
+check('ตั้งค่าเลขเคลม/ปุ่มปฏิเสธเฉพาะ customView',
+      !/compactView\.setTextViewText\(R\.id\.notification_claim/.test(helper)
+      && !/compactView\.setOnClickPendingIntent\(R\.id\.btn_decline/.test(helper));
+/**
+ * ⛔ ปุ่มปฏิเสธบนแถบ **ห้ามปฏิเสธทันที** — ต้องเปิดหน้าเต็มจอพร้อมแผ่นเลือกเหตุผล
+ *    กติกา "ระบุเหตุผลก่อนปฏิเสธ" ต้องเหมือนกันทุกทางเข้า ไม่งั้นช่างเลี่ยงมาทางแถบ
+ *    แล้วผู้จ่ายงานได้เหตุผลเปล่าเหมือนเดิม (คือปัญหาที่เพิ่งแก้ไป)
+ */
+check('ปุ่มปฏิเสธบนแถบเปิดแผ่นเหตุผล ไม่ปฏิเสธทันที',
+      /Intent\(context, IncomingCallActivity::class\.java\)[\s\S]{0,400}putExtra\("open_decline", true\)/.test(helper)
+      && !/postDecline/.test(helper));
+/** ⛔ activity PendingIntent เท่านั้น — Android 12+ บล็อก trampoline ผ่าน receiver */
+check('ใช้ activity PendingIntent (กัน trampoline)',
+      /declinePi = PendingIntent\.getActivity\(/.test(helper));
+check('เปิดแผ่นเหตุผลทั้ง onCreate และ onNewIntent',
+      (activity.match(/getBooleanExtra\("open_decline", false\)\) showDeclineSheet\(true\)/g) || []).length === 2);
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
