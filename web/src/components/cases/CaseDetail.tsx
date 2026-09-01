@@ -2622,6 +2622,59 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         className={`w-full border rounded px-2 py-1 text-sm ${dDeduct ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`} />
                     </td>
                   </tr>
+                  {/* ── ตัวปรับเรทฝั่งพนักงาน ── ของเดิมอยู่ในส่วนขยายเบราว์เซอร์บนหน้าระบบเก่า
+
+                      อยู่เหนือแถว "รวมยอด" (user ขอ 01/09/69) — 3 ตัวนี้บวก/ลบเข้ายอดฝั่งพนักงาน
+                      วางไว้ก่อน จะได้อ่านไล่ลงมาแล้วจบที่ยอดรวมพอดี
+                      ⛔ อยู่ในตารางแล้ว ต้องห่อด้วย <tr><td colSpan={4}> ไม่ใช่ <div> ลอย ๆ —
+                         เบราว์เซอร์ดีด node ที่ไม่ใช่แถวออกไปนอก <table> เอง แล้วเลย์เอาต์เพี้ยน */}
+                  <tr>
+                    <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2">
+                      <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
+                            <span className="text-gray-700">นอกพื้นที่</span>
+                          </label>
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
+                            <span className="text-gray-700">นอกเวลา</span>
+                          </label>
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" disabled={dPay} key={`special_tumbon-${String(payV?.saved?.special_tumbon ?? "")}`} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
+                            <span className="text-gray-700">ตำบลพิเศษ</span>
+                          </label>
+                          <label className="flex items-center gap-1.5">
+                            <span className="text-gray-700">ค่าคัดประจำวัน</span>
+                            {/* ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) ตอน render แรกยังว่าง
+                                React ไม่เอา defaultValue ของ <select> มาใส่ซ้ำเมื่อ props เปลี่ยน
+                                (ต่างจาก <input>) ช่องนี้จึงค้างที่ "— ไม่มี —" ตลอด แล้วพอกดบันทึก
+                                ก็เขียนค่าว่างทับของเดิมใน survey_pay + rate_snapshot */}
+                            <select key={`dc-${String(payV?.saved?.daily_check ?? '')}`}
+                              disabled={dPay} name="daily_check" defaultValue={String(payV?.saved?.daily_check ?? '')}
+                              className={`border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`}>
+                              <option value="">— ไม่มี —</option>
+                              <option value="ถูก">ถูก</option>
+                              <option value="ผิด">ผิด</option>
+                              <option value="รอผล">รอผล</option>
+                            </select>
+                          </label>
+                        </div>
+                        {pay?.area && (pay.area.resolved ? (
+                          <div className="mt-2 text-xs text-gray-500">
+                            เรทของ {pay.area.province_name} / {pay.area.district_name}
+                            {pay.area.team ? ` · ทีม${pay.area.team}` : ''}
+                            {pay.suggest?.service_fee != null ? ` · ระบบแนะนำค่าบริการ ${pay.suggest.service_fee} บาท` : ''}
+                            {pay.saved?.total != null ? ` · รวมที่บันทึกไว้ ${pay.saved.total} บาท` : ''}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            แปลงจังหวัด/อำเภอของเคสนี้เป็นรหัสพื้นที่ไม่ได้ — หาเรทอัตโนมัติไม่ได้ กรอกยอดเองได้ตามปกติ
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
                 </tbody>
                 {/* ── รวมยอดของแต่ละฝั่ง ── คิดสดจากช่องที่กำลังกรอก (user ขอ 01/09/69)
                     ⛔ แสดงอย่างเดียว ห้ามมี name — เหตุผลเต็มอยู่ที่ liveSum ข้างบน */}
@@ -2632,7 +2685,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2 text-right font-semibold text-blue-900 tabular-nums">{baht(liveSum.pay)}</td>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-right font-semibold text-blue-950 tabular-nums">{baht(liveSum.ins)}</td>
                   </tr>
-                  {/* ตัวปรับฝั่งพนักงานอยู่ใต้ตาราง (นอกพื้นที่/นอกเวลา/หักเงิน) — ถ้าไม่บอก
+                  {/* นอกพื้นที่/นอกเวลาเป็นช่องติ๊ก · หักเงินอยู่คนละคอลัมน์กับยอด — ถ้าไม่บอก
                       หัวหน้าจะบวกเลขตามคอลัมน์แล้วไม่ตรงกับยอดรวม แล้วนึกว่าระบบคิดผิด */}
                   {(liveSum.area > 0 || liveSum.hours > 0 || liveSum.deduct > 0) && (
                     <tr>
@@ -2647,51 +2700,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   )}
                 </tfoot>
               </table>
-              {/* ── ตัวปรับเรทฝั่งพนักงาน ── ของเดิมอยู่ในส่วนขยายเบราว์เซอร์บนหน้าระบบเก่า */}
-              <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                  <label className="flex items-center gap-1.5">
-                    <input type="checkbox" disabled={dPay} key={`out_of_area-${String(payV?.saved?.out_of_area ?? "")}`} name="out_of_area" defaultChecked={Boolean(payV?.saved?.out_of_area)} />
-                    <span className="text-gray-700">นอกพื้นที่</span>
-                  </label>
-                  <label className="flex items-center gap-1.5">
-                    <input type="checkbox" disabled={dPay} key={`out_of_hours-${String(payV?.saved?.out_of_hours ?? "")}`} name="out_of_hours" defaultChecked={Boolean(payV?.saved?.out_of_hours)} />
-                    <span className="text-gray-700">นอกเวลา</span>
-                  </label>
-                  <label className="flex items-center gap-1.5">
-                    <input type="checkbox" disabled={dPay} key={`special_tumbon-${String(payV?.saved?.special_tumbon ?? "")}`} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
-                    <span className="text-gray-700">ตำบลพิเศษ</span>
-                  </label>
-                  <label className="flex items-center gap-1.5">
-                    <span className="text-gray-700">ค่าคัดประจำวัน</span>
-                    {/* ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) ตอน render แรกยังว่าง
-                        React ไม่เอา defaultValue ของ <select> มาใส่ซ้ำเมื่อ props เปลี่ยน
-                        (ต่างจาก <input>) ช่องนี้จึงค้างที่ "— ไม่มี —" ตลอด แล้วพอกดบันทึก
-                        ก็เขียนค่าว่างทับของเดิมใน survey_pay + rate_snapshot */}
-                    <select key={`dc-${String(payV?.saved?.daily_check ?? '')}`}
-                      disabled={dPay} name="daily_check" defaultValue={String(payV?.saved?.daily_check ?? '')}
-                      className={`border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`}>
-                      <option value="">— ไม่มี —</option>
-                      <option value="ถูก">ถูก</option>
-                      <option value="ผิด">ผิด</option>
-                      <option value="รอผล">รอผล</option>
-                    </select>
-                  </label>
-                </div>
-                {pay?.area && (pay.area.resolved ? (
-                  <div className="mt-2 text-xs text-gray-500">
-                    เรทของ {pay.area.province_name} / {pay.area.district_name}
-                    {pay.area.team ? ` · ทีม${pay.area.team}` : ''}
-                    {pay.suggest?.service_fee != null ? ` · ระบบแนะนำค่าบริการ ${pay.suggest.service_fee} บาท` : ''}
-                    {pay.saved?.total != null ? ` · รวมที่บันทึกไว้ ${pay.saved.total} บาท` : ''}
-                  </div>
-                ) : (
-                  <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                    แปลงจังหวัด/อำเภอของเคสนี้เป็นรหัสพื้นที่ไม่ได้ — หาเรทอัตโนมัติไม่ได้ กรอกยอดเองได้ตามปกติ
-                  </div>
-                ))}
-              </div>
-
               {/**
                 * ── ประวัติการแก้ยอดเงิน ──
                 * มีไว้แยกให้ออกว่า "คนแก้" หรือ "บั๊กกลืนข้อมูล" — เดือน ส.ค. 69 เดือนเดียว
