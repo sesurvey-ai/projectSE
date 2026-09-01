@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api, { getPhotoUrl } from '@/lib/api';
 
 interface Photo { id: number; file_path?: string; filename?: string; category?: string | null; }
@@ -74,10 +74,30 @@ export default function PhotoGallery(
   const [zoom, setZoom] = useState(1);
   const [deleting, setDeleting] = useState<number | null>(null);
 
+  const winRef = useRef<Window | null>(null);
+
+  const catLabelOf = (c?: string | null) => (c && c.trim()) ? c.trim() : 'ไม่ระบุหมวด';
+  const srcOf = (p: Photo) => getPhotoUrl(p.file_path || p.filename || '');
+  const viewerList = () => photos.map((x) => ({ id: x.id, src: srcOf(x), label: catLabelOf(x.category) }));
+
+  /**
+   * ส่งรายการรูปล่าสุดเข้าไปในหน้าต่างดูรูปทุกครั้งที่รายการเปลี่ยน (ลบ/เพิ่มรูป)
+   *
+   * ⛔ ต้องมี ไม่งั้นลบรูปจากหน้าต่างแล้วรูปที่ลบไปยังค้างอยู่ในแถบซ้าย กดดูได้อีก
+   *    (หน้าเว็บแม่รีเฟรชเอง แต่หน้าต่างที่เปิดค้างไว้ไม่มีทางรู้)
+   */
+  useEffect(() => {
+    const w = winRef.current;
+    if (!w || w.closed) return;
+    const fn = (w as unknown as { __seSetPhotos?: (l: unknown[]) => void }).__seSetPhotos;
+    if (typeof fn === 'function') fn(viewerList());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos]);
+
   /** ลบรูปทีละใบ — ถามยืนยันก่อนเพราะกดแล้วไฟล์หายจริง ไม่มีถังขยะให้กู้ */
-  const removePhoto = async (p: Photo) => {
+  const removePhoto = async (p: Photo, skipConfirm = false) => {
     if (!caseId) return;
-    if (!window.confirm('ลบรูปนี้ออกจากเคส?\n\nลบแล้วกู้คืนไม่ได้ — ถ้าเป็นรูปจากระบบเดิม ดึงใหม่ได้จากโปรแกรมผู้ตรวจ')) return;
+    if (!skipConfirm && !window.confirm('ลบรูปนี้ออกจากเคส?\n\nลบแล้วกู้คืนไม่ได้ — ถ้าเป็นรูปจากระบบเดิม ดึงใหม่ได้จากโปรแกรมผู้ตรวจ')) return;
     setDeleting(p.id);
     try {
       await api.delete(`/api/cases/${caseId}/photos/${p.id}`);
@@ -106,45 +126,107 @@ export default function PhotoGallery(
    *    จะเปิดหน้าต่างใหม่ 40 บาน
    */
   const openInWindow = (p: Photo) => {
-    const w = window.open('', 'se_photo_viewer', 'width=860,height=920,scrollbars=yes,resizable=yes');
+    const w = window.open('', 'se_photo_viewer', 'width=1180,height=920,scrollbars=yes,resizable=yes');
     // เบราว์เซอร์บล็อกป๊อปอัป → ถอยไปใช้กล่องทับจอแบบเดิม ดีกว่ากดแล้วไม่มีอะไรเกิดขึ้น
     if (!w) { setSelected(p); return; }
+    winRef.current = w;
+
+    /**
+     * สะพานลบรูปจากหน้าต่างดูรูป — หน้าต่างเรียกกลับมาที่หน้าเว็บแม่
+     *
+     * ⛔ ไม่ให้หน้าต่างยิง API เอง: จะต้องส่ง token เข้าไปเก็บไว้ในนั้น และต้องมีตัวจัดการ
+     *    error/รีเฟรชซ้ำอีกชุด · ให้หน้าแม่ทำเหมือนตอนกดลบในตารางทุกอย่าง แล้วผลลัพธ์
+     *    (รายการรูปใหม่) ไหลกลับเข้าหน้าต่างผ่าน __seSetPhotos เอง
+     * ยืนยันที่หน้าต่างแล้ว (confirm ของหน้าแม่จะไปโผล่หลังหน้าต่าง มองไม่เห็น)
+     */
+    (window as unknown as { __seDeletePhoto?: (id: number) => void }).__seDeletePhoto = (id: number) => {
+      const target = photos.find((x) => x.id === id);
+      if (target) void removePhoto(target, true);
+    };
 
     // ค่าที่ฝังลงหน้าต่างใหม่ผ่าน JSON.stringify ทั้งหมด — ไม่ต้อง escape HTML เอง
-    const list = photos.map((x) => ({ src: getSrc(x), label: catLabel(x.category) }));
+    const list = viewerList();
     const start = photos.findIndex((x) => x.id === p.id);
+    const canDelete = Boolean(caseId);
 
     w.document.open();
     w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8">
 <title>รูปเคส</title><style>
 html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,sans-serif}
-#wrap{height:100%;display:flex;flex-direction:column}
-#bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1c1c1c;font-size:13px}
+#wrap{height:100%;display:flex}
+#side{flex:none;width:150px;display:flex;flex-direction:column;background:#181818;border-right:1px solid #2a2a2a}
+#filter{margin:8px;padding:6px;background:#2a2a2a;color:#eee;border:0;border-radius:6px;font-size:13px}
+#strip{flex:1;min-height:0;overflow-y:auto;padding:0 8px 8px}
+#strip .t{width:100%;height:86px;object-fit:cover;border-radius:6px;margin-bottom:8px;cursor:pointer;
+  border:2px solid transparent;opacity:.55;display:block}
+#strip .t:hover{opacity:.85}
+#strip .t.on{opacity:1;border-color:#4da3ff}
+#main{flex:1;min-width:0;display:flex;flex-direction:column}
+#bar{flex:none;display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1c1c;font-size:13px}
 #bar button{background:#333;color:#eee;border:0;border-radius:6px;padding:6px 12px;font-size:14px;cursor:pointer}
 #bar button:hover{background:#444}
 #bar button:disabled{opacity:.35;cursor:default}
+#del{background:#a12b1e !important}
+#del:hover{background:#c2321f !important}
 #cap{margin-left:auto;color:#bbb}
-#view{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center}
-img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
-img.full{max-width:none;max-height:none;cursor:zoom-out}
+#view{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px}
+#img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
+#img.full{max-width:none;max-height:none;cursor:zoom-out}
+#empty{color:#888;font-size:14px}
 </style></head><body><div id="wrap">
+<div id="side"><select id="filter"></select><div id="strip"></div></div>
+<div id="main">
 <div id="bar"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
+${canDelete ? '<button id="del">ลบรูปนี้</button>' : ''}
 <span id="cap"></span></div>
-<div id="view"><img id="img" alt=""></div></div>
+<div id="view"><img id="img" alt=""><span id="empty" style="display:none">ไม่มีรูปในหมวดนี้</span></div>
+</div></div>
 <script>
-var L=${JSON.stringify(list)},i=${start};
-var img=document.getElementById('img'),cap=document.getElementById('cap');
+var ALL=${JSON.stringify(list)},cat='',L=[],i=${start};
+var img=document.getElementById('img'),cap=document.getElementById('cap'),empty=document.getElementById('empty');
 var prev=document.getElementById('prev'),next=document.getElementById('next');
-function show(){var it=L[i];img.className='';img.src=it.src;
+var strip=document.getElementById('strip'),filter=document.getElementById('filter');
+var del=document.getElementById('del');
+function cats(){var o=[],k;for(k=0;k<ALL.length;k++){if(o.indexOf(ALL[k].label)<0)o.push(ALL[k].label);}return o;}
+function buildFilter(){var keep=cat,o='<option value="">ทั้งหมด ('+ALL.length+')</option>',c=cats(),k,n;
+  for(k=0;k<c.length;k++){n=0;for(var j=0;j<ALL.length;j++)if(ALL[j].label===c[k])n++;
+    o+='<option value="'+c[k].replace(/"/g,'&quot;')+'">'+c[k]+' ('+n+')</option>';}
+  filter.innerHTML=o;if(c.indexOf(keep)>=0)filter.value=keep;else{filter.value='';cat='';}}
+function buildStrip(){var h='',k;for(k=0;k<L.length;k++){
+    h+='<img class="t'+(k===i?' on':'')+'" data-k="'+k+'" src="'+L[k].src+'" alt="">';}
+  strip.innerHTML=h;
+  var ts=strip.getElementsByTagName('img'),k2;
+  for(k2=0;k2<ts.length;k2++)ts[k2].onclick=function(){i=+this.getAttribute('data-k');show();};}
+function mark(){var ts=strip.getElementsByTagName('img'),k;
+  for(k=0;k<ts.length;k++)ts[k].className='t'+(k===i?' on':'');
+  if(ts[i])ts[i].scrollIntoView({block:'nearest'});}
+function show(){
+  if(!L.length){img.style.display='none';empty.style.display='';cap.textContent='0 / 0';
+    prev.disabled=next.disabled=true;if(del)del.disabled=true;document.title='รูปเคส';return;}
+  if(i<0)i=0;if(i>L.length-1)i=L.length-1;
+  var it=L[i];img.style.display='';empty.style.display='none';img.className='';img.src=it.src;
   cap.textContent=it.label+' · '+(i+1)+' / '+L.length;
   document.title=it.label+' '+(i+1)+'/'+L.length;
-  prev.disabled=i<=0;next.disabled=i>=L.length-1;}
+  prev.disabled=i<=0;next.disabled=i>=L.length-1;if(del)del.disabled=false;mark();}
+function applyFilter(keepId){
+  L=cat?ALL.filter(function(x){return x.label===cat;}):ALL.slice();
+  var at=-1,k;if(keepId!=null)for(k=0;k<L.length;k++)if(L[k].id===keepId)at=k;
+  i=at>=0?at:Math.min(i,Math.max(0,L.length-1));
+  buildStrip();show();}
+filter.onchange=function(){cat=filter.value;i=0;applyFilter();};
 prev.onclick=function(){if(i>0){i--;show();}};
 next.onclick=function(){if(i<L.length-1){i++;show();}};
 img.onclick=function(){img.className=img.className?'':'full';};
+if(del)del.onclick=function(){
+  if(!L.length)return;
+  if(!confirm('ลบรูปนี้ออกจากเคส?\n\nลบแล้วกู้คืนไม่ได้'))return;
+  del.disabled=true;
+  try{window.opener.__seDeletePhoto(L[i].id);}catch(e){alert('ลบไม่สำเร็จ — หน้าเว็บหลักถูกปิดไปแล้ว');del.disabled=false;}};
+// หน้าเว็บแม่ส่งรายการใหม่เข้ามาหลังลบ/เพิ่มรูป
+window.__seSetPhotos=function(nl){var cur=L.length?L[i].id:null;ALL=nl;buildFilter();applyFilter(cur);};
 document.onkeydown=function(e){if(e.key==='ArrowLeft')prev.onclick();
   else if(e.key==='ArrowRight')next.onclick();else if(e.key==='Escape')window.close();};
-show();
+buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
 <\/script></body></html>`);
     w.document.close();
     w.focus();

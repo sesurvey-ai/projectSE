@@ -35,5 +35,30 @@ check('ป๊อปอัปถูกบล็อก → ถอยไปใช�
 check('ในหน้าต่างมีปุ่มก่อนหน้า/ถัดไป', gallery.includes("id=\"prev\"") && gallery.includes("id=\"next\""));
 check('กดรูปเพื่อซูมเต็มขนาดได้', /img\.className=img\.className\?'':'full'/.test(gallery));
 
+console.log('\n── แถบรูปซ้าย · ตัวกรอง · ลบรูป ──');
+const winPart = gallery.split('w.document.write')[1] || '';
+check('มีแถบรูปด้านซ้าย + ตัวกรองหมวด',
+      /id="side"/.test(gallery) && /id="strip"/.test(gallery) && /id="filter"/.test(gallery));
+check('ตัวกรองมี "ทั้งหมด" + นับจำนวนต่อหมวด',
+      gallery.includes("ทั้งหมด ('+ALL.length+')") && gallery.includes("+' ('+n+')</option>'"));
+check('กดรูปในแถบซ้ายแล้วเปลี่ยนรูปตรงกลาง',
+      gallery.includes("i=+this.getAttribute('data-k');show();"));
+check('มีปุ่มลบรูปที่กำลังดูอยู่', /id="del"/.test(gallery) && gallery.includes('__seDeletePhoto(L[i].id)'));
+/**
+ * ⛔ ปุ่มลบในหน้าต่างต้องเรียกกลับมาที่หน้าเว็บแม่ ห้ามยิง API เอง —
+ *    ไม่งั้นต้องส่ง token เข้าไปเก็บในหน้าต่าง + เขียนตัวจัดการ error/รีเฟรชซ้ำอีกชุด
+ */
+check('ลบผ่านหน้าเว็บแม่ ไม่ยิง API จากในหน้าต่าง',
+      winPart.includes('window.opener.__seDeletePhoto') && !/fetch\([^)]{0,40}\/api\/cases/.test(winPart));
+/**
+ * ⛔ ลบแล้วต้องดันรายการใหม่เข้าหน้าต่างด้วย — หน้าเว็บแม่รีเฟรชเอง แต่หน้าต่างที่เปิด
+ *    ค้างไว้ไม่มีทางรู้ รูปที่ลบไปจะยังค้างในแถบซ้ายและกดดูได้อีก
+ */
+check('ลบแล้วรายการในหน้าต่างอัปเดตตาม',
+      winPart.includes('window.__seSetPhotos=function')
+      && /__seSetPhotos\b/.test(gallery.split('w.document.write')[0]));
+check('ยืนยันก่อนลบที่ตัวหน้าต่างเอง (confirm ของหน้าแม่จะไปโผล่ข้างหลัง)',
+      winPart.includes("confirm('ลบรูปนี้ออกจากเคส"));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
