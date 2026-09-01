@@ -91,7 +91,7 @@ export async function buildPayWorkbook(f: PayExportFilter = {}): Promise<ExcelJS
     { header: 'ค่าใช้จ่ายอื่นๆ', key: 'other_fee', width: 13 },
     { header: 'หักเงิน', key: 'deduct', width: 10 },
     { header: 'ส่งช้า', key: 'late', width: 8 },
-    { header: 'เอกสารไม่ครบ', key: 'docs', width: 12 },
+    { header: 'งานไม่เรียบร้อย', key: 'docs', width: 14 },
     { header: 'เหตุผลหักเงิน', key: 'deduct_reason', width: 24 },
     { header: 'รวมพนักงาน', key: 'total', width: 13 },
   ];

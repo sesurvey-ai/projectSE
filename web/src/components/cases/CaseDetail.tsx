@@ -142,6 +142,14 @@ function money2(v: unknown): string {
 /** ยอดเงินสำหรับ "อ่าน" — 0 ก็โชว์ 0.00 (ต่างจาก money2 ที่ 0 = ยังไม่กรอก จึงโชว์ว่าง) */
 const baht = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** ช่องนี้มีข้อมูลจริงไหม — 0 กับ "0" นับเป็นยังไม่กรอก · ข้อความล้วน (เช่นรายละเอียดค่าใช้จ่ายอื่น) นับ */
+function filled(v: unknown): boolean {
+  const t = String(v ?? '').trim();
+  if (t === '') return false;
+  const n = Number(t);
+  return Number.isNaN(n) ? true : n !== 0;
+}
+
 /**
  * ช่องเงิน 2 ฝั่งของการ์ดค่าใช้จ่าย — ชื่อตรงกับ `name` ของ input และคอลัมน์ใน DB
  *
@@ -595,6 +603,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     },
   } : pay;
   const repV = pvv ?? report;
+
+  /**
+   * ── 3 ช่องที่แทบไม่ได้ใช้ (ค่าโทรศัพท์ / ค่าประกันตัว / ค่าใช้จ่ายอื่นๆ) ── user ขอ 01/09/69
+   *
+   * พับเก็บไว้ให้ตารางสั้นลง แต่ **กางเองเมื่อเคสนั้นมีกรอกไว้จริง** — ถ้าซ่อนทื่อ ๆ
+   * เงินที่กรอกไว้จะหายไปจากสายตาผู้ตรวจทั้งที่ยังนับรวมอยู่ในยอด (กางแล้วหุบเองได้)
+   */
+  const [extraOpen, setExtraOpen] = useState(false);
+  const hasExtra = filled(exV.phone_fee) || filled(exV.bail_fee) || filled(exV.other_fee_price)
+    || filled(exV.other_fee_detail) || filled(payV?.saved?.phone_fee)
+    || filled(payV?.saved?.bail_fee) || filled(payV?.saved?.other_fee);
+  useEffect(() => { if (hasExtra) setExtraOpen(true); }, [hasExtra]);
 
   /** กลับมาครั้งของเคสนี้แล้ว → เขียนค่าที่เก็บไว้คืนลงช่อง (รางเพิ่งถูกสร้างใหม่) */
   useEffect(() => {
@@ -2565,16 +2585,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </tr>
                   )}
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={zeroBlank(payV?.saved?.phone_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="phone_fee" defaultValue={zeroBlank(exV.phone_fee)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(payV?.saved?.bail_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="bail_fee" defaultValue={zeroBlank(exV.bail_fee)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
                         ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
@@ -2586,7 +2596,35 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={zeroBlank(payV?.saved?.daily_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="daily_record_fee" defaultValue={zeroBlank(exV.daily_record_fee)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
-                  <tr className="bg-gray-50">
+                  {/* ── 3 ช่องที่แทบไม่ได้ใช้ พับเก็บไว้ ── (user ขอ 01/09/69)
+                      ยังต้องมีช่องอยู่ เผื่อเคสที่ใช้จริง แค่ไม่ต้องเกะกะทุกเคส
+
+                      ⛔ **ซ่อนด้วย CSS เท่านั้น ห้ามถอด <tr> ออกจาก DOM** — ตอนบันทึกอ่านค่าจาก
+                         FormData ของฟอร์มทั้งใบ ช่องที่ไม่อยู่ใน DOM = ไม่มีคีย์ใน payload
+                         แล้ว pay.service เขียนทับเป็น null ทั้งคอลัมน์ = ยอดที่เคยกรอกไว้หายเงียบ
+                      ⛔ type="button" ต้องมี — ปุ่มในฟอร์มไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit
+                         กดดูช่องที่ซ่อนอยู่กลายเป็นสั่งบันทึกทั้งเคส */}
+                  <tr className="border-b border-gray-100">
+                    <td colSpan={4} className="px-3 min-[1500px]:px-2 py-1.5">
+                      <button type="button" onClick={() => setExtraOpen((v) => !v)}
+                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800">
+                        <span className="text-[10px] w-3">{extraOpen ? '▾' : '▸'}</span>
+                        ค่าโทรศัพท์ · ค่าประกันตัว · ค่าใช้จ่ายอื่นๆ
+                        {hasExtra && <span className="text-amber-700">— มีกรอกไว้</span>}
+                      </button>
+                    </td>
+                  </tr>
+                  <tr className={`border-b border-gray-100 bg-gray-50 ${extraOpen ? '' : 'hidden'}`}>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={zeroBlank(payV?.saved?.phone_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="phone_fee" defaultValue={zeroBlank(exV.phone_fee)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                  </tr>
+                  <tr className={`border-b border-gray-100 bg-gray-50 ${extraOpen ? '' : 'hidden'}`}>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(payV?.saved?.bail_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="bail_fee" defaultValue={zeroBlank(exV.bail_fee)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                  </tr>
+                  <tr className={`border-b border-gray-100 bg-gray-50 ${extraOpen ? '' : 'hidden'}`}>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_detail" defaultValue={exV.other_fee_detail || ''} className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm" /></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={zeroBlank(payV?.saved?.other_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_price" defaultValue={zeroBlank(exV.other_fee_price)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
@@ -2607,7 +2645,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           <input type="checkbox" disabled={dDeduct} key={`deduct_late-${String(payV?.saved?.deduct_late ?? "")}`} name="deduct_late" defaultChecked={Boolean(payV?.saved?.deduct_late)} />ส่งช้า
                         </label>
                         <label className="flex items-center gap-1">
-                          <input type="checkbox" disabled={dDeduct} key={`deduct_docs-${String(payV?.saved?.deduct_docs ?? "")}`} name="deduct_docs" defaultChecked={Boolean(payV?.saved?.deduct_docs)} />เอกสารไม่ครบ
+                          <input type="checkbox" disabled={dDeduct} key={`deduct_docs-${String(payV?.saved?.deduct_docs ?? "")}`} name="deduct_docs" defaultChecked={Boolean(payV?.saved?.deduct_docs)} />งานไม่เรียบร้อย
                         </label>
                       </div>
                     </td>

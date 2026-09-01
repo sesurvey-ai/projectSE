@@ -134,7 +134,15 @@ console.log('\n── หน้าตรวจเคส: กางทุกห�
 const secIds = Array.from(src.matchAll(/data-section="([a-z_]+)"/g), (m) => m[1]);
 check('ยังมีหัวหมวดครบ (ไว้หาที่ + ติดป้ายยังกรอกไม่ครบ)', secIds.length >= 10, `${secIds.length} หมวด`);
 check('ไม่มีสวิตช์ยุบหมวดหลงเหลือ', !/secOpen|secToggle|openSec/.test(src));
-check('ไม่มีหมวดไหนถูกซ่อนด้วย class hidden', !/\? '' : 'hidden'/.test(src));
+/**
+ * ⛔ ห้ามซ่อน "หมวด" — ตรวจเฉพาะ element ที่มี data-section ไม่ใช่ทั้งไฟล์
+ *
+ * ข้อยกเว้นที่ user สั่งเอง 01/09/69: 3 ช่องเงินในการ์ดค่าใช้จ่าย (ค่าโทรศัพท์ /
+ * ค่าประกันตัว / ค่าใช้จ่ายอื่นๆ) พับเก็บได้ เพราะเป็นช่องที่แทบไม่ได้ใช้ ไม่ใช่หมวดข้อมูล
+ * ที่ต้องตรวจ — กติกาการซ่อนของมัน (ซ่อนด้วย CSS เท่านั้น + กางเองเมื่อมีค่า)
+ * มีการ์ดคุมไว้ที่ expenseCard.contract.test.ts
+ */
+check('ไม่มีหมวดไหนถูกซ่อนด้วย class hidden', !/data-section="[a-z_]+"[^>]*hidden/.test(src));
 check('ไม่มีหมวดไหนถูกถอดออกจาก DOM ตามเงื่อนไข',
       !/data-section[\s\S]{0,400}?\{\s*\w+\s*&&\s*\(\s*<div className="bg-white rounded-lg shadow/.test(src));
 

@@ -26,7 +26,7 @@ export const MONEY_LABELS: Record<MoneyKind, Record<string, string>> = {
     out_of_area: 'นอกพื้นที่', out_of_area_amt: 'ยอดนอกพื้นที่',
     out_of_hours: 'นอกเวลา', out_of_hours_amt: 'ยอดนอกเวลา',
     special_tumbon: 'ตำบลพิเศษ', daily_check: 'ผลคัดประจำวัน',
-    deduct_fee: 'หักเงิน', deduct_late: 'หัก-ส่งช้า', deduct_docs: 'หัก-เอกสารไม่ครบ',
+    deduct_fee: 'หักเงิน', deduct_late: 'หัก-ส่งช้า', deduct_docs: 'หัก-งานไม่เรียบร้อย',
     deduct_reason: 'เหตุผลหักเงิน', total: 'รวมจ่ายพนักงาน',
   },
   // ยอดเรียกเก็บประกัน — คอลัมน์ "ราคาประกัน"

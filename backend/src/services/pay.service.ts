@@ -335,7 +335,7 @@ export async function saveCasePay(
     deduct: money[PAY_DEDUCT_FIELD],
     deduct_reasons: [
       input.deduct_late ? 'ส่งช้า' : null,
-      input.deduct_docs ? 'เอกสารไม่ครบ' : null,
+      input.deduct_docs ? 'งานไม่เรียบร้อย' : null,
       input.deduct_reason || null,
     ].filter(Boolean),
   };

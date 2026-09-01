@@ -101,5 +101,48 @@ check('ตัวปรับเรทอยู่เหนือแถวรว�
       && ui.indexOf('<tfoot>') > 0);
 
 
+
+console.log('\n── พับ 3 ช่องที่แทบไม่ได้ใช้ ──');
+/**
+ * user ขอ 01/09/69: ค่าโทรศัพท์ / ค่าประกันตัว / ค่าใช้จ่ายอื่นๆ แทบไม่ได้ใช้
+ * แต่ยังต้องมีช่องไว้ → พับเก็บ กดกางเอา
+ */
+check('มีปุ่มพับ/กางคุม 3 ช่องนี้',
+      ui.includes('setExtraOpen((v) => !v)')
+      && ui.includes('ค่าโทรศัพท์ · ค่าประกันตัว · ค่าใช้จ่ายอื่นๆ'));
+/**
+ * ⛔ **ข้อสำคัญที่สุดของบล็อกนี้** — ต้องซ่อนด้วย CSS ห้ามถอด <tr> ออกจาก DOM
+ *    ตอนบันทึกอ่านจาก FormData ของฟอร์มทั้งใบ (ดู handleSave: วนคีย์ที่ขึ้นต้น pay_)
+ *    ช่องที่ไม่อยู่ใน DOM = ไม่มีคีย์ใน payload → pay.service เขียนทับเป็น null
+ *    = ยอดที่เคยกรอกไว้หายเงียบ ๆ โดยไม่มีอะไรฟ้อง
+ */
+const hiddenRows = (ui.match(/\$\{extraOpen \? '' : 'hidden'\}/g) ?? []).length;
+check('⛔ ซ่อนด้วย CSS ครบทั้ง 3 แถว (ไม่ถอดออกจาก DOM = ยอดไม่ถูกล้างตอนบันทึก)',
+      hiddenRows === 3, `เจอ ${hiddenRows} แถว`);
+check('⛔ ไม่มีการ render แบบมีเงื่อนไข (extraOpen && <tr>)', !/extraOpen && \(?\s*<tr/.test(ui));
+/** ⛔ ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit — กดดูช่อง = สั่งบันทึกทั้งเคส */
+check('⛔ ปุ่มพับเป็น type="button" ไม่ใช่ submit',
+      /<button type="button" onClick=\{\(\) => setExtraOpen/.test(ui));
+/** ซ่อนทื่อ ๆ = เงินที่กรอกไว้หายจากสายตาผู้ตรวจ ทั้งที่ยังนับรวมอยู่ในยอด */
+check('เคสที่มีกรอกไว้ กางให้เอง', ui.includes('if (hasExtra) setExtraOpen(true);'));
+check('ตอนพับยังบอกว่ามีข้อมูลอยู่ข้างใน', ui.includes("{hasExtra && <span className=\"text-amber-700\">— มีกรอกไว้</span>}"));
+/** 0 กับ "0" = ยังไม่กรอก · ข้อความล้วน (รายละเอียดค่าใช้จ่ายอื่น) = กรอกแล้ว */
+check('เช็คว่ามีข้อมูลจริง ไม่นับ 0 เป็นกรอกแล้ว', ui.includes('return Number.isNaN(n) ? true : n !== 0;'));
+
+console.log('\n── ป้ายเหตุผลหักเงิน ──');
+/** user เปลี่ยนคำ 01/09/69 — คอลัมน์ยังชื่อ deduct_docs เหมือนเดิม เปลี่ยนแค่คำที่คนอ่าน */
+{
+  const audit = read('src', 'services', 'moneyAudit.ts');
+  const payExp = read('src', 'services', 'payExport.service.ts');
+  const paySv = read('src', 'services', 'pay.service.ts');
+  const all = [ui, audit, payExp, paySv];
+  check('เปลี่ยนเป็น "งานไม่เรียบร้อย" ครบทุกที่ที่คนเห็น',
+        all.every((t) => t.includes('งานไม่เรียบร้อย')));
+  check('⛔ ไม่เหลือคำเดิมค้างอยู่ที่ไหน', all.every((t) => !t.includes('เอกสารไม่ครบ')));
+  /** ⛔ ห้ามเปลี่ยนชื่อคอลัมน์ — ข้อมูลเก่าทั้งหมดผูกกับชื่อนี้ */
+  check('ชื่อคอลัมน์ยังเป็น deduct_docs เหมือนเดิม',
+        paySv.includes('deduct_docs=EXCLUDED.deduct_docs') && ui.includes('name="deduct_docs"'));
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
