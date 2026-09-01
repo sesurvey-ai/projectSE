@@ -154,10 +154,13 @@ export default function PhotoGallery(
 <title>รูปเคส</title><style>
 html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,sans-serif}
 #wrap{height:100%;display:flex}
-#side{flex:none;width:150px;display:flex;flex-direction:column;background:#181818;border-right:1px solid #2a2a2a}
+#side{flex:none;width:150px;min-width:110px;max-width:70vw;display:flex;flex-direction:column;background:#181818}
+#grip{flex:none;width:6px;cursor:col-resize;background:#2a2a2a}
+#grip:hover,#grip.on{background:#4da3ff}
 #filter{margin:8px;padding:6px;background:#2a2a2a;color:#eee;border:0;border-radius:6px;font-size:13px}
-#strip{flex:1;min-height:0;overflow-y:auto;padding:0 8px 8px}
-#strip .t{width:100%;height:86px;object-fit:cover;border-radius:6px;margin-bottom:8px;cursor:pointer;
+#strip{flex:1;min-height:0;overflow-y:auto;padding:0 8px 8px;display:grid;gap:8px;
+  grid-template-columns:repeat(auto-fill,minmax(96px,1fr));align-content:start}
+#strip .t{width:100%;height:86px;object-fit:cover;border-radius:6px;cursor:pointer;
   border:2px solid transparent;opacity:.55;display:block}
 #strip .t:hover{opacity:.85}
 #strip .t.on{opacity:1;border-color:#4da3ff}
@@ -175,6 +178,7 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,
 #empty{color:#888;font-size:14px}
 </style></head><body><div id="wrap">
 <div id="side"><select id="filter"></select><div id="strip"></div></div>
+<div id="grip" title="ลากเพื่อปรับความกว้าง"></div>
 <div id="main">
 <div id="bar"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
 ${canDelete ? '<button id="del">ลบรูปนี้</button>' : ''}
@@ -224,6 +228,14 @@ if(del)del.onclick=function(){
   try{window.opener.__seDeletePhoto(L[i].id);}catch(e){alert('ลบไม่สำเร็จ — หน้าเว็บหลักถูกปิดไปแล้ว');del.disabled=false;}};
 // หน้าเว็บแม่ส่งรายการใหม่เข้ามาหลังลบ/เพิ่มรูป
 window.__seSetPhotos=function(nl){var cur=L.length?L[i].id:null;ALL=nl;buildFilter();applyFilter(cur);};
+// ลากขอบเพื่อขยายแถบรูป — กว้างขึ้นรูปจะจัดเป็น 2-3 คอลัมน์เองตามที่ว่าง
+var side=document.getElementById('side'),grip=document.getElementById('grip'),drag=false;
+function setW(px){var w=Math.max(110,Math.min(px,Math.round(innerWidth*0.7)));side.style.width=w+'px';
+  try{localStorage.setItem('seViewerW',w);}catch(e){}}
+try{var sw=parseInt(localStorage.getItem('seViewerW'),10);if(sw)setW(sw);}catch(e){}
+grip.onmousedown=function(e){drag=true;grip.className='on';e.preventDefault();};
+document.onmousemove=function(e){if(drag)setW(e.clientX);};
+document.onmouseup=function(){if(drag){drag=false;grip.className='';}};
 document.onkeydown=function(e){if(e.key==='ArrowLeft')prev.onclick();
   else if(e.key==='ArrowRight')next.onclick();else if(e.key==='Escape')window.close();};
 buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);

@@ -60,6 +60,20 @@ check('ลบแล้วรายการในหน้าต่างอั�
 check('ยืนยันก่อนลบที่ตัวหน้าต่างเอง (confirm ของหน้าแม่จะไปโผล่ข้างหลัง)',
       winPart.includes("confirm('ลบรูปนี้ออกจากเคส"));
 
+console.log('\n── ลากขยายแถบรูปได้ ──');
+check('มีที่จับสำหรับลาก', /id="grip"/.test(gallery) && /cursor:col-resize/.test(gallery));
+/**
+ * ⛔ ต้องเป็น grid + auto-fill — ถ้ายังเป็นรูปเรียงลงมาทีละใบ (width:100%)
+ *    ลากให้กว้างแค่ไหนก็ได้คอลัมน์เดียว รูปยืดใหญ่ขึ้นเฉย ๆ ไม่ได้เห็นรูปมากขึ้น
+ */
+check('กว้างขึ้นแล้วรูปจัดหลายคอลัมน์เอง',
+      gallery.includes('grid-template-columns:repeat(auto-fill,minmax(96px,1fr))'));
+/** ลากจนแคบเกินจนไม่เหลือที่ให้รูป / กว้างจนกลืนพื้นที่ดูรูปทั้งหมด = ใช้งานต่อไม่ได้ */
+check('จำกัดความกว้างต่ำสุด/สูงสุด', gallery.includes('Math.max(110,Math.min(px,Math.round(innerWidth*0.7)))'));
+check('จำความกว้างไว้ใช้ครั้งถัดไป', gallery.includes("localStorage.setItem('seViewerW'"));
+/** localStorage โยน error ได้ในบางบริบท — ล้มทั้งสคริปต์เพราะจำความกว้างไม่ได้ ไม่คุ้ม */
+check('อ่าน/เขียนความกว้างมี try/catch', /try\{localStorage\.setItem\('seViewerW'[\s\S]{0,40}catch/.test(gallery));
+
 console.log('\n── สคริปต์ในหน้าต่างต้องรันได้จริง ──');
 /**
  * ⛔ **การ์ดสำคัญที่สุดของไฟล์นี้** — สคริปต์ของหน้าต่างดูรูปเป็น "สตริงซ้อนสองชั้น"
