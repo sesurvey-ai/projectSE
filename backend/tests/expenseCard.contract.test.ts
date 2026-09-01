@@ -354,5 +354,46 @@ console.log('\n── ชื่อแท็บในหน้าเรท ──
   check('เปลี่ยนเป็น "เรทรายตำบล"', rp.includes("label: 'เรทรายตำบล'") && !rp.includes('ตำบลพิเศษ'));
 }
 
+
+console.log('\n── ปุ่มขยายช่องความเห็น ──');
+/**
+ * user ขอ 01/09/69 — 3 ช่องความเห็นสูงแค่ 4 บรรทัด แต่ข้อความจริงยาว 10-20 บรรทัด
+ * เดิมต้องลากมุมขวาล่างขยายเองทุกครั้ง
+ */
+for (const [label, name] of [
+  ['ผลการดำเนินงาน', 'survey_result'],
+  ['ความเห็นของผู้ตรวจสอบ', 'review_comment'],
+  ['ความเห็นของเซอร์เวย์', 'surveyor_comment'],
+]) {
+  check(`"${label}" มีปุ่มขยาย`, ui.includes(`openBig('${name}', '${label}')`));
+}
+/**
+ * ⛔ ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit — กดขยายกลายเป็นสั่งบันทึกทั้งเคส
+ */
+check('⛔ ปุ่มขยายเป็น type="button"',
+      /<button type="button" disabled=\{previewing\}\s*\n?\s*onClick=\{\(\) => openBig/.test(ui)
+      || ui.includes('<button type="button" disabled={previewing}'));
+/**
+ * ⛔ textarea ในกล่องใหญ่อยู่ใน <form> เดียวกับฟอร์มหลัก — มี name เมื่อไหร่ FormData
+ *    จะเก็บ 2 ค่าชื่อเดียวกัน แล้วตัวหลังทับตัวแรกเงียบ ๆ (บั๊กเดียวกับที่การ์ด
+ *    inspectorForm ห้ามไว้เรื่อง "ความเห็นของผู้ตรวจสอบมีที่เดียวเท่านั้น")
+ */
+{
+  const dlg = (ui.match(/\{bigEdit && \([\s\S]*?\n      \)\}/) ?? [''])[0];
+  check('⛔ textarea ในกล่องใหญ่ไม่มี name (ไม่งั้นค่าทับกันตอนบันทึก)',
+        dlg.length > 0 && dlg.includes('<textarea autoFocus') && !/name=/.test(dlg));
+  check('ปุ่มในกล่องใหญ่เป็น type="button" ทุกตัว',
+        dlg.length > 0 && (dlg.match(/<button/g) ?? []).length === (dlg.match(/<button type="button"/g) ?? []).length);
+}
+/**
+ * ⛔ ช่องความเห็นเป็น uncontrolled (defaultValue) — เขียนกลับต้องแตะ .value ของ DOM
+ *    เปลี่ยนเป็น controlled จะพิมพ์หน่วงทั้งฟอร์มเพราะ re-render ทุกตัวอักษร
+ */
+check('เขียนค่ากลับเข้าช่องเดิมผ่าน DOM', ui.includes('el.value = bigDraft;'));
+check('ช่องความเห็นยังเป็น uncontrolled เหมือนเดิม',
+      ui.includes('<textarea name="survey_result" disabled={previewing} defaultValue='));
+/** ดูครั้งอื่นอยู่ = อ่านอย่างเดียว ห้ามเปิดให้แก้ */
+check('ดูครั้งอื่นอยู่ → ปุ่มขยายกดไม่ได้', ui.includes('<button type="button" disabled={previewing}'));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);

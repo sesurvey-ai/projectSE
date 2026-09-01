@@ -463,6 +463,35 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [accProv, setAccProv] = useState<string>(report.acc_province || '0');
   const [accDist, setAccDist] = useState<string>(report.acc_district || '-- เขต --');
   const [accTumbon, setAccTumbon] = useState<string>(report.acc_subdistrict || '');
+
+  /**
+   * ── กล่องเขียนความเห็นแบบเต็มจอ ── (user ขอ 01/09/69)
+   *
+   * 3 ช่องความเห็นสูงแค่ 4 บรรทัด ข้อความจริงยาว 10-20 บรรทัด ต้องลากมุมขวาล่าง
+   * ขยายเองทุกครั้งที่จะพิมพ์ · ปุ่ม "ขยาย" เปิดกล่องใหญ่ พิมพ์เสร็จค่ากลับเข้าช่องเดิม
+   *
+   * ⛔ ช่องพวกนี้เป็น uncontrolled (defaultValue) — เขียนกลับต้องแตะ .value ของ DOM ตรง ๆ
+   *    ถ้าเปลี่ยนเป็น controlled จะพิมพ์หน่วงทั้งฟอร์มเพราะ re-render ทุกตัวอักษร
+   * ⛔ textarea ในกล่องใหญ่ **ห้ามมี name** — มันอยู่ใน <form> เดียวกัน มี name เมื่อไหร่
+   *    FormData จะเก็บ 2 ค่าชื่อเดียวกัน แล้วตัวหลังทับตัวแรกเงียบ ๆ
+   */
+  const [bigEdit, setBigEdit] = useState<{ name: string; label: string } | null>(null);
+  const [bigDraft, setBigDraft] = useState('');
+  const fieldEl = (name: string) =>
+    formRef.current?.querySelector<HTMLTextAreaElement>(`textarea[name="${name}"]`) ?? null;
+  const openBig = (name: string, label: string) => {
+    setBigDraft(fieldEl(name)?.value ?? '');
+    setBigEdit({ name, label });
+  };
+  const applyBig = () => {
+    if (!bigEdit) return;
+    const el = fieldEl(bigEdit.name);
+    if (el) {
+      el.value = bigDraft;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    setBigEdit(null);
+  };
   /**
    * ── ตัวเลือก "ตำบล" ── (user ขอ 01/09/69)
    *
@@ -2602,17 +2631,44 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               ตัวบันทึกหยิบไปแค่ช่องเดียว แล้วอีกช่องหายเงียบ ๆ (มีการ์ดเทสจับชื่อช่องซ้ำทั้งไฟล์) */}
           <div className="p-4 space-y-3">
             <div>
-              <label className="block text-sm text-gray-500 mb-1">ผลการดำเนินงาน</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm text-gray-500">ผลการดำเนินงาน</label>
+                {/* ⛔ type="button" — ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit
+                    กดขยายกลายเป็นสั่งบันทึกทั้งเคส */}
+                <button type="button" disabled={previewing}
+                  onClick={() => openBig('survey_result', 'ผลการดำเนินงาน')}
+                  className="text-xs text-blue-700 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed">
+                  ⤢ ขยาย
+                </button>
+              </div>
               <textarea name="survey_result" disabled={previewing} defaultValue={repV?.survey_result || ''}
                 className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
             </div>
             <div>
-              <label className="block text-sm text-gray-500 mb-1">ความเห็นของผู้ตรวจสอบ</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm text-gray-500">ความเห็นของผู้ตรวจสอบ</label>
+                {/* ⛔ type="button" — ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit
+                    กดขยายกลายเป็นสั่งบันทึกทั้งเคส */}
+                <button type="button" disabled={previewing}
+                  onClick={() => openBig('review_comment', 'ความเห็นของผู้ตรวจสอบ')}
+                  className="text-xs text-blue-700 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed">
+                  ⤢ ขยาย
+                </button>
+              </div>
               <textarea name="review_comment" disabled={previewing} defaultValue={repV?.review_comment || (previewing ? '' : review?.comment) || ''}
                 className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
             </div>
             <div>
-              <label className="block text-sm text-gray-500 mb-1">ความเห็นของเซอร์เวย์</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm text-gray-500">ความเห็นของเซอร์เวย์</label>
+                {/* ⛔ type="button" — ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit
+                    กดขยายกลายเป็นสั่งบันทึกทั้งเคส */}
+                <button type="button" disabled={previewing}
+                  onClick={() => openBig('surveyor_comment', 'ความเห็นของเซอร์เวย์')}
+                  className="text-xs text-blue-700 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed">
+                  ⤢ ขยาย
+                </button>
+              </div>
               <textarea name="surveyor_comment" disabled={previewing} defaultValue={repV?.surveyor_comment || (previewing ? '' : review?.surveyor_comment) || ''}
                 className="w-full border border-gray-300 rounded px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
             </div>
@@ -2977,6 +3033,36 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       </div>
       </div>{/* จบ grid 2 คอลัมน์ */}
       </fieldset>
+
+      {/* ── กล่องเขียนความเห็นแบบเต็มจอ ── (user ขอ 01/09/69)
+          อยู่นอก <form> ไม่ได้ (โครงหน้าเป็นก้อนเดียว) จึงต้องระวัง 2 อย่าง:
+          textarea ห้ามมี name · ปุ่มทุกตัวต้อง type="button" */}
+      {bigEdit && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setBigEdit(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col"
+            style={{ maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800">{bigEdit.label}</h3>
+              <span className="text-xs text-gray-400">{bigDraft.length.toLocaleString('th-TH')} ตัวอักษร</span>
+            </div>
+            <div className="p-4 flex-1 overflow-auto">
+              {/* ⛔ ห้ามใส่ name — อยู่ใน <form> เดียวกับฟอร์มหลัก มี name แล้ว FormData
+                  จะเก็บ 2 ค่าชื่อเดียวกัน ตัวหลังทับตัวแรกเงียบ ๆ */}
+              <textarea autoFocus value={bigDraft} onChange={(e) => setBigDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setBigEdit(null); }}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-800 bg-white text-sm leading-relaxed"
+                style={{ height: '60vh' }} />
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setBigEdit(null)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">ยกเลิก</button>
+              <button type="button" onClick={applyBig}
+                className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">เสร็จ</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <DamageDialog open={dmgOpen} items={damage} disabled={approved}
         onClose={() => setDmgOpen(false)} onSave={setDamage} />
