@@ -154,13 +154,13 @@ export default function PhotoGallery(
 <title>รูปเคส</title><style>
 html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,sans-serif}
 #wrap{height:100%;display:flex}
-#side{flex:none;width:150px;min-width:110px;max-width:70vw;display:flex;flex-direction:column;background:#181818}
+#side{flex:none;width:190px;min-width:130px;max-width:70vw;display:flex;flex-direction:column;background:#181818}
 #grip{flex:none;width:6px;cursor:col-resize;background:#2a2a2a}
 #grip:hover,#grip.on{background:#4da3ff}
 #filter{margin:8px;padding:6px;background:#2a2a2a;color:#eee;border:0;border-radius:6px;font-size:13px}
 #strip{flex:1;min-height:0;overflow-y:auto;padding:0 8px 8px;display:grid;gap:8px;
-  grid-template-columns:repeat(auto-fill,minmax(96px,1fr));align-content:start}
-#strip .t{width:100%;height:86px;object-fit:cover;border-radius:6px;cursor:pointer;
+  grid-template-columns:repeat(auto-fill,minmax(128px,1fr));align-content:start}
+#strip .t{width:100%;height:118px;object-fit:cover;border-radius:6px;cursor:pointer;
   border:2px solid transparent;opacity:.55;display:block}
 #strip .t:hover{opacity:.85}
 #strip .t.on{opacity:1;border-color:#4da3ff}
@@ -230,7 +230,7 @@ if(del)del.onclick=function(){
 window.__seSetPhotos=function(nl){var cur=L.length?L[i].id:null;ALL=nl;buildFilter();applyFilter(cur);};
 // ลากขอบเพื่อขยายแถบรูป — กว้างขึ้นรูปจะจัดเป็น 2-3 คอลัมน์เองตามที่ว่าง
 var side=document.getElementById('side'),grip=document.getElementById('grip'),drag=false;
-function setW(px){var w=Math.max(110,Math.min(px,Math.round(innerWidth*0.7)));side.style.width=w+'px';
+function setW(px){var w=Math.max(130,Math.min(px,Math.round(innerWidth*0.7)));side.style.width=w+'px';
   try{localStorage.setItem('seViewerW',w);}catch(e){}}
 try{var sw=parseInt(localStorage.getItem('seViewerW'),10);if(sw)setW(sw);}catch(e){}
 grip.onmousedown=function(e){drag=true;grip.className='on';e.preventDefault();};

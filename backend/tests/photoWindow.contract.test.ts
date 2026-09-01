@@ -67,9 +67,9 @@ check('มีที่จับสำหรับลาก', /id="grip"/.test(ga
  *    ลากให้กว้างแค่ไหนก็ได้คอลัมน์เดียว รูปยืดใหญ่ขึ้นเฉย ๆ ไม่ได้เห็นรูปมากขึ้น
  */
 check('กว้างขึ้นแล้วรูปจัดหลายคอลัมน์เอง',
-      gallery.includes('grid-template-columns:repeat(auto-fill,minmax(96px,1fr))'));
+      gallery.includes('grid-template-columns:repeat(auto-fill,minmax(128px,1fr))'));
 /** ลากจนแคบเกินจนไม่เหลือที่ให้รูป / กว้างจนกลืนพื้นที่ดูรูปทั้งหมด = ใช้งานต่อไม่ได้ */
-check('จำกัดความกว้างต่ำสุด/สูงสุด', gallery.includes('Math.max(110,Math.min(px,Math.round(innerWidth*0.7)))'));
+check('จำกัดความกว้างต่ำสุด/สูงสุด', gallery.includes('Math.max(130,Math.min(px,Math.round(innerWidth*0.7)))'));
 check('จำความกว้างไว้ใช้ครั้งถัดไป', gallery.includes("localStorage.setItem('seViewerW'"));
 /** localStorage โยน error ได้ในบางบริบท — ล้มทั้งสคริปต์เพราะจำความกว้างไม่ได้ ไม่คุ้ม */
 check('อ่าน/เขียนความกว้างมี try/catch', /try\{localStorage\.setItem\('seViewerW'[\s\S]{0,40}catch/.test(gallery));
