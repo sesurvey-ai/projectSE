@@ -165,6 +165,15 @@ const PAY_MONEY_INPUTS = ['pay_service_fee', 'pay_travel_fee', 'pay_photo_fee', 
 /** ตัวปรับเรทฝั่งพนักงาน — หน้าเว็บส่งแค่ติ๊ก/ไม่ติ๊ก ยอดคงที่นี้อยู่ที่ backend */
 const OUT_OF_AREA_AMT = 50;
 const OUT_OF_HOURS_AMT = 100;
+
+/**
+ * เรทค่าคัดประจำวัน (user เคาะ 01/09/69) — เลือกผลแล้วเติมยอดให้ทั้ง 2 ฝั่ง
+ * ฝั่งพนักงาน 50 ทุกผล · ฝั่งประกันจ่ายผล "ถูก" เป็นสองเท่าของอีก 2 ผล
+ * ⛔ เติมตอน "เลือก" เท่านั้น ไม่เติมตอนเปิดหน้า — เคสที่หัวหน้าแก้ยอดเองไว้
+ *    จะได้ไม่ถูกเขียนทับทุกครั้งที่เปิดดู
+ */
+const DAILY_FEE_PAY = 50;
+const DAILY_FEE_INS: Record<string, number> = { 'ถูก': 100, 'ผิด': 50, 'รอผล': 50 };
 /** ค่าเสียหายประมาณของคู่กรณี/ทรัพย์สิน — 0 ที่ติดมากับข้อมูลคือ "ไม่ได้กรอก" ล้างตอนโหลด
  *  (ล้างที่ตอนโหลด ไม่ใช่ตอนวาด — ช่องพวกนี้เป็น controlled ถ้าล้างตอนวาดจะพิมพ์เลข 0 ไม่ได้) */
 function blankZeroCost<T extends Record<string, unknown>>(x: T): T {
@@ -2613,7 +2622,36 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าคัดประจำวัน</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    {/* ── ผลคัดประจำวันย้ายมาอยู่แถวเดียวกับยอด ── (user ขอ 01/09/69)
+                        เดิมอยู่ในแถวตัวปรับใต้ตาราง คนละที่กับยอดของมันเอง
+                        เลือกผลแล้วเติมเรทให้ทั้ง 2 ฝั่งเลย */}
+                    <td className="px-3 min-[1500px]:px-2 py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        {/* ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) ตอน render แรกยังว่าง
+                            React ไม่เอา defaultValue ของ <select> มาใส่ซ้ำเมื่อ props เปลี่ยน
+                            (ต่างจาก <input>) ช่องนี้จะค้างที่ "ไม่มี" ตลอด แล้วพอกดบันทึก
+                            ก็เขียนค่าว่างทับของเดิมใน survey_pay + rate_snapshot */}
+                        <select key={`dc-${String(payV?.saved?.daily_check ?? '')}`}
+                          disabled={dPay} name="daily_check" defaultValue={String(payV?.saved?.daily_check ?? '')}
+                          onChange={(e) => {
+                            const v = e.currentTarget.value;
+                            const put = (n: string, val: string) => {
+                              const el = railRef.current?.querySelector<HTMLInputElement>(`[name="${n}"]`);
+                              if (el && !el.disabled) el.value = val;
+                            };
+                            put('pay_daily_fee', v ? String(DAILY_FEE_PAY) : '');
+                            put('daily_record_fee', v ? String(DAILY_FEE_INS[v] ?? '') : '');
+                            /** ⛔ ตัวฟังที่รางทำงานก่อน onChange ของ React — ต้องคิดยอดใหม่เอง */
+                            recalcSums();
+                          }}
+                          className={`w-[84px] min-[1500px]:w-[76px] border rounded px-1.5 py-1 text-sm ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`}>
+                          <option value="">ไม่มี</option>
+                          <option value="ถูก">ถูก</option>
+                          <option value="ผิด">ผิด</option>
+                          <option value="รอผล">รอผล</option>
+                        </select>
+                      </div>
+                    </td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={zeroBlank(payV?.saved?.daily_fee)} className={`w-full border rounded px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="daily_record_fee" defaultValue={zeroBlank(exV.daily_record_fee)} className="w-full border border-blue-500 rounded px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
                   {/* ── 3 ช่องที่แทบไม่ได้ใช้ พับเก็บไว้ ── (user ขอ 01/09/69)
@@ -2754,21 +2792,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           <label className="flex items-center gap-1.5">
                             <input type="checkbox" disabled={dPay} key={`special_tumbon-${String(payV?.saved?.special_tumbon ?? "")}`} name="special_tumbon" defaultChecked={Boolean(payV?.saved?.special_tumbon)} />
                             <span className="text-gray-700">ตำบลพิเศษ</span>
-                          </label>
-                          <label className="flex items-center gap-1.5">
-                            <span className="text-gray-700">ค่าคัดประจำวัน</span>
-                            {/* ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) ตอน render แรกยังว่าง
-                                React ไม่เอา defaultValue ของ <select> มาใส่ซ้ำเมื่อ props เปลี่ยน
-                                (ต่างจาก <input>) ช่องนี้จึงค้างที่ "— ไม่มี —" ตลอด แล้วพอกดบันทึก
-                                ก็เขียนค่าว่างทับของเดิมใน survey_pay + rate_snapshot */}
-                            <select key={`dc-${String(payV?.saved?.daily_check ?? '')}`}
-                              disabled={dPay} name="daily_check" defaultValue={String(payV?.saved?.daily_check ?? '')}
-                              className={`border rounded px-2 py-1 text-sm ${d ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-300'}`}>
-                              <option value="">— ไม่มี —</option>
-                              <option value="ถูก">ถูก</option>
-                              <option value="ผิด">ผิด</option>
-                              <option value="รอผล">รอผล</option>
-                            </select>
                           </label>
                         </div>
                         {pay?.area && (pay.area.resolved ? (

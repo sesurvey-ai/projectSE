@@ -231,5 +231,37 @@ check('งานเก่าที่ติ๊กไว้แต่ยังไ�
 check('⛔ onChange เรียก recalcSums เองหลังเติม/ล้างยอด',
       ui.split('recalcSums();').length - 1 >= 4);
 
+
+console.log('\n── ค่าคัดประจำวัน: ผลอยู่แถวเดียวกับยอด + เติมเรทให้ ──');
+/**
+ * user ขอ 01/09/69 — เดิม dropdown ผลคัดประจำวันอยู่ในแถวตัวปรับใต้ตาราง
+ * คนละที่กับยอดของมันเอง · ย้ายมาอยู่คอลัมน์ "จำนวน" ของแถวค่าคัดประจำวัน
+ */
+const dailyRow = (ui.match(/>ค่าคัดประจำวัน<\/td>[\s\S]*?<\/tr>/) ?? [''])[0];
+check('dropdown อยู่ในแถวค่าคัดประจำวันแล้ว',
+      dailyRow.includes('name="daily_check"')
+      && dailyRow.includes('name="pay_daily_fee"')
+      && dailyRow.includes('name="daily_record_fee"'));
+/** เหลือที่เดียว — ถ้ามี 2 ที่ FormData จะเก็บตัวหลังทับตัวแรกเงียบ ๆ */
+check('⛔ ไม่เหลือ dropdown ตัวเดิมในแถวตัวปรับ',
+      (ui.match(/name="daily_check"/g) ?? []).length === 1);
+check('ป้ายตัวเลือกเป็น "ไม่มี" ไม่ใช่ "— ไม่มี —"',
+      ui.includes('<option value="">ไม่มี</option>') && !ui.includes('— ไม่มี —'));
+/** เรทที่ user เคาะ 01/09/69 — ฝั่งพนักงาน 50 ทุกผล · ฝั่งประกัน ถูก 100 · ผิด/รอผล 50 */
+check('เรทฝั่งพนักงาน 50 ทุกผล', ui.includes('const DAILY_FEE_PAY = 50;'));
+check('เรทฝั่งประกัน ถูก 100 · ผิด 50 · รอผล 50',
+      ui.includes("{ 'ถูก': 100, 'ผิด': 50, 'รอผล': 50 }"));
+check('เลือกผลแล้วเติมยอดให้ทั้ง 2 ฝั่ง',
+      ui.includes("put('pay_daily_fee', v ? String(DAILY_FEE_PAY) : '')")
+      && ui.includes("put('daily_record_fee', v ? String(DAILY_FEE_INS[v] ?? '') : '')"));
+/**
+ * ⛔ เติมตอน "เลือก" เท่านั้น ห้ามเติมตอนเปิดหน้า — เคสที่หัวหน้าแก้ยอดเองไว้จะถูก
+ *    เขียนทับทุกครั้งที่เปิดดู (แกนเดียวกับกติกาค่ารูปเหมา: ไม่ทับของที่บันทึกไว้)
+ */
+check('⛔ เติมตอนเลือกเท่านั้น ไม่เติมตอนเปิดหน้า',
+      !/DAILY_FEE_(PAY|INS)[\s\S]{0,120}?defaultValue/.test(ui));
+/** เลือก "ไม่มี" = ล้างยอดทั้ง 2 ฝั่ง ไม่ใช่ค้างเลขของผลก่อนหน้า */
+check('เลือก "ไม่มี" แล้วล้างยอด', ui.includes("v ? String(DAILY_FEE_PAY) : ''"));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
