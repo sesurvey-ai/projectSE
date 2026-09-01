@@ -83,7 +83,7 @@ check('ไม่มีธงล็อกช่องตัวไหนผูก�
 // หักเงินแยกออกจากยอดรายรับ: เป็นกติกาของ se-survey เอง ระบบเดิมไม่มีช่องนี้และ
 // se-billing ไม่มีที่เก็บ → ล็อกตามที่มาของงานคือล็อกผิดฝั่ง (user เคาะ 17/08/69 เคส #149)
 const DEDUCT_NAME = /name="(?:pay_deduct_fee|deduct_late|deduct_docs|deduct_reason)"/;
-const PAY_NAME = /name="(?:pay_[a-z_]+|out_of_area|out_of_hours|special_tumbon|daily_check|other_reason)"/;
+const PAY_NAME = /name="(?:pay_[a-z_]+|out_of_area(?:_amt)?|out_of_hours(?:_amt)?|special_tumbon|daily_check|other_reason)"/;
 
 const payLines = src.split('\n')
   .filter((l) => PAY_NAME.test(l) && !DEDUCT_NAME.test(l) && /disabled=\{/.test(l));

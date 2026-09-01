@@ -2710,8 +2710,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                             {/* ⛔ ช่องยอดต้องอยู่ **นอก** <label> — อยู่ในนั้นคลิกเพื่อพิมพ์จะไปสลับช่องติ๊กแทน
                                 ⛔ key จำเป็นเหมือนช่องติ๊ก ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา
                                    defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
-                            <input type="text" disabled={dPay} key={`ooa-${String(payV?.saved?.out_of_area_amt ?? '')}`}
-                              name="out_of_area_amt" defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)} placeholder="50"
+                            <input type="text" disabled={dPay} name="out_of_area_amt" key={`ooa-${String(payV?.saved?.out_of_area_amt ?? '')}`}
+                              defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)} placeholder="50"
                               title="ว่างไว้ = ใช้ค่าตั้งต้น 50 บาท · กรอกเองได้ถ้าเคสนี้จ่ายมากกว่านั้น"
                               className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
@@ -2724,8 +2724,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                             {/* ⛔ ช่องยอดต้องอยู่ **นอก** <label> — อยู่ในนั้นคลิกเพื่อพิมพ์จะไปสลับช่องติ๊กแทน
                                 ⛔ key จำเป็นเหมือนช่องติ๊ก ยอดเงินโหลดมาทีหลัง (async) React ไม่เอา
                                    defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
-                            <input type="text" disabled={dPay} key={`ooh-${String(payV?.saved?.out_of_hours_amt ?? '')}`}
-                              name="out_of_hours_amt" defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)} placeholder="100"
+                            <input type="text" disabled={dPay} name="out_of_hours_amt" key={`ooh-${String(payV?.saved?.out_of_hours_amt ?? '')}`}
+                              defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)} placeholder="100"
                               title="ว่างไว้ = ใช้ค่าตั้งต้น 100 บาท · กรอกเองได้ถ้าเคสนี้จ่ายมากกว่านั้น"
                               className={`w-[56px] border rounded px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
