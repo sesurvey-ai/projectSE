@@ -33,7 +33,20 @@ check('ใช้หน้าต่างเดิมซ้ำ (ตั้งช�
 check('ป๊อปอัปถูกบล็อก → ถอยไปใช้กล่องทับจอเดิม', /if \(!w\) \{ setSelected\(p\); return; \}/.test(gallery));
 /** ผู้ตรวจไล่ดูรูปทีละใบระหว่างกรอก — ไม่มีปุ่มถัดไปต้องกลับไปกดที่ตารางทุกใบ */
 check('ในหน้าต่างมีปุ่มก่อนหน้า/ถัดไป', gallery.includes("id=\"prev\"") && gallery.includes("id=\"next\""));
-check('กดรูปเพื่อซูมเต็มขนาดได้', /img\.className=img\.className\?'':'full'/.test(gallery));
+check('กดรูปเพื่อซูมได้', gallery.includes("img.onclick=function(){setZoom(z===1?2:1);};"));
+/** เดิมมีแค่คลิกที่รูปสลับ ไม่มีอะไรบอกว่ากดได้ ผู้ใช้หาปุ่มซูมไม่เจอ (user แจ้ง 01/09/69) */
+check('มีปุ่มย่อ/ขยาย + บอกเปอร์เซ็นต์', /id="zin"/.test(gallery) && /id="zout"/.test(gallery) && /id="zlab"/.test(gallery));
+/**
+ * ⛔ ซูมแล้วต้องสลับ #view เป็น block — flex ที่จัดกึ่งกลางจะตัดขอบบน/ซ้ายของรูปที่
+ *    ใหญ่กว่ากรอบทิ้ง แล้วเลื่อนไปดูส่วนที่ถูกตัดไม่ได้เลย (ซูมได้แต่ดูไม่ได้)
+ */
+check('ซูมแล้วเลื่อนดูได้ (ไม่ใช้ flex จัดกึ่งกลางตอนซูม)',
+      gallery.includes('#view.zoomed{display:block;text-align:center}')
+      && gallery.includes("view.className='zoomed'"));
+/** เปลี่ยนรูปแล้วยังซูมค้างที่เดิม = รูปถัดไปโผล่มาครึ่งเดียวโดยไม่รู้สาเหตุ */
+check('เปลี่ยนรูปแล้วกลับไปพอดีจอ', gallery.includes("img.src=it.src;z=1;applyZoom();"));
+/** naturalWidth เป็น 0 ตอนรูปยังโหลดไม่เสร็จ — ซูมค้างไว้แล้วสลับรูปจะได้ความกว้าง 0 */
+check('คำนวณซูมใหม่หลังรูปโหลดเสร็จ', gallery.includes("img.onload=function(){if(z!==1)applyZoom();};"));
 
 console.log('\n── แถบรูปซ้าย · ตัวกรอง · ลบรูป ──');
 const winPart = gallery.split('w.document.write')[1] || '';
@@ -67,7 +80,7 @@ check('มีที่จับสำหรับลาก', /id="grip"/.test(ga
  *    ลากให้กว้างแค่ไหนก็ได้คอลัมน์เดียว รูปยืดใหญ่ขึ้นเฉย ๆ ไม่ได้เห็นรูปมากขึ้น
  */
 check('กว้างขึ้นแล้วรูปจัดหลายคอลัมน์เอง',
-      gallery.includes('grid-template-columns:repeat(auto-fill,minmax(128px,1fr))'));
+      gallery.includes('grid-template-columns:repeat(auto-fill,minmax(160px,1fr))'));
 /** ลากจนแคบเกินจนไม่เหลือที่ให้รูป / กว้างจนกลืนพื้นที่ดูรูปทั้งหมด = ใช้งานต่อไม่ได้ */
 check('จำกัดความกว้างต่ำสุด/สูงสุด', gallery.includes('Math.max(130,Math.min(px,Math.round(innerWidth*0.7)))'));
 check('จำความกว้างไว้ใช้ครั้งถัดไป', gallery.includes("localStorage.setItem('seViewerW'"));

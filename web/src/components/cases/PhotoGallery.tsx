@@ -159,8 +159,8 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,
 #grip:hover,#grip.on{background:#4da3ff}
 #filter{margin:8px;padding:6px;background:#2a2a2a;color:#eee;border:0;border-radius:6px;font-size:13px}
 #strip{flex:1;min-height:0;overflow-y:auto;padding:0 8px 8px;display:grid;gap:8px;
-  grid-template-columns:repeat(auto-fill,minmax(128px,1fr));align-content:start}
-#strip .t{width:100%;height:118px;object-fit:cover;border-radius:6px;cursor:pointer;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));align-content:start}
+#strip .t{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;border-radius:6px;cursor:pointer;
   border:2px solid transparent;opacity:.55;display:block}
 #strip .t:hover{opacity:.85}
 #strip .t.on{opacity:1;border-color:#4da3ff}
@@ -173,14 +173,18 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,
 #del:hover{background:#c2321f !important}
 #cap{margin-left:auto;color:#bbb}
 #view{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px}
+/* ซูมแล้วต้องสลับเป็น block — flex ที่จัดกึ่งกลางจะตัดขอบบน/ซ้ายทิ้ง เลื่อนไปดูไม่ได้ */
+#view.zoomed{display:block;text-align:center}
+#zlab{min-width:44px;text-align:center;color:#bbb}
 #img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
-#img.full{max-width:none;max-height:none;cursor:zoom-out}
+#img.zoomed{cursor:zoom-out}
 #empty{color:#888;font-size:14px}
 </style></head><body><div id="wrap">
 <div id="side"><select id="filter"></select><div id="strip"></div></div>
 <div id="grip" title="ลากเพื่อปรับความกว้าง"></div>
 <div id="main">
 <div id="bar"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
+<button id="zout" title="ย่อ">−</button><span id="zlab">100%</span><button id="zin" title="ขยาย">+</button>
 ${canDelete ? '<button id="del">ลบรูปนี้</button>' : ''}
 <span id="cap"></span></div>
 <div id="view"><img id="img" alt=""><span id="empty" style="display:none">ไม่มีรูปในหมวดนี้</span></div>
@@ -208,7 +212,7 @@ function show(){
   if(!L.length){img.style.display='none';empty.style.display='';cap.textContent='0 / 0';
     prev.disabled=next.disabled=true;if(del)del.disabled=true;document.title='รูปเคส';return;}
   if(i<0)i=0;if(i>L.length-1)i=L.length-1;
-  var it=L[i];img.style.display='';empty.style.display='none';img.className='';img.src=it.src;
+  var it=L[i];img.style.display='';empty.style.display='none';img.src=it.src;z=1;applyZoom();
   cap.textContent=it.label+' · '+(i+1)+' / '+L.length;
   document.title=it.label+' '+(i+1)+'/'+L.length;
   prev.disabled=i<=0;next.disabled=i>=L.length-1;if(del)del.disabled=false;mark();}
@@ -220,7 +224,19 @@ function applyFilter(keepId){
 filter.onchange=function(){cat=filter.value;i=0;applyFilter();};
 prev.onclick=function(){if(i>0){i--;show();}};
 next.onclick=function(){if(i<L.length-1){i++;show();}};
-img.onclick=function(){img.className=img.className?'':'full';};
+var view=document.getElementById('view'),z=1;
+var zin=document.getElementById('zin'),zout=document.getElementById('zout'),zlab=document.getElementById('zlab');
+function applyZoom(){
+  if(z===1){view.className='';img.className='';img.style.width='';img.style.maxWidth='';img.style.maxHeight='';}
+  else{view.className='zoomed';img.className='zoomed';img.style.maxWidth='none';img.style.maxHeight='none';
+    img.style.width=Math.round((img.naturalWidth||view.clientWidth)*z)+'px';}
+  zlab.textContent=Math.round(z*100)+'%';}
+function setZoom(v){z=Math.max(0.5,Math.min(5,Math.round(v*100)/100));applyZoom();}
+zin.onclick=function(){setZoom(z+0.25);};
+zout.onclick=function(){setZoom(z-0.25);};
+// คลิกที่รูป = สลับพอดีจอ ↔ 200% (ทางลัด ไม่ต้องกดปุ่มหลายที)
+img.onclick=function(){setZoom(z===1?2:1);};
+img.onload=function(){if(z!==1)applyZoom();};
 if(del)del.onclick=function(){
   if(!L.length)return;
   if(!confirm('ลบรูปนี้ออกจากเคส? ลบแล้วกู้คืนไม่ได้'))return;
