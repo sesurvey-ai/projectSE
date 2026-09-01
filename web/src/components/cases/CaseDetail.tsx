@@ -138,6 +138,25 @@ function money2(v: unknown): string {
   if (!Number.isFinite(n)) return String(v);
   return n === 0 ? '' : n.toFixed(2);
 }
+
+/** ยอดเงินสำหรับ "อ่าน" — 0 ก็โชว์ 0.00 (ต่างจาก money2 ที่ 0 = ยังไม่กรอก จึงโชว์ว่าง) */
+const baht = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * ช่องเงิน 2 ฝั่งของการ์ดค่าใช้จ่าย — ชื่อตรงกับ `name` ของ input และคอลัมน์ใน DB
+ *
+ * ⛔ ต้องตรงกับฝั่ง backend เสมอ ไม่งั้นยอดรวมที่โชว์กับยอดที่บันทึกจะคนละตัว
+ *    ฝั่งพนักงาน = `PAY_MONEY_FIELDS` ใน backend/src/services/pay.service.ts (เติม pay_ นำหน้า)
+ *    ฝั่งประกัน  = ชุดเดียวกับที่ getDetail ดึงมาให้ + ที่ใช้บวกยอดสะสมทั้งเคลม
+ *    (มีการ์ดเทสคุมไว้ที่ backend/tests/expenseCard.contract.test.ts)
+ */
+const INS_MONEY_INPUTS = ['service_fee_price', 'travel_fee_price', 'photo_fee_price', 'phone_fee',
+                          'bail_fee', 'claim_fee_price', 'daily_record_fee', 'other_fee_price'];
+const PAY_MONEY_INPUTS = ['pay_service_fee', 'pay_travel_fee', 'pay_photo_fee', 'pay_phone_fee',
+                          'pay_bail_fee', 'pay_claim_fee', 'pay_daily_fee', 'pay_other_fee'];
+/** ตัวปรับเรทฝั่งพนักงาน — หน้าเว็บส่งแค่ติ๊ก/ไม่ติ๊ก ยอดคงที่นี้อยู่ที่ backend */
+const OUT_OF_AREA_AMT = 50;
+const OUT_OF_HOURS_AMT = 100;
 /** ค่าเสียหายประมาณของคู่กรณี/ทรัพย์สิน — 0 ที่ติดมากับข้อมูลคือ "ไม่ได้กรอก" ล้างตอนโหลด
  *  (ล้างที่ตอนโหลด ไม่ใช่ตอนวาด — ช่องพวกนี้เป็น controlled ถ้าล้างตอนวาดจะพิมพ์เลข 0 ไม่ได้) */
 function blankZeroCost<T extends Record<string, unknown>>(x: T): T {
@@ -594,8 +613,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   /** ยอดสะสมทั้งเคลม — บวกทุกครั้งของเลขเคลมเดียวกัน (ฝั่งจ่ายพนักงาน / ฝั่งเรียกเก็บประกัน) */
   const claimTotals = (() => {
     const n = (v: unknown) => Number(String(v ?? '').replace(/,/g, '')) || 0;
-    const INS = ['service_fee_price', 'travel_fee_price', 'photo_fee_price', 'phone_fee',
-                 'bail_fee', 'claim_fee_price', 'daily_record_fee', 'other_fee_price'];
+    const INS = INS_MONEY_INPUTS;
     let pay = 0, ins = 0;
     for (const v of (visits ?? []) as Record<string, unknown>[]) {
       pay += n(v.pay_total);
@@ -603,6 +621,59 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     }
     return { pay, ins };
   })();
+
+  /**
+   * ── ยอดรวมสดของครั้งนี้ (แสดงอย่างเดียว) ──
+   *
+   * ต่างจาก "ยอดสะสมทั้งเคลม" ข้างล่างที่บวกจากของที่**บันทึกแล้ว** — ตัวนี้อ่านจากช่อง
+   * ที่กำลังพิมพ์อยู่ หัวหน้าจะได้เห็นยอดทั้งสองฝั่งระหว่างกรอก ไม่ต้องกดบันทึกก่อนถึงจะรู้
+   *
+   * ⛔ **ห้ามใส่ name ให้ช่องยอดรวม** — การ์ดนี้อยู่ใน <form> เดียวกับฟอร์มหลัก
+   *    มี name เมื่อไหร่ FormData เก็บไปด้วย แล้วยอดที่ "คำนวณให้ดู" จะกลายเป็นยอดที่
+   *    ถูกบันทึก → ไหลต่อไปถึง XML และหน้าค่าใช้จ่าย EMCS ทั้งที่ EMCS คิดยอดรวมเอง
+   *    (บอทกรอกแต่ช่องรายแถวฝั่งเสนอ แล้วกด Tab ให้ EMCS รวมเอง — user ย้ำ 01/09/69)
+   */
+  const [liveSum, setLiveSum] = useState({ pay: 0, ins: 0, area: 0, hours: 0, deduct: 0 });
+  const recalcSums = useCallback(() => {
+    const root = railRef.current;
+    if (!root) return;
+    const el = (n: string) => root.querySelector<HTMLInputElement>(`[name="${n}"]`);
+    const num = (n: string) => Number(String(el(n)?.value ?? '').replace(/,/g, '')) || 0;
+    const on = (n: string) => Boolean(el(n)?.checked);
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    const ins = r2(INS_MONEY_INPUTS.reduce((t, k) => t + num(k), 0));
+    const area = on('out_of_area') ? OUT_OF_AREA_AMT : 0;
+    const hours = on('out_of_hours') ? OUT_OF_HOURS_AMT : 0;
+    const deduct = Math.abs(num('pay_deduct_fee'));
+    const pay = r2(PAY_MONEY_INPUTS.reduce((t, k) => t + num(k), 0) + area + hours - deduct);
+    setLiveSum((prev) => (prev.pay === pay && prev.ins === ins && prev.area === area
+      && prev.hours === hours && prev.deduct === deduct)
+      ? prev : { pay, ins, area, hours, deduct });
+  }, []);
+  /**
+   * พิมพ์ที่ช่องไหนในรางขวาก็คิดใหม่ — ฟังที่รางทั้งราง ไม่ต้องแขวน onChange ทีละช่อง
+   *
+   * ⛔ ต้องมี viewVisit ใน deps — รางมี key={viewVisit} คือ **สร้าง DOM ใหม่ทั้งราง**
+   *    ตอนสลับครั้งที่ ถ้าไม่ผูกใหม่ ตัวฟังจะค้างอยู่กับ node เก่าที่หลุดจากจอไปแล้ว
+   *    → ยอดรวมค้างเลขของครั้งก่อนโดยไม่มีอะไรฟ้อง
+   */
+  useEffect(() => {
+    const root = railRef.current;
+    if (!root) return;
+    const h = () => recalcSums();
+    root.addEventListener('input', h);
+    root.addEventListener('change', h);
+    return () => {
+      root.removeEventListener('input', h);
+      root.removeEventListener('change', h);
+    };
+  }, [recalcSums, viewVisit]);
+  /**
+   * ค่าที่โหลดมาทีหลัง (ยอดเงินเป็น async) ไม่ยิง event ใด ๆ — ต้องคิดเองหลัง render
+   * ⛔ setLiveSum ต้องคืนตัวเดิมเมื่อยอดไม่เปลี่ยน (ดูข้างบน) ไม่งั้น effect ที่ผูกกับ
+   *    อ็อบเจกต์ prop จะวนไม่จบ
+   */
+  useEffect(() => { recalcSums(); });
 
   const d = false;
   /**
@@ -2552,6 +2623,29 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </td>
                   </tr>
                 </tbody>
+                {/* ── รวมยอดของแต่ละฝั่ง ── คิดสดจากช่องที่กำลังกรอก (user ขอ 01/09/69)
+                    ⛔ แสดงอย่างเดียว ห้ามมี name — เหตุผลเต็มอยู่ที่ liveSum ข้างบน */}
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-blue-50/50">
+                    <td className="px-3 min-[1500px]:px-2 py-2 font-semibold text-gray-800">รวมยอด</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-center text-[11px] text-gray-400">ยังไม่รวม VAT</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-right font-semibold text-blue-900 tabular-nums">{baht(liveSum.pay)}</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-right font-semibold text-blue-950 tabular-nums">{baht(liveSum.ins)}</td>
+                  </tr>
+                  {/* ตัวปรับฝั่งพนักงานอยู่ใต้ตาราง (นอกพื้นที่/นอกเวลา/หักเงิน) — ถ้าไม่บอก
+                      หัวหน้าจะบวกเลขตามคอลัมน์แล้วไม่ตรงกับยอดรวม แล้วนึกว่าระบบคิดผิด */}
+                  {(liveSum.area > 0 || liveSum.hours > 0 || liveSum.deduct > 0) && (
+                    <tr>
+                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
+                        {`ยอดฝั่งพนักงานรวม ${[
+                          liveSum.area > 0 ? `นอกพื้นที่ +${liveSum.area}` : null,
+                          liveSum.hours > 0 ? `นอกเวลา +${liveSum.hours}` : null,
+                          liveSum.deduct > 0 ? `หักเงิน −${baht(liveSum.deduct)}` : null,
+                        ].filter(Boolean).join(' · ')} ไว้แล้ว`}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
               </table>
               {/* ── ตัวปรับเรทฝั่งพนักงาน ── ของเดิมอยู่ในส่วนขยายเบราว์เซอร์บนหน้าระบบเก่า */}
               <div className="mt-3 border-t border-gray-200 pt-3 text-sm">
