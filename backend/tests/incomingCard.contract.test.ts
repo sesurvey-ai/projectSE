@@ -171,6 +171,12 @@ check('แบบขยายมีปุ่มปฏิเสธ', /android:id="
 /** user 01/09/69: แบบย่อคงเดิม — heads-up สูงจำกัด ใส่เพิ่มแล้วโดนตัดทิ้งอยู่ดี */
 check('แบบย่อคงเดิม ไม่มีเลขเคลม/ปุ่มปฏิเสธ',
       !/notification_claim/.test(barSmall) && !/btn_decline/.test(barSmall));
+/**
+ * ⛔ ปุ่มรับงานของแบบย่อกับแบบขยายต้องใช้ drawable **ตัวเดียวกัน** —
+ *    เป็นแจ้งเตือนใบเดียวกันที่ย่อ/ขยาย สีหรือความโค้งเปลี่ยนตอนกางออกจะดูเหมือนบั๊ก
+ */
+check('ปุ่มรับงานย่อ/ขยาย ใช้พื้นตัวเดียวกัน',
+      barSmall.includes('@drawable/btn_accept_notif') && barBig.includes('@drawable/btn_accept_notif'));
 /** ⛔ compactView ไม่มี id เหล่านี้ — สั่ง setTextViewText ใส่ไปจะพังตอน apply ทั้งใบ */
 check('ตั้งค่าเลขเคลม/ปุ่มปฏิเสธเฉพาะ customView',
       !/compactView\.setTextViewText\(R\.id\.notification_claim/.test(helper)
