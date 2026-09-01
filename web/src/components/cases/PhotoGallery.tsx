@@ -171,7 +171,9 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,
 #bar button:disabled{opacity:.35;cursor:default}
 #del{background:#a12b1e !important}
 #del:hover{background:#c2321f !important}
-#cap{margin-left:auto;color:#bbb}
+#lgrp,#rgrp{flex:1;display:flex;align-items:center;gap:8px}
+#rgrp{justify-content:flex-end}
+#cap{flex:none;color:#bbb;white-space:nowrap;padding:0 10px}
 #view{flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px}
 /* ซูมแล้วต้องสลับเป็น block — flex ที่จัดกึ่งกลางจะตัดขอบบน/ซ้ายทิ้ง เลื่อนไปดูไม่ได้ */
 #view.zoomed{display:block;text-align:center}
@@ -183,10 +185,10 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,
 <div id="side"><select id="filter"></select><div id="strip"></div></div>
 <div id="grip" title="ลากเพื่อปรับความกว้าง"></div>
 <div id="main">
-<div id="bar"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
-<button id="zout" title="ย่อ">−</button><span id="zlab">100%</span><button id="zin" title="ขยาย">+</button>
-${canDelete ? '<button id="del">ลบรูปนี้</button>' : ''}
-<span id="cap"></span></div>
+<div id="bar"><div id="lgrp"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
+<button id="zout" title="ย่อ">−</button><span id="zlab">100%</span><button id="zin" title="ขยาย">+</button></div>
+<span id="cap"></span>
+<div id="rgrp">${canDelete ? '<button id="del">ลบรูปนี้</button>' : ''}</div></div>
 <div id="view"><img id="img" alt=""><span id="empty" style="display:none">ไม่มีรูปในหมวดนี้</span></div>
 </div></div>
 <script>
