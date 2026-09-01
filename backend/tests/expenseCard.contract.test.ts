@@ -325,8 +325,16 @@ console.log('\n── ตัวเลือก "ตำบล" ในหมวด
   check('แปลงรหัสอำเภอเป็นชื่อ (ฟอร์มเก็บเป็นชื่อ ไม่ใช่รหัส)',
         svc3.includes('TH_AMPHURS[r.parent_amphur]') && svc3.includes('TH_PROVINCES[r.parent_amphur.slice(0, 2)]'));
 }
-check('มีช่องเลือกตำบลผูกกับคอลัมน์เดิม acc_subdistrict',
-      ui.includes('name="acc_subdistrict"'));
+check('มีช่องติ๊กตำบลผูกกับคอลัมน์เดิม acc_subdistrict',
+      ui.includes('name="acc_subdistrict"')
+      && ui.includes('checked={accTumbon === t}'));
+/**
+ * ⛔ ช่องติ๊กที่ไม่ได้ติ๊กจะไม่ติดไปกับ FormData เลย — ถ้าให้ค่าไปกับช่องติ๊กตรง ๆ
+ *    เอาติ๊กออกแล้วค่าเดิมจะค้างในฐานข้อมูลตลอดไป ล้างไม่ได้
+ */
+check('⛔ ส่งค่าผ่านช่องซ่อน ไม่ใช่ช่องติ๊ก (ไม่งั้นเอาติ๊กออกแล้วล้างค่าไม่ได้)',
+      ui.includes('<input type="hidden" disabled={d} name="acc_subdistrict" value={accTumbon} />')
+      && !/type="checkbox"[^>]*name="acc_subdistrict"/.test(ui));
 /** ฟอร์มเก็บ "อำเภอศรีราชา"/"กรุงเทพ ฯ" ตารางเก็บ "ศรีราชา"/"กรุงเทพฯ" — ต้องตัดคำนำหน้าก่อนเทียบ */
 check('เทียบชื่อพื้นที่โดยตัดคำนำหน้า/ช่องว่าง/ฯ',
       ui.includes("const areaKey = (v: unknown) =>")

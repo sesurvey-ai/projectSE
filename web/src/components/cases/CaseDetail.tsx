@@ -2071,17 +2071,29 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <select disabled={d} name="acc_district" value={accDist} onChange={e => { setAccDist(e.target.value); setAccTumbon(''); }} className={CTL(d)}>
                   {districtOptions(accProv, accProv === report.acc_province ? report.acc_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
                 </select>
+                {/* ── ตำบล ── (user เคาะ 01/09/69: เป็นช่องติ๊ก ไม่ใช่ dropdown)
+                    อำเภอที่มีตำบลคิดเรทต่างจากอำเภอแม่มีตำบลเดียว dropdown ที่มี "ไม่ระบุ"
+                    กับอีก 1 ตัวเลือกจึงเปลืองคลิกเปล่า ๆ · เผื่ออนาคตมีหลายตำบล = หลายช่องติ๊ก
+                    ที่เลือกได้ทีละอัน (เคสหนึ่งอยู่ตำบลเดียว) */}
+                {tumbonChoices.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {tumbonChoices.map((t) => (
+                      <label key={t} className="flex items-center gap-1.5 text-sm text-gray-700">
+                        <input type="checkbox" disabled={d} checked={accTumbon === t}
+                          onChange={e => setAccTumbon(e.target.checked ? t : '')} />
+                        ตำบล{t}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {/**
+                  * ⛔ ต้องมีช่องซ่อนเสมอ ไม่ใช่ให้ค่าไปกับช่องติ๊ก —
+                  *    ช่องติ๊กที่ไม่ได้ติ๊กจะไม่ถูกส่งไปกับฟอร์มเลย เอาติ๊กออกแล้วค่าเดิมจะค้าง
+                  *    ในฐานข้อมูลตลอดไป (ล้างไม่ได้) · ช่องซ่อนส่ง "" ไปแทนจึงล้างได้จริง
+                  *    และยังทำให้ย้ายอำเภอไปที่ที่ไม่มีตำบล แล้วตำบลเดิมถูกล้างตามด้วย
+                  */}
+                <input type="hidden" disabled={d} name="acc_subdistrict" value={accTumbon} />
               </F>
-              {/* ตำบล — ขึ้นเฉพาะอำเภอที่มีตำบลคิดเรทต่างจากอำเภอแม่ (ดูหมายเหตุที่ tumbonChoices) */}
-              {tumbonChoices.length > 0 && (
-                <F label="ตำบล / แขวง">
-                  <select disabled={d} name="acc_subdistrict" value={accTumbon}
-                    onChange={e => setAccTumbon(e.target.value)} className={CTL(d)}>
-                    <option value="">— ไม่ระบุ —</option>
-                    {withCurrent(tumbonChoices, accTumbon, '').map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </F>
-              )}
 
               <F label="ลักษณะการเกิดเหตุ" req={<Req of="acc_cause" />}>
                 <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={CTL(d)}>
