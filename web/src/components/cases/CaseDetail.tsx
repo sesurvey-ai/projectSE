@@ -703,15 +703,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const repV = pvv ?? report;
 
   /**
-   * ── 3 ช่องที่แทบไม่ได้ใช้ (ค่าโทรศัพท์ / ค่าประกันตัว / ค่าใช้จ่ายอื่นๆ) ── user ขอ 01/09/69
+   * ── 2 ช่องที่แทบไม่ได้ใช้ (ค่าโทรศัพท์ / ค่าประกันตัว) ──
    *
-   * พับเก็บไว้ให้ตารางสั้นลง แต่ **กางเองเมื่อเคสนั้นมีกรอกไว้จริง** — ถ้าซ่อนทื่อ ๆ
-   * เงินที่กรอกไว้จะหายไปจากสายตาผู้ตรวจทั้งที่ยังนับรวมอยู่ในยอด (กางแล้วหุบเองได้)
+   * พับเก็บไว้ให้ตารางสั้นลง แต่ **กางเองเมื่อเคสนั้นมีกรอกไว้จริง** ไม่งั้น
+   * เงินที่กรอกไว้จะหายไปจากสายตาผู้ตรวจทั้งที่ยังนับรวมอยู่ในยอดรวม
+   *
+   * ⛔ "ค่าใช้จ่ายอื่นๆ" ไม่อยู่ในกลุ่มนี้แล้ว (user เคาะ 02/09/69) — ใช้จริงบ่อยกว่าอีก 2 ช่อง
+   *    จึงอย่าเอากลับเข้ามานับใน hasExtra ไม่งั้นกลุ่มนี้จะกางเองทุกเคสที่มี "ค่าใช้จ่ายอื่นๆ"
    */
   const [extraOpen, setExtraOpen] = useState(false);
-  const hasExtra = filled(exV.phone_fee) || filled(exV.bail_fee) || filled(exV.other_fee_price)
-    || filled(exV.other_fee_detail) || filled(payV?.saved?.phone_fee)
-    || filled(payV?.saved?.bail_fee) || filled(payV?.saved?.other_fee);
+  const hasExtra = filled(exV.phone_fee) || filled(exV.bail_fee)
+    || filled(payV?.saved?.phone_fee) || filled(payV?.saved?.bail_fee);
   useEffect(() => { if (hasExtra) setExtraOpen(true); }, [hasExtra]);
 
   /** กลับมาครั้งของเคสนี้แล้ว → เขียนค่าที่เก็บไว้คืนลงช่อง (รางเพิ่งถูกสร้างใหม่) */
@@ -2798,13 +2800,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '')} title={photoFee?.reason} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
                   {/* บอกที่มาของตัวเลขที่เติมให้ — ไม่งั้นหัวหน้าเห็น 10/5 โผล่มาเองแล้วไม่รู้ว่ามาจากไหน
-                      (ขึ้นเฉพาะตอนเป็นค่าที่ระบบเติม ไม่ใช่ตอนหัวหน้ากรอกเอง) */}
-                  {photoFee && (
+                      ⛔ ขึ้นเฉพาะตอน "เติมเลขให้จริง" เท่านั้น — บรรทัดกรณี "ไม่มีค่ารูป" ถอดออกแล้ว
+                         (user เคาะ 02/09/69) เพราะงานกรุงเทพซึ่งเป็นงานส่วนใหญ่ไม่มีค่ารูป
+                         บรรทัดนั้นจึงขึ้นแทบทุกเคสโดยไม่ได้บอกอะไรใหม่ */}
+                  {photoFee && photoFee.count > 0 && (
                     <tr className="border-b border-gray-100">
                       <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
-                        {photoFee.count
-                          ? `ค่ารูปเติมให้ตามกติกาเหมา: ${photoFee.reason} — แก้ทับได้ถ้าเคสนี้ต่างออกไป`
-                          : `ค่ารูปตามกติกาเหมา: ${photoFee.reason} — กรอกเองได้ถ้าเคสนี้ต่างออกไป`}
+                        {`ค่ารูปเติมให้ตามกติกาเหมา: ${photoFee.reason} — แก้ทับได้ถ้าเคสนี้ต่างออกไป`}
                       </td>
                     </tr>
                   )}
@@ -2849,7 +2851,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={zeroBlank(payV?.saved?.daily_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="daily_record_fee" defaultValue={zeroBlank(exV.daily_record_fee)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
-                  {/* ── 3 ช่องที่แทบไม่ได้ใช้ พับเก็บไว้ ── (user ขอ 01/09/69)
+                  <tr className="border-b border-gray-100 bg-[var(--md-tint)]">
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_detail" defaultValue={exV.other_fee_detail || ''} className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={zeroBlank(payV?.saved?.other_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_price" defaultValue={zeroBlank(exV.other_fee_price)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                  </tr>
+                  {/* ── 2 ช่องที่แทบไม่ได้ใช้ พับเก็บไว้ ── (user ขอ 01/09/69)
                       ยังต้องมีช่องอยู่ เผื่อเคสที่ใช้จริง แค่ไม่ต้องเกะกะทุกเคส
 
                       ⛔ **ซ่อนด้วย CSS เท่านั้น ห้ามถอด <tr> ออกจาก DOM** — ตอนบันทึกอ่านค่าจาก
@@ -2862,7 +2869,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       <button type="button" onClick={() => setExtraOpen((v) => !v)}
                         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800">
                         <span className="text-[10px] w-3">{extraOpen ? '▾' : '▸'}</span>
-                        ค่าโทรศัพท์ · ค่าประกันตัว · ค่าใช้จ่ายอื่นๆ
+                        ค่าโทรศัพท์ · ค่าประกันตัว
                         {hasExtra && <span className="text-amber-700">— มีกรอกไว้</span>}
                       </button>
                     </td>
@@ -2876,11 +2883,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(payV?.saved?.bail_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="bail_fee" defaultValue={zeroBlank(exV.bail_fee)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
-                  </tr>
-                  <tr className={`border-b border-gray-100 bg-[var(--md-tint)] ${extraOpen ? '' : 'hidden'}`}>
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_detail" defaultValue={exV.other_fee_detail || ''} className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm" /></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={zeroBlank(payV?.saved?.other_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_price" defaultValue={zeroBlank(exV.other_fee_price)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
                   </tr>
                   {/* หักเงิน — ระบบเดิมไม่มีแถวนี้ ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" มาใช้
                       เพราะแทรกช่องใหม่ลงฟอร์มระบบเก่าไม่ได้ · เว็บนี้เราคุมเอง จึงแยกให้ถูกความหมาย */}
