@@ -95,7 +95,8 @@ check('สลับครั้งที่แล้วผูกตัวฟั�
  *    (เบราว์เซอร์ดีด node ที่ไม่ใช่แถวออกไปนอก <table> เอง แล้วเลย์เอาต์เพี้ยน)
  */
 check('ตัวปรับเรทอยู่ในตาราง ห่อด้วยแถว ไม่ใช่ div ลอย',
-      /<td colSpan=\{4\}[^>]*>\s*[\s\S]{0,80}?border-t border-gray-200/.test(ui));
+      // เส้นคั่นเปลี่ยนจาก border-gray-200 เป็นตัวแปรสีชุดใหม่ 02/09/69 — ข้อบังคับคือ "อยู่ใน <td colSpan={4}>"
+      /<td colSpan=\{4\}[^>]*>\s*[\s\S]{0,80}?border-t border-\[var\(--md-line\)\]/.test(ui));
 check('ตัวปรับเรทอยู่เหนือแถวรวมยอด',
       ui.indexOf('name="out_of_area"') < ui.indexOf('<tfoot>')
       && ui.indexOf('<tfoot>') > 0);

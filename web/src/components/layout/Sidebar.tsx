@@ -69,7 +69,7 @@ export default function Sidebar() {
           ตอนยุบไม่ได้หดเหลือ 0 แล้ว แต่เหลือเป็นแถบแคบ ๆ ที่ยัง "กินที่" ตามปกติ
           เดิมปุ่มเปิดเมนูเป็น fixed ลอยทับมุมซ้ายบน → ไปบังเลขเคลมบนแถบหัวเคส
           (user เจอจริง 18/08/69) · ทำเป็นแถบในสายตาแทน เนื้อหาเลยถูกดันมาเองไม่ต้องเผื่อที่ */}
-      <aside className={`bg-gray-800 text-white min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-14' : 'w-64'}`}>
+      <aside className={`bg-[var(--md-ink)] text-white min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-14' : 'w-64'}`}>
         {collapsed ? (
           <button
             onClick={() => setCollapsed(false)}

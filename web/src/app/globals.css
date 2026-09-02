@@ -5,7 +5,32 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #201e1d;
+}
+
+/**
+ * ── โทนสีจากแบบ "Modernist" (Claude Design handoff 02/09/69) ──
+ *
+ * ⛔ เทาของระบบนี้เป็น **เทาอมน้ำตาล** ไม่ใช่เทาอมฟ้าแบบ Tailwind —
+ *    ผสมกันแล้วจะเห็นเป็นคนละหน้าทันที ใช้ตัวแปรพวกนี้ อย่าหยิบ gray-* ของ Tailwind มาปน
+ * ระบบนี้ไม่มีมุมมนและไม่มีเงา — ความเป็นระเบียบมาจากเส้นคั่นกับการวางแนวเท่านั้น
+ */
+:root {
+  --md-bg: #f3f2f2;        /* พื้นหลังหน้า (เทาอมน้ำตาลอ่อน) */
+  --md-ink: #201e1d;       /* ตัวหนังสือหลัก + แถบเมนูซ้าย */
+  --md-line: #d7d3d3;      /* เส้นขอบการ์ด/เส้นคั่นช่อง */
+  --md-line-2: #bab6b6;    /* เส้นเข้มขึ้นหนึ่งขั้น */
+  --md-muted: #7d7979;     /* ป้ายชื่อช่อง */
+  --md-muted-2: #605d5d;   /* ตัวหนังสือรอง */
+  --md-tint: #eae7e7;      /* พื้นแถบรอง (แถวประเภทเคลม) */
+  --md-readonly: #f9f9f9;  /* ช่องที่แก้ไม่ได้ */
+  --md-accent: #ec3013;    /* ดอกจันบังคับ / เตือน */
+  --md-blue: #1c55d2;      /* ปุ่มหลัก + เลขสำคัญ */
+  --md-blue-strong: #0d4fdd;
+  --md-blue-hover: #4882ff;
+  --md-blue-tint: #eef3ff;
+  --md-green: #17bb7a;     /* บันทึกร่าง */
+  --md-purple: #831cd2;    /* ตีกลับผู้สำรวจ */
 }
 
 body {
@@ -27,4 +52,21 @@ input::placeholder,
 textarea::placeholder {
   color: #d1d5db;
   opacity: 1; /* Firefox ลด opacity ให้เองโดยปริยาย — ปิดไว้ ไม่งั้นจางไม่เท่ากันข้ามเบราว์เซอร์ */
+}
+
+/**
+ * ── หน้าตรวจเคส: เส้นใต้บอกว่าช่องไหนมีข้อมูลแล้ว ──
+ * `data-filled` ถูกเขียนโดย CaseDetail.tsx หลัง render ทุกครั้ง
+ * ⛔ :not(.border-red-400) กันช่องบังคับที่ยังว่างไว้ให้เป็นกรอบแดงล้วน
+ * ⛔ :not(.bg-gray-100) กันช่องที่ถูกล็อก (อนุมัติแล้ว / คำนวณอัตโนมัติ) ไม่ให้กลายเป็นขาว
+ */
+.md-fields :is(input, select, textarea) { border-bottom-width: 2px; }
+.md-fields :is(input, select, textarea)[data-filled='0']:not(.border-red-400):not(.bg-gray-100) {
+  border-bottom-color: var(--md-line-2);
+  background-color: var(--md-readonly);
+}
+.md-fields :is(input, select, textarea)[data-filled='1']:not(.border-red-400):not(.bg-gray-100) {
+  border-bottom-color: var(--md-muted-2);
+  background-color: #fff;
+  font-weight: 600;
 }

@@ -456,5 +456,34 @@ check('ช่องอิสระเก็บเป็นอาเรย์ค�
 check('เว็บตรวจ checksum เลขบัตรประชาชนของคู่กรณี/ผู้บาดเจ็บ (มือถือตรวจอยู่แล้ว)',
       rec.includes('const cidChecksum') && rec.includes("def.k === 'cid'"));
 
+/**
+ * ── แบบใหม่ 02/09/69: เส้นใต้บอกว่าช่องไหนกรอกแล้ว ──
+ *
+ * เป็นของ 2 ชิ้นที่ต้องตรงกัน ถ้าฝั่งไหนเปลี่ยนชื่อ ระบบทั้งชุดตายเงียบ ๆ
+ * ไม่มี error ให้เห็น (หน้าเว็บแค่กลับไปหน้าตาเดิม):
+ *   TSX  เขียน `data-filled` ให้ทุกช่อง + คลาส `md-fields` บน <form>
+ *   CSS  จับ `.md-fields ... [data-filled]` แล้วทาเส้นใต้/พื้น/น้ำหนักตัวอักษร
+ */
+const css = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'app', 'globals.css'), 'utf8');
+// [^>]* ใช้ไม่ได้ — ในแท็ก <form> มีลูกศร => ของ onSubmit ซึ่งนับเป็น '>'
+check('ฟอร์มมีคลาส md-fields ให้ CSS เกาะ', /<form[\s\S]{0,200}?className="md-fields/.test(src));
+check('เขียน data-filled ให้ทุกช่องหลัง render',
+      src.includes('dataset.filled = isBlank(')
+      && src.includes("querySelectorAll('input,select,textarea')"));
+check('ข้าม radio/checkbox/hidden (isBlank ตอบ false เสมอ ทาแล้วผิด)',
+      /t === 'radio' \|\| t === 'checkbox' \|\| t === 'hidden'/.test(src));
+check('CSS มีทั้งสถานะว่างและสถานะกรอกแล้ว',
+      css.includes('.md-fields') && css.includes("[data-filled='0']") && css.includes("[data-filled='1']"));
+check('⛔ CSS ต้องไม่ทับช่องที่ทากรอบแดง (บังคับแล้วยังไม่กรอก) และช่องที่ถูกล็อก',
+      css.includes(':not(.border-red-400)') && css.includes(':not(.bg-gray-100)'));
+check('⛔ ตัวทาเส้นใต้แยกจาก paint() (paint เรียก setState — รวมกันแล้วเป็นวงวน render)',
+      !/dataset\.filled[\s\S]{0,400}?setList\(/.test(src));
+
+/** หัวหมวดกับตารางต้องเป็นการ์ดใบเดียวกัน — กรอบอยู่ที่ตัวหมวด ไม่ใช่ที่ตารางข้างใน */
+check('กรอบการ์ดอยู่ที่ตัวหมวด (หัวหมวดไม่ลอยห่างจากตารางของตัวเอง)',
+      /<div data-section="[a-z_]+" className="border border-\[var\(--md-line\)\] bg-white">/.test(src)
+      && !src.includes('data-section="biz" className="space-y-2"'));
+
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

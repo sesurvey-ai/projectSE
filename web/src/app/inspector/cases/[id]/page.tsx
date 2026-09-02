@@ -90,12 +90,15 @@ export default function CaseDetailPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-4">
-        <button onClick={() => router.push('/inspector')} className="text-gray-500 hover:text-gray-700">&larr; กลับ</button>
-        <h2 className="text-2xl font-bold text-gray-800">รายละเอียดเคส #{(caseData as { id: number }).id}</h2>
+      <div className="mb-4 flex items-center gap-4">
+        <button onClick={() => router.push('/inspector')} className="text-[var(--md-muted-2)] hover:text-[var(--md-ink)]">&larr; กลับ</button>
+        {/* เลขเคสเป็นสีน้ำเงินตัวเดียวในหัวเรื่อง — ที่หมายตาเวลาเปิดหลายแท็บ (แบบ Modernist) */}
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--md-ink)]">
+          รายละเอียดเคส <span className="text-[var(--md-blue-strong)]">#{(caseData as { id: number }).id}</span>
+        </h1>
         {report && (
           <button onClick={downloadXml} disabled={xmlBusy}
-            className="ml-auto inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            className="ml-auto inline-flex items-center gap-2 px-4 h-9 bg-white border border-[var(--md-ink)] text-[var(--md-ink)] text-sm font-bold hover:bg-[var(--md-tint)] disabled:opacity-50 transition-colors"
             title="สร้างไฟล์ XML สำหรับ import เข้าพอร์ทัลประกัน">
             {xmlBusy ? 'กำลังสร้าง...' : '⬇ ดาวน์โหลด XML (นำเข้าประกัน)'}
           </button>
