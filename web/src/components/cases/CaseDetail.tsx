@@ -2138,18 +2138,26 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <div className="flex items-start gap-2 mb-1.5">
                       <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center ${
                         gap ? 'bg-[var(--md-accent)] text-white' : 'bg-[var(--md-ink)] text-white'}`}>{i + 1}</span>
-                      <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight whitespace-nowrap">{n.label} <Req of={n.keys.join(',')} /></span>
+                      <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
                       {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน */}
                       <span className="hidden xl:block flex-1 h-0.5 mt-[0.625rem] bg-[var(--md-line)]" />
                     </div>
-                    <div className="flex items-center gap-1">
+                    {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
+                        ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
+                        ขยายตัวอักษรเป็น 130-140% ช่องวันที่ถูกบีบจนวันที่ขาด ("29/08/2")
+                        กันด้วย min-w + flex-wrap: แคบเมื่อไหร่ให้เวลาตกลงไปบรรทัดล่าง
+                        แทนที่จะบีบวันที่ · ห่อ ชม:นาที ไว้ด้วยกันไม่งั้นเครื่องหมาย ":"
+                        ตกไปคนละบรรทัดกับนาที */}
+                    <div className="flex flex-wrap items-center gap-1">
                       <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
-                        className={`flex-1 min-w-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
-                        className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      <span className="text-gray-400 shrink-0">:</span>
-                      <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
-                        className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                        className={`flex-1 min-w-[7rem] border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
+                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                        <span className="text-gray-400 shrink-0">:</span>
+                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
+                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      </div>
                     </div>
                     {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
                     {errs.map((e) => (
@@ -2806,12 +2814,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                          จะดูเหมือนกรอกไว้แล้ว 1 ครั้ง */}
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าบริการ</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="service_fee_count" defaultValue={exV.service_fee_count || (previewing ? '' : '1')} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">ครั้ง</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="service_fee_count" defaultValue={exV.service_fee_count || (previewing ? '' : '1')} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">ครั้ง</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(payV?.saved?.service_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="service_fee_price" defaultValue={zeroBlank(exV.service_fee_price) || (insService ? String(insService) : '')} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="travel_fee_count" defaultValue={exV.travel_fee_count || ''} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">ครั้ง</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="travel_fee_count" defaultValue={exV.travel_fee_count || ''} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">ครั้ง</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(payV?.saved?.travel_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="travel_fee_price" defaultValue={zeroBlank(exV.travel_fee_price) || (insTravel ? String(insTravel) : '')} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   {/* บอกที่มาของเรทฝั่งประกันที่เติมให้ — ไม่งั้นหัวหน้าเห็นเลขโผล่มาเองแล้วไม่รู้ว่าเชื่อได้ไหม
@@ -2827,7 +2835,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   )}
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee?.count ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">รูป</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee?.count ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">รูป</span></div></td>
                     {/* ⛔ ล็อกถาวร — **พนักงานไม่มีค่ารูป** ค่ารูปเป็นของฝั่งเรียกเก็บประกันเท่านั้น
                         (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
                         ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
@@ -2849,7 +2857,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
                         ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={zeroBlank(exV.claim_fee_percent)} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">%</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={zeroBlank(exV.claim_fee_percent)} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">%</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(payV?.saved?.claim_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="claim_fee_price" defaultValue={zeroBlank(exV.claim_fee_price)} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
@@ -2858,7 +2866,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         เดิมอยู่ในแถวตัวปรับใต้ตาราง คนละที่กับยอดของมันเอง
                         เลือกผลแล้วเติมเรทให้ทั้ง 2 ฝั่งเลย */}
                     <td className="px-3 min-[1500px]:px-2 py-2">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
                         {/* ⛔ key จำเป็น — ยอดเงินโหลดมาทีหลัง (async) ตอน render แรกยังว่าง
                             React ไม่เอา defaultValue ของ <select> มาใส่ซ้ำเมื่อ props เปลี่ยน
                             (ต่างจาก <input>) ช่องนี้จะค้างที่ "ไม่มี" ตลอด แล้วพอกดบันทึก
@@ -2876,7 +2884,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                             /** ⛔ ตัวฟังที่รางทำงานก่อน onChange ของ React — ต้องคิดยอดใหม่เอง */
                             recalcSums();
                           }}
-                          className={`w-[5.25rem] min-[1500px]:w-[4.75rem] border rounded-none px-1.5 py-1 text-sm ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`}>
+                          className={`w-[5.25rem] max-w-full min-[1500px]:w-[4.75rem] border rounded-none px-1.5 py-1 text-sm ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`}>
                           <option value="">ไม่มี</option>
                           <option value="ถูก">ถูก</option>
                           <option value="ผิด">ผิด</option>
@@ -2897,16 +2905,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       สีแดงบนหน้านี้สงวนไว้ให้ "ยังกรอกไม่ครบ" อย่างเดียว จะได้ไม่เตือนหลอก */}
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">หักเงิน</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-700">
-                        <label className="flex items-center gap-1">
+                    <td className="px-3 min-[1500px]:px-1 py-2">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-700">
+                        <label className="flex items-center gap-1 min-w-0 [overflow-wrap:anywhere]">
                           {/* ⛔ key จำเป็นเหมือน "ค่าคัดประจำวัน" — React ไม่เอา defaultChecked
                               มาใส่ซ้ำเมื่อยอดเงินโหลดมาทีหลัง (async) ช่องติ๊กจึงว่างทั้งที่ DB
                               มีค่า true แล้วกดบันทึกทีเดียวล้างเป็น false = ยอดจ่ายหาย 50-100 บาท
                               และเหตุผลหักเงินหาย · เจอจากการทดสอบสด 19/08/69 */}
                           <input type="checkbox" disabled={dDeduct} key={`deduct_late-${String(payV?.saved?.deduct_late ?? "")}`} name="deduct_late" defaultChecked={Boolean(payV?.saved?.deduct_late)} />ส่งช้า
                         </label>
-                        <label className="flex items-center gap-1">
+                        <label className="flex items-center gap-1 min-w-0 [overflow-wrap:anywhere]">
                           <input type="checkbox" disabled={dDeduct} key={`deduct_docs-${String(payV?.saved?.deduct_docs ?? "")}`} name="deduct_docs" defaultChecked={Boolean(payV?.saved?.deduct_docs)} />งานไม่เรียบร้อย
                         </label>
                       </div>
