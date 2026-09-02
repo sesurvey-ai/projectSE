@@ -70,7 +70,11 @@ export default function Sidebar() {
           ตอนยุบไม่ได้หดเหลือ 0 แล้ว แต่เหลือเป็นแถบแคบ ๆ ที่ยัง "กินที่" ตามปกติ
           เดิมปุ่มเปิดเมนูเป็น fixed ลอยทับมุมซ้ายบน → ไปบังเลขเคลมบนแถบหัวเคส
           (user เจอจริง 18/08/69) · ทำเป็นแถบในสายตาแทน เนื้อหาเลยถูกดันมาเองไม่ต้องเผื่อที่ */}
-      <aside className={`bg-[var(--md-ink)] text-white min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-14' : 'w-64'}`}>
+      {/* ⛔ ต้อง sticky + h-screen + self-start ไม่ใช่ min-h-screen —
+          เดิมแถบยืดสูงเท่า "ทั้งหน้า" (หน้าตรวจเคสสูงหมื่นกว่า px) ปุ่มฟอนต์/ขนาดตัวอักษร
+          ที่อยู่ท้ายแถบจึงไปอยู่ก้นหน้า ต้องเลื่อนสุดหน้าถึงจะเห็น ทั้งที่ไม่เกี่ยวกับเนื้อหา
+          (user แจ้ง 02/09/69) · self-start กัน flex ยืดกลับมาเท่าความสูงเนื้อหา */}
+      <aside className={`bg-[var(--md-ink)] text-white sticky top-0 self-start h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-14' : 'w-64'}`}>
         {collapsed ? (
           <>
           <button
@@ -103,7 +107,7 @@ export default function Sidebar() {
             </svg>
           </button>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
           {items.map((item) => (
             <Link
               key={item.href}
