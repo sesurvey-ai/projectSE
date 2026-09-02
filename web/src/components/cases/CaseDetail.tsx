@@ -2748,20 +2748,23 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <col className="w-[32%] min-[1500px]:w-[30%]" />
                   <col className="w-[20%] min-[1500px]:w-[24%]" />
                   <col className="w-[24%] min-[1500px]:w-[23%]" />
-                  <col className="w-[24%] min-[1500px]:w-[23%]" />
+                  {/* พื้นคอลัมน์ฝั่งประกัน — ⛔ ถ้าแถวไหนมีพื้นหลังของตัวเอง (bg-*) จะทับอันนี้ */}
+                  <col className="w-[24%] min-[1500px]:w-[23%] bg-[#f4f7ff]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-[var(--md-line)]">
                     <th className="px-3 min-[1500px]:px-2 py-2 text-left text-gray-600 font-semibold">รายละเอียด</th>
                     <th className="px-3 min-[1500px]:px-2 py-2 text-center text-gray-600 font-semibold">จำนวน</th>
                     {/* ฝั่งจ่ายพนักงาน — ระบบประกันไม่มีช่องนี้ ต้องเก็บที่ระบบเราเท่านั้น */}
-                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-blue-700 font-semibold">ราคาพนักงาน<div className="text-[10px] font-normal text-blue-400">
+                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-[var(--md-ink)] font-semibold">ราคาพนักงาน<div className="text-[10px] font-normal text-[var(--md-muted)]">
                       จ่ายผู้สำรวจ
                     </div></th>
                     {/* ⛔ ฝั่ง "ราคาประกัน" = ยอดเรียกเก็บบริษัทประกัน · ฝั่ง "ราคาพนักงาน" = ยอดจ่ายผู้สำรวจ
-                        คนละกระเป๋าเงินกันคนละใบ · น้ำเงินชุดเดียวกันแต่คนละน้ำหนัก (user เคาะ 18/08/69)
-                        เข้ม = เรียกเก็บ · อ่อน = จ่ายออก */}
-                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-blue-900 font-semibold">ราคาประกัน<div className="text-[10px] font-normal text-blue-600">เรียกเก็บประกัน</div></th>
+                        คนละกระเป๋าเงินกันคนละใบ — **ต้องแยกออกจากกันด้วยสายตา** (user เคาะ 02/09/69)
+                        ประกัน = น้ำเงินทั้งคอลัมน์ (พื้น + ขอบ + ตัวเลข) · พนักงาน = กลาง ๆ ไม่มีสี
+                        ⛔ ของเดิมเป็นน้ำเงินทั้งคู่ต่างแค่น้ำหนัก — ดูเผิน ๆ เหมือนคอลัมน์เดียวกัน
+                           อย่าเอากลับไปเป็นแบบนั้น */}
+                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-[var(--md-blue)] font-semibold">ราคาประกัน<div className="text-[10px] font-normal text-[var(--md-blue-hover)]">เรียกเก็บประกัน</div></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2772,12 +2775,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าบริการ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="service_fee_count" defaultValue={exV.service_fee_count || (previewing ? '' : '1')} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(payV?.saved?.service_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="service_fee_price" defaultValue={zeroBlank(exV.service_fee_price) || (insService ? String(insService) : '')} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(payV?.saved?.service_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="service_fee_price" defaultValue={zeroBlank(exV.service_fee_price) || (insService ? String(insService) : '')} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
                   </tr>
-                  <tr className="border-b border-gray-100 bg-[var(--md-tint)]">
+                  <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="travel_fee_count" defaultValue={exV.travel_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(payV?.saved?.travel_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="travel_fee_price" defaultValue={zeroBlank(exV.travel_fee_price) || (insTravel ? String(insTravel) : '')} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(payV?.saved?.travel_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="travel_fee_price" defaultValue={zeroBlank(exV.travel_fee_price) || (insTravel ? String(insTravel) : '')} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
                   </tr>
                   {/* บอกที่มาของเรทฝั่งประกันที่เติมให้ — ไม่งั้นหัวหน้าเห็นเลขโผล่มาเองแล้วไม่รู้ว่าเชื่อได้ไหม
                       (ขึ้นเฉพาะตอนเป็นค่าที่ระบบเติม ไม่ใช่ตอนหัวหน้ากรอกเอง — แบบเดียวกับค่ารูปเหมา) */}
@@ -2797,7 +2800,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
                         ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled name="pay_photo_fee" defaultValue="" title="พนักงานไม่มีค่ารูป — ค่ารูปเบิกได้เฉพาะฝั่งประกัน" className="w-full border rounded-none px-2 py-1 text-sm text-right bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed" /></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '')} title={photoFee?.reason} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '')} title={photoFee?.reason} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
                   </tr>
                   {/* บอกที่มาของตัวเลขที่เติมให้ — ไม่งั้นหัวหน้าเห็น 10/5 โผล่มาเองแล้วไม่รู้ว่ามาจากไหน
                       ⛔ ขึ้นเฉพาะตอน "เติมเลขให้จริง" เท่านั้น — บรรทัดกรณี "ไม่มีค่ารูป" ถอดออกแล้ว
@@ -2810,12 +2813,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       </td>
                     </tr>
                   )}
-                  <tr className="border-b border-gray-100 bg-[var(--md-tint)]">
+                  <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
                         ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={zeroBlank(exV.claim_fee_percent)} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">%</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(payV?.saved?.claim_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="claim_fee_price" defaultValue={zeroBlank(exV.claim_fee_price)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(payV?.saved?.claim_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="claim_fee_price" defaultValue={zeroBlank(exV.claim_fee_price)} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าคัดประจำวัน</td>
@@ -2849,40 +2852,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         </select>
                       </div>
                     </td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={zeroBlank(payV?.saved?.daily_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="daily_record_fee" defaultValue={zeroBlank(exV.daily_record_fee)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_daily_fee" defaultValue={zeroBlank(payV?.saved?.daily_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="daily_record_fee" defaultValue={zeroBlank(exV.daily_record_fee)} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
                   </tr>
-                  <tr className="border-b border-gray-100 bg-[var(--md-tint)]">
+                  <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าใช้จ่ายอื่นๆ</td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_detail" defaultValue={exV.other_fee_detail || ''} className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm" /></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={zeroBlank(payV?.saved?.other_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_price" defaultValue={zeroBlank(exV.other_fee_price)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
-                  </tr>
-                  {/* ── 2 ช่องที่แทบไม่ได้ใช้ พับเก็บไว้ ── (user ขอ 01/09/69)
-                      ยังต้องมีช่องอยู่ เผื่อเคสที่ใช้จริง แค่ไม่ต้องเกะกะทุกเคส
-
-                      ⛔ **ซ่อนด้วย CSS เท่านั้น ห้ามถอด <tr> ออกจาก DOM** — ตอนบันทึกอ่านค่าจาก
-                         FormData ของฟอร์มทั้งใบ ช่องที่ไม่อยู่ใน DOM = ไม่มีคีย์ใน payload
-                         แล้ว pay.service เขียนทับเป็น null ทั้งคอลัมน์ = ยอดที่เคยกรอกไว้หายเงียบ
-                      ⛔ type="button" ต้องมี — ปุ่มในฟอร์มไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit
-                         กดดูช่องที่ซ่อนอยู่กลายเป็นสั่งบันทึกทั้งเคส */}
-                  <tr className="border-b border-gray-100">
-                    <td colSpan={4} className="px-3 min-[1500px]:px-2 py-1.5">
-                      <button type="button" onClick={() => setExtraOpen((v) => !v)}
-                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800">
-                        <span className="text-[10px] w-3">{extraOpen ? '▾' : '▸'}</span>
-                        ค่าโทรศัพท์ · ค่าประกันตัว
-                        {hasExtra && <span className="text-amber-700">— มีกรอกไว้</span>}
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className={`border-b border-gray-100 bg-[var(--md-tint)] ${extraOpen ? '' : 'hidden'}`}>
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={zeroBlank(payV?.saved?.phone_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="phone_fee" defaultValue={zeroBlank(exV.phone_fee)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
-                  </tr>
-                  <tr className={`border-b border-gray-100 bg-[var(--md-tint)] ${extraOpen ? '' : 'hidden'}`}>
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(payV?.saved?.bail_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="bail_fee" defaultValue={zeroBlank(exV.bail_fee)} className="w-full border border-blue-500 rounded-none px-2 py-1 text-blue-950 bg-blue-100 text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_other_fee" defaultValue={zeroBlank(payV?.saved?.other_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="other_fee_price" defaultValue={zeroBlank(exV.other_fee_price)} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
                   </tr>
                   {/* หักเงิน — ระบบเดิมไม่มีแถวนี้ ต้องยืมช่อง "ค่าใช้จ่ายอื่นๆ" มาใช้
                       เพราะแทรกช่องใหม่ลงฟอร์มระบบเก่าไม่ได้ · เว็บนี้เราคุมเอง จึงแยกให้ถูกความหมาย */}
@@ -2960,7 +2935,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)
                                 || (payV?.saved?.out_of_area ? String(OUT_OF_AREA_AMT) : '')}
                               title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 50 บาท)"
-                              className={`w-[56px] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
+                              className={`w-[56px] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -2983,7 +2958,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)
                                 || (payV?.saved?.out_of_hours ? String(OUT_OF_HOURS_AMT) : '')}
                               title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 100 บาท)"
-                              className={`w-[56px] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-blue-50 border-blue-300 text-blue-900'}`} />
+                              className={`w-[56px] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                         </div>
@@ -3002,15 +2977,43 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       </div>
                     </td>
                   </tr>
+                  {/* ── 2 ช่องที่แทบไม่ได้ใช้ พับเก็บไว้ ── (user ขอ 01/09/69)
+                      ยังต้องมีช่องอยู่ เผื่อเคสที่ใช้จริง แค่ไม่ต้องเกะกะทุกเคส
+
+                      ⛔ **ซ่อนด้วย CSS เท่านั้น ห้ามถอด <tr> ออกจาก DOM** — ตอนบันทึกอ่านค่าจาก
+                         FormData ของฟอร์มทั้งใบ ช่องที่ไม่อยู่ใน DOM = ไม่มีคีย์ใน payload
+                         แล้ว pay.service เขียนทับเป็น null ทั้งคอลัมน์ = ยอดที่เคยกรอกไว้หายเงียบ
+                      ⛔ type="button" ต้องมี — ปุ่มในฟอร์มไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit
+                         กดดูช่องที่ซ่อนอยู่กลายเป็นสั่งบันทึกทั้งเคส */}
+                  <tr className="border-b border-gray-100">
+                    <td colSpan={4} className="px-3 min-[1500px]:px-2 py-1.5">
+                      <button type="button" onClick={() => setExtraOpen((v) => !v)}
+                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800">
+                        <span className="text-[10px] w-3">{extraOpen ? '▾' : '▸'}</span>
+                        ค่าโทรศัพท์ · ค่าประกันตัว
+                        {hasExtra && <span className="text-amber-700">— มีกรอกไว้</span>}
+                      </button>
+                    </td>
+                  </tr>
+                  <tr className={`border-b border-gray-100 ${extraOpen ? '' : 'hidden'}`}>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={zeroBlank(payV?.saved?.phone_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="phone_fee" defaultValue={zeroBlank(exV.phone_fee)} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
+                  </tr>
+                  <tr className={`border-b border-gray-100 ${extraOpen ? '' : 'hidden'}`}>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(payV?.saved?.bail_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-400 text-[var(--md-ink)]'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="bail_fee" defaultValue={zeroBlank(exV.bail_fee)} className="w-full border border-blue-300 rounded-none px-2 py-1 text-blue-800 bg-white text-sm text-right" /></td>
+                  </tr>
                 </tbody>
                 {/* ── รวมยอดของแต่ละฝั่ง ── คิดสดจากช่องที่กำลังกรอก (user ขอ 01/09/69)
                     ⛔ แสดงอย่างเดียว ห้ามมี name — เหตุผลเต็มอยู่ที่ liveSum ข้างบน */}
                 <tfoot>
-                  <tr className="border-t-2 border-gray-300 bg-blue-50/50">
+                  <tr className="border-t-2 border-[var(--md-ink)]">
                     <td className="px-3 min-[1500px]:px-2 py-2 font-semibold text-gray-800">รวมยอด</td>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-center text-[11px] text-gray-400">ยังไม่รวม VAT</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-right font-semibold text-blue-900 tabular-nums">{baht(liveSum.pay)}</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-right font-semibold text-blue-950 tabular-nums">{baht(liveSum.ins)}</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-right font-bold text-[var(--md-ink)] tabular-nums">{baht(liveSum.pay)}</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-right font-bold text-[var(--md-blue)] tabular-nums">{baht(liveSum.ins)}</td>
                   </tr>
                   {/* นอกพื้นที่/นอกเวลาเป็นช่องติ๊ก · หักเงินอยู่คนละคอลัมน์กับยอด — ถ้าไม่บอก
                       หัวหน้าจะบวกเลขตามคอลัมน์แล้วไม่ตรงกับยอดรวม แล้วนึกว่าระบบคิดผิด */}

@@ -412,5 +412,37 @@ check('ช่องความเห็นยังเป็น uncontrolled �
 /** ดูครั้งอื่นอยู่ = อ่านอย่างเดียว ห้ามเปิดให้แก้ */
 check('ดูครั้งอื่นอยู่ → ปุ่มขยายกดไม่ได้', ui.includes('<button type="button" disabled={previewing}'));
 
+console.log('\n── แยกสี 2 คอลัมน์เงิน ──');
+/**
+ * user เคาะ 02/09/69: "ราคาพนักงาน" กับ "ราคาประกัน" ต้องดูออกว่าคนละฝั่ง
+ * ของเดิมเป็นน้ำเงินทั้งคู่ต่างแค่น้ำหนัก → ดูเผิน ๆ เหมือนคอลัมน์เดียวกัน
+ *
+ * ⛔ พื้นสีฝั่งประกันทาที่ <col> ไม่ใช่ที่ <td> — ถ้าแถวไหนมีพื้นหลังของตัวเอง
+ *    (bg-* บน <tr>/<td>) จะทับพื้นคอลัมน์ทันที ลายสลับสีจึงต้องไม่กลับมา
+ */
+check('พื้นคอลัมน์ฝั่งประกันทาที่ <col>', ui.includes('bg-[#f4f7ff]'));
+check('⛔ ไม่มีลายสลับสีมาทับพื้นคอลัมน์',
+      !ui.includes('border-b border-gray-100 bg-[var(--md-tint)]'));
+check('⛔ แถวรวมยอดไม่มีพื้นหลังทั้งแถว (จะทับพื้นคอลัมน์)', !ui.includes('bg-blue-50/50'));
+check('ช่องเงินฝั่งพนักงานเป็นกลาง ๆ ไม่ใช่น้ำเงิน',
+      ui.includes("'bg-white border-gray-400 text-[var(--md-ink)]'")
+      && !ui.includes("'bg-blue-50 border-blue-300 text-blue-900'"));
+check('ช่องเงินฝั่งประกันเป็นน้ำเงิน',
+      ui.includes('border border-blue-300 rounded-none px-2 py-1 text-blue-800'));
+
+console.log('\n── ลำดับแถวในตารางค่าใช้จ่าย ──');
+/** user เคาะ 02/09/69: กลุ่มที่พับย้ายลงไปใต้ "นอกพื้นที่ / นอกเวลา" */
+{
+  const at = (s: string) => ui.indexOf(s);
+  const other = at('text-gray-700">ค่าใช้จ่ายอื่นๆ');
+  const deduct = at('name="deduct_late"');
+  const area = at('name="out_of_area"');
+  const fold = at('setExtraOpen((v) => !v)');
+  const total = at('{baht(liveSum.pay)}');
+  check('ค่าใช้จ่ายอื่นๆ → หักเงิน → นอกพื้นที่ → กลุ่มที่พับ → รวมยอด',
+        other > 0 && other < deduct && deduct < area && area < fold && fold < total,
+        `other=${other} deduct=${deduct} area=${area} fold=${fold} total=${total}`);
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
