@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import AppearanceControls from './AppearanceControls';
 
 const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
   admin: [
@@ -71,6 +72,7 @@ export default function Sidebar() {
           (user เจอจริง 18/08/69) · ทำเป็นแถบในสายตาแทน เนื้อหาเลยถูกดันมาเองไม่ต้องเผื่อที่ */}
       <aside className={`bg-[var(--md-ink)] text-white min-h-screen flex flex-col transition-all duration-300 ${collapsed ? 'w-14' : 'w-64'}`}>
         {collapsed ? (
+          <>
           <button
             onClick={() => setCollapsed(false)}
             className="w-10 h-10 m-2 rounded-lg flex items-center justify-center text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
@@ -80,6 +82,10 @@ export default function Sidebar() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+          {/* ตัวคั่นยืดหยุ่น = ดันปุ่มขนาดตัวอักษรลงล่างสุดของแถบ */}
+          <div className="flex-1" />
+          <AppearanceControls compact />
+          </>
         ) : (
           <>
         <div className="p-5 border-b border-gray-700 flex items-center justify-between">
@@ -112,6 +118,7 @@ export default function Sidebar() {
             </Link>
           ))}
         </nav>
+        <AppearanceControls />
           </>
         )}
       </aside>

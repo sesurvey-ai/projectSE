@@ -28,7 +28,8 @@ const plexThai = IBM_Plex_Sans_Thai({
   subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'],
   variable: '--font-plex-thai', display: 'swap',
 });
-/** ฟอนต์มาตรฐานเอกสารราชการไทย — คนไทยคุ้นตาที่สุด ตัวแคบกว่า บรรทัดหนึ่งจุได้มากกว่า */
+/** ⭐ ค่าตั้งต้น (user เคาะ 02/09/69) — ฟอนต์มาตรฐานเอกสารราชการไทย คนไทยคุ้นตาที่สุด
+ *  ตัวแคบกว่าอีก 2 ตัว บรรทัดหนึ่งจุได้มากกว่า ซึ่งมีผลจริงกับหน้าที่มีเกือบ 200 ช่อง */
 const sarabun = Sarabun({
   subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'],
   variable: '--font-sarabun', display: 'swap',
@@ -40,16 +41,20 @@ export const metadata: Metadata = {
 };
 
 /**
- * เลือกฟอนต์ที่จำไว้ **ก่อน** หน้าถูกวาด — ถ้าไปตั้งใน useEffect
- * ผู้ใช้จะเห็นฟอนต์ตั้งต้นแวบหนึ่งแล้วค่อยกระโดดเปลี่ยนทุกครั้งที่เปิดหน้า
+ * ตั้งฟอนต์+ขนาดที่จำไว้ **ก่อน** หน้าถูกวาด — ถ้าไปตั้งใน useEffect
+ * ผู้ใช้จะเห็นค่าตั้งต้นแวบหนึ่งแล้วค่อยกระโดดเปลี่ยนทุกครั้งที่เปิดหน้า
+ * ⛔ คีย์กับช่วงค่าต้องตรงกับ AppearanceControls.tsx (ui_font / ui_scale 100-140)
  */
-const FONT_BOOT = `try{var f=localStorage.getItem('ui_font');
-if(f&&/^[a-z-]+$/.test(f))document.documentElement.style.setProperty('--font-thai','var(--font-'+f+')');}catch(e){}`;
+const UI_BOOT = `try{var d=document.documentElement;
+var f=localStorage.getItem('ui_font');
+if(f&&/^[a-z-]+$/.test(f))d.style.setProperty('--font-thai','var(--font-'+f+')');
+var s=+localStorage.getItem('ui_scale');
+if(s>=100&&s<=140)d.style.fontSize=(16*s/100)+'px';}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" className={`${notoThai.variable} ${plexThai.variable} ${sarabun.variable}`}>
-      <head><script dangerouslySetInnerHTML={{ __html: FONT_BOOT }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: UI_BOOT }} /></head>
       <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>

@@ -6,8 +6,8 @@
 :root {
   --background: #ffffff;
   --foreground: #201e1d;
-  /* ฟอนต์ตั้งต้นของทั้งเว็บ — ตัวสลับฟอนต์เขียนทับตัวแปรนี้ที่ <html> (ดู FontSwitcher.tsx) */
-  --font-thai: var(--font-noto-thai);
+  /* ฟอนต์ตั้งต้นของทั้งเว็บ — ตัวสลับเขียนทับตัวแปรนี้ที่ <html> (ดู AppearanceControls.tsx) */
+  --font-thai: var(--font-sarabun);
 }
 
 /**
@@ -40,7 +40,7 @@ body {
   background: var(--background);
   /* ⛔ ต้องมี fallback เป็นฟอนต์ไทยของเครื่อง — ระหว่างฟอนต์ยังโหลดไม่เสร็จ
      (display:swap) ถ้าตกไปที่ Arial ตัวไทยจะกระโดดเพราะ Arial ไม่มีอักขระไทย */
-  font-family: var(--font-thai), 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif;
+  font-family: var(--font-thai), Sarabun, 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif;
 }
 
 /**

@@ -76,7 +76,7 @@ export default function DamageEditor({
           <div key={i} className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-400 w-5 text-right">{i + 1}.</span>
             <select
-              disabled={disabled} value={it.part} className={`${sel} min-w-[160px]`}
+              disabled={disabled} value={it.part} className={`${sel} min-w-[10rem]`}
               onChange={(e) => set(i, 'part', e.target.value)}
             >
               <option value="">-- เลือกชิ้นส่วน --</option>

@@ -475,7 +475,7 @@ console.log('\n── ตัวสลับฟอนต์ ──');
 {
   const lay = read('..', 'web', 'src', 'app', 'layout.tsx');
   const css = read('..', 'web', 'src', 'app', 'globals.css');
-  const sw = read('..', 'web', 'src', 'components', 'layout', 'FontSwitcher.tsx');
+  const sw = read('..', 'web', 'src', 'components', 'layout', 'AppearanceControls.tsx');
   const hdr = read('..', 'web', 'src', 'components', 'layout', 'Header.tsx');
 
   check('โหลดฟอนต์ครบ 3 แบบ',
@@ -483,7 +483,6 @@ console.log('\n── ตัวสลับฟอนต์ ──');
   check('⛔ ตัวแปรฟอนต์อยู่บน <html> ไม่ใช่ <body> (ไม่งั้น var() หาไม่เจอ)',
         /<html[^>]*className=\{`\$\{notoThai\.variable\}/.test(lay)
         && !/<body className=\{`\$\{/.test(lay));
-  check('ค่าตั้งต้นชี้ไปฟอนต์ที่ใช้อยู่', css.includes('--font-thai: var(--font-noto-thai)'));
   check('ทั้งเว็บอ่าน var(--font-thai)', css.includes('font-family: var(--font-thai)'));
   check('เลือกฟอนต์ก่อนหน้าถูกวาด (ไม่แวบเปลี่ยนทุกครั้งที่เปิดหน้า)',
         lay.includes("localStorage.getItem('ui_font')") && lay.includes('dangerouslySetInnerHTML'));
@@ -493,9 +492,39 @@ console.log('\n── ตัวสลับฟอนต์ ──');
         lay.includes('/^[a-z-]+$/.test(f)'));
   check('ตัวสลับเขียนทับที่ documentElement',
         sw.includes("documentElement.style.setProperty('--font-thai', `var(--font-${id})`)"));
-  check('ตัวสลับขึ้นบนแถบบนทุกหน้า', hdr.includes('<FontSwitcher />'));
-  check('⛔ localStorage ห่อ try/catch (โหมดส่วนตัวเข้าถึงแล้ว throw)',
-        (sw.match(/catch/g) ?? []).length >= 2 && lay.includes('catch(e){}'));
+    check('⛔ localStorage ห่อ try/catch (โหมดส่วนตัวเข้าถึงแล้ว throw)',
+        (sw.match(/catch/g) ?? []).length >= 3 && lay.includes('catch(e){}'));
+
+  const nav = read('..', 'web', 'src', 'components', 'layout', 'Sidebar.tsx');
+
+  check('ค่าตั้งต้นเป็น Sarabun', css.includes('--font-thai: var(--font-sarabun)'));
+  check('ฟอนต์สำรองในสายชื่อฟอนต์ตรงกับค่าตั้งต้น',
+        /font-family: var\(--font-thai\), Sarabun,/.test(css));
+  check('ตัวตั้งค่าอยู่ท้ายเมนูข้าง ไม่ใช่แถบบน',
+        nav.includes('<AppearanceControls />') && nav.includes('<AppearanceControls compact />')
+        && !hdr.includes('AppearanceControls') && !hdr.includes('FontSwitcher'));
+  check('ตอนเมนูยุบก็ยังปรับขนาดได้ (ดันลงล่างสุด)',
+        nav.includes('<div className="flex-1" />'));
+
+  check('ขนาดตัวอักษร 5 ระดับ', sw.includes('const SCALES = [100, 110, 120, 130, 140]'));
+  check('ปรับขนาดด้วย font-size ของ <html> (ทั้งเว็บวัดเป็น rem จึงโตตามกัน)',
+        sw.includes("documentElement.style.fontSize = pct === 100 ? '' : `${(16 * pct) / 100}px`"));
+  check('⛔ ช่วงค่าที่สคริปต์บูตยอมรับ ครอบคลุมทุกระดับ', lay.includes('s>=100&&s<=140'));
+  check('⛔ คีย์ขนาดตรงกันทั้งสองที่',
+        lay.includes("localStorage.getItem('ui_scale')") && sw.includes("localStorage.setItem('ui_scale'"));
+  /**
+   * ⛔ ขนาดตัวอักษรจะโตทั้งหน้าได้ ต่อเมื่อหน้าวัดเป็น rem — ค่า px ตายตัว
+   *    จะค้างขนาดเดิมแล้วหน้าเพี้ยน (ตัวหนังสือโตแต่กล่องไม่โต)
+   *    ยกเว้น 2 อย่างที่ต้องเป็น px: จุดสลับเลย์เอาต์ min-[1500px] (ผูกกับจอจริง)
+   *    และความหนาเส้นขอบ (เส้นบางไม่ควรโตตามตัวหนังสือ)
+   */
+  {
+    const files = ['RecordEditors', 'DamageDialog', 'DamageEditor', 'PhotoGallery']
+      .map((f) => read('..', 'web', 'src', 'components', 'cases', `${f}.tsx`)).concat(ui);
+    const stray = files.flatMap((f) => (f.match(/(?<![\w-])(-?(?:text|w|h|min-h|min-w|max-w|top|py|mt|left))-\[\d+(?:\.\d+)?px\]/g) ?? []));
+    check('⛔ ไม่มีขนาด px ตายตัวหลงเหลือ (ยกเว้น breakpoint กับความหนาเส้น)',
+          stray.length === 0, stray.slice(0, 5).join(' '));
+  }
 }
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);

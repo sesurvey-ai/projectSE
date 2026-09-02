@@ -390,9 +390,9 @@ function SectionBar({ title, gap, right }: { title: string; gap: boolean; right?
       className="flex items-center gap-2 px-4 py-2 border-b-2 border-[var(--md-ink)]"
       style={{ background: gap ? 'linear-gradient(90deg,#8A1B0B,#000)' : 'linear-gradient(90deg,#1E3E82,#000)' }}
     >
-      <span className="text-[15px] font-bold text-white">{title}</span>
+      <span className="text-[0.9375rem] font-bold text-white">{title}</span>
       {gap && (
-        <span className="text-[11px] font-semibold text-red-700 bg-white rounded-none px-1.5 py-0.5">
+        <span className="text-[0.6875rem] font-semibold text-red-700 bg-white rounded-none px-1.5 py-0.5">
           ยังกรอกไม่ครบ
         </span>
       )}
@@ -1508,15 +1508,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         {/* แถบดำหนาริมซ้าย = ที่หมายว่าแถบนี้คือ "หัวเรื่อง" ไม่ใช่การ์ดข้อมูลอีกใบ (แบบ Modernist) */}
         <div className="bg-white border border-[var(--md-line)] border-l-[6px] border-l-[var(--md-ink)] px-4 py-2.5 flex flex-wrap items-center gap-x-7 gap-y-2">
           <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-[11px] font-bold tracking-[0.06em] text-[var(--md-muted)] shrink-0">เคลม</span>
+            <span className="text-[0.6875rem] font-bold tracking-[0.06em] text-[var(--md-muted)] shrink-0">เคลม</span>
             <span className="text-base font-extrabold text-[var(--md-blue-strong)] truncate">{report?.claim_no || '—'}</span>
           </div>
           <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-[11px] font-bold tracking-[0.06em] text-[var(--md-muted)] shrink-0">เซอร์เวย์</span>
-            <span className="text-[15px] font-bold text-[var(--md-ink)] truncate">{report?.survey_job_no || '—'}</span>
+            <span className="text-[0.6875rem] font-bold tracking-[0.06em] text-[var(--md-muted)] shrink-0">เซอร์เวย์</span>
+            <span className="text-[0.9375rem] font-bold text-[var(--md-ink)] truncate">{report?.survey_job_no || '—'}</span>
           </div>
           <span className="text-sm font-semibold text-[var(--md-muted-2)] truncate hidden md:inline">{report?.insurance_company || '—'}</span>
-          <span className={`px-2 py-[3px] border text-[11px] font-bold tracking-[0.04em] shrink-0 ${src.c}`}>{src.t}</span>
+          <span className={`px-2 py-[0.1875rem] border text-[0.6875rem] font-bold tracking-[0.04em] shrink-0 ${src.c}`}>{src.t}</span>
           <div className="ml-auto flex items-center gap-3">
             {saveMsg && (
               <span className={`px-3 py-1 rounded-none text-xs ${saveMsg.includes('สำเร็จ') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{saveMsg}</span>
@@ -1532,7 +1532,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           {conflict && (
             <div className="w-full border-t border-red-200 pt-2 flex flex-wrap items-center gap-3">
               <span className="text-lg leading-none shrink-0">⚠️</span>
-              <span className="flex-1 min-w-[280px] text-sm text-red-800">{conflict}</span>
+              <span className="flex-1 min-w-[17.5rem] text-sm text-red-800">{conflict}</span>
               <button type="button"
                 onClick={() => {
                   if (!window.confirm('โหลดข้อมูลล่าสุด?\nสิ่งที่คุณพิมพ์ค้างไว้ในหน้านี้จะหายทั้งหมด\nถ้ายังไม่อยากให้หาย ให้จดค่าที่แก้ไว้ก่อน แล้วค่อยกด')) return;
@@ -1555,7 +1555,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <span className="text-sm font-medium text-orange-900 shrink-0">ตีกลับ — ให้ช่างแก้อะไร</span>
               <input type="text" value={sbReason} onChange={(e) => setSbReason(e.target.value)}
                 placeholder="เช่น ทะเบียนในรูปไม่ตรงกับที่กรอกมา / ขาดรูปความเสียหายฝั่งซ้าย"
-                className="flex-1 min-w-[240px] border border-orange-300 rounded-none px-2 py-1 text-sm bg-white text-gray-800" />
+                className="flex-1 min-w-[15rem] border border-orange-300 rounded-none px-2 py-1 text-sm bg-white text-gray-800" />
               <span className="text-xs text-orange-800 shrink-0">
                 บันทึกให้ก่อน แล้วสถานะกลับเป็น &quot;กำลังสำรวจ&quot;
               </span>
@@ -2014,7 +2014,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <input type="text" disabled={d} name="driver_id_card" defaultValue={report.driver_id_card || ''} className={`flex-1 min-w-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                   {/* คนไทยต้องผ่าน checksum 13 หลัก · ต่างชาติขอแค่ไม่ว่าง (บัตรต่างด้าว/พาสปอร์ต
                       ไม่มีสูตรตรวจ) — แอปเก็บค่านี้อยู่แล้ว แต่หน้านี้ไม่เคยมีให้เลือก */}
-                  <select disabled={d} name="driver_id_type" defaultValue={report.driver_id_type || 'thai'} className={`w-[84px] shrink-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
+                  <select disabled={d} name="driver_id_type" defaultValue={report.driver_id_type || 'thai'} className={`w-[5.25rem] shrink-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                     <option value="thai">คนไทย</option>
                     <option value="foreign">ต่างชาติ</option>
                   </select>
@@ -2101,7 +2101,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                  }>
                 {/* ⛔ CTL มี h-9 (สูง 36px) ติดมาด้วย — ช่องพิมพ์หลายบรรทัดต้องมี min-h มาทับเสมอ
                     ไม่งั้นโดนบีบเหลือบรรทัดเดียวทั้งที่ตั้ง rows ไว้ */}
-                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`${CTL(d)} min-h-[64px] py-1.5`} />
+                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`${CTL(d)} min-h-[4rem] py-1.5`} />
                 <div className="mt-1.5">
                   {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
                   <button type="button" disabled={d} onClick={() => setDmgOpen(true)}
@@ -2134,26 +2134,26 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 return (
                   <div key={n.date} className="relative min-w-0">
                     {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง */}
-                    {i > 0 && <div className="hidden xl:block absolute -left-[14px] top-[11px] w-[14px] border-t-2 border-[var(--md-line)]" />}
+                    {i > 0 && <div className="hidden xl:block absolute -left-[0.875rem] top-[0.6875rem] w-[0.875rem] border-t-2 border-[var(--md-line)]" />}
                     <div className="flex items-start gap-2 mb-1.5">
-                      <span className={`mt-[1px] w-[22px] h-[22px] shrink-0 text-[11px] font-extrabold flex items-center justify-center ${
+                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center ${
                         gap ? 'bg-[var(--md-accent)] text-white' : 'bg-[var(--md-ink)] text-white'}`}>{i + 1}</span>
                       <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight whitespace-nowrap">{n.label} <Req of={n.keys.join(',')} /></span>
                       {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน */}
-                      <span className="hidden xl:block flex-1 h-0.5 mt-[10px] bg-[var(--md-line)]" />
+                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.625rem] bg-[var(--md-line)]" />
                     </div>
                     <div className="flex items-center gap-1">
                       <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
                         className={`flex-1 min-w-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
                       <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
-                        className={`w-[34px] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                        className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                       <span className="text-gray-400 shrink-0">:</span>
                       <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
-                        className={`w-[34px] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                        className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                     </div>
                     {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
                     {errs.map((e) => (
-                      <div key={e.msg} className="mt-1 text-[11px] leading-tight text-red-600">⚠ {e.msg}</div>
+                      <div key={e.msg} className="mt-1 text-[0.6875rem] leading-tight text-red-600">⚠ {e.msg}</div>
                     ))}
                   </div>
                 );
@@ -2245,7 +2245,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับช่องนี้ (และต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)'
                         : 'บังคับเมื่อผลคดี = รถคู่กรณีเป็นฝ่ายผิด'}>*</span></span>
                   <input type="text" disabled={d} name="acc_fault_opponent_no" defaultValue={report.acc_fault_opponent_no ?? ''}
-                    className={`w-[40px] border rounded-none px-2 py-1 text-gray-800 text-sm text-center ${
+                    className={`w-[2.5rem] border rounded-none px-2 py-1 text-gray-800 text-sm text-center ${
                       oppNoHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS[oppNoHl]}`} />
                   <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ประมาทร่วม" disabled={d} defaultChecked={report.acc_fault === 'ประมาทร่วม'} className="w-3.5 h-3.5" /> ประมาทร่วม</label>
                   <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="รอสรุปผลคดี" disabled={d} defaultChecked={report.acc_fault === 'รอสรุปผลคดี'} className="w-3.5 h-3.5" /> รอสรุปผลคดี</label>
@@ -2264,7 +2264,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                      ⤢ ขยาย
                    </button>
                  }>
-                <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`${CTL(d)} min-h-[80px]`} rows={4} />
+                <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`${CTL(d)} min-h-[5rem]`} rows={4} />
               </F>
             </div>
           </div>
@@ -2297,12 +2297,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
               {/* ติ๊ก "รับเงินจำนวน" เมื่อไหร่ ช่องเงินคู่นี้บังคับทันที (กติกา EMCS) */}
               <input type="text" name="acc_claim_amount" disabled={d} defaultValue={money2(report.acc_claim_amount)}
-                className={`w-[100px] ml-1 border rounded-none px-2 py-1 text-gray-800 text-sm ${
+                className={`w-[6.25rem] ml-1 border rounded-none px-2 py-1 text-gray-800 text-sm ${
                   payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
               <span className="text-gray-500">บาท</span>
               <span className="ml-2 text-gray-500">จากจำนวนเงินเรียกร้องทั้งหมด :</span>
               <input type="text" name="acc_claim_total_amount" disabled={d} defaultValue={money2(report.acc_claim_total_amount)}
-                className={`w-[100px] border rounded-none px-2 py-1 text-gray-800 text-sm ${
+                className={`w-[6.25rem] border rounded-none px-2 py-1 text-gray-800 text-sm ${
                   payHl === 'none' ? `border-gray-300 ${d ? 'bg-gray-100' : 'bg-white'}` : HL_CLS.red}`} />
               <span className="text-gray-500">บาท</span>
               {payOver && (
@@ -2337,9 +2337,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <F label="วันที่แจ้งความ">
                 <div className="flex items-center gap-1">
                   <input type="text" disabled={d} name="acc_police_date" defaultValue={pol.date} className={`flex-1 min-w-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_police_hour" defaultValue={pol.hour} className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                   <span className="text-gray-400 shrink-0">:</span>
-                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_police_minute" defaultValue={pol.minute} className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                 </div>
               </F>
             ); })()}
@@ -2378,9 +2378,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <F label="วันที่นัดหมาย">
                 <div className="flex items-center gap-1">
                   <input type="text" disabled={d} name="acc_followup_date" defaultValue={flu.date} className={`flex-1 min-w-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[34px] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_followup_hour" defaultValue={flu.hour} className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                   <span className="text-gray-400 shrink-0">:</span>
-                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[34px] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                  <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name="acc_followup_minute" defaultValue={flu.minute} className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
                 </div>
               </F>
             ); })()}
@@ -2651,7 +2651,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           ถ้าการ์ดสูงเกินจอ ให้เลื่อนในตัวเองได้ ไม่งั้นแถวล่าง ๆ จะโดนตัดหายเลย
           ⛔ ห้ามถอดช่องยอดเงินออกจากหน้าตามขนาดจอเด็ดขาด — `survey_pay` บันทึกทั้งแถว
              ช่องที่ไม่ได้ถูกส่งไปด้วยจะกลายเป็น NULL คือยอดที่เคยกรอกไว้หายทั้งแถว */}
-      <div className="flex gap-6 min-[1500px]:block min-[1500px]:sticky min-[1500px]:top-[68px]
+      <div className="flex gap-6 min-[1500px]:block min-[1500px]:sticky min-[1500px]:top-[4.25rem]
                       min-[1500px]:max-h-[calc(100vh-84px)] min-[1500px]:overflow-y-auto">
         <div className="w-1/2 min-[1500px]:w-full">
 
@@ -2674,8 +2674,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                    เดียวกับฟอร์มหลัก กดบันทึกทีเดียวจะเขียนข้อมูลของครั้งอื่นทับเคสที่เปิดอยู่ */}
             <div className="border-b-2 border-[var(--md-ink)] text-white px-4 py-2.5 text-sm flex flex-wrap items-center gap-x-3 gap-y-1"
                  style={{ background: 'linear-gradient(90deg,#1E3E82,#000)' }}>
-              <span className="text-[15px] font-bold shrink-0">ค่าใช้จ่าย</span>
-              <span className="text-[13px] font-bold truncate min-w-0" title="เลขเรื่องเซอร์เวย์ของครั้งนี้">
+              <span className="text-[0.9375rem] font-bold shrink-0">ค่าใช้จ่าย</span>
+              <span className="text-[0.8125rem] font-bold truncate min-w-0" title="เลขเรื่องเซอร์เวย์ของครั้งนี้">
                 {report?.survey_job_no || '—'}
               </span>
               <div className="ml-auto flex items-center gap-2 shrink-0">
@@ -2695,7 +2695,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     ))}
                   </select>
                 ) : (
-                  <span className="bg-[var(--md-bg)] text-[var(--md-ink)] rounded-none px-2 py-[1px] text-[13px] font-extrabold">{visitCount}</span>
+                  <span className="bg-[var(--md-bg)] text-[var(--md-ink)] rounded-none px-2 py-[0.0625rem] text-[0.8125rem] font-extrabold">{visitCount}</span>
                 )}
                 <input type="hidden" name="expense_count" value={visitCount} />
               </div>
@@ -2731,7 +2731,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </button>
               </div>
               <textarea name="survey_result" disabled={previewing} defaultValue={repV?.survey_result || ''}
-                className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+                className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm min-h-[6.875rem]" rows={4} />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -2745,7 +2745,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </button>
               </div>
               <textarea name="review_comment" disabled={previewing} defaultValue={repV?.review_comment || (previewing ? '' : review?.comment) || ''}
-                className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+                className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm min-h-[6.875rem]" rows={4} />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -2759,7 +2759,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 </button>
               </div>
               <textarea name="surveyor_comment" disabled={previewing} defaultValue={repV?.surveyor_comment || (previewing ? '' : review?.surveyor_comment) || ''}
-                className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm min-h-[110px]" rows={4} />
+                className="w-full border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm min-h-[6.875rem]" rows={4} />
             </div>
           </div>
 
@@ -2787,7 +2787,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <th className="px-3 min-[1500px]:px-2 py-2 text-left text-gray-600 font-semibold">รายละเอียด</th>
                     <th className="px-3 min-[1500px]:px-2 py-2 text-center text-gray-600 font-semibold">จำนวน</th>
                     {/* ฝั่งจ่ายพนักงาน — ระบบประกันไม่มีช่องนี้ ต้องเก็บที่ระบบเราเท่านั้น */}
-                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-[var(--md-blue)] font-semibold">ราคาพนักงาน<div className="text-[10px] font-normal text-[var(--md-blue-hover)]">
+                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-[var(--md-blue)] font-semibold">ราคาพนักงาน<div className="text-[0.625rem] font-normal text-[var(--md-blue-hover)]">
                       จ่ายผู้สำรวจ
                     </div></th>
                     {/* ⛔ ฝั่ง "ราคาประกัน" = ยอดเรียกเก็บบริษัทประกัน · ฝั่ง "ราคาพนักงาน" = ยอดจ่ายผู้สำรวจ
@@ -2796,7 +2796,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         อ่อน = จ่ายพนักงาน · เข้ม = เรียกเก็บประกัน
                         ⛔ ต่างกันแค่ตัวหนังสือไม่พอ — ของเดิมทำแบบนั้นแล้วดูเผิน ๆ เหมือนคอลัมน์เดียวกัน
                            ต้องต่างที่ "พื้นคอลัมน์" ด้วยเสมอ */}
-                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-blue-950 font-semibold">ราคาประกัน<div className="text-[10px] font-normal text-blue-800">เรียกเก็บประกัน</div></th>
+                    <th className="px-3 min-[1500px]:px-2 py-2 text-center text-blue-950 font-semibold">ราคาประกัน<div className="text-[0.625rem] font-normal text-blue-800">เรียกเก็บประกัน</div></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2806,19 +2806,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                          จะดูเหมือนกรอกไว้แล้ว 1 ครั้ง */}
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าบริการ</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="service_fee_count" defaultValue={exV.service_fee_count || (previewing ? '' : '1')} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="service_fee_count" defaultValue={exV.service_fee_count || (previewing ? '' : '1')} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">ครั้ง</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_service_fee" defaultValue={zeroBlank(payV?.saved?.service_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="service_fee_price" defaultValue={zeroBlank(exV.service_fee_price) || (insService ? String(insService) : '')} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเดินทาง/ค่าพาหนะ</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="travel_fee_count" defaultValue={exV.travel_fee_count || ''} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">ครั้ง</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="travel_fee_count" defaultValue={exV.travel_fee_count || ''} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">ครั้ง</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_travel_fee" defaultValue={zeroBlank(payV?.saved?.travel_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="travel_fee_price" defaultValue={zeroBlank(exV.travel_fee_price) || (insTravel ? String(insTravel) : '')} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   {/* บอกที่มาของเรทฝั่งประกันที่เติมให้ — ไม่งั้นหัวหน้าเห็นเลขโผล่มาเองแล้วไม่รู้ว่าเชื่อได้ไหม
                       (ขึ้นเฉพาะตอนเป็นค่าที่ระบบเติม ไม่ใช่ตอนหัวหน้ากรอกเอง — แบบเดียวกับค่ารูปเหมา) */}
                   {(insService || insTravel) && (
                     <tr className="border-b border-gray-100">
-                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
+                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[0.6875rem] text-gray-500">
                         {`เรทฝั่งประกันเติมให้จากตารางเรท${pay?.area?.district_name ? ` ${pay.area.district_name}` : ''}`}
                         {repV?.claim_type ? ` · ${CLAIM_TYPE_LABELS[repV.claim_type as keyof typeof CLAIM_TYPE_LABELS] ?? repV.claim_type}` : ''}
                         {' — แก้ทับได้ถ้าเคสนี้ต่างออกไป'}
@@ -2827,7 +2827,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   )}
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee?.count ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">รูป</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee?.count ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">รูป</span></div></td>
                     {/* ⛔ ล็อกถาวร — **พนักงานไม่มีค่ารูป** ค่ารูปเป็นของฝั่งเรียกเก็บประกันเท่านั้น
                         (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
                         ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
@@ -2840,7 +2840,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                          บรรทัดนั้นจึงขึ้นแทบทุกเคสโดยไม่ได้บอกอะไรใหม่ */}
                   {photoFee && photoFee.count > 0 && (
                     <tr className="border-b border-gray-100">
-                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
+                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[0.6875rem] text-gray-500">
                         {`ค่ารูปเติมให้ตามกติกาเหมา: ${photoFee.reason} — แก้ทับได้ถ้าเคสนี้ต่างออกไป`}
                       </td>
                     </tr>
@@ -2849,7 +2849,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
                         ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={zeroBlank(exV.claim_fee_percent)} className="w-[50px] min-[1500px]:w-[44px] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[30px] min-[1500px]:w-[28px]">%</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={zeroBlank(exV.claim_fee_percent)} className="w-[3.125rem] min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">%</span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(payV?.saved?.claim_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="claim_fee_price" defaultValue={zeroBlank(exV.claim_fee_price)} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
@@ -2876,7 +2876,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                             /** ⛔ ตัวฟังที่รางทำงานก่อน onChange ของ React — ต้องคิดยอดใหม่เอง */
                             recalcSums();
                           }}
-                          className={`w-[84px] min-[1500px]:w-[76px] border rounded-none px-1.5 py-1 text-sm ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`}>
+                          className={`w-[5.25rem] min-[1500px]:w-[4.75rem] border rounded-none px-1.5 py-1 text-sm ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-gray-300 text-gray-800'}`}>
                           <option value="">ไม่มี</option>
                           <option value="ถูก">ถูก</option>
                           <option value="ผิด">ผิด</option>
@@ -2915,7 +2915,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           · ช่อง "เหตุผลอื่น" ที่พิมพ์เองก็นับ ไม่ใช่บังคับให้ติ๊กเท่านั้น
                           · เตือนเฉย ๆ ไม่บล็อกการบันทึก — สีแดงบนหน้านี้แปลว่า "ยังกรอกไม่ครบ" */}
                       {liveSum.deduct > 0 && !liveSum.reasoned && (
-                        <div className="mt-1 text-[11px] text-red-600">{'⚠ เลือกเหตุผล "หักเงิน"'}</div>
+                        <div className="mt-1 text-[0.6875rem] text-red-600">{'⚠ เลือกเหตุผล "หักเงิน"'}</div>
                       )}
                     </td>
                     {/* สลับให้ตรงกับแถวอื่น: คอลัมน์ 3 = ฝั่งพนักงาน · คอลัมน์ 4 = ฝั่งเรียกเก็บประกัน */}
@@ -2925,7 +2925,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       {/* ขากลับ: เลือกเหตุผลไว้แล้วแต่ยังไม่ใส่ยอด = ตั้งใจจะหักแต่ลืมกรอก
                           ยอดจะเป็น 0 ทั้งที่ในบันทึกมีเหตุผลหักเงินค้างอยู่ (user ขอ 01/09/69) */}
                       {liveSum.deduct === 0 && liveSum.reasoned && (
-                        <div className="mt-1 text-[11px] text-red-600">{'⚠ กรอกยอด "หักเงิน"'}</div>
+                        <div className="mt-1 text-[0.6875rem] text-red-600">{'⚠ กรอกยอด "หักเงิน"'}</div>
                       )}
                     </td>
                     <td className="px-3 min-[1500px]:px-2 py-2">
@@ -2967,7 +2967,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)
                                 || (payV?.saved?.out_of_area ? String(OUT_OF_AREA_AMT) : '')}
                               title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 50 บาท)"
-                              className={`w-[56px] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
+                              className={`w-[3.5rem] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -2990,7 +2990,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                               defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)
                                 || (payV?.saved?.out_of_hours ? String(OUT_OF_HOURS_AMT) : '')}
                               title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 100 บาท)"
-                              className={`w-[56px] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
+                              className={`w-[3.5rem] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                         </div>
@@ -3021,7 +3021,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td colSpan={4} className="px-3 min-[1500px]:px-2 py-1.5">
                       <button type="button" onClick={() => setExtraOpen((v) => !v)}
                         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800">
-                        <span className="text-[10px] w-3">{extraOpen ? '▾' : '▸'}</span>
+                        <span className="text-[0.625rem] w-3">{extraOpen ? '▾' : '▸'}</span>
                         ค่าโทรศัพท์ · ค่าประกันตัว
                         {hasExtra && <span className="text-amber-700">— มีกรอกไว้</span>}
                       </button>
@@ -3029,12 +3029,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </tr>
                   <tr className={`border-b border-gray-100 ${extraOpen ? '' : 'hidden'}`}>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าโทรศัพท์</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[3.125rem] min-[1500px]:w-[2.75rem]"></span><span className="w-[1.875rem] min-[1500px]:w-[1.75rem]"></span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_phone_fee" defaultValue={zeroBlank(payV?.saved?.phone_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="phone_fee" defaultValue={zeroBlank(exV.phone_fee)} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                   <tr className={`border-b border-gray-100 ${extraOpen ? '' : 'hidden'}`}>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าประกันตัว</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[50px] min-[1500px]:w-[44px]"></span><span className="w-[30px] min-[1500px]:w-[28px]"></span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex items-center justify-center gap-1"><span className="w-[3.125rem] min-[1500px]:w-[2.75rem]"></span><span className="w-[1.875rem] min-[1500px]:w-[1.75rem]"></span></div></td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_bail_fee" defaultValue={zeroBlank(payV?.saved?.bail_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="bail_fee" defaultValue={zeroBlank(exV.bail_fee)} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
                   </tr>
                 </tbody>
@@ -3043,7 +3043,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <tfoot>
                   <tr className="border-t-2 border-[var(--md-ink)]">
                     <td className="px-3 min-[1500px]:px-2 py-2 font-semibold text-gray-800">รวมยอด</td>
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-center text-[11px] text-gray-400">ยังไม่รวม VAT</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-center text-[0.6875rem] text-gray-400">ยังไม่รวม VAT</td>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-right font-bold text-[var(--md-blue)] tabular-nums">{baht(liveSum.pay)}</td>
                     <td className="px-3 min-[1500px]:px-2 py-2 text-right font-bold text-blue-950 tabular-nums">{baht(liveSum.ins)}</td>
                   </tr>
@@ -3051,7 +3051,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                       หัวหน้าจะบวกเลขตามคอลัมน์แล้วไม่ตรงกับยอดรวม แล้วนึกว่าระบบคิดผิด */}
                   {(liveSum.area > 0 || liveSum.hours > 0 || liveSum.deduct > 0) && (
                     <tr>
-                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[11px] text-gray-500">
+                      <td colSpan={4} className="px-3 min-[1500px]:px-2 pb-2 pt-0 text-[0.6875rem] text-gray-500">
                         {`ยอดฝั่งพนักงานรวม ${[
                           liveSum.area > 0 ? `นอกพื้นที่ +${liveSum.area}` : null,
                           liveSum.hours > 0 ? `นอกเวลา +${liveSum.hours}` : null,

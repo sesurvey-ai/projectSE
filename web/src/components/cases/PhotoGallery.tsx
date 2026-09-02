@@ -322,7 +322,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold">−</button>
             <div className="flex flex-col items-center">
-              <span className="text-white text-sm min-w-[50px] text-center">{Math.round(zoom * 100)}%</span>
+              <span className="text-white text-sm min-w-[3.125rem] text-center">{Math.round(zoom * 100)}%</span>
               {zoom !== 1 && <button onClick={() => setZoom(1)} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-none px-2 py-0.5 text-xs mt-1">รีเซ็ต</button>}
             </div>
             <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold">+</button>

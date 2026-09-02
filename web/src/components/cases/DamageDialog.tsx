@@ -48,14 +48,14 @@ function Radios({ value, options, onPick, disabled, hidden }: {
   value: string; options: readonly string[]; onPick: (v: string) => void;
   disabled?: boolean; hidden?: boolean;
 }) {
-  if (hidden) return <div className="w-[86px] shrink-0" />;
+  if (hidden) return <div className="w-[5.375rem] shrink-0" />;
   return (
     <div className="flex items-center gap-1.5 shrink-0">
       {options.map((o) => (
         <label key={o} className="flex flex-col items-center gap-0.5 cursor-pointer">
           <input type="radio" checked={value === o} disabled={disabled}
             onChange={() => onPick(o)} className="w-3.5 h-3.5 accent-blue-600" />
-          <span className="text-[10px] leading-none text-gray-500">{o}</span>
+          <span className="text-[0.625rem] leading-none text-gray-500">{o}</span>
         </label>
       ))}
     </div>
@@ -112,7 +112,7 @@ export default function DamageDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto">
-      <div className="bg-white border border-[var(--md-line)] shadow-xl w-full max-w-[1000px] my-4">
+      <div className="bg-white border border-[var(--md-line)] shadow-xl w-full max-w-[62.5rem] my-4">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--md-line)] bg-[var(--md-tint)]">
           <span className="font-semibold text-gray-800">ข้อมูลความเสียหาย</span>
           <span className="text-xs text-gray-500">

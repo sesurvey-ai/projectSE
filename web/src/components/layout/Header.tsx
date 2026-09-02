@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import ChangePasswordDialog from './ChangePasswordDialog';
-import FontSwitcher from './FontSwitcher';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'ผู้ดูแลระบบ',
@@ -27,7 +26,6 @@ export default function Header() {
   return (
     <header className="bg-white border-b-2 border-[var(--md-ink)] px-6 py-2.5 flex items-center justify-end">
       <div className="flex items-center gap-4">
-        <FontSwitcher />
         <div className="text-right">
           <p className="text-sm font-medium text-gray-700">
             {user?.first_name} {user?.last_name}
