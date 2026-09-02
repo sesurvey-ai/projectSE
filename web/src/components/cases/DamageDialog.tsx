@@ -112,15 +112,15 @@ export default function DamageDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto">
-      <div className="bg-white rounded-[10px] border border-gray-200 shadow-xl w-full max-w-[1000px] my-4">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50 rounded-t-[10px]">
+      <div className="bg-white border border-[var(--md-line)] shadow-xl w-full max-w-[1000px] my-4">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--md-line)] bg-[var(--md-tint)]">
           <span className="font-semibold text-gray-800">ข้อมูลความเสียหาย</span>
           <span className="text-xs text-gray-500">
             เลือกไว้ {picked.length} รายการ
             {freeUsed > 0 && ` · ช่องอิสระ ${freeUsed}`}
             {/* ไม่บล็อกการกดตกลง แค่บอกให้รู้ตัว — ระบบประกันต้องการ "ระดับ" ของทุกชิ้น */}
             {noLevel > 0 && (
-              <span className="ml-2 text-amber-800 bg-amber-50 border border-amber-300 rounded px-2 py-0.5">
+              <span className="ml-2 text-amber-800 bg-amber-50 border border-amber-300 rounded-none px-2 py-0.5">
                 ⚠ ยังไม่ได้เลือกระดับ {noLevel} ชิ้น
               </span>
             )}
@@ -152,7 +152,7 @@ export default function DamageDialog({
             <span className="text-xs font-semibold tracking-wide text-gray-400 uppercase">ช่องอิสระ</span>
             <span className="text-xs text-gray-500">พิมพ์ชื่อชิ้นส่วนที่ไม่มีในรายการข้างบน</span>
             {freeUsed > FREE_SAFE && (
-              <span className="text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded px-2 py-0.5">
+              <span className="text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-none px-2 py-0.5">
                 ⚠ ใช้ไป {freeUsed} ช่อง — ฟอร์มสร้างเรื่องใหม่ของระบบประกันมีแค่ {FREE_SAFE} ช่อง
                 ส่วนที่เกินบอทจะกรอกให้ไม่ครบ ต้องไปเติมเองที่นั่น
               </span>
@@ -174,12 +174,12 @@ export default function DamageDialog({
 
         <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
           <button type="button" onClick={onClose}
-            className="px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">
+            className="px-4 py-1.5 text-sm border border-gray-300 rounded-none hover:bg-gray-50">
             ปิด
           </button>
           <button type="button" disabled={disabled}
             onClick={() => { onSave(picked); onClose(); }}
-            className="px-5 py-1.5 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300">
+            className="px-5 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-none hover:bg-blue-700 disabled:bg-blue-300">
             ตกลง
           </button>
         </div>

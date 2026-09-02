@@ -102,6 +102,26 @@ type FieldDef = {
  * ⛔ ไม่นับ `*(บางบริษัท)` — บังคับเฉพาะบางบริษัท ทาแดงไว้จะกลายเป็นเตือนหลอกทุกเคส
  */
 const isRequiredLabel = (label: string) => / \*$/.test(label.trim());
+
+/**
+ * ป้ายช่อง + ดอกจันที่มีสี — ต้องเป็นชุดเดียวกับฟอร์มหลัก (`Req` ใน CaseDetail.tsx)
+ *   แดง  = บังคับเสมอ ` *`
+ *   เหลือง = บังคับเฉพาะบางบริษัท `*(บางบริษัท)`
+ * เดิมพิมพ์ทั้งป้ายเป็นข้อความเดียว ดอกจันจึงเทาเหมือนชื่อช่อง มองไม่ออกว่าช่องไหนบังคับ
+ * (user ทัก 02/09/69) · ⛔ ตัวเช็ค isRequiredLabel ยังอ่านจากข้อความป้ายเหมือนเดิม
+ *    อย่าเปลี่ยนข้อความในลิสต์ FieldDef เพื่อจัดหน้า ไม่งั้นกรอบแดงหายไปด้วย
+ */
+function ReqLabel({ label }: { label: string }) {
+  const m = label.match(/^(.*?)\s*(\*\(บางบริษัท\)|\*)$/);
+  if (!m) return <>{label}</>;
+  const when = m[2] !== '*';
+  return (
+    <>
+      {m[1]}
+      <span className={when ? 'text-amber-500 ml-0.5' : 'text-red-500 ml-0.5'}>{m[2]}</span>
+    </>
+  );
+}
 const REQ_CLS = 'border-red-400 ring-1 ring-red-300 bg-red-50';
 const OK_CLS = 'border-gray-300 bg-white';
 
@@ -125,7 +145,7 @@ export const emcsBadChars = (v: string) => {
 const badNameChars = (k: string, v: string) => (NAME_KEYS.has(k) ? emcsBadChars(v) : '');
 
 const cls = (def: FieldDef, value: string, warn: string) =>
-  `w-full border rounded px-2 py-1 text-sm text-gray-800 ${
+  `w-full border rounded-none h-9 px-3 text-sm text-gray-800 ${
     warn || (isRequiredLabel(def.label) && !String(value ?? '').trim()) ? REQ_CLS : OK_CLS}`;
 
 /**
@@ -161,8 +181,8 @@ function Field({ def, value, onChange }: { def: FieldDef; value: string; onChang
   const c = cls(def, v, warn);
   return (
     <div className={def.wide ? 'col-span-2 md:col-span-4' : ''}>
-      <label className="block text-xs text-gray-500 mb-0.5">
-        {def.label}
+      <label className="block text-xs text-[var(--md-muted)] mb-0.5">
+        <ReqLabel label={def.label} />
         {warn && <span className="ml-1 text-red-600 font-medium">· {warn}</span>}
       </label>
       {def.options ? (
@@ -204,17 +224,17 @@ function RecordList({
   return (
     <div className="space-y-4">
       {items.length === 0 && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">{emptyHint}</p>
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{emptyHint}</p>
       )}
 
       {items.map((it, i) => (
-        <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
+        <div key={i} className="border border-gray-200 rounded-none overflow-hidden">
           <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center gap-2">
             <span className="text-sm font-semibold text-gray-700">{cardTitle(i)}</span>
             <button
               type="button"
               onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-              className="ml-auto px-2 py-0.5 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+              className="ml-auto px-2 py-0.5 text-xs text-red-600 border border-red-200 rounded-none hover:bg-red-50"
             >
               ลบ
             </button>
@@ -230,7 +250,7 @@ function RecordList({
       <button
         type="button"
         onClick={() => onChange([...items, Object.fromEntries(fields.map((f) => [f.k, ''])) as RecordItem])}
-        className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
+        className="px-3 py-1.5 text-sm border border-gray-300 rounded-none hover:bg-gray-50 text-gray-700"
       >
         {addLabel}
       </button>
@@ -399,7 +419,7 @@ export function OpponentEditor({ items, onChange }: {
         const missing = OPPONENT_REQUIRED.filter((k) => !String(it[k] ?? '').trim());
         const dmg = Array.isArray(it.damage) ? it.damage.length : 0;
         return (
-          <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
+          <div key={i} className="border border-gray-200 rounded-none overflow-hidden">
             <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-gray-700">คู่กรณีคันที่ {i + 1}</span>
               <label className="flex items-center gap-1 text-xs text-gray-600">
@@ -416,7 +436,7 @@ export function OpponentEditor({ items, onChange }: {
               <button
                 type="button"
                 onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-                className="ml-auto px-2 py-0.5 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+                className="ml-auto px-2 py-0.5 text-xs text-red-600 border border-red-200 rounded-none hover:bg-red-50"
               >
                 ลบ
               </button>
@@ -436,7 +456,7 @@ export function OpponentEditor({ items, onChange }: {
             <div className="px-3 pb-3">
               <button
                 type="button" onClick={() => setDmgFor(i)}
-                className="px-3 py-1.5 text-sm border border-blue-300 rounded bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium"
+                className="px-3 py-1.5 text-sm border border-blue-300 rounded-none bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium"
               >
                 ข้อมูลความเสียหาย{dmg > 0 ? ` (${dmg})` : ''}
               </button>
@@ -448,7 +468,7 @@ export function OpponentEditor({ items, onChange }: {
       <button
         type="button"
         onClick={() => onChange([...items, Object.fromEntries(OPPONENT_KEYS.map((k) => [k, ''])) as LooseRecord])}
-        className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
+        className="px-3 py-1.5 text-sm border border-gray-300 rounded-none hover:bg-gray-50 text-gray-700"
       >
         + เพิ่มคู่กรณี
       </button>

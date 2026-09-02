@@ -39,7 +39,7 @@ const LEVELS = [
   { v: 'X', label: 'X — สูงมาก' },
 ];
 
-const sel = 'border border-gray-300 rounded px-2 py-1 text-sm text-gray-800 bg-white';
+const sel = 'border border-gray-300 rounded-none px-2 py-1 text-sm text-gray-800 bg-white';
 
 export default function DamageEditor({
   items, onChange, disabled,
@@ -58,7 +58,7 @@ export default function DamageEditor({
   return (
     <div className="space-y-2">
       {items.length === 0 && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
           ยังไม่มีรายการความเสียหาย — เคสที่นำเข้าจากไฟล์ XML จะไม่มีข้อมูลส่วนนี้ ต้องกรอกเองก่อนส่งเข้า EMCS
         </p>
       )}
@@ -105,7 +105,7 @@ export default function DamageEditor({
               <button
                 type="button"
                 onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-                className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+                className="px-2 py-1 text-xs text-red-600 border border-red-200 rounded-none hover:bg-red-50"
               >
                 ลบ
               </button>
@@ -118,7 +118,7 @@ export default function DamageEditor({
         <button
           type="button"
           onClick={() => onChange([...items, { part: '', pos: 'A', level: '' }])}
-          className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
+          className="px-3 py-1.5 text-sm border border-gray-300 rounded-none hover:bg-gray-50 text-gray-700"
         >
           + เพิ่มชิ้นส่วน
         </button>

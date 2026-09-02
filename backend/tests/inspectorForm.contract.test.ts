@@ -275,6 +275,8 @@ const dlg = fs.readFileSync(
   path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'DamageDialog.tsx'), 'utf8');
 const ed = fs.readFileSync(
   path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'DamageEditor.tsx'), 'utf8');
+const gal = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'web', 'src', 'components', 'cases', 'PhotoGallery.tsx'), 'utf8');
 check('ไม่มีช่องไหนมี name (ไม่หลุดเข้าฟอร์มหลัก)', !/name=/.test(dlg));
 check('ปุ่มเปิดหน้าต่างเป็น type="button" (กันฟอร์ม submit)',
       /type="button" disabled=\{d\} onClick=\{\(\) => setDmgOpen\(true\)\}/.test(src));
@@ -484,6 +486,25 @@ check('⛔ ตัวทาเส้นใต้แยกจาก paint() (paint
 check('กรอบการ์ดอยู่ที่ตัวหมวด (หัวหมวดไม่ลอยห่างจากตารางของตัวเอง)',
       /<div data-section="[a-z_]+" className="border border-\[var\(--md-line\)\] bg-white">/.test(src)
       && !src.includes('data-section="biz" className="space-y-2"'));
+
+/**
+ * ── ดอกจันในการ์ดคู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน ต้องมีสี (user ทัก 02/09/69) ──
+ *
+ * เดิมพิมพ์ทั้งป้ายเป็นข้อความเดียว ดอกจันจึงเทาเหมือนชื่อช่อง มองไม่ออกว่าบังคับ
+ * ต้องเป็นชุดสีเดียวกับฟอร์มหลัก: แดง = บังคับเสมอ · เหลือง = บังคับบางบริษัท
+ *
+ * ⛔ ตัวทากรอบแดง (isRequiredLabel) ยังอ่าน "ป้ายลงท้ายด้วย *" จากข้อความ
+ *    ถ้าใครไปตัดดอกจันออกจาก FieldDef เพื่อจัดหน้า กรอบแดงจะหายไปเงียบ ๆ ด้วย
+ */
+check('ดอกจันในการ์ดคู่กรณีมีสี ไม่ใช่ข้อความเปล่า',
+      rec.includes('function ReqLabel') && rec.includes('<ReqLabel label={def.label} />'));
+check('แดง = บังคับเสมอ · เหลือง = บังคับบางบริษัท',
+      rec.includes("'text-amber-500 ml-0.5' : 'text-red-500 ml-0.5'"));
+check('⛔ ตัวทากรอบแดงยังอ่านจากข้อความป้ายเหมือนเดิม',
+      rec.includes('isRequiredLabel') && rec.includes("label: 'ทะเบียน *'"));
+/** หน้านี้ไม่มีมุมมนทั้งหน้า — การ์ดพวกนี้อยู่คนละไฟล์ เลยตกสำรวจตอนทำแบบใหม่รอบแรก */
+check('การ์ดคู่กรณี/ความเสียหาย/รูป ไม่มีมุมมนหลงเหลือ',
+      [rec, dlg, ed, gal].every((f) => !/rounded(-(sm|md|lg|xl)\b|-t-\[|-\[)/.test(f)));
 
 console.log(`\n${failed === 0 ? '✅ ผ่านทั้งหมด' : `❌ ล้มเหลว ${failed} รายการ`}`);
 process.exit(failed ? 1 : 0);

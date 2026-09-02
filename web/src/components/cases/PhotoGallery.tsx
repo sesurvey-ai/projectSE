@@ -49,17 +49,17 @@ function PhotoUploader({ caseId, onUploaded }: { caseId: number; onUploaded?: ()
   };
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-none border border-gray-200 bg-gray-50 px-3 py-2">
       <span className="text-sm font-medium text-gray-700">เพิ่มรูป :</span>
       <select value={cat} onChange={(e) => setCat(e.target.value)}
-        className="rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800">
+        className="rounded-none border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800">
         {UPLOAD_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
       <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple
         onChange={(e) => { setFiles(Array.from(e.target.files ?? [])); setMsg(''); }}
         className="text-sm text-gray-700" />
       <button type="button" onClick={submit} disabled={busy || !files.length}
-        className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
+        className="rounded-none bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300">
         {busy ? 'กำลังอัปโหลด...' : `อัปโหลด${files.length ? ` ${files.length} รูป` : ''}`}
       </button>
       {msg && <span className="text-sm text-gray-600">{msg}</span>}
@@ -295,7 +295,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
             </div>
             <div className="flex gap-4 overflow-x-auto pb-3">
               {g.items.map((p) => (
-                <div key={p.id} className="group relative cursor-pointer rounded-lg overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => openInWindow(p)} title="เปิดรูปในหน้าต่างแยก — ดูรูปพร้อมกรอกข้อมูลได้">
+                <div key={p.id} className="group relative cursor-pointer rounded-none overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow shrink-0 w-[calc(20%-13px)]" onClick={() => openInWindow(p)} title="เปิดรูปในหน้าต่างแยก — ดูรูปพร้อมกรอกข้อมูลได้">
                   <img src={getSrc(p)} alt={catLabel(p.category)} className="w-full h-48 object-cover" />
                   {/* ปุ่มลบโผล่ตอนชี้เมาส์ — ไม่โชว์ตลอดเพราะกดโดนง่ายตอนไล่ดูรูปเร็ว ๆ */}
                   {caseId ? (
@@ -323,7 +323,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
             <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold">−</button>
             <div className="flex flex-col items-center">
               <span className="text-white text-sm min-w-[50px] text-center">{Math.round(zoom * 100)}%</span>
-              {zoom !== 1 && <button onClick={() => setZoom(1)} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded px-2 py-0.5 text-xs mt-1">รีเซ็ต</button>}
+              {zoom !== 1 && <button onClick={() => setZoom(1)} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-none px-2 py-0.5 text-xs mt-1">รีเซ็ต</button>}
             </div>
             <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} className="text-white bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold">+</button>
           </div>
@@ -334,7 +334,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
             )}
             <div className="relative max-w-4xl w-full px-16" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setSelected(null); setZoom(1); }} className="absolute -top-10 right-16 text-white text-3xl font-bold hover:text-gray-300">&times;</button>
-              <img src={getSrc(selected)} alt={`รูปภาพ ${selected.id}`} className="w-full h-auto max-h-[65vh] object-contain rounded-lg transition-transform duration-200" style={{ transform: `scale(${zoom})` }} />
+              <img src={getSrc(selected)} alt={`รูปภาพ ${selected.id}`} className="w-full h-auto max-h-[65vh] object-contain rounded-none transition-transform duration-200" style={{ transform: `scale(${zoom})` }} />
               <div className="text-center text-white text-sm mt-2">
                 <span className="font-semibold">{catLabel(selected.category)}</span> · {idx + 1} / {photos.length}
                 {/* ลบจากจอเต็มด้วย — เคสรูป 40 ใบ คนไล่ดูทีละใบแล้วเจอรูปเสีย
@@ -342,7 +342,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
                 {caseId ? (
                   <button type="button" onClick={() => { void removePhoto(selected); }}
                     disabled={deleting === selected.id}
-                    className="ml-3 rounded bg-red-600/80 px-2 py-0.5 text-xs hover:bg-red-600 disabled:opacity-50">
+                    className="ml-3 rounded-none bg-red-600/80 px-2 py-0.5 text-xs hover:bg-red-600 disabled:opacity-50">
                     {deleting === selected.id ? 'กำลังลบ...' : 'ลบรูปนี้'}
                   </button>
                 ) : null}
@@ -356,7 +356,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
           <div className="shrink-0 py-3 px-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex gap-2 overflow-x-auto pb-2 justify-center">
               {photos.map((p, i) => (
-                <div key={p.id} onClick={() => setSelected(p)} className={`shrink-0 w-20 h-16 rounded cursor-pointer overflow-hidden border-2 transition-all ${i === idx ? 'border-white opacity-100 scale-105' : 'border-transparent opacity-50 hover:opacity-80'}`}>
+                <div key={p.id} onClick={() => setSelected(p)} className={`shrink-0 w-20 h-16 rounded-none cursor-pointer overflow-hidden border-2 transition-all ${i === idx ? 'border-white opacity-100 scale-105' : 'border-transparent opacity-50 hover:opacity-80'}`}>
                   <img src={getSrc(p)} alt={`thumb ${p.id}`} className="w-full h-full object-cover" />
                 </div>
               ))}
