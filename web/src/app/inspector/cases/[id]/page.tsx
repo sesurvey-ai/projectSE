@@ -83,7 +83,7 @@ export default function CaseDetailPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="text-gray-500">กำลังโหลดข้อมูลเคส...</div></div>;
   if (error || !caseData) return (
     <div>
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error || 'ไม่พบข้อมูลเคส'}</div>
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-none mb-4">{error || 'ไม่พบข้อมูลเคส'}</div>
       <button onClick={() => router.push('/inspector')} className="text-blue-600 hover:text-blue-800 text-sm">กลับไปรายการงาน</button>
     </div>
   );
@@ -105,7 +105,7 @@ export default function CaseDetailPage() {
         )}
       </div>
       {nameWarnings.length > 0 && (
-        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+        <div className="mb-4 rounded-none border border-amber-300 bg-amber-50 px-4 py-3">
           <p className="text-sm font-semibold text-amber-900">
             ⚠️ ชื่อ {nameWarnings.length} รายการมีอักขระที่ EMCS ไม่รับ
           </p>
@@ -118,7 +118,7 @@ export default function CaseDetailPage() {
               <li key={i} className="text-xs text-amber-900">
                 <span className="font-medium">{w.label}</span>
                 <span className="mx-1 text-amber-700">—</span>
-                <span className="rounded bg-white px-1 py-0.5 font-mono">{w.value}</span>
+                <span className="rounded-none bg-white px-1 py-0.5 font-mono">{w.value}</span>
                 <span className="ml-1 text-amber-700">(อักขระที่มีปัญหา: <strong>{w.bad}</strong>)</span>
               </li>
             ))}
