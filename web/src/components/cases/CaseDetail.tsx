@@ -352,20 +352,35 @@ function F({ label, req, span, children }: {
   // เขียนคลาสเต็มทั้งชุด ห้ามต่อสตริง — Tailwind อ่านซอร์สแบบข้อความ ต่อเองแล้วไม่ผลิต class ให้
   const w = span === 4 ? 'col-span-2 md:col-span-4' : span === 2 ? 'col-span-2 md:col-span-2 min-w-0' : 'min-w-0';
   return (
-    <div className={w}>
+    // เส้นคั่นบางเหนือทุกช่อง = "การแยกส่วน" ของแบบ (Claude Design 02/09/69)
+    // ทำให้เห็นกริด 4 คอลัมน์โดยไม่ต้องตีกล่องรอบทุกช่อง — หน้านี้มี 189 ช่อง
+    // ถ้าตีกล่องจะกลายเป็นลายตาราง
+    <div className={`${w} border-t border-[#d7d3d3] pt-2`}>
       <label className="block text-xs text-gray-500 mb-1">{label}{req ? <> {req}</> : null}</label>
       {children}
     </div>
   );
 }
 
+/**
+ * หัวหมวด — แถบเข้มไล่สีน้ำเงินกรม→ดำ ตัวหนังสือขาว (แบบจาก Claude Design 02/09/69)
+ *
+ * หน้านี้ยาว 12 หมวด เลื่อนดูนาน ๆ แล้วหาว่า "ตอนนี้อยู่หมวดไหน" ยาก —
+ * แถบเข้มทำให้เห็นรอยต่อหมวดตั้งแต่หางตา ต่างจากแถบเทาเดิมที่กลืนไปกับการ์ด
+ *
+ * ⛔ มุมฉาก 0px + เส้นใต้ 2px = กติกาของ design system (Modernist) ทั้งหน้า
+ *    อย่าใส่ rounded กลับมาเฉพาะจุด จะกลายเป็นหน้าเดียวมี 2 ภาษา
+ * ⛔ ป้าย "ยังกรอกไม่ครบ" ต้องอ่านออกบนพื้นเข้ม — ใช้พื้นขาวตัวแดง ไม่ใช่ตัวแดงบนดำ
+ */
 function SectionBar({ title, gap, right }: { title: string; gap: boolean; right?: React.ReactNode }) {
   return (
-    <div className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 ${
-      gap ? 'border-red-200 bg-red-50/50' : 'border-gray-200 bg-gray-50'}`}>
-      <span className="text-sm font-semibold text-gray-700">{title}</span>
+    <div
+      className="flex items-center gap-2 px-4 py-2 border-b-2 border-black"
+      style={{ background: gap ? 'linear-gradient(90deg,#8A1B0B,#000)' : 'linear-gradient(90deg,#1E3E82,#000)' }}
+    >
+      <span className="text-[15px] font-bold text-white">{title}</span>
       {gap && (
-        <span className="text-[11px] font-medium text-red-700 bg-white border border-red-200 rounded px-1.5">
+        <span className="text-[11px] font-semibold text-red-700 bg-white rounded-none px-1.5 py-0.5">
           ยังกรอกไม่ครบ
         </span>
       )}
@@ -1442,7 +1457,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       {/* ── แถบหัวเคส (ติดขอบบน) ── ตัวระบุเคส + สถานะ + ปุ่ม อยู่ครบในบรรทัดเดียว
           หน้านี้ยาวมาก เลื่อนไปไหนก็ยังเห็นว่ากำลังตรวจเคลมไหน และกดบันทึกได้ทันที */}
       <div className="sticky top-0 z-20 -mx-1 px-1 pt-1 pb-2 bg-gray-50/95 backdrop-blur-sm">
-        <div className="bg-white rounded-lg shadow border border-gray-200 px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="bg-white border border-[#d7d3d3] px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-2">
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-xs text-gray-400 shrink-0">เคลม</span>
             <span className="font-bold text-gray-900 truncate">{report?.claim_no || '—'}</span>
@@ -1592,7 +1607,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </button>
             ) : undefined} />
           <div>
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+          <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
             {/* Header bar with claim type & damage level */}
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               {/* กรอบคุมทั้งกลุ่ม ไม่ใช่รายช่อง — วงกลม radio อยู่บนแถบสี ทาสีทีละอันแล้วไม่เห็น
@@ -1627,20 +1642,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             {/* Table rows */}
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               <F label="บริษัทประกัน">
-                <p className="py-1 font-bold text-gray-900 truncate"
+                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate"
                    title={[report.insurance_company, report.insurance_branch].filter(Boolean).join(' · ')}>
                   {[noPh(report.insurance_company), noPh(report.insurance_branch) || 'กรุงเทพ']
                     .filter(Boolean).join(' · ') || '—'}
                 </p>
               </F>
               <F label="เลขเรื่องเซอร์เวย์">
-                <p className="py-1 font-bold text-gray-900 truncate" title={report.survey_job_no || ''}>{report.survey_job_no || '—'}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate" title={report.survey_job_no || ''}>{report.survey_job_no || '—'}</p>
               </F>
               <F label="เลขที่รับแจ้ง">
-                <p className="py-1 font-bold text-gray-900 truncate" title={report.claim_ref_no || ''}>{report.claim_ref_no || '—'}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate" title={report.claim_ref_no || ''}>{report.claim_ref_no || '—'}</p>
               </F>
               <F label="เลขที่เคลม">
-                <p className="py-1 font-bold text-gray-900 truncate" title={report.claim_no || ''}>{report.claim_no || '—'}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate" title={report.claim_no || ''}>{report.claim_no || '—'}</p>
               </F>
 
               {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
@@ -1703,16 +1718,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     ที่เลือกตอน import XML อยู่แล้ว (XML ใช้ SURVEYBRID จาก env ไม่ใช่คอลัมน์พวกนี้)
                   · "วันที่" = วันที่เกิดเหตุ แก้ได้ที่การ์ด "ลำดับเวลา" จังหวะที่ 1 ตรงนี้โชว์ซ้ำเฉย ๆ */}
               <F label="บริษัทผู้จัดเรื่อง">
-                <p className="text-gray-800 py-1 truncate" title={SURVEY_CO.name}>{SURVEY_CO.name}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800 truncate" title={SURVEY_CO.name}>{SURVEY_CO.name}</p>
               </F>
               <F label="เบอร์โทรศัพท์ / Fax">
-                <p className="text-gray-800 py-1">{SURVEY_CO.phone}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800">{SURVEY_CO.phone}</p>
               </F>
               <F label="วันที่">
-                <p className="text-gray-800 py-1">{report.acc_date || '-'}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800">{report.acc_date || '-'}</p>
               </F>
               <F label="ที่อยู่">
-                <p className="text-gray-800 py-1 truncate" title={SURVEY_CO.address}>{SURVEY_CO.address}</p>
+                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800 truncate" title={SURVEY_CO.address}>{SURVEY_CO.address}</p>
               </F>
             </div>
           </div>
@@ -1724,7 +1739,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="policy" className="space-y-2">
           <SectionBar title="กรมธรรม์" gap={(gapSec ?? []).includes('policy')} />
           <div>
-            <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+            <div className="bg-white border border-[#d7d3d3] p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               <F label="กรมธรรม์เลขที่" req={<Req of="policy_no" />}>
                 <input type="text" disabled={d} name="policy_no" defaultValue={report.policy_no || ''} className={CTL(d)} />
               </F>
@@ -1785,7 +1800,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="car" className="space-y-2">
           <SectionBar title="รถประกัน" gap={(gapSec ?? []).includes('car')} />
           <div>
-          <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+          <div className="bg-white border border-[#d7d3d3] p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
             <F label="หมายเลขทะเบียน" req={<Req of="license_plate" />}>
               <input type="text" disabled={d} name="license_plate" defaultValue={report.license_plate || ''} className={CTL(d)} />
             </F>
@@ -1864,7 +1879,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="driver" className="space-y-2">
           <SectionBar title="ผู้ขับขี่รถประกัน" gap={(gapSec ?? []).includes('driver')} />
           <div>
-            <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+            <div className="bg-white border border-[#d7d3d3] p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               {/* 4 ช่องบังคับชุดเดียวกัน: เพศ · คำนำหน้า · ชื่อ · นามสกุล (EMCS บล็อกทั้งชุด) */}
               <F label="ผู้ขับขี่รถประกันภัย" req={<Req of="driver_gender,driver_title,driver_first_name,driver_last_name" />}>
                 <div className="flex items-center gap-2">
@@ -2041,7 +2056,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
               (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
               ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+          <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
             <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-semibold">ลำดับเวลา</span>
               <span className="text-xs text-gray-500">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
@@ -2085,7 +2100,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="acc" className="space-y-2">
           <SectionBar title="อุบัติเหตุ" gap={(gapSec ?? []).includes('acc')} />
           <div>
-          <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+          <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               {/* สถานที่ + จังหวัด + เขต/อำเภอ บังคับทั้ง 3 (จังหวัด/อำเภอ = ตัวที่บอทใช้หาเรทด้วย) */}
               <F label="สถานที่เกิดเหตุ" req={<Req of="acc_place,acc_province,acc_district" />} span={2}>
@@ -2188,7 +2203,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="claim" className="space-y-2">
           <SectionBar title="การเรียกร้องค่าเสียหายจากคู่กรณี" gap={(gapSec ?? []).includes('claim')} />
           <div>
-          <div className="bg-white rounded-lg shadow p-4 text-sm">
+          <div className="bg-white border border-[#d7d3d3] p-4 text-sm">
             <label className="block text-xs text-gray-500 mb-1">
               การเรียกร้องค่าเสียหายจากคู่กรณี{' '}
               <span
@@ -2232,7 +2247,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div data-section="police" className="space-y-2">
           <SectionBar title="คดี · ตำรวจ · ติดตามงาน" gap={(gapSec ?? []).includes('police')} />
           <div>
-          <div className="bg-white rounded-lg shadow p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
+          <div className="bg-white border border-[#d7d3d3] p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
             <F label="ชื่อพนักงานสอบสวน" req={<Req of="acc_police_name" when="ฝ่ายประมาท = &quot;รอสรุปผลคดี&quot; หรือมีการแจ้งความ" />}>
               <input type="text" disabled={d} name="acc_police_name" defaultValue={report.acc_police_name || ''} className={CTL(d)} />
             </F>
@@ -2317,7 +2332,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <SectionBar title={`คู่กรณี · ${opponents.length} คัน`} gap={(gapSec ?? []).includes('opp')} />
                 <div>
                 {(opposingParties.length > 0 || isEditing) && (
-                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                  <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
                     {isEditing ? (
                       <div className="p-4"><OpponentEditor items={opponents} onChange={setOpponents} /></div>
                     ) : (
@@ -2417,7 +2432,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <SectionBar title={`ผู้บาดเจ็บ · ${injured.length} คน`} gap={(gapSec ?? []).includes('inj')} />
                 <div>
                 {(injuredPersons.length > 0 || isEditing) && (
-                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                  <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
                     {isEditing ? (
                       <div className="p-4"><InjuredEditor items={injured} onChange={setInjured} /></div>
                     ) : (
@@ -2472,7 +2487,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} gap={(gapSec ?? []).includes('prop')} />
                 <div>
                 {(damagedProperty.length > 0 || isEditing) && (
-                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                  <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
                     {isEditing ? (
                       <div className="p-4"><PropertyEditor items={property} onChange={setProperty} /></div>
                     ) : (
@@ -2512,7 +2527,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <SectionBar title="ความเสียหายรถประกัน" gap={(gapSec ?? []).includes('dmg')} />
                 <div>
                 {(insuredDamage.length > 0 || isEditing) && (
-                  <div className="bg-white rounded-lg shadow overflow-hidden text-sm">
+                  <div className="bg-white border border-[#d7d3d3] overflow-hidden text-sm">
                     <div className="p-4">
                       {isEditing
                         ? <DamageEditor items={damage} onChange={setDamage} />
@@ -2533,7 +2548,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           งานที่ดึงจากระบบเก่าตอน "รอตรวจข้อมูล" รูปยังทยอยขึ้น (วัดจริง: 1–5 ใบ
           ตอนนั้น เทียบกับ 22–41 ใบตอนจบงาน) → ต้องเห็นตัวเลขก่อนกดอนุมัติ
           ไม่งั้นบอทยกเข้า EMCS ด้วยรูป 3 ใบแล้วต้องตามแก้ทีหลัง */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white border border-[#d7d3d3] overflow-hidden">
         <div className="bg-gray-50 border-b border-gray-200 text-gray-700 px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-semibold">รูปหลักฐาน</span>
           <span className="bg-gray-200 text-gray-700 rounded px-2 py-0.5 text-xs font-semibold">{photos?.length ?? 0} ใบ</span>
@@ -3040,7 +3055,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       {bigEdit && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
           onClick={() => setBigEdit(null)}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col"
+          <div className="bg-white shadow-xl w-full max-w-4xl flex flex-col"
             style={{ maxHeight: '90vh' }} onClick={(e) => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">{bigEdit.label}</h3>

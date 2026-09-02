@@ -11,7 +11,9 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  /* ⛔ ต้องมี fallback เป็นฟอนต์ไทยของเครื่อง — ระหว่างฟอนต์ยังโหลดไม่เสร็จ
+     (display:swap) ถ้าตกไปที่ Arial ตัวไทยจะกระโดดเพราะ Arial ไม่มีอักขระไทย */
+  font-family: var(--font-thai), 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif;
 }
 
 /**
