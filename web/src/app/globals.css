@@ -6,6 +6,8 @@
 :root {
   --background: #ffffff;
   --foreground: #201e1d;
+  /* ฟอนต์ตั้งต้นของทั้งเว็บ — ตัวสลับฟอนต์เขียนทับตัวแปรนี้ที่ <html> (ดู FontSwitcher.tsx) */
+  --font-thai: var(--font-noto-thai);
 }
 
 /**

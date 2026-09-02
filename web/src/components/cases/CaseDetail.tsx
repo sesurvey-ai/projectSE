@@ -2090,8 +2090,18 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               {/* ต้องมีรายการความเสียหายอย่างน้อย 1 รายการ (ผู้สำรวจเลือกจากแอป) */}
               {/* ⛔ ไม่ใส่ดอกจันที่ textarea นี้ — ค่าของมันไม่เคยถูกส่งเข้า EMCS เลย
                   ตัวที่ EMCS ต้องการคือ "รายการ" ความเสียหาย ซึ่งคุมที่ approvalBlockers */}
-              <F label="ความเสียหายรถประกันภัย" span={4}>
-                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={CTL(d)} />
+              <F label="ความเสียหายรถประกันภัย" span={4}
+                 right={
+                   /* ⛔ type="button" — ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit */
+                   <button type="button" disabled={d}
+                     onClick={() => openBig('damage_description', 'ความเสียหายรถประกันภัย')}
+                     className="shrink-0 text-xs text-blue-700 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed">
+                     ⤢ ขยาย
+                   </button>
+                 }>
+                {/* ⛔ CTL มี h-9 (สูง 36px) ติดมาด้วย — ช่องพิมพ์หลายบรรทัดต้องมี min-h มาทับเสมอ
+                    ไม่งั้นโดนบีบเหลือบรรทัดเดียวทั้งที่ตั้ง rows ไว้ */}
+                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`${CTL(d)} min-h-[64px] py-1.5`} />
                 <div className="mt-1.5">
                   {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
                   <button type="button" disabled={d} onClick={() => setDmgOpen(true)}

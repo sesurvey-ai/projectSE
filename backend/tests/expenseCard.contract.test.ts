@@ -383,6 +383,7 @@ for (const [label, name] of [
   ['ความเห็นของเซอร์เวย์', 'surveyor_comment'],
   // เพิ่ม 02/09/69 — ช่องยาวที่สุดในฟอร์มหลัก (เนื้อความจริง 15-25 บรรทัด กล่องสูง 4 บรรทัด)
   ['รายละเอียดการเกิดเหตุ', 'acc_detail'],
+  ['ความเสียหายรถประกันภัย', 'damage_description'],
 ]) {
   check(`"${label}" มีปุ่มขยาย`, ui.includes(`openBig('${name}', '${label}')`));
 }
@@ -392,6 +393,9 @@ for (const [label, name] of [
  *    ถ้าห่อทุกช่อง ป้ายกลายเป็น flex item แล้วการตัดบรรทัดของป้ายยาวเปลี่ยนไปทั้งหน้า
  */
 check('<F> ห่อ flex เฉพาะช่องที่มีปุ่ม', ui.includes('{right ? (') && ui.includes(') : ('));
+/** ⛔ CTL มี h-9 ติดมาด้วย — textarea ที่ใช้ CTL ต้องมี min-h มาทับ ไม่งั้นเหลือบรรทัดเดียว */
+check('⛔ textarea ที่ใช้ CTL มี min-h ทับความสูง 36px',
+      !/<textarea[^>]*className=\{CTL\(d\)\}/.test(ui));
 /** เขียนค่ากลับแล้วต้องยิง input event — ไม่งั้นกรอบแดง/เส้นใต้ของช่องนั้นค้างสถานะเดิม */
 check('เขียนค่ากลับแล้วยิง input event (กรอบแดง/เส้นใต้อัปเดตตาม)',
       ui.includes("el.dispatchEvent(new Event('input', { bubbles: true }))"));
@@ -459,6 +463,39 @@ console.log('\n── ลำดับแถวในตารางค่าใ�
   check('ค่าใช้จ่ายอื่นๆ → หักเงิน → นอกพื้นที่ → กลุ่มที่พับ → รวมยอด',
         other > 0 && other < deduct && deduct < area && area < fold && fold < total,
         `other=${other} deduct=${deduct} area=${area} fold=${fold} total=${total}`);
+}
+
+console.log('\n── ตัวสลับฟอนต์ ──');
+/**
+ * user ขอ 02/09/69 ระหว่างตัดสินใจเลือกฟอนต์ — เลือกได้ 3 แบบ จำไว้ในเครื่องของคนเลือก
+ *
+ * ⛔ ของ 4 ชิ้นนี้ต้องตรงกันหมด ถ้าหลุดชิ้นเดียวทั้งเว็บตกไปใช้ฟอนต์สำรองของเครื่องเงียบ ๆ
+ *    ไม่มี error ให้เห็น: ตัวแปรบน <html> · ค่าตั้งต้นใน :root · สคริปต์ท้าย <head> · ตัวสลับ
+ */
+{
+  const lay = read('..', 'web', 'src', 'app', 'layout.tsx');
+  const css = read('..', 'web', 'src', 'app', 'globals.css');
+  const sw = read('..', 'web', 'src', 'components', 'layout', 'FontSwitcher.tsx');
+  const hdr = read('..', 'web', 'src', 'components', 'layout', 'Header.tsx');
+
+  check('โหลดฟอนต์ครบ 3 แบบ',
+        ['Noto_Sans_Thai', 'IBM_Plex_Sans_Thai', 'Sarabun'].every((f) => lay.includes(f)));
+  check('⛔ ตัวแปรฟอนต์อยู่บน <html> ไม่ใช่ <body> (ไม่งั้น var() หาไม่เจอ)',
+        /<html[^>]*className=\{`\$\{notoThai\.variable\}/.test(lay)
+        && !/<body className=\{`\$\{/.test(lay));
+  check('ค่าตั้งต้นชี้ไปฟอนต์ที่ใช้อยู่', css.includes('--font-thai: var(--font-noto-thai)'));
+  check('ทั้งเว็บอ่าน var(--font-thai)', css.includes('font-family: var(--font-thai)'));
+  check('เลือกฟอนต์ก่อนหน้าถูกวาด (ไม่แวบเปลี่ยนทุกครั้งที่เปิดหน้า)',
+        lay.includes("localStorage.getItem('ui_font')") && lay.includes('dangerouslySetInnerHTML'));
+  check('⛔ คีย์ที่จำไว้ตรงกันทั้งสคริปต์บูตกับตัวสลับ',
+        lay.includes("'ui_font'") && sw.includes("localStorage.setItem('ui_font', id)"));
+  check('⛔ อ่านค่าที่จำไว้แบบกันค่าขยะ (ค่านี้ถูกยัดลง setProperty ตรง ๆ)',
+        lay.includes('/^[a-z-]+$/.test(f)'));
+  check('ตัวสลับเขียนทับที่ documentElement',
+        sw.includes("documentElement.style.setProperty('--font-thai', `var(--font-${id})`)"));
+  check('ตัวสลับขึ้นบนแถบบนทุกหน้า', hdr.includes('<FontSwitcher />'));
+  check('⛔ localStorage ห่อ try/catch (โหมดส่วนตัวเข้าถึงแล้ว throw)',
+        (sw.match(/catch/g) ?? []).length >= 2 && lay.includes('catch(e){}'));
 }
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);

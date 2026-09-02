@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { Noto_Sans_Thai } from 'next/font/google';
+import { Noto_Sans_Thai, IBM_Plex_Sans_Thai, Sarabun } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/providers/AuthProvider';
 
 /**
- * ฟอนต์ของทั้งเว็บ — Noto Sans Thai (user เคาะ 02/09/69 จาก handoff ของ Claude Design)
+ * ── ฟอนต์ของทั้งเว็บ ── ให้ผู้ใช้สลับเองได้ 3 แบบ (user ขอ 02/09/69 เพื่อเลือก)
  *
  * ⛔ ของเดิมโหลดฟอนต์ Geist ไว้แต่ไม่มีใครใช้ (globals.css ทับด้วย Arial) และ Arial
  *    ไม่มีอักขระไทย → ไทยตกไปใช้ฟอนต์ของเครื่องผู้ใช้ (Windows=Leelawadee UI,
@@ -12,12 +12,26 @@ import { AuthProvider } from '@/providers/AuthProvider';
  *
  * เอาน้ำหนักเท่าที่ใช้จริงในซอร์ส: 400 (10 จุด) · 500 (205) · 600 (84) · 700 (52)
  * ⛔ อย่าโหลดครบ 100-900 — ฟอนต์ไทยไฟล์ใหญ่ ทุกน้ำหนักที่ไม่ได้ใช้คือถ่วงหน้าเปล่า ๆ
+ *
+ * ⛔ ประกาศ 3 ตัวไม่ได้แปลว่าโหลด 3 ตัว — เบราว์เซอร์ดาวน์โหลดเฉพาะฟอนต์ที่มี
+ *    ข้อความใช้จริงเท่านั้น ที่เพิ่มมาคือกฎ @font-face ในไฟล์ CSS ไม่กี่บรรทัด
+ * ⛔ ตัวแปรฟอนต์ต้องอยู่บน <html> ไม่ใช่ <body> — ตัวสลับเขียน
+ *    `--font-thai: var(--font-xxx)` ที่ documentElement ถ้าตัวแปรปลายทางประกาศไว้ที่ body
+ *    มันจะหาไม่เจอแล้วได้ค่าว่าง (ดู FontSwitcher.tsx)
  */
 const notoThai = Noto_Sans_Thai({
-  subsets: ['thai', 'latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-thai',
-  display: 'swap',
+  subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'],
+  variable: '--font-noto-thai', display: 'swap',
+});
+/** ออกแบบไทยกับละตินคู่กันมาเพื่องานอินเทอร์เฟซ/ตาราง — เลขกับทะเบียนรถนั่งเข้ากับไทยดี */
+const plexThai = IBM_Plex_Sans_Thai({
+  subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'],
+  variable: '--font-plex-thai', display: 'swap',
+});
+/** ฟอนต์มาตรฐานเอกสารราชการไทย — คนไทยคุ้นตาที่สุด ตัวแคบกว่า บรรทัดหนึ่งจุได้มากกว่า */
+const sarabun = Sarabun({
+  subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'],
+  variable: '--font-sarabun', display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -25,10 +39,18 @@ export const metadata: Metadata = {
   description: 'ระบบจัดการงานสำรวจสำหรับเจ้าหน้าที่',
 };
 
+/**
+ * เลือกฟอนต์ที่จำไว้ **ก่อน** หน้าถูกวาด — ถ้าไปตั้งใน useEffect
+ * ผู้ใช้จะเห็นฟอนต์ตั้งต้นแวบหนึ่งแล้วค่อยกระโดดเปลี่ยนทุกครั้งที่เปิดหน้า
+ */
+const FONT_BOOT = `try{var f=localStorage.getItem('ui_font');
+if(f&&/^[a-z-]+$/.test(f))document.documentElement.style.setProperty('--font-thai','var(--font-'+f+')');}catch(e){}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="th">
-      <body className={`${notoThai.variable} antialiased`}>
+    <html lang="th" className={`${notoThai.variable} ${plexThai.variable} ${sarabun.variable}`}>
+      <head><script dangerouslySetInnerHTML={{ __html: FONT_BOOT }} /></head>
+      <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
