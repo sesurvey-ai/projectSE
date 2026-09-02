@@ -346,8 +346,11 @@ const CTL = (locked: boolean) =>
  * ⚠️ className ของตัวช่องต้องเหมือนเดิมเป๊ะ (`border-gray-300` + `bg-white`/`bg-gray-100`)
  *    ตัวทากรอบแดงสลับคลาสพวกนี้อยู่ — เปลี่ยนแล้วกรอบแดงจะทาไม่ติด
  */
-function F({ label, req, span, children }: {
-  label: string; req?: React.ReactNode; span?: 2 | 4; children: React.ReactNode;
+function F({ label, req, span, right, children }: {
+  label: string; req?: React.ReactNode; span?: 2 | 4;
+  /** ปุ่มเล็กมุมขวาของแถวป้าย (เช่น "⤢ ขยาย") — ไม่ส่งมาก็ไม่มีอะไรเปลี่ยน */
+  right?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   // เขียนคลาสเต็มทั้งชุด ห้ามต่อสตริง — Tailwind อ่านซอร์สแบบข้อความ ต่อเองแล้วไม่ผลิต class ให้
   const w = span === 4 ? 'col-span-2 md:col-span-4' : span === 2 ? 'col-span-2 md:col-span-2 min-w-0' : 'min-w-0';
@@ -356,7 +359,16 @@ function F({ label, req, span, children }: {
     // ทำให้เห็นกริด 4 คอลัมน์โดยไม่ต้องตีกล่องรอบทุกช่อง — หน้านี้มี 189 ช่อง
     // ถ้าตีกล่องจะกลายเป็นลายตาราง
     <div className={`${w} border-t border-[var(--md-line)] pt-2`}>
-      <label className="block text-xs text-[var(--md-muted)] mb-1">{label}{req ? <> {req}</> : null}</label>
+      {/* ⛔ ห่อด้วย flex **เฉพาะตอนมีปุ่ม** — หน้านี้มีเกือบ 200 ช่อง
+          ถ้าห่อทุกช่อง ป้ายจะกลายเป็น flex item แล้วการตัดบรรทัดของป้ายยาวเปลี่ยนไปทั้งหน้า */}
+      {right ? (
+        <div className="flex items-start justify-between gap-2">
+          <label className="block text-xs text-[var(--md-muted)] mb-1">{label}{req ? <> {req}</> : null}</label>
+          {right}
+        </div>
+      ) : (
+        <label className="block text-xs text-[var(--md-muted)] mb-1">{label}{req ? <> {req}</> : null}</label>
+      )}
       {children}
     </div>
   );
@@ -2233,7 +2245,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
 
               {/* ตรงกับช่อง "รายละเอียดการเกิดเหตุ" แท็บข้อมูลทั่วไปของ EMCS (ACC_DETAIL) */}
-              <F label="รายละเอียดการเกิดเหตุ" req={<Req of="acc_detail" />} span={4}>
+              <F label="รายละเอียดการเกิดเหตุ" req={<Req of="acc_detail" />} span={4}
+                 right={
+                   /* ⛔ type="button" — ปุ่มในฟอร์มที่ไม่ระบุชนิด เบราว์เซอร์ถือเป็น submit */
+                   <button type="button" disabled={d}
+                     onClick={() => openBig('acc_detail', 'รายละเอียดการเกิดเหตุ')}
+                     className="shrink-0 text-xs text-blue-700 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed">
+                     ⤢ ขยาย
+                   </button>
+                 }>
                 <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`${CTL(d)} min-h-[80px]`} rows={4} />
               </F>
             </div>
