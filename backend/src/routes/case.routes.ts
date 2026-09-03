@@ -281,6 +281,8 @@ router.put('/:id/survey', auth, requireRole('surveyor'), caseController.updateSu
 router.post('/:id/review', auth, requireRole('checker'), validate(submitReviewSchema), reviewController.submitReview);
 // ปลดล็อกเคสที่อนุมัติแล้ว — **แอดมินเท่านั้น** ผู้ตรวจปลดเองไม่ได้ ไม่งั้นการล็อกก็ไม่มีความหมาย
 router.post('/:id/unlock', auth, requireRole('admin'), reviewController.unlock);
+// ส่ง/ส่งซ้ำเข้า se-billing (/captures) — เคสที่อนุมัติแล้วเท่านั้น (ตรวจใน controller)
+router.post('/:id/billing-capture', auth, requireRole('checker', 'admin'), reviewController.resendBilling);
 router.put('/:id/report', auth, requireRole('checker'), caseController.updateReport);
 // แก้ตัวระบุตัวเคส — **แอดมินเท่านั้น** ผู้ตรวจแก้ไม่ได้ (หน้าเว็บก็ล็อกไว้อีกชั้น)
 // เลขพวกนี้ผูกเคสกับงานจริง แก้ผิดแล้วเคสไปโผล่ผิดใบ/ผิดบริษัท

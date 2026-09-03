@@ -128,6 +128,16 @@ function zeroBlank(v: unknown): string {
 }
 /** ยอดนอกพื้นที่/นอกเวลาในช่องแก้เอง — DB คืน "100.00" → โชว์ "100" (ค่าตั้งต้นตอนติ๊กก็โชว์ "100" อยู่แล้ว
  *  สองแบบปนกันดูเหมือนคนละช่อง) จำนวนเต็มไม่ใส่ทศนิยม มีเศษค่อยโชว์ไม่เกิน 2 ตำแหน่ง */
+/** ผลจากท่อ se-billing ที่ backend แนบมากับผลอนุมัติ/ส่งซ้ำ (ดู backend sebilling.service) */
+type BillingResult = { ok?: boolean; id?: number; skipped?: boolean; error?: string } | null | undefined;
+const billingNote = (b: BillingResult): string => {
+  if (!b) return '';
+  if (b.ok) return ` · ส่งเข้า se-billing แล้ว (#${b.id})`;
+  if (b.skipped) return '';   // เซิร์ฟเวอร์ปิดท่อ (เครื่องพัฒนา) — ไม่ต้องรบกวน
+  return ` · ส่งเข้า se-billing ไม่สำเร็จ: ${b.error || 'เกิดข้อผิดพลาด'}`;
+};
+const SEBILLING_CAPTURES_URL = (process.env.NEXT_PUBLIC_SEBILLING_URL || 'https://billing.sesurvey.cloud') + '/captures';
+
 function amtText(v: unknown): string {
   const t = zeroBlank(v);
   if (!t) return '';
@@ -1461,6 +1471,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * ตอนนี้ย้ายไปอยู่ในแถบหัวเคสที่ติดขอบบน กดบันทึกได้จากทุกจุดของหน้า
    * ⛔ ต้องอยู่ **นอก** <fieldset disabled> ไม่งั้นตอนล็อกจะกดปลดล็อกไม่ได้
    */
+  /** ส่ง/ส่งซ้ำเข้า se-billing — ปุ่มโผล่เมื่อยังไม่มีแถว (อนุมัติก่อนมีท่อ) หรือรอบก่อนส่งไม่สำเร็จ */
+  const resendBilling = async () => {
+    setSaving(true); setSaveMsg('');
+    try {
+      const r = await api.post(`/api/cases/${caseData.id}/billing-capture`, {});
+      const b = r.data?.data as BillingResult;
+      setSaveMsg(b?.ok ? `ส่งเข้า se-billing แล้ว (#${b.id})` : `ส่งเข้า se-billing ไม่สำเร็จ: ${b?.error || 'เกิดข้อผิดพลาด'}`);
+      onReviewSubmitted();
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setSaveMsg('ส่งเข้า se-billing ไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+    } finally { setSaving(false); }
+  };
+
   const actionBar = approved ? (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">อนุมัติแล้ว · ล็อก</span>
@@ -1468,6 +1492,25 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         {review?.checker_name ? `โดย ${review.checker_name}` : ''}
         {review?.reviewed_at ? ` · ${String(review.reviewed_at).slice(0, 16).replace('T', ' ')}` : ''}
       </span>
+      {/* ท่อ se-billing (/captures) — แถวของเคสนี้ไปถึงบัญชีหรือยัง + ปุ่มส่ง/ส่งซ้ำ (03/09/69) */}
+      {caseData.billing_error ? (
+        <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 max-w-[22rem] truncate"
+          title={String(caseData.billing_error)}>se-billing ✗ {String(caseData.billing_error)}</span>
+      ) : caseData.billing_capture_id ? (
+        <a href={SEBILLING_CAPTURES_URL} target="_blank" rel="noreferrer"
+          className="text-xs text-green-700 hover:underline whitespace-nowrap"
+          title={caseData.billing_sent_at ? `ส่งเมื่อ ${String(caseData.billing_sent_at).slice(0, 16).replace('T', ' ')}` : ''}>
+          se-billing ✓ #{caseData.billing_capture_id}
+        </a>
+      ) : (
+        <span className="text-xs text-gray-500 whitespace-nowrap">ยังไม่ได้ส่งเข้า se-billing</span>
+      )}
+      {(!caseData.billing_capture_id || caseData.billing_error) && (
+        <button type="button" disabled={saving} onClick={resendBilling}
+          className="px-3 py-1 border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+          ส่งเข้า se-billing
+        </button>
+      )}
       {isAdmin ? (
         <button type="button" disabled={saving} onClick={async () => {
           // ปลดล็อกแล้วต้องอนุมัติใหม่ — ถามก่อนเพราะเป็นการถอนลายเซ็นของคนอื่น
@@ -1521,8 +1564,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         const ok = await handleSave();
         if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
         try {
-          await api.post(`/api/cases/${caseData.id}/review`, {});
-          setSaveMsg('อนุมัติสำเร็จ');
+          const r = await api.post(`/api/cases/${caseData.id}/review`, {});
+          setSaveMsg('อนุมัติสำเร็จ' + billingNote(r.data?.data?.billing));
           onReviewSubmitted();
         } catch (e) {
           const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
