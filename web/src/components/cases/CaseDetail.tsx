@@ -2632,11 +2632,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           ตอนนั้น เทียบกับ 22–41 ใบตอนจบงาน) → ต้องเห็นตัวเลขก่อนกดอนุมัติ
           ไม่งั้นบอทยกเข้า EMCS ด้วยรูป 3 ใบแล้วต้องตามแก้ทีหลัง */}
       <div className="bg-white border border-[var(--md-line)] overflow-hidden">
-        <div className="bg-[var(--md-tint)] border-b border-[var(--md-line)] text-gray-700 px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="font-semibold">รูปหลักฐาน</span>
-          <span className="bg-gray-200 text-gray-700 rounded-none px-2 py-0.5 text-xs font-semibold">{photos?.length ?? 0} ใบ</span>
+        {/* แถบหัวเหมือนหมวดอื่น (พื้น #1E3E82 ตัวหนังสือขาว) — user เคาะ 03/09/69
+            ของเดิมเป็นแถบเทาอ่อน หมวดรูปเลยดูเป็นของแถมทั้งที่เป็นหมวดที่ต้องดูก่อนอนุมัติ
+            ⛔ ป้ายบนพื้นน้ำเงินต้องพื้นขาวตัวน้ำเงิน (กติกาเดียวกับป้าย "ยังกรอกไม่ครบ")
+               ป้ายเทาบนน้ำเงินอ่านไม่ออก */}
+        <div className="border-b-2 border-[var(--md-ink)] text-white px-4 py-2 text-sm flex flex-wrap items-center gap-x-3 gap-y-1"
+             style={{ background: '#1E3E82' }}>
+          <span className="text-[0.9375rem] font-bold">รูปหลักฐาน</span>
+          <span className="bg-white text-[#1E3E82] rounded-none px-2 py-0.5 text-xs font-semibold">{photos?.length ?? 0} ใบ</span>
           {photoCats.length > 0 && (
-            <span className="text-xs text-gray-500 truncate">
+            <span className="text-xs text-white/75 truncate">
               {photoCats.map((c) => `${c.name} ${c.n}`).join(' · ')}
             </span>
           )}
