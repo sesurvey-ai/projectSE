@@ -518,6 +518,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     if (el) {
       el.value = bigDraft;
       el.dispatchEvent(new Event('input', { bubbles: true }));
+      // ช่องความเสียหาย: พอพิมพ์คำบรรยายเอง ต้องสลับกลับไปโชว์เป็นช่องข้อความ
+      // ไม่งั้นแก้แล้วไม่เห็นสิ่งที่พิมพ์ (ปกติช่องถูกซ่อน โชว์เป็นรายการแทน)
+      if (bigEdit.name === 'damage_description') {
+        const t = bigDraft.trim();
+        setDescCustom(t !== '' && t !== autoDamageDesc(damage).trim());
+      }
     }
     setBigEdit(null);
   };
@@ -578,7 +584,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const lastAutoDesc = useRef<string>('');
   const descReady = useRef(false);
-  const [descCustom, setDescCustom] = useState(false);
+  const [descCustom, setDescCustom] = useState(() => {
+    const t = String(report?.damage_description ?? '').trim();
+    return t !== '' && t !== autoDamageDesc(damage).trim();
+  });
   useEffect(() => {
     const auto = autoDamageDesc(damage);
     if (!descReady.current) {   // รอบแรก — แค่จำข้อความอัตโนมัติของค่าที่โหลดมา ยังไม่แตะช่อง
@@ -2199,7 +2208,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                  }>
                 {/* ⛔ CTL มี h-9 (สูง 36px) ติดมาด้วย — ช่องพิมพ์หลายบรรทัดต้องมี min-h มาทับเสมอ
                     ไม่งั้นโดนบีบเหลือบรรทัดเดียวทั้งที่ตั้ง rows ไว้ */}
-                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`${CTL(d)} min-h-[4rem] py-1.5`} />
+                {/* ข้อความในช่องนี้ปกติ = รายการที่แอป/หน้าต่างเขียนให้ จึงโชว์เป็น**แถวเรียง
+                    ไปทางขวา** แทนช่องพิมพ์ (user ขอ 03/09/69 — ขวามือว่างเยอะ เรียงลงมา
+                    กินความสูงเปล่า ๆ) · แก้ข้อความได้ที่ปุ่ม "⥂ ขยาย" ซึ่งเปิดเป็นบรรทัดละชิ้น
+                    ⛔ textarea ต้องอยู่ในฟอร์มเสมอ แค่ซ่อน — ทั้ง FormData ตอนบันทึกและปุ่มขยาย
+                       อ่านค่าจาก DOM ตัวนี้ ถอดออกเมื่อไหร่ค่าหายตอนบันทึก */}
+                <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2}
+                  className={descCustom ? `${CTL(d)} min-h-[4rem] py-1.5` : 'hidden'} />
+                {!descCustom && (
+                  <div className={`min-h-9 flex items-center flex-wrap border border-gray-300 rounded-none px-3 py-1.5 ${d ? 'bg-gray-100' : 'bg-white'}`}>
+                    {damage.length > 0
+                      ? <DamageList items={damage} />
+                      : <span className="text-xs text-gray-400">ยังไม่มีรายการ — กด "ข้อมูลความเสียหาย" ข้างล่างเพื่อเลือก</span>}
+                  </div>
+                )}
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                   {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
                   <button type="button" disabled={d} onClick={() => setDmgOpen(true)}
