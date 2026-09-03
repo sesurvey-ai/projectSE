@@ -350,11 +350,11 @@ const EMCS_NAME_FIELDS = [
   'acc_reporter', 'acc_surveyor', 'acc_police_name',
   'driver_name', 'driver_first_name', 'driver_last_name',
 ];
-// สีเตือนของช่องบังคับ**แบบมีเงื่อนไข** — แดง = บังคับตอนนี้ · เหลือง = ยังไม่บังคับแต่ยังว่าง
+// สีเตือนของช่องบังคับ**แบบมีเงื่อนไข** — มีสีเดียวคือแดง = "บังคับตอนนี้และยังว่าง"
+// ⛔ เคยมีเหลือง (ยังไม่บังคับแต่ยังว่าง) — ถอดออก 03/09/69 ตามที่ user สั่ง
 // เขียนเป็นสตริงเต็มทั้งชุด (ห้ามต่อสตริงเอง) ไม่งั้น Tailwind ไม่ผลิต class ให้ตอน build
 const HL_CLS = {
   red: 'border-red-400 ring-1 ring-red-300 bg-red-50',
-  amber: 'border-amber-400 ring-1 ring-amber-200 bg-amber-50',
 } as const;
 
 /**
@@ -902,21 +902,25 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * "การเรียกร้องค่าเสียหายจากคู่กรณี" — ช่องเดียวในฟอร์มที่ **บังคับแบบมีเงื่อนไข**
    *
    * กติกาของ EMCS เอง (สกัดจาก vlidSurvey ของเขา):
-   *   if (rdoAcc_Cause01.checked)  → ต้องติ๊กอย่างน้อย 1 ใน 5 ข้อ
+   *   if (rdoAcc_Cause01.checked)  → ต้องติ๊กอย่างน้อย 1 ใน 5 ข้อ **และกรอก "คู่กรณีคันที่"**
+   *   (ยืนยันซ้ำ 03/09/69 จากไฟล์หน้า EMCS จริง: CheckCheckBoxArrayValid('chkOpo_Result_',5,...)
+   *    + CheckInputBoxValid('txtAcc_Cause_No',...) อยู่ในบล็อก if ตัวเดียวกันทั้งคู่)
    *   rdoAcc_Cause01 = "รถคู่กรณีเป็นฝ่ายผิด" · ผลคดีอีก 6 ตัวไม่บังคับ · ไม่แยกตามบริษัท
    *
    * ตัวไฮไลต์ทั่วไปทำช่องแบบนี้ไม่ได้ (มันดูดอกจันแดง = บังคับเสมอ และ isBlank มองข้าม
    * checkbox เพราะเป็นกลุ่ม ไม่ใช่ช่องเดี่ยว) จึงคุมสีของทั้งกลุ่มแยกตรงนี้
-   *   แดง  = บังคับตอนนี้และยังไม่ติ๊ก  ·  เหลือง = ยังไม่บังคับแต่ยังว่าง  ·  ติ๊กแล้ว = ปกติ
+   *   แดง = บังคับตอนนี้และยังไม่ติ๊ก · นอกนั้นไม่ทาสีเลย
+   *   ⛔ เคยมีสถานะ "เหลือง" (ยังไม่บังคับแต่ยังว่าง) — ถอดออก 03/09/69 เพราะผลคดี
+   *      ส่วนใหญ่ไม่ใช่ "คู่กรณีผิด" กรอบเหลืองจึงติดค้างแทบทุกเคสโดยไม่ต้องทำอะไรกับมัน
    */
-  const [claimHl, setClaimHl] = useState<'red' | 'amber' | 'none'>('none');
+  const [claimHl, setClaimHl] = useState<'red' | 'none'>('none');
   /**
    * อีก 2 กติกาที่ EMCS ผูกไว้กับบล็อกเดียวกัน (สกัดจาก vlidSurvey ของเขา)
    *   1. ผลคดี = คู่กรณีผิด → บังคับ "คู่กรณีคันที่" (txtAcc_Cause_No) ด้วย
    *   2. ติ๊ก "รับเงินจำนวน" (chkOpo_Result_4) → บังคับช่องเงินทั้งคู่ และ
    *      "รับเงินจำนวน" ต้อง ≤ "จากจำนวนเงินเรียกร้องทั้งหมด" ไม่งั้น EMCS เด้ง alert
    */
-  const [oppNoHl, setOppNoHl] = useState<'red' | 'amber' | 'none'>('none');
+  const [oppNoHl, setOppNoHl] = useState<'red' | 'none'>('none');
   const [payHl, setPayHl] = useState<'red' | 'none'>('none');
   const [payOver, setPayOver] = useState(false);
   /**
@@ -1057,11 +1061,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const ticks = Array.prototype.map.call(
         form.querySelectorAll('input[name="acc_claim_opponent"]:checked'),
         (el) => (el as HTMLInputElement).value) as string[];
-      setClaimHl(ticks.length > 0 ? 'none' : oppFault ? 'red' : 'amber');
+      // ⛔ ไม่มีสถานะ "เหลือง" แล้ว (user เคาะ 03/09/69) — ผลคดีอื่นไม่บังคับช่องนี้เลย
+      // กรอบเหลืองจึงขึ้นแทบทุกเคสโดยไม่ได้บอกอะไร กลายเป็นเตือนหลอกจนคนเลิกมอง
+      setClaimHl(oppFault && ticks.length === 0 ? 'red' : 'none');
 
       // "คู่กรณีคันที่" — EMCS บังคับในเงื่อนไขเดียวกันเป๊ะ ใช้สีชุดเดียวกัน
       const oppNoBlank = !val('input[name="acc_fault_opponent_no"]');
-      setOppNoHl(!oppNoBlank ? 'none' : oppFault ? 'red' : 'amber');
+      setOppNoHl(oppFault && oppNoBlank ? 'red' : 'none');
 
       // ช่องเงิน — บังคับเมื่อ "ติ๊กรับเงินจำนวน" เท่านั้น (ไม่เกี่ยวกับผลคดี)
       // ไม่ทาเหลืองตอนไม่บังคับ เพราะเคสส่วนใหญ่ไม่มีการรับเงิน จะกลายเป็นเตือนหลอกทุกใบ
@@ -2282,6 +2288,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="ฝ่ายถูกและผิด" disabled={d} defaultChecked={report.acc_fault === 'ฝ่ายถูกและผิด' || report.acc_fault === 'รถประกันเป็นฝ่ายถูกและผิด' || report.acc_fault === 'ถูกและผิด'} className="w-3.5 h-3.5" /> รถประกันเป็นฝ่ายถูกและผิด</label>
                   <label className="flex items-center gap-1"><input type="radio" name="acc_fault" value="คู่กรณีผิด" disabled={d} defaultChecked={report.acc_fault === 'คู่กรณีผิด' || report.acc_fault === 'รถคู่กรณีเป็นฝ่ายผิด'} className="w-3.5 h-3.5" /> รถคู่กรณีเป็นฝ่ายผิด</label>
                   <span className="text-gray-500">คู่กรณีคันที่{' '}
+                    {/* ดอกจันเหลือง = "บังคับเฉพาะบางกรณี" ตามคำอธิบายบนหัวฟอร์ม — คงไว้
+                        ส่วนกรอบ/พื้นสีเหลืองถอดออกแล้ว (เตือนหลอกทุกเคส) */}
                     <span className={`ml-0.5 ${oppNoHl === 'red' ? 'text-red-600 font-bold' : 'text-amber-500'}`}
                       title={oppNoHl === 'red'
                         ? 'ผลคดี = รถคู่กรณีเป็นฝ่ายผิด → ระบบประกันบังคับช่องนี้ (และต้องติ๊กการเรียกร้องอย่างน้อย 1 ข้อด้วย)'
