@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import CaseDetail from '@/components/cases/CaseDetail';
+import { confirmLeaveIfDirty } from '@/lib/dirtyGuard';
 
 export default function CaseDetailPage() {
   const params = useParams();
@@ -91,7 +92,10 @@ export default function CaseDetailPage() {
   return (
     <div>
       <div className="mb-4 flex items-center gap-4">
-        <button onClick={() => router.push('/inspector')} className="text-[var(--md-muted-2)] hover:text-[var(--md-ink)]">&larr; กลับ</button>
+        {/* ⛔ ถามก่อนถ้ายังมีของพิมพ์ค้าง — router.push ไม่ยิง beforeunload
+            จึงต้องถามเองที่นี่ (ธงตั้งจากฟอร์มใน CaseDetail) */}
+        <button onClick={() => { if (confirmLeaveIfDirty()) router.push('/inspector'); }}
+          className="text-[var(--md-muted-2)] hover:text-[var(--md-ink)]">&larr; กลับ</button>
         {/* เลขเคสเป็นสีน้ำเงินตัวเดียวในหัวเรื่อง — ที่หมายตาเวลาเปิดหลายแท็บ (แบบ Modernist) */}
         <h1 className="text-2xl font-extrabold tracking-tight text-[var(--md-ink)]">
           รายละเอียดเคส <span className="text-[var(--md-blue-strong)]">#{(caseData as { id: number }).id}</span>

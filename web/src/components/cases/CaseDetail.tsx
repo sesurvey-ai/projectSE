@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PhotoGallery from './PhotoGallery';
-import ReviewForm from '@/components/review/ReviewForm';
 import { PROVINCE_OPTIONS, carBrandOptions, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, ACC_CAUSE_OPTIONS, ACC_DAMAGE_TYPE_OPTIONS, POLICY_TYPE_OPTIONS, CLAIM_TYPE_LABELS, CLAIM_TYPE_OPTIONS } from './caseOptions';
 import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { setFormDirty } from '@/lib/dirtyGuard';
 import { useSocket } from '@/hooks/useSocket';
 import { DamageItem, DamageList, autoDamageDesc } from './DamageEditor';
 import DamageDialog from './DamageDialog';
@@ -47,7 +47,6 @@ interface CaseDetailProps {
   onReviewSubmitted: () => void;
 }
 
-function formatDate(d: string) { if (!d) return '-'; return new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function parseDatetime(val: string | null) {
   if (!val) return { date: '', hour: '', minute: '' };
   const parts = val.split('|');
@@ -56,7 +55,6 @@ function parseDatetime(val: string | null) {
   const [hour, minute] = time.split(':');
   return { date, hour: hour || '', minute: minute || '' };
 }
-function formatCurrency(v: number | null | undefined) { if (v == null) return '-'; return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(v); }
 
 /**
  * บริษัทประกันที่รับงานจริง — value ต้องตรงกับที่ `resolve_insurer_code` ของบอทรู้จัก
@@ -68,20 +66,6 @@ const INSURER_OPTIONS = [
   'ไอโออิกรุงเทพประกันภัย',
 ];
 
-// ป้ายประเภทเคลม — ใช้ตัวกลางร่วมกับหน้าจ่ายงาน (กันสองหน้าเพี้ยนจากกัน)
-const DAMAGE_LEVEL_COLORS: Record<string, string> = { 'หนัก': 'bg-red-100 text-red-800', 'เบา': 'bg-green-100 text-green-800' };
-
-// ===== Phase 3: multi-record display helpers (opposing_parties / injured_persons / damaged_property / insured_damage) =====
-const DAMAGE_POS_LABELS: Record<string, string> = { L: 'ซ้าย', R: 'ขวา', A: 'ทั้งหมด' };
-const DAMAGE_SEV_LABELS: Record<string, string> = { L: 'ต่ำ', M: 'กลาง', H: 'สูง', X: 'สูงมาก' };
-const WOUND_LEVEL_COLORS: Record<string, string> = {
-  'เล็กน้อย': 'bg-green-100 text-green-800',
-  'ปานกลาง': 'bg-yellow-100 text-yellow-800',
-  'สาหัส': 'bg-orange-100 text-orange-800',
-  'ทุพพลภาพ': 'bg-red-100 text-red-800',
-  'เสียชีวิต': 'bg-red-100 text-red-800',
-};
-function toArray(x: unknown): any[] { return Array.isArray(x) ? x : []; }
 /**
  * ศูนย์ = "ยังไม่ได้กำหนด" ในช่องที่ไม่มีใครตั้งใจใส่ 0 จริง ๆ (เช่นเปอร์เซ็นต์ค่าเรียกร้อง)
  * โชว์ 0.00 ไว้เฉย ๆ มีแต่ทำให้ต้องลบทิ้งก่อนพิมพ์ทับทุกครั้ง
@@ -194,55 +178,6 @@ function blankZeroCost<T extends Record<string, unknown>>(x: T): T {
   const c = x?.estimated_cost;
   return (c != null && c !== '' && Number(c) === 0) ? { ...x, estimated_cost: '' } : x;
 }
-function currencyFromString(v: unknown): string {
-  if (v == null || v === '') return '-';
-  const n = Number(v);
-  return Number.isNaN(n) ? '-' : formatCurrency(n);
-}
-function formatDamageChip(dmg: any): string {
-  const part = (dmg?.part ?? '').toString().trim();
-  const pos = DAMAGE_POS_LABELS[dmg?.pos] || '';
-  const sev = DAMAGE_SEV_LABELS[dmg?.level] || (dmg?.level ?? '');
-  const left = [part, pos].filter(Boolean).join(' ');
-  return sev ? `${left || '-'} · ${sev}` : (left || '-');
-}
-function ReadItem({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <div>
-      <span className="text-xs text-gray-500">{label}</span>
-      <p className="text-sm font-medium text-gray-800 break-words">{value === 0 ? '0' : (value || '-')}</p>
-    </div>
-  );
-}
-function DamageChips({ items }: { items: any[] }) {
-  if (!items.length) return <span className="text-sm text-gray-400">-</span>;
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {items.map((dmg, i) => (
-        <span key={i} className="inline-block bg-gray-100 border border-[var(--md-line)] text-gray-700 rounded-none px-2 py-0.5 text-xs">{formatDamageChip(dmg)}</span>
-      ))}
-    </div>
-  );
-}
-
-function InfoItem({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <div>
-      <span className="text-sm text-gray-500">{label}</span>
-      <p className="font-medium text-gray-800">{value || '-'}</p>
-    </div>
-  );
-}
-
-const ColGroup = () => (
-  <colgroup>
-    <col style={{ width: '16%' }} />
-    <col style={{ width: '34%' }} />
-    <col style={{ width: '16%' }} />
-    <col style={{ width: '34%' }} />
-  </colgroup>
-);
-
 /**
  * ดอกจันช่องบังคับ
  *
@@ -645,6 +580,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     } catch { setAudit([]); }
   }, [caseData.id]);
   const formRef = useRef<HTMLFormElement>(null);
+  /** มีของพิมพ์ค้างที่ยังไม่ได้บันทึกไหม — ดู useEffect "กันออกจากหน้าทั้งที่ยังไม่บันทึก" */
+  const dirtyRef = useRef(false);
   const { user } = useAuth();
   const { socket } = useSocket();
   /**
@@ -1329,6 +1266,41 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     return () => { socket.off('case_changed', onChange); };
   }, [socket, caseData.id, user?.id]);
 
+  /**
+   * ── กันออกจากหน้าทั้งที่ยังไม่ได้บันทึก ── (03/09/69)
+   *
+   * หน้านี้กรอกกันทีละ 10-20 นาที แต่เดิมเตือนเฉพาะตอนสลับ "ครั้งที่" เท่านั้น
+   * ปิดแท็บ / รีเฟรช / กดปุ่ม "← กลับ" = สิ่งที่พิมพ์ค้างหายเงียบโดยไม่มีอะไรถาม
+   *
+   * ⛔ นับว่าค้างเมื่อมี input/change จริงเท่านั้น — ห้ามตั้ง true ตอนเปิดหน้า
+   *    ไม่งั้นเปิดดูเฉย ๆ แล้วปิดก็โดนถาม จนคนชินแล้วกดผ่านทุกครั้ง
+   * ⛔ เบราว์เซอร์โชว์ข้อความมาตรฐานของตัวเอง กำหนดข้อความเองไม่ได้ (ตั้งแต่ Chrome 51)
+   *    ส่วนปุ่มกลับใน page.tsx ใช้ confirmLeaveIfDirty ซึ่งมีข้อความของเรา
+   */
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
+    const touch = () => {
+      if (dirtyRef.current) return;
+      dirtyRef.current = true;
+      setFormDirty(true);
+    };
+    const warn = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    form.addEventListener('input', touch);
+    form.addEventListener('change', touch);
+    window.addEventListener('beforeunload', warn);
+    return () => {
+      form.removeEventListener('input', touch);
+      form.removeEventListener('change', touch);
+      window.removeEventListener('beforeunload', warn);
+      setFormDirty(false);   // ออกจากหน้าแล้วธงต้องไม่ค้างไปหน้าถัดไป
+    };
+  }, []);
+
   const handleSave = async (): Promise<boolean> => {
     if (!formRef.current) return false;
     /**
@@ -1422,6 +1394,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
          * กางอยู่ = โหลดใหม่ทันที · ปิดอยู่ = ล้างทิ้ง ค่อยโหลดตอนกางครั้งหน้า
          */
         if (auditOpen) loadAudit(); else setAudit(null);
+        // บันทึกแล้วไม่มีอะไรค้าง — ปิดกล่องถามตอนออกจากหน้า
+        dirtyRef.current = false; setFormDirty(false);
         setSaveMsg('บันทึกสำเร็จ'); onReviewSubmitted(); setTimeout(() => setSaveMsg(''), 3000); return true;
       }
       setSaveMsg('บันทึกไม่สำเร็จ: ' + (res.data.message || '')); return false;
@@ -1689,9 +1663,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               ช่องบังคับครบแล้ว
             </div>
           )}
-          <div className="hidden">
-          </div>
-
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div data-section="biz" className="border border-[var(--md-line)] bg-white">
           <SectionBar title="รายละเอียด" gap={(gapSec ?? []).includes('biz')}
@@ -1813,17 +1784,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   · 3 ช่องบริษัทผู้จัดเรื่องคือข้อมูลของเราเอง เหมือนกันทุกเคส จึงตรึงค่าไว้
                     ไม่ต้องกรอกรายเคส · ฝั่ง EMCS ไม่ต้องส่งไป เพราะมันเติมเองจากบริษัทประกัน
                     ที่เลือกตอน import XML อยู่แล้ว (XML ใช้ SURVEYBRID จาก env ไม่ใช่คอลัมน์พวกนี้)
-                  · "วันที่" = วันที่เกิดเหตุ แก้ได้ที่การ์ด "ลำดับเวลา" จังหวะที่ 1 ตรงนี้โชว์ซ้ำเฉย ๆ */}
+                  · ⛔ เคยมีช่อง "วันที่" (= วันที่เกิดเหตุ) ตรงนี้ด้วย — ถอดออก 03/09/69
+                    เพราะลำดับเวลาย้ายมาอยู่ท้ายการ์ดเดียวกันแล้ว ค่าเดียวกันจึงโชว์ซ้ำห่างกันไม่กี่นิ้ว
+                    แถมช่องบนแก้ไม่ได้ — แก้ที่จังหวะที่ 1 ของลำดับเวลาที่เดียว */}
               <F label="บริษัทผู้จัดเรื่อง">
                 <p className="py-1 text-gray-800 truncate" title={SURVEY_CO.name}>{SURVEY_CO.name}</p>
               </F>
               <F label="เบอร์โทรศัพท์ / Fax">
                 <p className="py-1 text-gray-800">{SURVEY_CO.phone}</p>
               </F>
-              <F label="วันที่">
-                <p className="py-1 text-gray-800">{report.acc_date || '-'}</p>
-              </F>
-              <F label="ที่อยู่">
+              <F label="ที่อยู่" span={2}>
                 <p className="py-1 text-gray-800 truncate" title={SURVEY_CO.address}>{SURVEY_CO.address}</p>
               </F>
             </div>
@@ -1930,14 +1900,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <input type="text" disabled={d} name="risk_code" defaultValue={report.risk_code || ''} className={CTL(d)} />
               </F>
 
+              {/* ⛔ เคยมีช่องติ๊ก "มี" คู่กับช่องนี้ — ถอดออก 03/09/69 เพราะมันผูกกับค่าที่โหลดมา
+                  (checked ตายตัว ไม่มี onChange) จึงกดไม่ติดทั้งที่หน้าตาเหมือนกดได้ และ React
+                  เตือนใน console ทุกครั้ง · "มีหรือไม่มี" ดูจากช่องว่างหรือไม่ว่างได้อยู่แล้ว
+                  (เส้นใต้ [data-filled] บอกให้ด้วย) */}
               <F label="กรมธรรม์ (พรบ.)">
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs">
-                    <input type="checkbox" disabled={d} checked={!!report.prb_number} className="w-3.5 h-3.5" /> มี
-                  </label>
-                  <input type="text" disabled={d} name="prb_number" defaultValue={report.prb_number || ''}
-                    className={`flex-1 min-w-0 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                </div>
+                <input type="text" disabled={d} name="prb_number" defaultValue={report.prb_number || ''} className={CTL(d)} />
               </F>
               <F label="ค่าเสียหายส่วนแรก">
                 <input type="text" disabled={d} name="deductible" defaultValue={money2(report.deductible)} className={CTL(d)} />
@@ -2466,213 +2434,35 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           </div>
           </div>
 
-          {/* ===== Phase 3: คู่กรณี / ผู้บาดเจ็บ / ทรัพย์สินเสียหาย / แผนภาพความเสียหายรถประกัน (read-only) ===== */}
-          {(() => {
-            const opposingParties = toArray(report.opposing_parties);
-            const injuredPersons = toArray(report.injured_persons);
-            const damagedProperty = toArray(report.damaged_property);
-            return (
-              <>
-                {/* คู่กรณี — โชว์เสมอตอนกด "แก้ไข" (ไม่งั้นเคสที่ยังไม่มีคู่กรณีก็เพิ่มไม่ได้) */}
-                <div data-section="opp" className="border border-[var(--md-line)] bg-white">
-                <SectionBar title={`คู่กรณี · ${opponents.length} คัน`} gap={(gapSec ?? []).includes('opp')} />
-                <div>
-                {(opposingParties.length > 0 || isEditing) && (
-                  <div className="bg-white overflow-hidden text-sm">
-                    {isEditing ? (
-                      <div className="p-4"><OpponentEditor items={opponents} onChange={setOpponents} /></div>
-                    ) : (
-                    <div className="p-4 space-y-4">
-                      {opposingParties.map((op: any, idx: number) => {
-                        const dmg = toArray(op?.damage);
-                        const driverName = [op?.title, op?.first_name, op?.last_name].filter(Boolean).join(' ');
-                        return (
-                          <div key={idx} className="border border-[var(--md-line)] rounded-none overflow-hidden">
-                            <div className="bg-[var(--md-tint)] px-3 py-1.5 border-b border-[var(--md-line)] flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-gray-700">คู่กรณีคันที่ {idx + 1}</span>
-                              {op?.kfk === true && (
-                                <span className="inline-block bg-blue-100 text-blue-800 rounded-none px-2 py-0.5 text-xs font-medium">KFK</span>
-                              )}
-                              {/* 8 ช่องบังคับรายคัน — สกัดจาก validator จริง vlidOpoCar (ส่วน base
-                                  ก่อน switch = บังคับทุกบริษัท) · ครึ่งหนึ่งเป็น dropdown/วันที่/ตัวเลข
-                                  ที่ใส่ "-" แทนไม่ได้ ขาดแล้วบอทค้างกลางทางที่หน้าคู่กรณี
-                                  ⚠️ ต้องตรงกับ OPPONENT_REQUIRED ใน RecordEditors.tsx */}
-                              {(() => {
-                                const need: [string, string][] = [
-                                  ['owner_name', 'เจ้าของรถ'], ['plate', 'ทะเบียน'], ['province', 'จังหวัด'],
-                                  ['insurer', 'มีประกันภัยที่'], ['policy_no', 'กรมธรรม์'],
-                                  ['birthdate', 'วันเกิด'], ['age', 'อายุ'], ['car_type', 'ประเภทรถ'],
-                                ];
-                                const missing = need.filter(([k]) => !String(op?.[k] ?? '').trim()).map(([, l]) => l);
-                                return missing.length > 0 ? (
-                                  <span className="text-xs text-red-600" title="ระบบประกันบังคับช่องเหล่านี้รายคัน — ขาดแล้วนำเข้าไม่ผ่าน · กด &quot;แก้ไขทั้งหมด&quot; เพื่อเติม">
-                                    ⚠ ขาดช่องบังคับ: {missing.join(' · ')}
-                                  </span>
-                                ) : null;
-                              })()}
-                            </div>
-                            <div className="p-3 space-y-3">
-                              {/* เจ้าของ/รถ */}
-                              <div>
-                                <p className="text-xs font-semibold text-gray-500 mb-1.5">เจ้าของ / รถ</p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                                  <ReadItem label="เจ้าของรถ" value={op?.owner_name} />
-                                  <ReadItem label="ทะเบียน" value={[op?.plate, op?.province].filter(Boolean).join(' ')} />
-                                  <ReadItem label="ประเภทรถ" value={op?.car_type} />
-                                  <ReadItem label="ยี่ห้อ / รุ่น" value={[op?.car_brand, op?.car_model].filter(Boolean).join(' ')} />
-                                  <ReadItem label="สีรถ" value={op?.car_color} />
-                                  <ReadItem label="ที่อยู่เจ้าของ" value={op?.owner_address} />
-                                </div>
-                              </div>
-                              {/* ผู้ขับ */}
-                              <div className="border-t border-gray-100 pt-2">
-                                <p className="text-xs font-semibold text-gray-500 mb-1.5">ผู้ขับ</p>
-                                {/* เพศ + วันเกิด: วันเกิดเป็นช่องบังคับของระบบประกัน แต่เดิมวิวนี้
-                                    ไม่แสดงเลย ผู้ตรวจจึงไม่เห็นว่าขาดจนบอทไปติดที่ปลายทาง
-                                    (แอปเก็บเพศเป็น 'ชาย'/'หญิง' ส่วนรถประกันเก็บ M/F — รองรับทั้งคู่) */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                                  <ReadItem label="ชื่อผู้ขับ" value={driverName} />
-                                  <ReadItem label="เพศ" value={op?.gender === 'M' ? 'ชาย' : op?.gender === 'F' ? 'หญิง' : op?.gender} />
-                                  <ReadItem label="วันเกิด" value={op?.birthdate} />
-                                  <ReadItem label="ความสัมพันธ์" value={op?.relation} />
-                                  <ReadItem label="อายุ" value={op?.age} />
-                                  <ReadItem label="โทรศัพท์" value={op?.phone} />
-                                  <ReadItem label="เลขบัตรประชาชน" value={op?.cid} />
-                                  <ReadItem label="ใบขับขี่เลขที่" value={op?.license_no} />
-                                  <ReadItem label="ประเภทใบขับขี่" value={op?.license_type} />
-                                  <ReadItem label="เลขตัวถัง" value={op?.vin} />
-                                </div>
-                              </div>
-                              {/* ประกัน */}
-                              <div className="border-t border-gray-100 pt-2">
-                                <p className="text-xs font-semibold text-gray-500 mb-1.5">ประกัน</p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                                  <ReadItem label="บริษัทประกัน" value={op?.insurer} />
-                                  <ReadItem label="กรมธรรม์เลขที่" value={op?.policy_no} />
-                                  <ReadItem label="เลขที่เคลม" value={op?.claim_no} />
-                                  <ReadItem label="ประเภทประกัน" value={op?.policy_type} />
-                                </div>
-                              </div>
-                              {/* ความเสียหาย */}
-                              <div className="border-t border-gray-100 pt-2">
-                                <p className="text-xs font-semibold text-gray-500 mb-1.5">ความเสียหาย</p>
-                                <DamageChips items={dmg} />
-                                <div className="mt-2">
-                                  <ReadItem label="ค่าเสียหายประมาณ" value={currencyFromString(op?.estimated_cost)} />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    )}
-                  </div>
-                )}
+          {/* ===== คู่กรณี · ผู้บาดเจ็บ · ทรัพย์สินเสียหาย =====
+              ทั้ง 3 หมวดแก้ได้เสมอ — โหมด "อ่านอย่างเดียว" ของ 3 หมวดนี้ถอดทิ้ง 03/09/69
+              ตั้งแต่ 17/08/69 หน้านี้พิมพ์ได้ตลอด ไม่มีปุ่ม "แก้ไขทั้งหมด" แล้ว (isEditing = true คงที่)
+              สาขาอ่านอย่างเดียวจึงไม่เคยถูกวาดอีกเลย · การล็อกตอนอนุมัติทำที่ <fieldset disabled>
+              ที่ครอบทั้งหน้าอยู่แล้ว
+              ⛔ การ์ดต้องโชว์เสมอแม้ยังไม่มีรายการ ไม่งั้นเคสที่ว่างจะกด "เพิ่ม" ไม่ได้ */}
+          <div data-section="opp" className="border border-[var(--md-line)] bg-white">
+            <SectionBar title={`คู่กรณี · ${opponents.length} คัน`} gap={(gapSec ?? []).includes('opp')} />
+            <div className="bg-white overflow-hidden text-sm">
+              <div className="p-4"><OpponentEditor items={opponents} onChange={setOpponents} /></div>
+            </div>
+          </div>
 
-                </div>
-                </div>
+          <div data-section="inj" className="border border-[var(--md-line)] bg-white">
+            <SectionBar title={`ผู้บาดเจ็บ · ${injured.length} คน`} gap={(gapSec ?? []).includes('inj')} />
+            <div className="bg-white overflow-hidden text-sm">
+              <div className="p-4"><InjuredEditor items={injured} onChange={setInjured} /></div>
+            </div>
+          </div>
 
-                {/* ผู้บาดเจ็บ — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอตอนแก้ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
-                <div data-section="inj" className="border border-[var(--md-line)] bg-white">
-                <SectionBar title={`ผู้บาดเจ็บ · ${injured.length} คน`} gap={(gapSec ?? []).includes('inj')} />
-                <div>
-                {(injuredPersons.length > 0 || isEditing) && (
-                  <div className="bg-white overflow-hidden text-sm">
-                    {isEditing ? (
-                      <div className="p-4"><InjuredEditor items={injured} onChange={setInjured} /></div>
-                    ) : (
-                    <div className="p-4 space-y-4">
-                      {injuredPersons.map((p: any, idx: number) => {
-                        const genderLabel = p?.gender === 'M' ? 'ชาย' : p?.gender === 'F' ? 'หญิง' : (p?.gender || '');
-                        const nameWithGender = [p?.name, genderLabel ? `(${genderLabel})` : ''].filter(Boolean).join(' ');
-                        const treatRange = [p?.treat_from, p?.treat_to].filter(Boolean).join(' – ');
-                        const woundColor = WOUND_LEVEL_COLORS[p?.wound_level] || 'bg-gray-100 text-gray-700';
-                        return (
-                          <div key={idx} className="border border-[var(--md-line)] rounded-none overflow-hidden">
-                            <div className="bg-[var(--md-tint)] px-3 py-1.5 border-b border-[var(--md-line)] flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-gray-700">ผู้บาดเจ็บคนที่ {idx + 1}</span>
-                              {p?.person_type && (
-                                <span className="text-xs text-gray-500">{p.person_type}</span>
-                              )}
-                              {p?.wound_level && (
-                                <span className={`inline-block rounded-none px-2 py-0.5 text-xs font-medium ${woundColor}`}>{p.wound_level}</span>
-                              )}
-                            </div>
-                            <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                              <ReadItem label="ชื่อ" value={nameWithGender} />
-                              <ReadItem label="ความสัมพันธ์" value={p?.relation} />
-                              <ReadItem label="อายุ" value={p?.age} />
-                              <ReadItem label="เลขบัตรประชาชน" value={p?.cid} />
-                              <ReadItem label="เลขทะเบียนรถ" value={p?.car_reg} />
-                              <ReadItem label="อาชีพ" value={p?.occupation} />
-                              <ReadItem label="ทำงานที่" value={p?.work_place} />
-                              <ReadItem label="ตำแหน่ง" value={p?.position} />
-                              <ReadItem label="รายได้" value={p?.income} />
-                              <ReadItem label="โทรศัพท์" value={p?.phone} />
-                              <ReadItem label="โรงพยาบาล" value={p?.hospital} />
-                              <ReadItem label="ระยะเวลารักษา" value={treatRange} />
-                              <ReadItem label="ค่ารักษา" value={currencyFromString(p?.treat_cost)} />
-                              <div className="col-span-2 md:col-span-4">
-                                <ReadItem label="อาการ" value={p?.symptom} />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    )}
-                  </div>
-                )}
-
-                </div>
-                </div>
-
-                {/* ทรัพย์สินเสียหาย — แก้ได้ตอนกด "แก้ไข" */}
-                <div data-section="prop" className="border border-[var(--md-line)] bg-white">
-                <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} gap={(gapSec ?? []).includes('prop')} />
-                <div>
-                {(damagedProperty.length > 0 || isEditing) && (
-                  <div className="bg-white overflow-hidden text-sm">
-                    {isEditing ? (
-                      <div className="p-4"><PropertyEditor items={property} onChange={setProperty} /></div>
-                    ) : (
-                    <div className="p-4 space-y-4">
-                      {damagedProperty.map((item: any, idx: number) => (
-                        <div key={idx} className="border border-[var(--md-line)] rounded-none overflow-hidden">
-                          <div className="bg-[var(--md-tint)] px-3 py-1.5 border-b border-[var(--md-line)]">
-                            <span className="text-sm font-semibold text-gray-700">รายการที่ {idx + 1}</span>
-                          </div>
-                          <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                            <ReadItem label="ทรัพย์สิน" value={item?.item} />
-                            <ReadItem label="เจ้าของ" value={item?.owner_name} />
-                            <ReadItem label="โทรศัพท์เจ้าของ" value={item?.owner_phone} />
-                            <ReadItem label="ค่าเสียหายประมาณ" value={currencyFromString(item?.estimated_cost)} />
-                            <div className="col-span-2 md:col-span-4">
-                              <ReadItem label="ที่อยู่เจ้าของ" value={item?.owner_address} />
-                            </div>
-                            <div className="col-span-2 md:col-span-2">
-                              <ReadItem label="สาเหตุ" value={item?.cause} />
-                            </div>
-                            <div className="col-span-2 md:col-span-2">
-                              <ReadItem label="รายละเอียด" value={item?.detail} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ⛔ ไม่มีหมวด "ความเสียหายรถประกัน" ท้ายหน้าแล้ว (user สั่งถอด 03/09/69)
-                    มันลิสต์ค่าเดียวกัน (insured_damage) กับช่อง "ความเสียหายรถประกันภัย"
-                    + ปุ่ม "ข้อมูลความเสียหาย" ในหมวดผู้ขับขี่รถประกัน — แก้ที่ปุ่มนั้นที่เดียว */}
-                </div>
-                </div>
-              </>
-            );
-          })()}
+          {/* ⛔ ไม่มีหมวด "ความเสียหายรถประกัน" ท้ายหน้าแล้ว (user สั่งถอด 03/09/69)
+              มันลิสต์ค่าเดียวกัน (insured_damage) กับช่อง "ความเสียหายรถประกันภัย"
+              + ปุ่ม "ข้อมูลความเสียหาย" ในหมวดผู้ขับขี่รถประกัน — แก้ที่ปุ่มนั้นที่เดียว */}
+          <div data-section="prop" className="border border-[var(--md-line)] bg-white">
+            <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} gap={(gapSec ?? []).includes('prop')} />
+            <div className="bg-white overflow-hidden text-sm">
+              <div className="p-4"><PropertyEditor items={property} onChange={setProperty} /></div>
+            </div>
+          </div>
 
         </>
       )}
@@ -2716,9 +2506,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           ถ้าการ์ดสูงเกินจอ ให้เลื่อนในตัวเองได้ ไม่งั้นแถวล่าง ๆ จะโดนตัดหายเลย
           ⛔ ห้ามถอดช่องยอดเงินออกจากหน้าตามขนาดจอเด็ดขาด — `survey_pay` บันทึกทั้งแถว
              ช่องที่ไม่ได้ถูกส่งไปด้วยจะกลายเป็น NULL คือยอดที่เคยกรอกไว้หายทั้งแถว */}
-      <div className="flex gap-6 min-[1500px]:block min-[1500px]:sticky min-[1500px]:top-[4.25rem]
+      {/* ⛔ ห้ามใส่ flex/w-1/2 กลับมา (แก้ 03/09/69) — ตกค้างจากสมัยที่รางนี้เคยวางคู่กับ
+          การ์ดอีกใบ พอเหลือใบเดียวมันเลยกว้างครึ่งเดียวบนจอต่ำกว่า 1500px (โน้ตบุ๊ก 1366/1440)
+          ตารางเงิน 4 คอลัมน์ถูกบีบ ส่วนอีกครึ่งจอว่างเปล่า · จอกว้างไม่เคยเห็นอาการนี้ */}
+      <div className="min-[1500px]:sticky min-[1500px]:top-[4.25rem]
                       min-[1500px]:max-h-[calc(100vh-84px)] min-[1500px]:overflow-y-auto">
-        <div className="w-1/2 min-[1500px]:w-full">
+        <div className="w-full">
 
           {/* ── รางขวา = 2 การ์ดซ้อนกัน ──
               การ์ดบน: หัว "ค่าใช้จ่าย · ครั้งที่" (มาแทนหัวข้อ "การตรวจสอบ" ที่ถอดออก)
