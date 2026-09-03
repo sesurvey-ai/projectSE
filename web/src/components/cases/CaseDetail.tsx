@@ -388,7 +388,9 @@ function SectionBar({ title, gap, right }: { title: string; gap: boolean; right?
   return (
     <div
       className="flex items-center gap-2 px-4 py-2 border-b-2 border-[var(--md-ink)]"
-      style={{ background: gap ? 'linear-gradient(90deg,#8A1B0B,#000)' : 'linear-gradient(90deg,#1E3E82,#000)' }}
+      /* พื้นสีเดียวทั้งแถบ ไม่ไล่เฉดไปดำ (user เคาะ 03/09/69) — ไล่เฉดแล้วหัวข้อ
+         ท้ายแถบจมหายไปกับสีดำ และแต่ละแถบดูเหมือนคนละสีเมื่อความกว้างไม่เท่ากัน */
+      style={{ background: gap ? '#8A1B0B' : '#1E3E82' }}
     >
       <span className="text-[0.9375rem] font-bold text-white">{title}</span>
       {gap && (
@@ -2681,7 +2683,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                    จะสลับเฉพาะรางขวาไม่ได้ เพราะ 3 ช่องความเห็น + ยอดเงินอยู่ใน <form>
                    เดียวกับฟอร์มหลัก กดบันทึกทีเดียวจะเขียนข้อมูลของครั้งอื่นทับเคสที่เปิดอยู่ */}
             <div className="border-b-2 border-[var(--md-ink)] text-white px-4 py-2.5 text-sm flex flex-wrap items-center gap-x-3 gap-y-1"
-                 style={{ background: 'linear-gradient(90deg,#1E3E82,#000)' }}>
+                 style={{ background: '#1E3E82' }}>
               <span className="text-[0.9375rem] font-bold shrink-0">ค่าใช้จ่าย</span>
               <span className="text-[0.8125rem] font-bold truncate min-w-0" title="เลขเรื่องเซอร์เวย์ของครั้งนี้">
                 {report?.survey_job_no || '—'}

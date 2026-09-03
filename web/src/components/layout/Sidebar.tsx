@@ -81,7 +81,7 @@ export default function Sidebar() {
           แถมเนื้อหาข้างในสลับทันทีตั้งแต่เฟรมแรก เมนูเต็มจึงถูกยัดในแถบ 56px แล้วค่อย ๆ คลี่
           ดูเป็นตัวหนังสือเด้งไปมา ไม่ใช่เลื่อนออก · ตัดทิ้ง = คำนวณเลย์เอาต์ครั้งเดียว เปลี่ยนทันที
           · overflow-hidden กันเมนูเต็มล้นออกนอกแถบตอนสลับ */}
-      <aside className={`bg-[var(--md-ink)] text-white sticky top-0 self-start h-screen flex flex-col overflow-hidden ${collapsed ? 'w-14' : 'w-64'}`}>
+      <aside className={`bg-[var(--md-ink)] text-white sticky top-0 self-start h-screen shrink-0 flex flex-col overflow-hidden ${collapsed ? 'w-14' : 'w-64'}`}>
         {collapsed ? (
           <>
           <button
@@ -114,12 +114,18 @@ export default function Sidebar() {
             </svg>
           </button>
         </div>
-        <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
+        {/* ⛔ overflow-x-hidden จำเป็น — ตั้ง overflow-y เป็น auto อย่างเดียวไม่ได้
+            เพราะ CSS บังคับให้ overflow-x เปลี่ยนจาก visible เป็น auto ตามไปด้วย
+            ป้ายเมนูล้นออกนิดเดียว (ตอนแถบแคบ/ขยายตัวอักษร) ก็มีแถบเลื่อนแนวนอน
+            โผล่คาดกลางเมนู เห็นเป็นเส้นแปลกปลอม (user แจ้ง 03/09/69)
+            · แถบเลื่อนแนวตั้งทำให้บางและสีกลืนพื้นดำ ไม่ใช่แถบขาวของวินโดวส์ */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-1
+                        [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.25)_transparent]">
           {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`block px-4 py-2.5 rounded-lg text-sm transition-colors ${
+              className={`block px-4 py-2.5 rounded-lg text-sm transition-colors [overflow-wrap:anywhere] ${
                 pathname === item.href
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-300 hover:bg-gray-700'
