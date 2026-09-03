@@ -37,7 +37,8 @@ export async function payRows(f: PayExportFilter = {}) {
             sr.claim_no, sr.survey_job_no, sr.acc_province, sr.acc_district, sr.acc_subdistrict,
             sr.claim_type, sr.acc_surveyor,
             se.service_fee_price AS ins_service, se.travel_fee_price AS ins_travel,
-            se.photo_fee_price AS ins_photo,
+            -- photo_fee_price = ราคาต่อรูป → คอลัมน์ค่ารูปในใบเบิกเป็นยอดรวม = × จำนวนรูป
+            se.photo_fee_price * COALESCE(NULLIF(se.photo_fee_count, 0), 1) AS ins_photo,
             TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) AS priced_by_name
        FROM survey_pay sp
        JOIN cases c ON c.id = sp.case_id

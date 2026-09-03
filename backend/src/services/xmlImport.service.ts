@@ -142,6 +142,15 @@ const FAULT_BY_CODE: Record<string, string> = {
 /** เพศ */
 const GENDER_BY_CODE: Record<string, string> = { M: 'ชาย', F: 'หญิง', W: 'หญิง' };
 
+/** ยอดรวมค่ารูป + จำนวนรูป → ราคาต่อรูป (2 ตำแหน่ง) — จำนวน 0/ว่าง = คืนยอดเดิม */
+function photoUnitPrice(total: string, count: string): number | null {
+  const t = Number(String(total ?? '').replace(/,/g, ''));
+  const n = Number(String(count ?? '').replace(/,/g, ''));
+  if (!Number.isFinite(t) || String(total ?? '').trim() === '') return null;
+  if (!Number.isFinite(n) || n <= 0 || t === 0) return t;
+  return Math.round((t / n) * 100) / 100;
+}
+
 /**
  * ประเภทผู้บาดเจ็บ — ⚠️ export ยุบ 5 ป้ายเหลือ 3 รหัส (DV/PV/ON)
  * reverse ได้แค่ค่าที่ปลอดภัยที่สุด; ฝั่งคู่กรณี (02/04) กู้ไม่ได้จาก XML
@@ -499,7 +508,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     travel_fee_count: numOrNull(txt(billBlock, 'TRANS_NUM')),
     travel_fee_price: numOrNull(txt(billBlock, 'SUR_TRANS')),
     photo_fee_count: numOrNull(txt(billBlock, 'PHOTO_NUM')),
-    photo_fee_price: numOrNull(txt(billBlock, 'SUR_PHOTO')),
+    // SUR_PHOTO ในไฟล์ = ยอดรวมค่ารูป · photo_fee_price ของเรา = ราคาต่อรูป (export คูณจำนวนกลับเอง
+    // ดู xmlExport.contract "SUR_PHOTO = ยอดรวม") → หารด้วยจำนวนรูป ไม่งั้น round-trip ยอดพอง ×จำนวนรูป
+    photo_fee_price: photoUnitPrice(txt(billBlock, 'SUR_PHOTO'), txt(billBlock, 'PHOTO_NUM')),
     phone_fee: numOrNull(txt(billBlock, 'SUR_TEL')),
     bail_fee: numOrNull(txt(billBlock, 'SUR_INSURE')),
     claim_fee_percent: numOrNull(txt(billBlock, 'SUR_PERCENT_CLAIM')),

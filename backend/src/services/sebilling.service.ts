@@ -88,7 +88,8 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
             sr.claim_no, sr.survey_job_no, sr.acc_province, sr.acc_district, sr.acc_subdistrict,
             sr.acc_surveyor, sr.claim_type,
             se.service_fee_price AS ins_service, se.travel_fee_price AS ins_travel,
-            se.photo_fee_price AS ins_photo,
+            -- photo_fee_price = ราคาต่อรูป → ยอดรวม = × จำนวนรูป (se-billing/ISURVEY เก็บค่ารูปเป็นยอดรวม)
+            se.photo_fee_price * COALESCE(NULLIF(se.photo_fee_count, 0), 1) AS ins_photo,
             sp.service_fee, sp.travel_fee, sp.photo_fee, sp.phone_fee, sp.bail_fee, sp.claim_fee,
             sp.daily_fee, sp.other_fee, sp.other_reason,
             sp.out_of_area, sp.out_of_area_amt, sp.out_of_hours, sp.out_of_hours_amt,
