@@ -206,7 +206,7 @@ router.get('/cases', integrationAuth, asyncHandler(async (_req: Request, res: Re
             to_char(c.emcs_submitted_at, 'YYYY-MM-DD HH24:MI') AS emcs_submitted_at,
             c.emcs_esurvey_no, c.emcs_status_text,
             to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
-            (ck.first_name || ' ' || ck.last_name) AS approved_by,
+            COALESCE(NULLIF(rv.inspector_name, ''), ck.first_name || ' ' || ck.last_name) AS approved_by,
             c.created_at
        FROM cases c
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
@@ -232,7 +232,7 @@ router.get('/cases/:id', integrationAuth, asyncHandler(async (req: Request, res:
             to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at, c.emcs_esurvey_no,
             (c.status = 'reviewed') AS approved,
             to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
-            (ck.first_name || ' ' || ck.last_name) AS approved_by
+            COALESCE(NULLIF(rv.inspector_name, ''), ck.first_name || ' ' || ck.last_name) AS approved_by
        FROM cases c
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
        LEFT JOIN reviews rv ON rv.case_id = c.id

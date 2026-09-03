@@ -95,7 +95,10 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
             sp.deduct_fee, sp.deduct_late, sp.deduct_docs, sp.deduct_reason, sp.total,
             sp.rate_snapshot, sp.priced_at,
             rv.reviewed_at,
-            TRIM(COALESCE(ck.first_name, '') || ' ' || COALESCE(ck.last_name, '')) AS approver
+            /* เจ้าหน้าที่ตรวจ = ชื่อที่ตั้งทับไว้ที่ใบอนุมัติ (reviews.inspector_name — กรณีกดอนุมัติด้วยบัญชีกลาง)
+               ไม่มีค่อยใช้ชื่อบัญชีที่กดอนุมัติ */
+            COALESCE(NULLIF(rv.inspector_name, ''),
+                     TRIM(COALESCE(ck.first_name, '') || ' ' || COALESCE(ck.last_name, ''))) AS approver
        FROM cases c
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
        LEFT JOIN survey_expenses se ON se.report_id = sr.id

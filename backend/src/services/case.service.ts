@@ -1047,7 +1047,7 @@ export const caseService = {
               sr.claim_no, sr.survey_job_no, sr.claim_ref_no, sr.license_plate,
               rv.status AS review_status, rv.unlocked_count,
               to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
-              (ck.first_name || ' ' || ck.last_name) AS approved_by,
+              COALESCE(NULLIF(rv.inspector_name, ''), ck.first_name || ' ' || ck.last_name) AS approved_by,
               (SELECT COUNT(*) FROM survey_photos sp WHERE sp.report_id = sr.id) AS photo_count,
               (SELECT sp2.total FROM survey_pay sp2 WHERE sp2.case_id = c.id) AS pay_total,
               (SELECT se.service_fee_price IS NOT NULL
