@@ -1692,69 +1692,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div className="hidden">
           </div>
 
-          {/* ===== ลำดับเวลา — 5 จังหวะของงาน เรียงซ้าย→ขวา =====
-              เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
-              (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
-              ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
-          <div className="bg-white border border-[var(--md-line)] overflow-hidden text-sm">
-            {/* แถบหัวสีเดียวกับหมวดอื่น (user เคาะ 03/09/69) — การ์ดนี้ขึ้นก่อนหมวดแรก
-                ถ้ายังเป็นแถบเทาอ่อนจะดูเหมือนของแถมเหนือหัวเรื่อง ไม่ใช่หมวดหนึ่งของฟอร์ม */}
-            <div className="border-b-2 border-[var(--md-ink)] text-white px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1"
-                 style={{ background: '#1E3E82' }}>
-              <span className="text-[0.9375rem] font-bold">ลำดับเวลา</span>
-              {timeErrs.length > 0 && (
-                <span className="ml-auto text-xs font-semibold bg-white text-red-700 rounded-none px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
-              )}
-            </div>
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-3 gap-y-4">
-              {TIMELINE.map((n, i) => {
-                const gap = n.keys.some((k) => missing.includes(k));
-                const errs = timeErrs.filter((e) => e.at === n.date);
-                return (
-                  <div key={n.date} className="relative min-w-0">
-                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง
-                        ⛔ ทั้งเส้นในช่องไฟและเส้นต่อท้ายชื่อ ต้องอยู่กึ่งกลางกล่องเลขพอดี (0.75rem
-                           จากขอบบนแถว = mt ของกล่อง 0.0625 + ครึ่งความสูง 0.6875) เส้นหนา 2px
-                           จึงต้องเยื้องขึ้นครึ่งเส้น (0.0625rem) ทั้งคู่ ไม่งั้นเหลื่อมกัน 1px
-                           มองเป็นเส้นหักคนละระดับ (user แจ้ง 03/09/69) */}
-                    {i > 0 && <div className="hidden xl:block absolute -left-[0.875rem] top-[0.6875rem] w-[0.875rem] border-t-2 border-[var(--md-line)]" />}
-                    <div className="flex items-start gap-2 mb-1.5">
-                      {/* เลขจังหวะใช้น้ำเงินชุดเดียวกับแถบหัวการ์ด (เดิมดำ ดูเป็นคนละชุดกับหัวเรื่อง)
-                          · ยังไม่กรอก = แดงเตือนเหมือนเดิม */}
-                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center text-white ${
-                        gap ? 'bg-[var(--md-accent)]' : ''}`} style={gap ? undefined : { background: '#1E3E82' }}>{i + 1}</span>
-                      <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
-                      {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน
-                          (จังหวะที่ 5 ก็มีเส้น — user เคาะ 03/09/69 ให้เท่ากันทุกจังหวะ) */}
-                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.6875rem] bg-[var(--md-line)]" />
-                    </div>
-                    {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
-                        ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
-                        ขยายตัวอักษรเป็น 130-140% ช่องวันที่ถูกบีบจนวันที่ขาด ("29/08/2")
-                        กันด้วย min-w + flex-wrap: แคบเมื่อไหร่ให้เวลาตกลงไปบรรทัดล่าง
-                        แทนที่จะบีบวันที่ · ห่อ ชม:นาที ไว้ด้วยกันไม่งั้นเครื่องหมาย ":"
-                        ตกไปคนละบรรทัดกับนาที */}
-                    <div className="flex flex-wrap items-center gap-1">
-                      <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
-                        className={`flex-1 min-w-[7rem] border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <div className="flex items-center gap-1 shrink-0">
-                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
-                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                        <span className="text-gray-400 shrink-0">:</span>
-                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
-                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      </div>
-                    </div>
-                    {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
-                    {errs.map((e) => (
-                      <div key={e.msg} className="mt-1 text-[0.6875rem] leading-tight text-red-600">⚠ {e.msg}</div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div data-section="biz" className="border border-[var(--md-line)] bg-white">
           <SectionBar title="รายละเอียด" gap={(gapSec ?? []).includes('biz')}
@@ -1802,20 +1739,20 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             {/* Table rows */}
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               <F label="บริษัทประกัน">
-                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate"
+                <p className="py-1 font-bold text-gray-900 truncate"
                    title={[report.insurance_company, report.insurance_branch].filter(Boolean).join(' · ')}>
                   {[noPh(report.insurance_company), noPh(report.insurance_branch) || 'กรุงเทพ']
                     .filter(Boolean).join(' · ') || '—'}
                 </p>
               </F>
               <F label="เลขเรื่องเซอร์เวย์">
-                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate" title={report.survey_job_no || ''}>{report.survey_job_no || '—'}</p>
+                <p className="py-1 font-bold text-gray-900 truncate" title={report.survey_job_no || ''}>{report.survey_job_no || '—'}</p>
               </F>
               <F label="เลขที่รับแจ้ง">
-                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate" title={report.claim_ref_no || ''}>{report.claim_ref_no || '—'}</p>
+                <p className="py-1 font-bold text-gray-900 truncate" title={report.claim_ref_no || ''}>{report.claim_ref_no || '—'}</p>
               </F>
               <F label="เลขที่เคลม">
-                <p className="px-2 py-1 bg-[#f9f9f9] font-bold text-gray-900 truncate" title={report.claim_no || ''}>{report.claim_no || '—'}</p>
+                <p className="py-1 font-bold text-gray-900 truncate" title={report.claim_no || ''}>{report.claim_no || '—'}</p>
               </F>
 
               {/* 4 ช่องนี้เป็นข้อมูลบริษัทเรา ไม่ได้แก้ที่นี่ (มาจากตั้งค่าระบบ) — แสดงอย่างเดียว */}
@@ -1878,17 +1815,76 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     ที่เลือกตอน import XML อยู่แล้ว (XML ใช้ SURVEYBRID จาก env ไม่ใช่คอลัมน์พวกนี้)
                   · "วันที่" = วันที่เกิดเหตุ แก้ได้ที่การ์ด "ลำดับเวลา" จังหวะที่ 1 ตรงนี้โชว์ซ้ำเฉย ๆ */}
               <F label="บริษัทผู้จัดเรื่อง">
-                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800 truncate" title={SURVEY_CO.name}>{SURVEY_CO.name}</p>
+                <p className="py-1 text-gray-800 truncate" title={SURVEY_CO.name}>{SURVEY_CO.name}</p>
               </F>
               <F label="เบอร์โทรศัพท์ / Fax">
-                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800">{SURVEY_CO.phone}</p>
+                <p className="py-1 text-gray-800">{SURVEY_CO.phone}</p>
               </F>
               <F label="วันที่">
-                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800">{report.acc_date || '-'}</p>
+                <p className="py-1 text-gray-800">{report.acc_date || '-'}</p>
               </F>
               <F label="ที่อยู่">
-                <p className="px-2 py-1 bg-[#f9f9f9] text-gray-800 truncate" title={SURVEY_CO.address}>{SURVEY_CO.address}</p>
+                <p className="py-1 text-gray-800 truncate" title={SURVEY_CO.address}>{SURVEY_CO.address}</p>
               </F>
+            </div>
+            {/* ===== ลำดับเวลา — 5 จังหวะของงาน เรียงซ้าย→ขวา =====
+                เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
+                (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
+                ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
+            {/* ⛔ อยู่ท้ายหมวด "รายละเอียด" (user ย้ายมา 03/09/69) — เป็นหมวดย่อย
+                ไม่ใช่การ์ดของตัวเองแล้ว จึงเป็นหัวข้อตัวหนา+เส้นคั่น ไม่ใช่แถบน้ำเงินซ้อนแถบน้ำเงิน */}
+            <div className="border-t border-[var(--md-line)] px-4 pt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-sm font-bold text-[var(--md-ink)]">ลำดับเวลา</span>
+              {timeErrs.length > 0 && (
+                <span className="text-xs font-semibold border border-red-300 bg-red-50 text-red-700 rounded-none px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
+              )}
+            </div>
+            <div className="px-4 pt-3 pb-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-3 gap-y-4">
+              {TIMELINE.map((n, i) => {
+                const gap = n.keys.some((k) => missing.includes(k));
+                const errs = timeErrs.filter((e) => e.at === n.date);
+                return (
+                  <div key={n.date} className="relative min-w-0">
+                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง
+                        ⛔ ทั้งเส้นในช่องไฟและเส้นต่อท้ายชื่อ ต้องอยู่กึ่งกลางกล่องเลขพอดี (0.75rem
+                           จากขอบบนแถว = mt ของกล่อง 0.0625 + ครึ่งความสูง 0.6875) เส้นหนา 2px
+                           จึงต้องเยื้องขึ้นครึ่งเส้น (0.0625rem) ทั้งคู่ ไม่งั้นเหลื่อมกัน 1px
+                           มองเป็นเส้นหักคนละระดับ (user แจ้ง 03/09/69) */}
+                    {i > 0 && <div className="hidden xl:block absolute -left-[0.875rem] top-[0.6875rem] w-[0.875rem] border-t-2 border-[var(--md-line)]" />}
+                    <div className="flex items-start gap-2 mb-1.5">
+                      {/* เลขจังหวะใช้น้ำเงินชุดเดียวกับแถบหัวการ์ด (เดิมดำ ดูเป็นคนละชุดกับหัวเรื่อง)
+                          · ยังไม่กรอก = แดงเตือนเหมือนเดิม */}
+                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center text-white ${
+                        gap ? 'bg-[var(--md-accent)]' : ''}`} style={gap ? undefined : { background: '#1E3E82' }}>{i + 1}</span>
+                      <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
+                      {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน
+                          (จังหวะที่ 5 ก็มีเส้น — user เคาะ 03/09/69 ให้เท่ากันทุกจังหวะ) */}
+                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.6875rem] bg-[var(--md-line)]" />
+                    </div>
+                    {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
+                        ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
+                        ขยายตัวอักษรเป็น 130-140% ช่องวันที่ถูกบีบจนวันที่ขาด ("29/08/2")
+                        กันด้วย min-w + flex-wrap: แคบเมื่อไหร่ให้เวลาตกลงไปบรรทัดล่าง
+                        แทนที่จะบีบวันที่ · ห่อ ชม:นาที ไว้ด้วยกันไม่งั้นเครื่องหมาย ":"
+                        ตกไปคนละบรรทัดกับนาที */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
+                        className={`flex-1 min-w-[7rem] border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
+                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                        <span className="text-gray-400 shrink-0">:</span>
+                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
+                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      </div>
+                    </div>
+                    {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
+                    {errs.map((e) => (
+                      <div key={e.msg} className="mt-1 text-[0.6875rem] leading-tight text-red-600">⚠ {e.msg}</div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
