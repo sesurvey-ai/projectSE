@@ -378,7 +378,13 @@ const OPPONENT_FIELDS: FieldDef[] = [
   { k: 'license_type', label: 'ประเภทใบขับขี่', options: LICENSE_TYPES },
   { k: 'license_start', label: 'ใบขับขี่ ออกให้', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
   { k: 'license_end', label: 'ใบขับขี่ สิ้นสุด', placeholder: 'วว/ดด/ปปปป (พ.ศ.)' },
-  { k: 'district', label: 'เขต/อำเภอ (ที่อยู่)', optionsFrom: (r) => districtOptions(String(r.province ?? ''), String(r.district ?? '')) },
+  // จังหวัดของ "ที่อยู่ผู้ขับขี่" แยกจากจังหวัดป้ายทะเบียน — แอปมือถือและ XML export ใช้ home_province อยู่แล้ว
+  // (export: DRI_PROVINCEID = home_province || province) แต่เว็บไม่มีช่องนี้ ทำให้อำเภอที่ตัวดึงงาน ISURVEY
+  // ใส่มาจากภูมิลำเนาไม่โผล่ในลิสต์เมื่อป้ายทะเบียนเป็นคนละจังหวัด (audit 03/09/69 เคลม 2026013058298:
+  // ป้าย กทม. / ภูมิลำเนา ศรีสะเกษ → อำเภอปรางค์กู่หายจากลิสต์)
+  { k: 'home_province', label: 'จังหวัด (ที่อยู่ผู้ขับขี่)', options: PROVINCE_OPTIONS },
+  { k: 'district', label: 'เขต/อำเภอ (ที่อยู่)',
+    optionsFrom: (r) => districtOptions(String(r.home_province || r.province || ''), String(r.district ?? '')) },
   { k: 'address', label: 'ที่อยู่ผู้ขับขี่', wide: true },
 ];
 
