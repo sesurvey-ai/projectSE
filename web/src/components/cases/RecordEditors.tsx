@@ -19,7 +19,7 @@ import { PROVINCE_OPTIONS, CAR_COLOR_OPTIONS, EV_TYPE_OPTIONS, POLICY_TYPE_OPTIO
 import { districtOptions } from './districtOptions';
 import { insurerOptions, isEmcsInsurer } from './insurerOptions';
 import DamageDialog from './DamageDialog';
-import { DamageItem } from './DamageEditor';
+import { DamageItem, DamageList } from './DamageEditor';
 
 export type RecordItem = Record<string, string>;
 
@@ -460,6 +460,8 @@ export function OpponentEditor({ items, onChange }: {
               >
                 ข้อมูลความเสียหาย{dmg > 0 ? ` (${dmg})` : ''}
               </button>
+              {/* โชว์รายการที่เลือกไว้เลย ไม่ต้องเปิดหน้าต่างทีละคันถึงจะรู้ (user ขอ 03/09/69) */}
+              <DamageList items={dmgOf(it)} />
             </div>
           </div>
         );

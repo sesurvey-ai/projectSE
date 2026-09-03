@@ -8,7 +8,7 @@ import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
-import DamageEditor, { DamageItem } from './DamageEditor';
+import DamageEditor, { DamageItem, DamageList } from './DamageEditor';
 import DamageDialog from './DamageDialog';
 import { OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED } from './RecordEditors';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
@@ -1683,10 +1683,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         gap ? 'bg-[var(--md-accent)]' : ''}`} style={gap ? undefined : { background: '#1E3E82' }}>{i + 1}</span>
                       <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
                       {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน
-                          จังหวะสุดท้ายไม่มีเส้น เพราะไม่มีอะไรให้ลากไปต่อ (เดิมลากค้างไปชนขอบการ์ด) */}
-                      {i < TIMELINE.length - 1 && (
-                        <span className="hidden xl:block flex-1 h-0.5 mt-[0.6875rem] bg-[var(--md-line)]" />
-                      )}
+                          (จังหวะที่ 5 ก็มีเส้น — user เคาะ 03/09/69 ให้เท่ากันทุกจังหวะ) */}
+                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.6875rem] bg-[var(--md-line)]" />
                     </div>
                     {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
                         ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
@@ -2175,6 +2173,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     className="px-3 py-1 border border-gray-400 rounded-none bg-gray-200 text-gray-700 text-xs whitespace-nowrap hover:bg-gray-300">
                     ข้อมูลความเสียหาย{damage.length > 0 ? ` (${damage.length})` : ''}
                   </button>
+                  {/* รายการจริงที่จะเข้า EMCS — ช่องข้อความด้านบนเป็น "คำบรรยาย" ที่แอปพิมพ์มา
+                      คนละค่ากับรายการนี้ แก้รายการในหน้าต่างแล้วข้อความไม่เปลี่ยนตาม
+                      โชว์ไว้ให้เห็นว่าอันไหนคือของจริง (user ขอ 03/09/69) */}
+                  <DamageList items={damage} />
                 </div>
               </F>
             </div>

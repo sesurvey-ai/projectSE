@@ -39,6 +39,33 @@ const LEVELS = [
   { v: 'X', label: 'X — สูงมาก' },
 ];
 
+/**
+ * สรุปรายการความเสียหายแบบอ่านอย่างเดียว — ใช้คู่กับปุ่ม "ข้อมูลความเสียหาย"
+ * ทุกที่ที่เก็บรายการไว้ (รถประกัน + คู่กรณีทุกคัน) เพื่อให้เห็นว่าเลือกอะไรไว้
+ * โดยไม่ต้องเปิดหน้าต่างทีละคัน (user ขอ 03/09/69)
+ * ⛔ ชิ้นส่วนที่ EMCS ไม่มีปุ่มเลือกด้าน (pos ถูกบังคับเป็น 'A') ไม่ต้องโชว์ด้าน
+ *    ไม่งั้นได้ "กันชนหน้า - ทั้งคู่ - ต่ำ" ซึ่งอ่านแล้วงงว่าทั้งคู่คืออะไร
+ */
+const SIDE_TH: Record<string, string> = { A: 'ทั้งคู่', L: 'ซ้าย', R: 'ขวา' };
+const LEVEL_TH: Record<string, string> = { L: 'ต่ำ', M: 'กลาง', H: 'สูง', X: 'สูงมาก' };
+
+export const damageLine = (it: DamageItem) => [
+  it.part,
+  PARTS_NO_SIDE.includes(it.part) || it.pos === 'A' ? '' : (SIDE_TH[it.pos] ?? it.pos),
+  LEVEL_TH[it.level] ?? it.level,
+].filter(Boolean).join(' - ');
+
+export function DamageList({ items }: { items: DamageItem[] }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <ol className="mt-1.5 space-y-0.5 text-xs text-gray-700">
+      {items.map((it, i) => (
+        <li key={i}>{i + 1}. {damageLine(it)}</li>
+      ))}
+    </ol>
+  );
+}
+
 const sel = 'border border-gray-300 rounded-none px-2 py-1 text-sm text-gray-800 bg-white';
 
 export default function DamageEditor({
