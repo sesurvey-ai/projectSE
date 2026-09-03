@@ -9,6 +9,10 @@ import 'package:image/image.dart' as img;
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart'
     show PrintBluetoothThermal;
 
+import 'printer_profile.dart';
+
+export 'printer_profile.dart';
+
 /// เครื่องพิมพ์พกพา — TSC Alpha-3R / RE310B ต่อผ่าน **Bluetooth Classic (SPP)**
 ///
 /// สเปกบอกว่า TSC รองรับ ESC/POS emulation ด้วย แต่ **ทดสอบกับเครื่องจริงแล้วไม่ใช่** —
@@ -44,8 +48,17 @@ class ThermalPrinter {
   }
 
   /// คืน `OK:<วิธีที่ต่อติด>` หรือ `FAIL:<เหตุผล>` — เก็บวิธีไว้ด้วยเพื่อไล่ปัญหาหน้างานได้
-  static Future<String> connect(String mac) async =>
-      await _ch.invokeMethod<String>('connect', {'mac': mac}) ?? 'FAIL:ไม่มีคำตอบ';
+  static Future<String> connect(String mac, {String name = ''}) async {
+    final r = await _ch.invokeMethod<String>('connect', {'mac': mac}) ??
+        'FAIL:ไม่มีคำตอบ';
+    // เลือกโปรไฟล์ทันทีที่ต่อติด — ขนาดท่อน/ความเร็วส่ง/ขอบล่าง หลังจากนี้ใช้ค่าของรุ่นนี้
+    if (r.startsWith('OK')) _profile = PrinterProfile.of(name, mac);
+    return r;
+  }
+
+  /// โปรไฟล์ของเครื่องที่ต่ออยู่ (ตั้งตอน [connect]) — ยังไม่ได้ต่อ = ค่ากลางที่ปลอดภัย
+  static PrinterProfile _profile = PrinterProfile.safe;
+  static PrinterProfile get profile => _profile;
 
   static Future<void> get disconnect async => _ch.invokeMethod('disconnect');
 
@@ -82,9 +95,10 @@ class ThermalPrinter {
   ///
   /// [invert] สลับขั้วบิต: คู่มือ TSPL ระบุว่าบิต **0 = จุดดำ** แต่เฟิร์มแวร์บางรุ่นกลับกัน
   /// ถ้าพิมพ์ออกมาเป็นแผ่นดำทั้งแผ่น/ขาวทั้งแผ่น ให้สลับค่านี้
-  /// [feedDots] ระยะเดินกระดาษท้ายงาน — ต้องมากพอให้บรรทัดสุดท้าย (QR) **พ้นฟันฉีก**
-  /// ไม่งั้นฉีกแล้ว QR ขาดครึ่ง 200 จุด ≈ 25 มม. วัดจากเครื่องจริงแล้วพอดี
-  static List<int> buildTspl(img.Image sheet, {bool invert = false, int feedDots = 200}) {
+  /// [feedDots] ระยะเดินกระดาษท้ายงาน — ดู [tailFeedDots] · ใส่ 0 = ไม่เดินกระดาษ
+  /// (ท่อนกลางของใบที่หั่นเป็นท่อน)
+  static List<int> buildTspl(img.Image sheet,
+      {bool invert = false, int feedDots = tailFeedDots}) {
     final widthBytes = (sheet.width + 7) ~/ 8;
     final data = Uint8List(widthBytes * sheet.height);
     // ค่าตั้งต้น = "ไม่พิมพ์" ทั้งแผ่น แล้วค่อยเจาะจุดดำลงไป
@@ -123,24 +137,124 @@ class ThermalPrinter {
       ...data,
       ...latin1.encode('\r\nPRINT 1,1\r\n'),
       // เดินกระดาษให้พ้นหัวพิมพ์พอฉีกได้ ไม่ต้องมากกว่านี้
-      ...latin1.encode('FEED $feedDots\r\n'),
+      // ⛔ feedDots = 0 คือ 'ท่อนกลางของใบ' — ห้ามเดินกระดาษ ไม่งั้นได้ช่องขาวคั่นทุกท่อน
+      if (feedDots > 0) ...latin1.encode('FEED $feedDots\r\n'),
     ];
+  }
+
+  /// ความสูงต่อท่อนตอนพิมพ์ใบด้วย TSPL (จุด) — **ต้องหารด้วย 8 ลงตัว** (8 จุด = 1 มม.)
+  ///
+  /// ทำไมต้องหั่นใบ: TSPL เก็บทั้งใบไว้ในหน่วยความจำก่อน แล้วค่อยพิมพ์ตอนเจอคำสั่ง `PRINT`
+  /// เครื่องที่หน่วยความจำเล็กจึง **ทิ้งงานทั้งใบเงียบ ๆ** เมื่อใบยาวเกินที่อมไหว —
+  /// socket รับครบ ตอบ OK ตามปกติทุกอย่าง แต่กระดาษไม่ออกสักแผ่น ไม่มี error ให้เห็นเลย
+  ///
+  /// วัดจากเครื่องจริง 03/09/69 (MHT-P29L): แถบทดสอบ 5 KB ออก · ใบ 52 KB ไม่ออก ·
+  /// ใบ 100 KB ไม่ออก · ปิด-เปิดเครื่องแล้วยังไม่ออก (ตัดเรื่องเครื่องค้างทิ้งได้)
+  /// ส่วน TSC PS-2472E9 ตัวเก่ารอดมาตลอดเพราะหน่วยความจำใหญ่กว่า — **อย่าเอาเครื่องที่มีอยู่
+  /// เป็นตัววัดว่าใบยาวแค่ไหนก็ได้**
+  ///
+  /// 240 จุด = 30 มม. ≈ 11.5 KB/ท่อน (ใหญ่กว่าแถบที่พิสูจน์แล้วว่าผ่าน ~2 เท่า และเล็กกว่า
+  /// ใบที่ไม่ผ่าน ~4 เท่า) · เครื่องรุ่นถัดไปยังไม่ออกอีก ให้ลดค่านี้ลงครึ่งหนึ่งเป็นอย่างแรก
+  static const int bandDots = 240;   // ค่าอ้างอิง — ตัวจริงมาจากโปรไฟล์รายรุ่น
+
+  /// ระยะเดินกระดาษของงานพิมพ์**ก้อนเดียวจบ** (จุด) — เช่นแถบทดสอบ 3 โหมด
+  ///
+  /// ⛔ ใบจริงไม่ใช้ค่านี้แล้ว (ส่งท่อนสุดท้ายด้วย feedDots: 0) — ดู [tailPadDots]
+  ///    เหตุผล: แถวขาวที่พิมพ์ลงไป**ก็ดันกระดาษออกมาเท่ากับความยาวของมันอยู่แล้ว**
+  ///    ถ้าสั่ง FEED ซ้ำอีก เครื่องที่ทำตาม FEED จริง (TSC PS-2472E9 / BT-SPP) จะได้
+  ///    ขอบขาวสองเด้ง = เปลืองกระดาษ 4-5 ซม. ต่อใบโดยไม่ได้อะไรเพิ่ม (user ทัก 03/09/69)
+  ///
+  /// ระยะเดินกระดาษท้ายงาน (จุด) — ต้องมากพอให้บรรทัดสุดท้าย (QR) **พ้นฟันฉีก**
+  ///
+  /// ระยะจากหัวพิมพ์ถึงฟันฉีกไม่เท่ากันทุกเครื่อง — TSC PS-2472E9 ใช้ 200 จุด (25 มม.) พอดี
+  /// แต่ MHT-P29L ฟันฉีกอยู่ไกลกว่า ฉีกแล้ว QR เฉียดขอบจนสแกนยาก (user แจ้ง 03/09/69)
+  /// → ใช้ค่าที่เผื่อให้เครื่องที่ระยะไกลสุด เครื่องอื่นแค่เปลืองกระดาษเพิ่ม ~1.5 ซม./ใบ
+  ///   ซึ่งถูกกว่าการต้องมาไล่ตั้งค่าแยกรายเครื่อง (และดีกว่า QR ขาด)
+  static const int tailFeedDots = 320;
+
+  /// ขอบขาวท้ายใบที่ **พิมพ์ลงไปจริง ๆ** (จุด) — คนละอย่างกับ [tailFeedDots]
+  ///
+  /// เพิ่ม `FEED` อย่างเดียวไม่พอ: MHT-P29L ขยับกระดาษท้ายงานน้อยกว่าที่สั่ง (สั่ง 40 มม.
+  /// แล้วยังเฉียด QR อยู่ — user แจ้ง 03/09/69 ว่า "เหมือนไม่ได้ปรับเลย")
+  /// การเติมแถวขาวเข้าไปในรูปแทน = เครื่อง**พิมพ์**แถวขาวนั้นจริง ๆ จึงไม่ขึ้นกับว่าเครื่องไหน
+  /// ตีความ FEED ยังไง — ได้ขอบเท่ากันทุกเครื่องแน่นอน
+  /// 240 จุด = 30 มม. — **นี่คือระยะท้ายใบทั้งหมด** ไม่มี FEED ต่อท้ายอีกแล้ว
+  /// (แถวขาวดันกระดาษออกมาเองเท่ากับความยาวของมัน) · ขอบที่เห็นบนใบที่ฉีกแล้ว
+  /// = 30 มม. ลบระยะหัวพิมพ์→ฟันฉีกของเครื่องนั้น ซึ่งแต่ละเครื่องไม่เท่ากัน
+  /// (MHT-P29L สั้น เห็นขอบเยอะ · TSC ยาวกว่า เห็นขอบน้อยกว่า แต่ก็ยังมากกว่าของเดิม)
+  /// ยังไม่พอให้เพิ่มค่านี้ค่าเดียว — เห็นผลตรงตามที่สั่งทุกเครื่อง
+  static const int tailPadDots = 240;   // ค่าอ้างอิง — ตัวจริงมาจากโปรไฟล์รายรุ่น
+
+  /// หั่นใบเป็นท่อน ๆ — ท่อนสุดท้ายเติมพื้นขาวให้ความสูงหารด้วย 8 ลงตัว
+  ///
+  /// ⛔ ความสูงท่อนต้องลงตัวกับ 8 เสมอ เพราะ `SIZE` มีหน่วยเป็นมิลลิเมตร (ปัดขึ้น) —
+  ///    ท่อนสูง 235 จุดจะถูกสั่งเป็น 30 มม. = 240 จุด เกินมา 5 จุดกลายเป็นเส้นขาวคั่น
+  static List<img.Image> _bands(img.Image sheet, int bandDots) {
+    final out = <img.Image>[];
+    for (var y = 0; y < sheet.height; y += bandDots) {
+      final left = sheet.height - y;
+      final h = left < bandDots ? left : bandDots;
+      final part =
+          img.copyCrop(sheet, x: 0, y: y, width: sheet.width, height: h);
+      if (h % 8 == 0) {
+        out.add(part);
+        continue;
+      }
+      final padded = img.Image(width: sheet.width, height: ((h + 7) ~/ 8) * 8);
+      img.fill(padded, color: img.ColorRgb8(255, 255, 255));
+      img.compositeImage(padded, part, dstX: 0, dstY: 0);
+      out.add(padded);
+    }
+    return out;
+  }
+
+  /// ส่งใบทีละท่อนแล้วให้เครื่องพิมพ์ต่อกันเป็นใบเดียว
+  ///
+  /// เดินกระดาษ (FEED) เฉพาะท่อนสุดท้าย — ท่อนที่เหลือจบด้วย `PRINT` เฉย ๆ กระดาษจึงเดิน
+  /// เท่าความสูงของท่อนพอดี ต่อกันสนิทเหมือนพิมพ์ทีเดียว
+  static Future<String> _sendTsplBands(img.Image sheet,
+      {required bool invert}) async {
+    // เติมขอบขาวท้ายใบก่อนหั่นท่อน — ให้ QR ห่างจากฟันฉีกพอฉีกได้โดยไม่กินเนื้อใบ
+    final withMargin =
+        img.Image(width: sheet.width, height: sheet.height + _profile.tailPadDots);
+    img.fill(withMargin, color: img.ColorRgb8(255, 255, 255));
+    img.compositeImage(withMargin, sheet, dstX: 0, dstY: 0);
+    final bands = _bands(withMargin, _profile.bandDots);
+    for (var i = 0; i < bands.length; i++) {
+      final last = i == bands.length - 1;
+      final r = await sendRaw(
+          buildTspl(bands[i], invert: invert, feedDots: 0));
+      // บอกด้วยว่าตายท่อนไหน — หน้างานจะได้รู้ว่าใบขาดตรงไหนโดยไม่ต้องเดา
+      if (r != 'OK') return 'FAIL:ท่อนที่ ${i + 1}/${bands.length} — $r';
+      // ให้เครื่องพิมพ์ท่อนนี้จบก่อนค่อยยัดท่อนถัดไป ไม่งั้นบัฟเฟอร์เต็มแบบเดิมอีก
+      // (150 ms — ลดจาก 250 ตอนเร่งความเร็วส่ง 03/09/69 · ท่อนขาดเมื่อไหร่ให้เพิ่มกลับ)
+      if (!last) {
+        await Future<void>.delayed(Duration(milliseconds: _profile.bandGapMs));
+      }
+    }
+    return 'OK';
   }
 
   /// พิมพ์รูปออกเครื่อง — ต้อง [connect] ไว้ก่อน · คืน `OK` หรือ `FAIL:<เหตุผล>`
   static Future<String> printPng(Uint8List png,
       {PrintLang lang = PrintLang.tspl, int feedLines = 4}) async {
     final sheet = prepare(png);
-    final bytes = switch (lang) {
-      PrintLang.escPos => await buildEscPos(sheet, feedLines: feedLines),
-      PrintLang.tspl => buildTspl(sheet),
-      PrintLang.tsplInvert => buildTspl(sheet, invert: true),
+    // TSPL = ส่งทีละท่อน (ดู [bandDots]) · ESC/POS ไหลเป็นบรรทัด ไม่ต้องอมทั้งใบ ส่งรวดเดียวได้
+    return switch (lang) {
+      PrintLang.escPos =>
+        sendRaw(await buildEscPos(sheet, feedLines: feedLines)),
+      PrintLang.tspl => _sendTsplBands(sheet, invert: false),
+      PrintLang.tsplInvert => _sendTsplBands(sheet, invert: true),
     };
-    return sendRaw(bytes);
   }
 
   static Future<String> sendRaw(List<int> bytes) async =>
-      await _ch.invokeMethod<String>('write', {'bytes': Uint8List.fromList(bytes)}) ??
+      await _ch.invokeMethod<String>('write', {
+        'bytes': Uint8List.fromList(bytes),
+        // จังหวะส่งเป็นของรายรุ่น — บัฟเฟอร์ใหญ่ยัดเร็วได้ เครื่องเล็กต้องค่อย ๆ
+        'chunk': _profile.chunkBytes,
+        'gap': _profile.chunkGapMs,
+      }) ??
       'FAIL:ไม่มีคำตอบ';
 }
 

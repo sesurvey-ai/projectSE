@@ -97,9 +97,13 @@ class _PrinterTestScreenState extends State<PrinterTestScreen> {
     try {
       // ฝั่ง Kotlin ไล่ลอง secure-SDP → insecure-SDP → ยิงเข้า channel ตรง
       // คำตอบบอกด้วยว่าติดด้วยวิธีไหน เก็บไว้ไล่ปัญหาเวลาเครื่องอื่นต่อไม่ติด
-      final r = await ThermalPrinter.connect(_mac!);
+      // ส่งชื่อรุ่นไปด้วย — ตัวเลือกโปรไฟล์ดู MAC ก่อน แล้วค่อยตกมาที่ชื่อรุ่น
+      final dev = _devices.where((d) => d.mac == _mac).firstOrNull;
+      final r = await ThermalPrinter.connect(_mac!, name: dev?.name ?? '');
       final ok = r.startsWith('OK');
-      _say(ok ? 'เชื่อมต่อสำเร็จ ($r)' : 'เชื่อมต่อไม่สำเร็จ — $r');
+      _say(ok
+          ? 'เชื่อมต่อสำเร็จ ($r) · โปรไฟล์: ${ThermalPrinter.profile.label}'
+          : 'เชื่อมต่อไม่สำเร็จ — $r');
       setState(() => _connected = ok);
     } catch (e) {
       _say('เชื่อมต่อพัง: $e');

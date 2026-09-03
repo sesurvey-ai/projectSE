@@ -114,20 +114,27 @@ object PrinterBridge {
      *    (เจอจริง 27/08/69 เครื่อง `BT-SPP` พิมพ์ใบจริงออกแค่หัวกระดาษ ทั้งที่แถบทดสอบ
      *     5 KB ออกครบ · เครื่อง `PS-2472E9` บัฟเฟอร์ใหญ่กว่าเลยรอดมาตลอด)
      *
-     * Bluetooth SPP วิ่งได้จริงราว 10-20 KB/s — 1 KB ทุก 60 ms ≈ 17 KB/s
-     * ช้ากว่าเดิม 6 เท่า (ใบยาวใช้เวลา ~7 วิ) แลกกับพิมพ์ครบทุกเครื่อง คุ้มกว่ามาก
-     * ⚠️ อย่าเร่งกลับขึ้นไปเพราะ "เครื่องที่มีอยู่ก็เร็วได้" — เครื่องถัดไปอาจเป็นแบบนี้อีก
+     * Bluetooth SPP วิ่งได้จริงราว 10-20 KB/s — 2 KB ทุก 60 ms ≈ 33 KB/s
+     *
+     * เดิมตั้งไว้ 1 KB/60 ms (17 KB/s) ตอนที่ยังส่งใบทั้งใบรวดเดียว 100 KB — ต้องช้าขนาดนั้น
+     * เพราะเครื่องต้องอมทั้งก้อนไว้ก่อน · ตั้งแต่ฝั่ง Dart หั่นใบเป็นท่อนละ ~12 KB แล้ว
+     * (ดู `ThermalPrinter.bandDots`) เครื่องได้พิมพ์ท่อนก่อนหน้าไประหว่างที่รับท่อนถัดไป
+     * บัฟเฟอร์จึงไม่ตัน เร่งขึ้นได้โดยยังไม่ขาด — ใบยาวจาก ~9 วิ เหลือ ~5 วิ
+     * (user ทักว่าช้าลงหลังเปลี่ยนเป็นหั่นท่อน 03/09/69)
+     *
+     * ⚠️ ถ้าใบเริ่มพิมพ์ขาดกลางคันอีก **ลดกลับเป็น 1024 ก่อนเป็นอย่างแรก** —
+     *    อาการจะเงียบเหมือนเดิม (socket ตอบ OK ครบ แต่กระดาษขาด)
      */
-    fun write(bytes: ByteArray): String {
+    fun write(bytes: ByteArray, chunk: Int, gapMs: Long): String {
         val stream = out ?: return "FAIL:ยังไม่ได้เชื่อมต่อ"
         return try {
             var i = 0
             while (i < bytes.size) {
-                val end = minOf(i + 1024, bytes.size)
+                val end = minOf(i + chunk, bytes.size)
                 stream.write(bytes, i, end - i)
                 stream.flush()
                 i = end
-                Thread.sleep(60)
+                if (gapMs > 0) Thread.sleep(gapMs)
             }
             Log.i(TAG, "ส่งครบ ${bytes.size} byte")
             "OK"
@@ -161,8 +168,12 @@ object PrinterBridge {
                 }
                 "write" -> {
                     val data = call.argument<ByteArray>("bytes") ?: ByteArray(0)
+                    // จังหวะส่งมาจากโปรไฟล์รายรุ่นฝั่ง Dart (PrinterProfile)
+                    // ไม่ส่งมา = ค่ากลางที่ช้าและปลอดภัยที่สุด
+                    val chunk = call.argument<Int>("chunk") ?: 1024
+                    val gap = (call.argument<Int>("gap") ?: 60).toLong()
                     Thread {
-                        val r = write(data)
+                        val r = write(data, chunk, gap)
                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                             result.success(r)
                         }
