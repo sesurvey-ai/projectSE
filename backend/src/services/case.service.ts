@@ -165,6 +165,15 @@ async function withInsurerBill(caseId: number, report: Record<string, unknown>) 
   return exp.rows.length ? { ...report, ...exp.rows[0] } : report;
 }
 
+/** เพศผู้ขับขี่ให้เป็น 'M'/'F' เสมอ (รับ 'ชาย'/'หญิง'/'W'/ตัวพิมพ์เล็กด้วย) — ดูหมายเหตุใน importFromXml */
+const driverGenderMF = (v: unknown): string => {
+  const t = String(v ?? '').trim();
+  const u = t.toUpperCase();
+  if (u === 'M' || t === 'ชาย') return 'M';
+  if (u === 'F' || u === 'W' || t === 'หญิง') return 'F';
+  return t;
+};
+
 export const caseService = {
   async create(data: Record<string, unknown> & { customer_name: string; incident_location: string }, createdBy: number) {
     // เลขเซอร์เวย์ (SETP-xxx) ห้ามซ้ำ — เป็นเลขอ้างอิงเบิกเงิน
@@ -1406,6 +1415,9 @@ export const caseService = {
     opts: { insuranceCompany: string; createdBy: number },
   ) {
     const report: Record<string, unknown> = { ...parsed.report, insurance_company: opts.insuranceCompany };
+    // เพศผู้ขับขี่: มือถือ/เว็บเก็บ 'M'/'F' — XML ให้ 'W' (รหัสหญิงอีกแบบ) และเส้นดึงสดเคยส่ง 'หญิง'
+    // → radio หน้าตรวจไม่ติ๊กทั้งที่ข้อมูลมี หัวหน้าเห็น "ยังขาด 1 ช่อง" แต่หาไม่เจอ (เคส #221, 03/09/69)
+    if (report.driver_gender !== undefined) report.driver_gender = driverGenderMF(report.driver_gender);
     await assertSurveyJobNoUnique([report.survey_job_no]);
 
     // ผู้สำรวจ: จับจากรหัสใน ACC_SURV ('SE272 นาย ...') — หาไม่เจอก็ปล่อยว่าง ไม่ล้มทั้งงาน

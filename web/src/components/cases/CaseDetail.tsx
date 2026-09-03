@@ -126,6 +126,28 @@ function zeroBlank(v: unknown): string {
   const t = String(v ?? '').trim();
   return Number(t) === 0 ? '' : t;
 }
+/** ยอดนอกพื้นที่/นอกเวลาในช่องแก้เอง — DB คืน "100.00" → โชว์ "100" (ค่าตั้งต้นตอนติ๊กก็โชว์ "100" อยู่แล้ว
+ *  สองแบบปนกันดูเหมือนคนละช่อง) จำนวนเต็มไม่ใส่ทศนิยม มีเศษค่อยโชว์ไม่เกิน 2 ตำแหน่ง */
+function amtText(v: unknown): string {
+  const t = zeroBlank(v);
+  if (!t) return '';
+  const n = Number(t);
+  if (!Number.isFinite(n)) return t;
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+/**
+ * เพศผู้ขับขี่รถประกันเก็บเป็น 'M'/'F' (มือถือ + เว็บ + XML) แต่ข้อมูลที่ดึง/นำเข้ามาเคยเป็น
+ * 'ชาย'/'หญิง' (บอทดึงสดจาก ISURVEY ก่อน 03/09/69) หรือ 'W' (รหัสหญิงอีกแบบใน XML)
+ * → radio ไม่ติ๊กทั้งที่ข้อมูลมี หัวหน้าเห็น "ยังขาด 1 ช่อง" แต่หาไม่เจอ (เคส #221)
+ * แปลงตอนอ่านให้ติ๊กได้ทุกแบบ; backend ก็แปลงตอนนำเข้าแล้ว นี่กันข้อมูลเก่าที่ค้างใน DB
+ */
+const genderMF = (v: unknown): string => {
+  const s = String(v ?? '').trim();
+  const u = s.toUpperCase();
+  if (u === 'M' || s === 'ชาย') return 'M';
+  if (u === 'F' || u === 'W' || s === 'หญิง') return 'F';
+  return s;
+};
 /**
  * ช่องเงินที่เก็บเป็นตัวเลขใน DB — null หรือ 0 = ยังไม่ได้กรอก จึงโชว์ว่าง
  * มีค่าจริงค่อยจัดทศนิยม 2 ตำแหน่งให้เหมือนเดิม
@@ -2023,8 +2045,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               {/* 4 ช่องบังคับชุดเดียวกัน: เพศ · คำนำหน้า · ชื่อ · นามสกุล (EMCS บล็อกทั้งชุด) */}
               <F label="ผู้ขับขี่รถประกันภัย" req={<Req of="driver_gender,driver_title,driver_first_name,driver_last_name" />}>
                 <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={report.driver_gender === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
-                  <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={report.driver_gender === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
+                  {/* กลุ่ม radio ไม่มีกรอบแดงของตัวเอง (isBlank มองไม่เห็นกลุ่ม) → ทาที่กรอบครอบแทน
+                      แบบเดียวกับ "ประเภทเคลม" — ไม่งั้นป้ายบอก "ยังขาด 1 ช่อง" แต่ไม่มีอะไรแดงให้หา
+                      และปุ่ม "ไปช่องแรกที่ขาด" ก็ไม่รู้จะเลื่อนไปไหน (เคส #221, 03/09/69) */}
+                  <div className={`flex items-center gap-2 rounded-none px-1 border ${
+                    missing.includes('driver_gender') ? 'border-red-400 bg-red-50' : 'border-transparent'}`}>
+                    <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs"><input type="radio" name="driver_gender" value="M" disabled={d} defaultChecked={genderMF(report.driver_gender) === 'M'} className="w-3.5 h-3.5" /> ชาย</label>
+                    <label className="flex items-center gap-1 text-gray-500 shrink-0 text-xs"><input type="radio" name="driver_gender" value="F" disabled={d} defaultChecked={genderMF(report.driver_gender) === 'F'} className="w-3.5 h-3.5" /> หญิง</label>
+                  </div>
                   <select disabled={d} name="driver_title" defaultValue={report.driver_title || '0'} className={`min-w-0 flex-1 border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`}>
                     <option value="0">- คำนำหน้า -</option>
                     <option value="นาย">นาย</option>
@@ -2288,7 +2316,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <div className="min-w-0" />
 
               <F label="ฝ่ายประมาท" req={<Req of="acc_fault" />} span={4}>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-none px-1 border ${
+                  missing.includes('acc_fault') ? 'border-red-400 bg-red-50' : 'border-transparent'}`}>
                   {/* ⚠️ `value` ต้องเป็น **ค่าสั้นชุดเดียวกับแอปมือถือ** (_faultDropdown ที่
                       survey_form_screen.dart) — ไม่ใช่ป้ายเต็มที่โชว์
                       เดิมเว็บเขียนป้ายเต็มลง DB ทับค่าของแอป แล้วตรรกะในแอปที่เทียบตรง ๆ
@@ -2840,10 +2869,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                                    defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
                             <input type="text" disabled={dPay} name="out_of_area_amt"
                               key={`ooa-${String(payV?.saved?.out_of_area ?? '')}-${String(payV?.saved?.out_of_area_amt ?? '')}`}
-                              defaultValue={zeroBlank(payV?.saved?.out_of_area_amt)
+                              defaultValue={amtText(payV?.saved?.out_of_area_amt)
                                 || (payV?.saved?.out_of_area ? String(OUT_OF_AREA_AMT) : '')}
                               title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 50 บาท)"
-                              className={`w-[3.5rem] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
+                              className={`w-[5rem] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -2863,10 +2892,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                                    defaultValue มาใส่ซ้ำ ช่องจะว่างแล้วบันทึกทับของเดิมเป็นค่าตั้งต้น */}
                             <input type="text" disabled={dPay} name="out_of_hours_amt"
                               key={`ooh-${String(payV?.saved?.out_of_hours ?? '')}-${String(payV?.saved?.out_of_hours_amt ?? '')}`}
-                              defaultValue={zeroBlank(payV?.saved?.out_of_hours_amt)
+                              defaultValue={amtText(payV?.saved?.out_of_hours_amt)
                                 || (payV?.saved?.out_of_hours ? String(OUT_OF_HOURS_AMT) : '')}
                               title="ยอดที่จ่ายจริงของเคสนี้ (ปกติ 100 บาท)"
-                              className={`w-[3.5rem] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
+                              className={`w-[5rem] border rounded-none px-1.5 py-0.5 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} />
                             <span className="text-xs text-gray-400">บาท</span>
                           </div>
                         </div>
