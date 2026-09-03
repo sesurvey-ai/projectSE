@@ -30,7 +30,10 @@ export async function payRows(f: PayExportFilter = {}) {
   if (f.to) { params.push(f.to); where.push(`(sp.priced_at AT TIME ZONE 'Asia/Bangkok')::date <= $${params.length}::date`); }
 
   const r = await db.query(
-    `SELECT sp.*, c.created_at AS dispatch_at,
+    `SELECT sp.*,
+            -- created_at ไม่มีโซนแต่เก็บเวลาไทย — ติด +07:00 ใน SQL ไม่งั้น prod (UTC) โชว์เกินไป 7 ชม.
+            -- (กติกาเดียวกับ sebilling.service ดูหมายเหตุที่นั่น)
+            to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || '+07:00' AS dispatch_at,
             sr.claim_no, sr.survey_job_no, sr.acc_province, sr.acc_district, sr.acc_subdistrict,
             sr.claim_type, sr.acc_surveyor,
             se.service_fee_price AS ins_service, se.travel_fee_price AS ins_travel,

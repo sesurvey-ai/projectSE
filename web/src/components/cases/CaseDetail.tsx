@@ -1505,12 +1505,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       ) : (
         <span className="text-xs text-gray-500 whitespace-nowrap">ยังไม่ได้ส่งเข้า se-billing</span>
       )}
-      {(!caseData.billing_capture_id || caseData.billing_error) && (
-        <button type="button" disabled={saving} onClick={resendBilling}
-          className="px-3 py-1 border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-          ส่งเข้า se-billing
-        </button>
-      )}
+      {/* ปุ่มมีเสมอ — ส่งซ้ำ = แทนที่แถวเดิม (ไม่ซ้ำ) ไว้ซิงก์ใหม่หลังแก้บั๊กหรือข้อมูลบัญชี */}
+      <button type="button" disabled={saving} onClick={resendBilling}
+        title={caseData.billing_capture_id && !caseData.billing_error ? 'ส่งแถวใหม่แทนที่แถวเดิมใน se-billing' : ''}
+        className="px-3 py-1 border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+        {caseData.billing_capture_id && !caseData.billing_error ? 'ส่งซ้ำ se-billing' : 'ส่งเข้า se-billing'}
+      </button>
       {isAdmin ? (
         <button type="button" disabled={saving} onClick={async () => {
           // ปลดล็อกแล้วต้องอนุมัติใหม่ — ถามก่อนเพราะเป็นการถอนลายเซ็นของคนอื่น

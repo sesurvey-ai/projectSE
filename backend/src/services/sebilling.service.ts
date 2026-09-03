@@ -77,7 +77,14 @@ type Row = Record<string, unknown>;
 /** ประกอบแถว capture จากข้อมูลเคส — export ไว้ให้เทส/ดูก่อนส่งได้ */
 export async function buildCapture(caseId: number): Promise<{ payload: Record<string, unknown>; prevId: number | null }> {
   const r = (await db.query(
-    `SELECT c.id, c.created_at, c.assigned_at, c.billing_capture_id,
+    `SELECT c.id, c.billing_capture_id,
+            /* วันจ่ายงาน = มอบหมาย (tstz) หรือถ้าไม่มีก็ตอนสร้างเคส
+               ⛔ cases.created_at เป็น timestamp ไม่มีโซน เก็บ "เวลาไทยบนหน้าปัด" (แถวที่ backend prod สร้าง
+                  = 11:45 ตรงกับเวลาจริง 11:45 น.) → ห้ามให้ node แปลงเอง: prod รัน UTC จะอ่านเป็น 11:45Z
+                  แล้วบวก 7 อีกรอบ = 18:45 (เจอจริงแถวแรกที่ส่งเข้า se-billing 03/09/69)
+                  จึงประกอบเป็น ISO ที่มี +07:00 ตั้งแต่ใน SQL ให้ผลเท่ากันทุกเครื่อง */
+            COALESCE(to_char(c.assigned_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                     to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS')) || '+07:00' AS dispatch_iso,
             sr.claim_no, sr.survey_job_no, sr.acc_province, sr.acc_district, sr.acc_subdistrict,
             sr.acc_surveyor, sr.claim_type,
             se.service_fee_price AS ins_service, se.travel_fee_price AS ins_travel,
@@ -123,7 +130,7 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
 
   const payload: Record<string, unknown> = {
     ts: new Date().toISOString(),
-    dispatch_date: bkkStamp(r.assigned_at ?? r.created_at),
+    dispatch_date: bkkStamp(r.dispatch_iso),
     province_id: pid,
     province_name: (pid && TH_PROVINCES[pid]) || s('acc_province'),
     amphur_id: aid,
