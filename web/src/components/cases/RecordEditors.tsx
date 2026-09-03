@@ -453,10 +453,10 @@ export function OpponentEditor({ items, onChange }: {
             </div>
             {/* ใต้ช่องสุดท้าย ("ที่อยู่ผู้ขับขี่") — user ขอย้ายลงมาจากหัวการ์ด 20/08/69
                 เพราะปุ่มขอบบางบนแถบหัวกลืนกับชื่อการ์ด หาไม่เจอ */}
-            <div className="px-3 pb-3">
+            <div className="px-3 pb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <button
                 type="button" onClick={() => setDmgFor(i)}
-                className="px-3 py-1.5 text-sm border border-blue-300 rounded-none bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium"
+                className="shrink-0 whitespace-nowrap px-3 py-1.5 text-sm border border-blue-300 rounded-none bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium"
               >
                 ข้อมูลความเสียหาย{dmg > 0 ? ` (${dmg})` : ''}
               </button>

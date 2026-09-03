@@ -2200,7 +2200,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 {/* ⛔ CTL มี h-9 (สูง 36px) ติดมาด้วย — ช่องพิมพ์หลายบรรทัดต้องมี min-h มาทับเสมอ
                     ไม่งั้นโดนบีบเหลือบรรทัดเดียวทั้งที่ตั้ง rows ไว้ */}
                 <textarea disabled={d} name="damage_description" defaultValue={report.damage_description || ''} rows={2} className={`${CTL(d)} min-h-[4rem] py-1.5`} />
-                <div className="mt-1.5">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                   {/* หน้าต่างเดียวกับ EMCS — ผู้สำรวจเลือกมาจากแอปแล้ว ที่นี่ไว้เติม/แก้ที่ขาด */}
                   <button type="button" disabled={d} onClick={() => setDmgOpen(true)}
                     className="px-3 py-1 border border-gray-400 rounded-none bg-gray-200 text-gray-700 text-xs whitespace-nowrap hover:bg-gray-300">

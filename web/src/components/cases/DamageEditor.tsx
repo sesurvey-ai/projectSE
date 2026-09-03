@@ -73,10 +73,14 @@ export const autoDamageDesc = (items: DamageItem[]) =>
 
 export function DamageList({ items }: { items: DamageItem[] }) {
   if (!items || items.length === 0) return null;
+  /* เรียงไปทางขวาแล้วขึ้นบรรทัดใหม่เมื่อเต็ม (user ขอ 03/09/69) — วางข้างปุ่มได้เลย
+     ที่ว่างขวาปุ่มมีเยอะ ส่วนแนวตั้งกินความสูงฟอร์มไปเรื่อย ๆ ตามจำนวนชิ้น
+     ⛔ whitespace-nowrap ที่รายการย่อย — ให้ขึ้นบรรทัดใหม่ "ระหว่างชิ้น" เท่านั้น
+        ไม่ใช่หักกลางชื่อชิ้นส่วนจนอ่านเป็นคนละรายการ */
   return (
-    <ol className="mt-1.5 space-y-0.5 text-xs text-gray-700">
+    <ol className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-700 min-w-0">
       {items.map((it, i) => (
-        <li key={i}>{i + 1}. {damageLine(it)}</li>
+        <li key={i} className="whitespace-nowrap">{i + 1}. {damageLine(it)}</li>
       ))}
     </ol>
   );
