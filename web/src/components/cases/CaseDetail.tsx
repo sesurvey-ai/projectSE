@@ -899,6 +899,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const [gapSec, setGapSec] = useState<string[] | null>(null);
   /**
+   * ช่องชื่อที่มีอักขระซึ่ง EMCS ไม่รับ (ทาแดงโดย paint) — เก็บเป็น state ด้วย
+   * ⛔ ไม่งั้นป้าย "ยังกรอกไม่ครบ" ที่หัวหมวดค้าง: ป้ายคำนวณใหม่เมื่อ state เปลี่ยนเท่านั้น
+   *    แต่การทาแดง/ล้างแดงของช่องชื่อแตะแค่ DOM ไม่แตะ state → หัวหน้าลบ NBSP ออกจากชื่อ
+   *    กรอบแดงหายแล้ว ป้ายหัวหมวดยังแดงอยู่ (user เจอ 03/09/69 เคส #221)
+   */
+  const [badNames, setBadNames] = useState<string[]>([]);
+  /**
    * "การเรียกร้องค่าเสียหายจากคู่กรณี" — ช่องเดียวในฟอร์มที่ **บังคับแบบมีเงื่อนไข**
    *
    * กติกาของ EMCS เอง (สกัดจาก vlidSurvey ของเขา):
@@ -1036,10 +1043,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
        * และไม่บอกว่าอยู่ช่องไหนในบรรดา ~200 ช่อง (user เคาะ 17/08/69 ให้มาโชว์ที่ช่อง)
        * EMCS ไม่ได้แค่ตัดอักขระ — มัน **ล้างชื่อทั้งช่องทิ้ง** ตอนคนคลิกเข้า-ออก
        */
+      const badList: string[] = [];
       for (const nm of EMCS_NAME_FIELDS) {
         const el = form.querySelector(`[name="${nm}"]`) as HTMLInputElement | null;
         if (!el) continue;
         const bad = emcsBadChars(el.value ?? '');
+        if (bad) badList.push(nm);
         el.title = bad ? `EMCS จะล้างชื่อทั้งช่องทิ้งเพราะมีอักขระ: ${bad}` : '';
         // ช่องที่ทาแดงเพราะ "ว่าง" อยู่แล้ว ปล่อยให้ตัวเดิมคุมไป อย่าทับกัน
         if (names.includes(nm)) continue;
@@ -1050,6 +1059,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       }
 
       setList(setMissing, names);
+      setList(setBadNames, badList);   // เปลี่ยนเฉพาะตอนชุดช่องที่แดงเปลี่ยนจริง → ป้ายหัวหมวดตามทัน
 
       // ── บล็อก "การเรียกร้องค่าเสียหายจากคู่กรณี" (บังคับแบบมีเงื่อนไข) ──
       // ค่า radio "คู่กรณีผิด" ตรงกับ rdoAcc_Cause01 ของ EMCS ที่เป็นตัวเปิดเงื่อนไข
@@ -1232,7 +1242,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (sec.querySelector('.' + RING[0])) gs.push(sec.getAttribute('data-section') || '');
     });
     setGapSec((prev) => (JSON.stringify(prev) === JSON.stringify(gs) ? prev : gs));
-  }, [missing, claimHl, oppNoHl, payHl, payOver, timeErrs, moneyMissing, opponents, injured, property, damage]);
+  }, [missing, badNames, claimHl, oppNoHl, payHl, payOver, timeErrs, moneyMissing, opponents, injured, property, damage]);
 
   useEffect(() => {
     let alive = true;
