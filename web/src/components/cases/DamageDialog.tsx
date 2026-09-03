@@ -44,13 +44,18 @@ const SIDES = ['L', 'R', 'A'] as const;
 const LEVELS = ['L', 'M', 'H', 'X'] as const;
 
 /** ปุ่มกลม ๆ แบบ radio ของ EMCS — เล็กและกดง่ายกว่า select ตอนมี 30 แถว */
-function Radios({ value, options, onPick, disabled, hidden }: {
+function Radios({ value, options, onPick, disabled, hidden, sep }: {
   value: string; options: readonly string[]; onPick: (v: string) => void;
   disabled?: boolean; hidden?: boolean;
+  /** เส้นคั่นซ้าย — คั่นกลุ่ม "ระดับ" (L M H X) ออกจากกลุ่ม "ด้าน" (L R A)
+   *  ไม่มีเส้นแล้ว 7 วงกลมเรียงติดกันอ่านเป็นแถวเดียว ติ๊กผิดกลุ่มกันบ่อย (user ขอ 03/09/69)
+   *  ⛔ ระยะต้องเท่ากันทุกแถว — แถวที่ไม่มีด้านใช้ที่ว่างกว้างเท่ากลุ่มด้าน (hidden)
+   *     เส้นจึงตรงเป็นแนวเดียวกันทั้งตาราง */
+  sep?: boolean;
 }) {
   if (hidden) return <div className="w-[5.375rem] shrink-0" />;
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
+    <div className={`flex items-center gap-1.5 shrink-0 ${sep ? 'ml-2 pl-3 border-l border-gray-200' : ''}`}>
       {options.map((o) => (
         <label key={o} className="flex flex-col items-center gap-0.5 cursor-pointer">
           <input type="radio" checked={value === o} disabled={disabled}
@@ -140,7 +145,7 @@ export default function DamageDialog({
                   <span className="text-sm text-gray-800 flex-1 min-w-0 truncate">{part}</span>
                   <Radios value={it?.pos ?? ''} options={SIDES} hidden={!hasSide}
                     disabled={disabled || !it} onPick={(v) => upd(part, { pos: v })} />
-                  <Radios value={it?.level ?? ''} options={LEVELS}
+                  <Radios value={it?.level ?? ''} options={LEVELS} sep
                     disabled={disabled || !it} onPick={(v) => upd(part, { level: v })} />
                 </label>
               );
@@ -165,7 +170,7 @@ export default function DamageDialog({
                   onChange={(e) => setFree(i, { part: e.target.value })} className={txt} />
                 <Radios value={r.pos} options={SIDES}
                   disabled={disabled || !r.part.trim()} onPick={(v) => setFree(i, { pos: v })} />
-                <Radios value={r.level} options={LEVELS}
+                <Radios value={r.level} options={LEVELS} sep
                   disabled={disabled || !r.part.trim()} onPick={(v) => setFree(i, { level: v })} />
               </div>
             ))}
