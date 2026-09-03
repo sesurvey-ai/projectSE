@@ -25,7 +25,8 @@ const envSchema = z.object({
   INTEGRATION_CREATED_BY: z.coerce.number().int().positive().optional(),
   // ท่อไป se-billing (/captures) — ไม่ตั้ง SEBILLING_URL = ปิดท่อ (เครื่องพัฒนา)
   // SEBILLING_TOKEN = API_TOKEN ของ se-billing server (prod เปิด auth อยู่ — ไม่มี token = 401)
-  SEBILLING_URL: z.string().url().optional(),
+  // ค่าว่าง = ไม่ตั้ง (Dokploy ชอบส่ง KEY= เปล่า ๆ มา ถ้าใช้ .url() ตรง ๆ backend จะตายตั้งแต่ boot)
+  SEBILLING_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   SEBILLING_TOKEN: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
