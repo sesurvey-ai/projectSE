@@ -1660,7 +1660,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <div className="border-b-2 border-[var(--md-ink)] text-white px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1"
                  style={{ background: '#1E3E82' }}>
               <span className="text-[0.9375rem] font-bold">ลำดับเวลา</span>
-              <span className="text-xs text-white/75">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
               {timeErrs.length > 0 && (
                 <span className="ml-auto text-xs font-semibold bg-white text-red-700 rounded-none px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
               )}
@@ -1671,14 +1670,23 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 const errs = timeErrs.filter((e) => e.at === n.date);
                 return (
                   <div key={n.date} className="relative min-w-0">
-                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง */}
+                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง
+                        ⛔ ทั้งเส้นในช่องไฟและเส้นต่อท้ายชื่อ ต้องอยู่กึ่งกลางกล่องเลขพอดี (0.75rem
+                           จากขอบบนแถว = mt ของกล่อง 0.0625 + ครึ่งความสูง 0.6875) เส้นหนา 2px
+                           จึงต้องเยื้องขึ้นครึ่งเส้น (0.0625rem) ทั้งคู่ ไม่งั้นเหลื่อมกัน 1px
+                           มองเป็นเส้นหักคนละระดับ (user แจ้ง 03/09/69) */}
                     {i > 0 && <div className="hidden xl:block absolute -left-[0.875rem] top-[0.6875rem] w-[0.875rem] border-t-2 border-[var(--md-line)]" />}
                     <div className="flex items-start gap-2 mb-1.5">
-                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center ${
-                        gap ? 'bg-[var(--md-accent)] text-white' : 'bg-[var(--md-ink)] text-white'}`}>{i + 1}</span>
+                      {/* เลขจังหวะใช้น้ำเงินชุดเดียวกับแถบหัวการ์ด (เดิมดำ ดูเป็นคนละชุดกับหัวเรื่อง)
+                          · ยังไม่กรอก = แดงเตือนเหมือนเดิม */}
+                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center text-white ${
+                        gap ? 'bg-[var(--md-accent)]' : ''}`} style={gap ? undefined : { background: '#1E3E82' }}>{i + 1}</span>
                       <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
-                      {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน */}
-                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.625rem] bg-[var(--md-line)]" />
+                      {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน
+                          จังหวะสุดท้ายไม่มีเส้น เพราะไม่มีอะไรให้ลากไปต่อ (เดิมลากค้างไปชนขอบการ์ด) */}
+                      {i < TIMELINE.length - 1 && (
+                        <span className="hidden xl:block flex-1 h-0.5 mt-[0.6875rem] bg-[var(--md-line)]" />
+                      )}
                     </div>
                     {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
                         ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
