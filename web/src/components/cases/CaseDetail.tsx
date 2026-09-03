@@ -1650,9 +1650,66 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           <div className="hidden">
           </div>
 
+          {/* ===== ลำดับเวลา — 5 จังหวะของงาน เรียงซ้าย→ขวา =====
+              เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
+              (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
+              ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
+          <div className="bg-white border border-[var(--md-line)] overflow-hidden text-sm">
+            {/* แถบหัวสีเดียวกับหมวดอื่น (user เคาะ 03/09/69) — การ์ดนี้ขึ้นก่อนหมวดแรก
+                ถ้ายังเป็นแถบเทาอ่อนจะดูเหมือนของแถมเหนือหัวเรื่อง ไม่ใช่หมวดหนึ่งของฟอร์ม */}
+            <div className="border-b-2 border-[var(--md-ink)] text-white px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1"
+                 style={{ background: '#1E3E82' }}>
+              <span className="text-[0.9375rem] font-bold">ลำดับเวลา</span>
+              <span className="text-xs text-white/75">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
+              {timeErrs.length > 0 && (
+                <span className="ml-auto text-xs font-semibold bg-white text-red-700 rounded-none px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
+              )}
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-3 gap-y-4">
+              {TIMELINE.map((n, i) => {
+                const gap = n.keys.some((k) => missing.includes(k));
+                const errs = timeErrs.filter((e) => e.at === n.date);
+                return (
+                  <div key={n.date} className="relative min-w-0">
+                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง */}
+                    {i > 0 && <div className="hidden xl:block absolute -left-[0.875rem] top-[0.6875rem] w-[0.875rem] border-t-2 border-[var(--md-line)]" />}
+                    <div className="flex items-start gap-2 mb-1.5">
+                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center ${
+                        gap ? 'bg-[var(--md-accent)] text-white' : 'bg-[var(--md-ink)] text-white'}`}>{i + 1}</span>
+                      <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
+                      {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน */}
+                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.625rem] bg-[var(--md-line)]" />
+                    </div>
+                    {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
+                        ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
+                        ขยายตัวอักษรเป็น 130-140% ช่องวันที่ถูกบีบจนวันที่ขาด ("29/08/2")
+                        กันด้วย min-w + flex-wrap: แคบเมื่อไหร่ให้เวลาตกลงไปบรรทัดล่าง
+                        แทนที่จะบีบวันที่ · ห่อ ชม:นาที ไว้ด้วยกันไม่งั้นเครื่องหมาย ":"
+                        ตกไปคนละบรรทัดกับนาที */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
+                        className={`flex-1 min-w-[7rem] border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
+                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                        <span className="text-gray-400 shrink-0">:</span>
+                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
+                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
+                      </div>
+                    </div>
+                    {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
+                    {errs.map((e) => (
+                      <div key={e.msg} className="mt-1 text-[0.6875rem] leading-tight text-red-600">⚠ {e.msg}</div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* รายละเอียดรถยนต์ — header + ข้อมูลบริษัท/เคลม (แบบตาราง) */}
           <div data-section="biz" className="border border-[var(--md-line)] bg-white">
-          <SectionBar title="บริษัท · เคลม" gap={(gapSec ?? []).includes('biz')}
+          <SectionBar title="รายละเอียด" gap={(gapSec ?? []).includes('biz')}
             right={isAdmin && !approved && !keyEdit ? (
               <button type="button" onClick={openKeyEdit}
                 className="text-xs text-blue-700 hover:text-blue-900 hover:underline">
@@ -2115,60 +2172,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             </div>
 
           </div>
-          </div>
-
-          {/* ===== ลำดับเวลา — 5 จังหวะของงาน เรียงซ้าย→ขวา =====
-              เดิม 5 จังหวะนี้กระจายอยู่ 3 แถวคนละที่ในตาราง ทำให้ "ผิดลำดับ" มองด้วยตาไม่เห็น
-              (เจอจริงเคส #141: ถึงที่เกิดเหตุก่อนเกิดเหตุ 10 นาที ผ่านการอนุมัติมาแล้ว)
-              ชื่อช่องเหมือนเดิมทุกตัว — ตัวบันทึกและดอกจันไม่ต้องแก้ */}
-          <div className="bg-white border border-[var(--md-line)] overflow-hidden text-sm">
-            <div className="bg-[var(--md-tint)] border-b border-[var(--md-line)] text-gray-700 px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-semibold">ลำดับเวลา</span>
-              <span className="text-xs text-gray-500">ระบบประกันตรวจว่าเรียงถูกลำดับ · วันที่เป็น พ.ศ. (วว/ดด/ปปปป)</span>
-              {timeErrs.length > 0 && (
-                <span className="ml-auto text-xs font-semibold bg-red-500 rounded-none px-2 py-0.5">ผิดลำดับ {timeErrs.length} จุด</span>
-              )}
-            </div>
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-x-3 gap-y-4">
-              {TIMELINE.map((n, i) => {
-                const gap = n.keys.some((k) => missing.includes(k));
-                const errs = timeErrs.filter((e) => e.at === n.date);
-                return (
-                  <div key={n.date} className="relative min-w-0">
-                    {/* เส้นเชื่อมระหว่างจังหวะ — โชว์เฉพาะจอกว้างที่วางเรียงกัน 5 ช่อง */}
-                    {i > 0 && <div className="hidden xl:block absolute -left-[0.875rem] top-[0.6875rem] w-[0.875rem] border-t-2 border-[var(--md-line)]" />}
-                    <div className="flex items-start gap-2 mb-1.5">
-                      <span className={`mt-[0.0625rem] w-[1.375rem] h-[1.375rem] shrink-0 text-[0.6875rem] font-extrabold flex items-center justify-center ${
-                        gap ? 'bg-[var(--md-accent)] text-white' : 'bg-[var(--md-ink)] text-white'}`}>{i + 1}</span>
-                      <span className="text-xs font-semibold text-[var(--md-muted-2)] leading-tight min-w-0">{n.label} <Req of={n.keys.join(',')} /></span>
-                      {/* เส้นบางลากต่อจากชื่อจังหวะ — ทำให้ 5 จังหวะอ่านเป็น "เส้นเวลา" ไม่ใช่ 5 กล่องแยกกัน */}
-                      <span className="hidden xl:block flex-1 h-0.5 mt-[0.625rem] bg-[var(--md-line)]" />
-                    </div>
-                    {/* ⛔ ช่องเวลา (ชม/นาที) กว้างเป็น rem จึงโตตามขนาดตัวอักษร แต่ความกว้าง
-                        ของช่องจังหวะมาจากกริดซึ่งผูกกับความกว้างจอ **ไม่โตตาม** — พอผู้ใช้
-                        ขยายตัวอักษรเป็น 130-140% ช่องวันที่ถูกบีบจนวันที่ขาด ("29/08/2")
-                        กันด้วย min-w + flex-wrap: แคบเมื่อไหร่ให้เวลาตกลงไปบรรทัดล่าง
-                        แทนที่จะบีบวันที่ · ห่อ ชม:นาที ไว้ด้วยกันไม่งั้นเครื่องหมาย ":"
-                        ตกไปคนละบรรทัดกับนาที */}
-                    <div className="flex flex-wrap items-center gap-1">
-                      <input type="text" disabled={d} name={n.date} defaultValue={n.v.date} placeholder="วว/ดด/ปปปป"
-                        className={`flex-1 min-w-[7rem] border border-gray-300 rounded-none h-9 px-2.5 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm`} />
-                      <div className="flex items-center gap-1 shrink-0">
-                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.hour} defaultValue={n.v.hour} placeholder="ชม"
-                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                        <span className="text-gray-400 shrink-0">:</span>
-                        <input type="text" maxLength={2} inputMode="numeric" onBlur={padTimeOnBlur} disabled={d} name={n.min} defaultValue={n.v.minute} placeholder="นาที"
-                          className={`w-[2.125rem] shrink-0 border border-gray-300 rounded-none h-9 px-1 text-gray-800 ${d ? 'bg-gray-100' : 'bg-white'} text-sm text-center`} />
-                      </div>
-                    </div>
-                    {/* เตือนตรงจุดที่ผิด — ไม่ต้องเลื่อนขึ้นไปอ่านข้างบนแล้วเลื่อนกลับลงมาแก้ */}
-                    {errs.map((e) => (
-                      <div key={e.msg} className="mt-1 text-[0.6875rem] leading-tight text-red-600">⚠ {e.msg}</div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
           </div>
 
           {/* ===== รายละเอียดอุบัติเหตุ — แบบตาราง ===== */}
