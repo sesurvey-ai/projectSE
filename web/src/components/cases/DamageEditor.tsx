@@ -55,6 +55,22 @@ export const damageLine = (it: DamageItem) => [
   LEVEL_TH[it.level] ?? it.level,
 ].filter(Boolean).join(' - ');
 
+/**
+ * ข้อความสรุปสำหรับช่อง "ความเสียหายรถประกันภัย" (damage_description)
+ *
+ * ⛔ ต้องได้ผลตรงกับ `_syncDamageDesc()` ของแอปมือถือ (survey_form_screen.dart) เป๊ะ ๆ
+ *    เพราะเว็บเอาไปเทียบว่าข้อความในช่อง "ยังเป็นของอัตโนมัติอยู่ไหม" ก่อนจะเขียนทับ
+ *    เพี้ยนแม้แต่ช่องว่างเดียว = ระบบคิดว่าช่างพิมพ์เอง แล้วไม่อัปเดตตามรายการให้
+ *    → จึงใช้ป้ายชุดของแอป (A = 'ทั้งหมด' และโชว์ด้านทุกชิ้น) ไม่ใช่ของ damageLine
+ */
+const POS_DESC: Record<string, string> = { L: 'ซ้าย', R: 'ขวา', A: 'ทั้งหมด' };
+export const autoDamageDesc = (items: DamageItem[]) =>
+  (items ?? [])
+    .filter((it) => it.part)
+    .map((it, i) => `${i + 1}. ` + [it.part, POS_DESC[it.pos] ?? '', LEVEL_TH[it.level] ?? '']
+      .filter(Boolean).join(' - '))
+    .join('\n');
+
 export function DamageList({ items }: { items: DamageItem[] }) {
   if (!items || items.length === 0) return null;
   return (

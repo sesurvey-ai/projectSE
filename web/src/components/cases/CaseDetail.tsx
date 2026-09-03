@@ -8,7 +8,7 @@ import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
-import DamageEditor, { DamageItem } from './DamageEditor';
+import { DamageItem, DamageList, autoDamageDesc } from './DamageEditor';
 import DamageDialog from './DamageDialog';
 import { OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED } from './RecordEditors';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
@@ -565,6 +565,39 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     (Array.isArray(report?.insured_damage) ? report.insured_damage : []).map((x: Record<string, unknown>) => ({
       part: String(x?.part ?? ''), pos: String(x?.pos ?? 'A'), level: String(x?.level ?? ''),
     })));
+  /**
+   * ช่องข้อความ "ความเสียหายรถประกันภัย" วิ่งตามรายการที่ผู้ตรวจเพิ่มในหน้าต่าง
+   * "ข้อมูลความเสียหาย" — กติกาเดียวกับแอปมือถือ (`_syncDamageDesc`): เขียนทับเฉพาะตอน
+   * ช่องยังว่าง หรือยังเป็นข้อความอัตโนมัติชุดเดิม → คำบรรยายที่ช่างพิมพ์เองไม่ถูกลบ
+   *
+   * ถ้าเป็นคำบรรยายที่พิมพ์เอง จะไปโชว์รายการจริงใต้ปุ่มแทน (descCustom) — ไม่งั้นผู้ตรวจ
+   * เพิ่มชิ้นส่วนแล้วหน้าจอเงียบ ไม่รู้ว่าเข้าหรือยัง (user ขอ 03/09/69)
+   *
+   * ⛔ ช่องนี้เป็น uncontrolled (FormData อ่านค่าจาก DOM) เขียนผ่าน fieldEl เท่านั้น
+   *    เหมือน applyBig — ทำเป็น state เมื่อไหร่จะตีกับหน้าต่าง "⥂ ขยาย"
+   */
+  const lastAutoDesc = useRef<string>('');
+  const descReady = useRef(false);
+  const [descCustom, setDescCustom] = useState(false);
+  useEffect(() => {
+    const auto = autoDamageDesc(damage);
+    if (!descReady.current) {   // รอบแรก — แค่จำข้อความอัตโนมัติของค่าที่โหลดมา ยังไม่แตะช่อง
+      descReady.current = true;
+      lastAutoDesc.current = auto;
+      return;
+    }
+    const el = fieldEl('damage_description');
+    const cur = (el?.value ?? '').trim();
+    if (el && (cur === '' || cur === lastAutoDesc.current.trim())) {
+      el.value = auto;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      setDescCustom(false);
+    } else {
+      setDescCustom(true);
+    }
+    lastAutoDesc.current = auto;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [damage]);
   // ผู้บาดเจ็บ/ทรัพย์สิน เป็น JSONB เหมือนกัน — ค่าใน object เป็นสตริงทั้งหมด (แอปมือถือเก็บแบบนี้)
   const toRecords = (v: unknown): RecordItem[] =>
     (Array.isArray(v) ? v : []).map((x: Record<string, unknown>) =>
@@ -994,7 +1027,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     ...(payOver ? ['"รับเงินจำนวน" มากกว่ายอดเรียกร้องทั้งหมด'] : []),
     ...timeErrs.map((e) => `"${TL_LABEL[e.at] ?? e.at}" ${e.msg}`),
     ...(recordGaps > 0 ? [`คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน ยังขาด ${recordGaps} ช่องบังคับ`] : []),
-    ...(damageRows === 0 ? ['ยังไม่มีรายการ "ความเสียหายรถประกัน"'] : []),
+    ...(damageRows === 0 ? ['ยังไม่มีรายการความเสียหายรถประกัน (ปุ่ม "ข้อมูลความเสียหาย")'] : []),
     ...moneyMissing,
   ];
 
@@ -2173,12 +2206,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     className="px-3 py-1 border border-gray-400 rounded-none bg-gray-200 text-gray-700 text-xs whitespace-nowrap hover:bg-gray-300">
                     ข้อมูลความเสียหาย{damage.length > 0 ? ` (${damage.length})` : ''}
                   </button>
-                  {/* ⛔ ไม่โชว์รายการซ้ำตรงนี้ — รถประกันมีหมวด "ความเสียหายรถประกัน"
-                      ของตัวเองอยู่ท้ายหน้า ซึ่งลิสต์ค่าเดียวกัน (insured_damage) อยู่แล้ว
-                      เคยเพิ่มไว้แล้วซ้ำซ้อน user ทักเอง 03/09/69 · คู่กรณีไม่มีหมวดของตัวเอง
-                      จึงโชว์ใต้ปุ่มที่การ์ดคู่กรณีที่เดียว (RecordEditors.tsx)
-                      หมายเหตุ: ช่องข้อความ "ความเสียหายรถประกันภัย" (damage_description)
-                      เป็นคำบรรยายที่แอปพิมพ์มา คนละค่ากับรายการนี้ และไม่ถูกส่งเข้า EMCS */}
+                  {/* ปกติข้อความข้างบนวิ่งตามรายการอยู่แล้ว จึงไม่ต้องโชว์ซ้ำสองที่ —
+                      โชว์เฉพาะตอนผู้ตรวจพิมพ์คำบรรยายเอง (ข้อความไม่ตรงกับรายการแล้ว)
+                      ⛔ ช่องข้อความคือคำบรรยาย **ไม่เคยถูกส่งเข้า EMCS** ตัวที่เข้าจริงคือรายการนี้ */}
+                  {descCustom && <DamageList items={damage} />}
                 </div>
               </F>
             </div>
@@ -2422,7 +2453,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             const opposingParties = toArray(report.opposing_parties);
             const injuredPersons = toArray(report.injured_persons);
             const damagedProperty = toArray(report.damaged_property);
-            const insuredDamage = toArray(report.insured_damage);
             return (
               <>
                 {/* คู่กรณี — โชว์เสมอตอนกด "แก้ไข" (ไม่งั้นเคสที่ยังไม่มีคู่กรณีก็เพิ่มไม่ได้) */}
@@ -2617,22 +2647,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                   </div>
                 )}
 
-                {/* ความเสียหายรถประกัน — แก้ได้ตอนกด "แก้ไข" (โชว์เสมอ ไม่งั้นเคสที่ว่างจะเพิ่มไม่ได้) */}
-                </div>
-                </div>
-
-                <div data-section="dmg" className="border border-[var(--md-line)] bg-white">
-                <SectionBar title="ความเสียหายรถประกัน" gap={(gapSec ?? []).includes('dmg')} />
-                <div>
-                {(insuredDamage.length > 0 || isEditing) && (
-                  <div className="bg-white overflow-hidden text-sm">
-                    <div className="p-4">
-                      {isEditing
-                        ? <DamageEditor items={damage} onChange={setDamage} />
-                        : <DamageChips items={insuredDamage} />}
-                    </div>
-                  </div>
-                )}
+                {/* ⛔ ไม่มีหมวด "ความเสียหายรถประกัน" ท้ายหน้าแล้ว (user สั่งถอด 03/09/69)
+                    มันลิสต์ค่าเดียวกัน (insured_damage) กับช่อง "ความเสียหายรถประกันภัย"
+                    + ปุ่ม "ข้อมูลความเสียหาย" ในหมวดผู้ขับขี่รถประกัน — แก้ที่ปุ่มนั้นที่เดียว */}
                 </div>
                 </div>
               </>
