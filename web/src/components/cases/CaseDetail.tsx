@@ -8,7 +8,7 @@ import { districtOptions } from './districtOptions';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
-import DamageEditor, { DamageItem, DamageList } from './DamageEditor';
+import DamageEditor, { DamageItem } from './DamageEditor';
 import DamageDialog from './DamageDialog';
 import { OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED } from './RecordEditors';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
@@ -2173,10 +2173,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     className="px-3 py-1 border border-gray-400 rounded-none bg-gray-200 text-gray-700 text-xs whitespace-nowrap hover:bg-gray-300">
                     ข้อมูลความเสียหาย{damage.length > 0 ? ` (${damage.length})` : ''}
                   </button>
-                  {/* รายการจริงที่จะเข้า EMCS — ช่องข้อความด้านบนเป็น "คำบรรยาย" ที่แอปพิมพ์มา
-                      คนละค่ากับรายการนี้ แก้รายการในหน้าต่างแล้วข้อความไม่เปลี่ยนตาม
-                      โชว์ไว้ให้เห็นว่าอันไหนคือของจริง (user ขอ 03/09/69) */}
-                  <DamageList items={damage} />
+                  {/* ⛔ ไม่โชว์รายการซ้ำตรงนี้ — รถประกันมีหมวด "ความเสียหายรถประกัน"
+                      ของตัวเองอยู่ท้ายหน้า ซึ่งลิสต์ค่าเดียวกัน (insured_damage) อยู่แล้ว
+                      เคยเพิ่มไว้แล้วซ้ำซ้อน user ทักเอง 03/09/69 · คู่กรณีไม่มีหมวดของตัวเอง
+                      จึงโชว์ใต้ปุ่มที่การ์ดคู่กรณีที่เดียว (RecordEditors.tsx)
+                      หมายเหตุ: ช่องข้อความ "ความเสียหายรถประกันภัย" (damage_description)
+                      เป็นคำบรรยายที่แอปพิมพ์มา คนละค่ากับรายการนี้ และไม่ถูกส่งเข้า EMCS */}
                 </div>
               </F>
             </div>
