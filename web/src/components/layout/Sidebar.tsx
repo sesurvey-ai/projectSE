@@ -11,6 +11,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'แดชบอร์ด', href: '/admin' },
     { label: 'จัดการผู้ใช้', href: '/admin/users' },
     { label: 'ทะเบียนพนักงานสำรวจ', href: '/admin/staff' },
+    { label: 'จัดการทีมผู้ตรวจ', href: '/admin/staff-groups' },
     { label: 'จัดการเคส', href: '/admin/cases' },
     { label: 'จัดการรีวิว', href: '/admin/reviews' },
     { label: 'รายงานการโทร', href: '/admin/call-consult' },
@@ -36,6 +37,7 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'นำเข้าจากไฟล์ XML', href: '/inspector/cases/import-xml' },
     { label: 'งานรอตรวจ (ISURVEY)', href: '/inspector/isurvey' },
     { label: 'บัญชี ISURVEY', href: '/inspector/isurvey/account' },
+    { label: 'ลูกทีมของฉัน', href: '/inspector/team' },
   ],
 };
 

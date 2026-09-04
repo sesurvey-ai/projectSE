@@ -51,8 +51,8 @@ router.post('/credentials/test', ...guard, asyncHandler(async (req: Request, res
 
 router.get('/pending', ...guard, asyncHandler(async (req: Request, res: Response) => {
   const iso = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v ?? '')) ? String(v) : '');
-  const rows = await isurveyPullService.listPending(req.user!.id, iso(req.query.from), iso(req.query.to));
-  sendSuccess(res, { cases: rows });
+  const out = await isurveyPullService.listPending(req.user!.id, req.user!.role, iso(req.query.from), iso(req.query.to));
+  sendSuccess(res, out);
 }));
 
 router.post('/pull', ...guard, asyncHandler(async (req: Request, res: Response) => {

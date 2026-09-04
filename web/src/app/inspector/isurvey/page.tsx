@@ -39,6 +39,7 @@ export default function IsurveyPendingPage() {
   const [pulling, setPulling] = useState<Record<string, boolean>>({});
   const [results, setResults] = useState<Record<string, { ok: boolean; text: string; caseId?: number }>>({});
   const [bulk, setBulk] = useState(false);
+  const [filter, setFilter] = useState<{ applied: boolean; group_name: string | null; members: number; hidden: number } | null>(null);
 
   const key = (r: Row) => `${r.claim_no}|${r.survey_no}`;
 
@@ -47,6 +48,7 @@ export default function IsurveyPendingPage() {
     try {
       const r = await api.get('/api/isurvey/pending', { params: { from, to }, timeout: 180000 });
       setRows((r.data?.data?.cases ?? []) as Row[]);
+      setFilter((r.data?.data?.filter ?? null) as typeof filter);
     } catch (e) {
       const status = (e as { response?: { status?: number } })?.response?.status;
       if (status === 412) setNeedAccount(true);
@@ -117,6 +119,13 @@ export default function IsurveyPendingPage() {
         <div className="mb-3 bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-2">{error}</div>
       )}
 
+      {rows && filter && (
+        <div className="mb-2 text-xs text-gray-600">
+          {filter.applied
+            ? <>แสดงเฉพาะงานของลูกทีม <span className="font-semibold">{filter.group_name}</span> ({filter.members} รายชื่อ) — ซ่อนงานของทีมอื่น {filter.hidden} เรื่อง · <Link href="/inspector/team" className="text-blue-700 hover:underline">ดูรายชื่อทีม</Link></>
+            : <>แสดงงานทั้งบริษัท (บัญชีนี้ยังไม่ได้ผูกทีม — แอดมินผูกได้ที่ &quot;จัดการทีมผู้ตรวจ&quot;)</>}
+        </div>
+      )}
       {rows && (
         <div className="bg-white border border-gray-200 overflow-x-auto">
           <table className="min-w-full text-sm">

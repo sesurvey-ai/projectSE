@@ -11,6 +11,7 @@ import { db } from '../config/database';
 import { env } from '../config/env';
 import { AppError } from '../middleware/errorHandler';
 import { isurveyCredService } from './isurveyCred.service';
+import { staffGroupService } from './staffGroup.service';
 
 export interface PendingRow {
   claim_no: string; survey_no: string; surveyor_name: string; acc_province: string;
@@ -66,8 +67,13 @@ export const isurveyPullService = {
     }
   },
 
-  /** งานสถานะ "รอตรวจข้อมูล" ของบัญชีนี้ในช่วงวันที่ + ธงว่าดึงเข้าระบบแล้วหรือยัง */
-  async listPending(userId: number, dateFrom?: string, dateTo?: string): Promise<PendingRow[]> {
+  /**
+   * งานสถานะ "รอตรวจข้อมูล" ในช่วงวันที่ + ธงว่าดึงเข้าระบบแล้วหรือยัง
+   * รายงานของ ISURVEY ให้งานทั้งบริษัท → กรองให้เหลือเฉพาะลูกทีมของหัวหน้าคนนี้ (staff_groups)
+   * แอดมิน / บัญชีที่ยังไม่ผูกทีม = เห็นทั้งหมด (บอกไว้ใน filter เพื่อให้หน้าจอแจ้งผู้ใช้)
+   */
+  async listPending(userId: number, role: string, dateFrom?: string, dateTo?: string):
+    Promise<{ cases: PendingRow[]; filter: { applied: boolean; group_name: string | null; members: number; hidden: number } }> {
     const creds = await isurveyCredService.getPlain(userId);
     let rows: PendingRow[];
     try {
@@ -79,7 +85,12 @@ export const isurveyPullService = {
       await isurveyCredService.markResult(userId, false, e instanceof Error ? e.message : String(e));
       throw e;
     }
-    if (rows.length === 0) return rows;
+    const team = await staffGroupService.filterFor(userId, role);
+    const before = rows.length;
+    if (team) rows = rows.filter((r) => team.match(String(r.surveyor_name ?? '')));
+    const filter = { applied: Boolean(team), group_name: team?.group.name ?? null,
+                     members: team?.group.members?.length ?? 0, hidden: before - rows.length };
+    if (rows.length === 0) return { cases: rows, filter };
     // เคสที่มีในระบบแล้ว — จับด้วยเลขเคลม + เลขเซอร์เวย์ (เลขเคลมซ้ำได้ข้ามครั้ง แต่คู่กับเซอร์เวย์ไม่ซ้ำ)
     const claims = [...new Set(rows.map((r) => r.claim_no).filter(Boolean))];
     const ex = await db.query(
@@ -91,10 +102,11 @@ export const isurveyPullService = {
       byKey.set(`${x.claim_no}|${x.survey_job_no ?? ''}`, { id: x.id, status: x.status });
       if (!byKey.has(`${x.claim_no}|`)) byKey.set(`${x.claim_no}|`, { id: x.id, status: x.status });
     }
-    return rows.map((r) => {
+    const cases = rows.map((r) => {
       const hit = byKey.get(`${r.claim_no}|${r.survey_no}`) ?? byKey.get(`${r.claim_no}|`);
       return { ...r, imported_case_id: hit?.id ?? null, imported_status: hit?.status ?? null };
     });
+    return { cases, filter };
   },
 
   /** ดึง 1 งานเข้าเป็นเคส (+รูป) — เจ้าของเคส = คนที่กด */
