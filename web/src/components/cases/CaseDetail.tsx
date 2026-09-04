@@ -762,7 +762,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     let pay = 0, ins = 0;
     for (const v of (visits ?? []) as Record<string, unknown>[]) {
       pay += n(v.pay_total);
-      for (const k of INS) ins += n(v[k]);
+      // ค่ารูป = ราคาต่อรูป × จำนวน (ไม่มีจำนวน = 1) ให้ตรงกับยอดสดและยอดที่ส่งออก
+      for (const k of INS) ins += k === 'photo_fee_price' ? n(v[k]) * (n(v.photo_fee_count) || 1) : n(v[k]);
     }
     return { pay, ins };
   })();
@@ -779,7 +780,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *    (บอทกรอกแต่ช่องรายแถวฝั่งเสนอ แล้วกด Tab ให้ EMCS รวมเอง — user ย้ำ 01/09/69)
    */
   const [liveSum, setLiveSum] = useState(
-    { pay: 0, ins: 0, area: 0, hours: 0, deduct: 0, reasoned: false });
+    { pay: 0, ins: 0, area: 0, hours: 0, deduct: 0, reasoned: false, photo: 0 });
   const recalcSums = useCallback(() => {
     const root = railRef.current;
     if (!root) return;
@@ -795,7 +796,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       return Number.isFinite(v) ? v : dflt;
     };
     const r2 = (v: number) => Math.round(v * 100) / 100;
-    const ins = r2(INS_MONEY_INPUTS.reduce((t, k) => t + num(k), 0));
+    // ค่ารูปในช่องคือ "ราคาต่อรูป" (5) — ยอดจริงที่เรียกเก็บ = × จำนวนรูป (10 × 5 = 50) เหมือนที่ XML/se-billing/ใบเบิกคูณอยู่แล้ว
+    // เดิมบวกแค่ 5 → รวมยอดบนจอน้อยกว่ายอดที่ส่งออกจริง (user ทัก 04/09/69)
+    const photo = r2(num('photo_fee_price') * (num('photo_fee_count') || 1));
+    const ins = r2(INS_MONEY_INPUTS.reduce((t, k) => t + (k === 'photo_fee_price' ? photo : num(k)), 0));
     const area = on('out_of_area') ? amt('out_of_area_amt', OUT_OF_AREA_AMT) : 0;
     const hours = on('out_of_hours') ? amt('out_of_hours_amt', OUT_OF_HOURS_AMT) : 0;
     const deduct = Math.abs(num('pay_deduct_fee'));
@@ -803,8 +807,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     const reasoned = on('deduct_late') || on('deduct_docs') || txt('deduct_reason') !== '';
     const pay = r2(PAY_MONEY_INPUTS.reduce((t, k) => t + num(k), 0) + area + hours - deduct);
     setLiveSum((prev) => (prev.pay === pay && prev.ins === ins && prev.area === area
-      && prev.hours === hours && prev.deduct === deduct && prev.reasoned === reasoned)
-      ? prev : { pay, ins, area, hours, deduct, reasoned });
+      && prev.hours === hours && prev.deduct === deduct && prev.reasoned === reasoned && prev.photo === photo)
+      ? prev : { pay, ins, area, hours, deduct, reasoned, photo });
   }, []);
   /**
    * พิมพ์ที่ช่องไหนในรางขวาก็คิดใหม่ — ฟังที่รางทั้งราง ไม่ต้องแขวน onChange ทีละช่อง
@@ -2780,7 +2784,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
                         ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled name="pay_photo_fee" defaultValue="" title="พนักงานไม่มีค่ารูป — ค่ารูปเบิกได้เฉพาะฝั่งประกัน" className="w-full border rounded-none px-2 py-1 text-sm text-right bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed" /></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '')} title={photoFee?.reason} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2">
+                      {/* ช่องนี้คือ "ราคาต่อรูป" — บอกยอดที่เรียกเก็บจริง (× จำนวนรูป) ไว้ใต้ช่อง ไม่งั้นเห็น 5 แล้วนึกว่าเก็บประกันแค่ 5 (user ทัก 04/09/69) */}
+                      <input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '')} title={`ราคาต่อรูป — ยอดที่เรียกเก็บ = จำนวนรูป × ราคาต่อรูป${photoFee?.reason ? ` · ${photoFee.reason}` : ''}`} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" />
+                      {liveSum.photo > 0 && (
+                        <div className="text-[0.6875rem] text-right text-blue-900/70 tabular-nums">ต่อรูป · รวม {baht(liveSum.photo)}</div>
+                      )}
+                    </td>
                   </tr>
                   {/* บอกที่มาของตัวเลขที่เติมให้ — ไม่งั้นหัวหน้าเห็น 10/5 โผล่มาเองแล้วไม่รู้ว่ามาจากไหน
                       ⛔ ขึ้นเฉพาะตอน "เติมเลขให้จริง" เท่านั้น — บรรทัดกรณี "ไม่มีค่ารูป" ถอดออกแล้ว
