@@ -142,6 +142,20 @@ router.post('/cases/import', integrationAuth, asyncHandler(async (req: Request, 
 
   const cf = (b.caseFields ?? {}) as Record<string, unknown>;
   const warnings = Array.isArray(b.warnings) ? b.warnings.map(String) : [];
+  // เจ้าของเคส: เส้นดึงจากเว็บ (04/09/69) ส่ง created_by = หัวหน้าที่กดดึงมาด้วย — รับเฉพาะ checker/admin
+  // ที่ยังเปิดใช้ ไม่งั้นถอยไปใช้บัญชี integration ตามเดิม (เส้นบอทบนเครื่องผู้ใช้ไม่ส่งช่องนี้)
+  let createdBy = await resolveIntegrationUser();
+  const requested = Number(b.created_by);
+  if (Number.isInteger(requested) && requested > 0) {
+    const { db } = await import('../config/database');
+    const u = await db.query(
+      "SELECT id FROM users WHERE id = $1 AND is_active = true AND role IN ('checker', 'admin')", [requested]);
+    if (u.rows.length === 0) {
+      res.status(400).json({ success: false, message: `created_by ${requested} ไม่ใช่ผู้ตรวจ/แอดมินที่ใช้งานอยู่` });
+      return;
+    }
+    createdBy = requested;
+  }
   const result = await caseService.importFromXml({
     caseFields: {
       customer_name: String(cf.customer_name ?? ''),
@@ -152,7 +166,7 @@ router.post('/cases/import', integrationAuth, asyncHandler(async (req: Request, 
     surveyorCode: String(b.surveyorCode ?? '').toUpperCase(),
     warnings,
     source: 'isurvey_live',
-  }, { insuranceCompany, createdBy: await resolveIntegrationUser() });
+  }, { insuranceCompany, createdBy });
 
   res.json({ success: true, data: { ...result, warnings, hasMoney: expenses !== null } });
 }));

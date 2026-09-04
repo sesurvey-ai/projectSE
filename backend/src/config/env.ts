@@ -28,6 +28,12 @@ const envSchema = z.object({
   // ค่าว่าง = ไม่ตั้ง (Dokploy ชอบส่ง KEY= เปล่า ๆ มา ถ้าใช้ .url() ตรง ๆ backend จะตายตั้งแต่ boot)
   SEBILLING_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   SEBILLING_TOKEN: z.string().optional(),
+  // ดึงงาน "รอตรวจข้อมูล" จาก ISURVEY ด้วยบัญชีรายคน (04/09/69) — ผ่าน service pull_service.py ของ se-autokey
+  // ไม่ตั้ง URL = ฟีเจอร์ปิด · TOKEN = PULL_SERVICE_TOKEN ของ service · CRED_KEY = กุญแจ AES-256 (hex 64 ตัว)
+  // ใช้เข้ารหัสรหัสผ่าน ISURVEY ที่ผู้ใช้ฝากไว้ — เปลี่ยนแล้วทุกคนต้องกรอกใหม่
+  ISURVEY_SERVICE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
+  ISURVEY_SERVICE_TOKEN: z.string().optional(),
+  CRED_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   UPLOAD_DIR: z.string().default('./src/uploads'),

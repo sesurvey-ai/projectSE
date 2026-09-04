@@ -11,6 +11,7 @@ import leaveRoutes from './leave.routes';
 import attendanceRoutes from './attendance.routes';
 import dutyRoutes from './duty.routes';
 import integrationRoutes from './integration.routes';
+import isurveyRoutes from './isurvey.routes';
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.use('/consult', consultRoutes);
 router.use('/leave', leaveRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/duty', dutyRoutes);
+router.use('/isurvey', isurveyRoutes);
 router.use('/integrations', integrationRoutes); // เครื่องมือภายใน (se-autokey) — service token
 
 export default router;

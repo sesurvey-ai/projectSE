@@ -34,6 +34,8 @@ const NAV_ITEMS: Record<string, { label: string; href: string }[]> = {
     { label: 'รายการงาน', href: '/inspector' },
     // งานจากระบบ ISURVEY เดิม: อัปโหลด XML → สร้างเคส → ตรวจ/แก้ → ปิดงาน → บอทนำเข้า EMCS
     { label: 'นำเข้าจากไฟล์ XML', href: '/inspector/cases/import-xml' },
+    { label: 'งานรอตรวจ (ISURVEY)', href: '/inspector/isurvey' },
+    { label: 'บัญชี ISURVEY', href: '/inspector/isurvey/account' },
   ],
 };
 
