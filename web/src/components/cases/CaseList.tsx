@@ -161,15 +161,22 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
     };
   }, [needsAutokey]);
 
-  // ส่งเคสให้ SE-AutoKey นำเข้า EMCS (ตอนนี้ฝั่งโปรแกรมยัง dry-run — หยุดก่อนแตะ EMCS จริง)
+  // ส่งเคสให้ SE-AutoKey บนเครื่องนี้นำเข้า EMCS **จริง** (สร้าง draft — บอทไม่กดส่งงาน คนกดเอง)
+  // user เปิดโหมดจริงจากเว็บ 04/09/69 · ถามยืนยันก่อนเพราะ draft ที่สร้างแล้วลบใน EMCS ไม่ได้ (ยกเลิกได้อย่างเดียว)
   const sendToAutokey = async (c: Case) => {
     if (busyId !== null) return;
+    if (!window.confirm(`สร้าง draft บน EMCS ของเคส #${c.id}${c.claim_no ? ` (เคลม ${c.claim_no})` : ''} ตอนนี้?
+
+`
+      + 'บอทบนเครื่องนี้จะเปิด EMCS แล้วกรอกให้จนถึง draft — ไม่กด "ส่งงานใหม่" ให้ ต้องตรวจแล้วกดส่งเอง
+'
+      + 'draft ที่สร้างแล้วลบใน EMCS ไม่ได้ (ยกเลิกได้อย่างเดียว) กดตกลงเมื่อพร้อม')) return;
     setBusyId(c.id);
     try {
       const res = await fetch(`${AUTOKEY_URL}/api/import-sesurvey`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: c.id, claim_no: c.claim_no || '', survey_job_no: c.survey_job_no || '' }),
+        body: JSON.stringify({ case_id: c.id, claim_no: c.claim_no || '', survey_job_no: c.survey_job_no || '', live: true }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -278,13 +285,15 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
                       </span>
                     )
                   ) : sentIds.has(c.id) ? (
-                    <span className="text-xs font-medium text-emerald-700">✓ ส่งเข้า AutoKey แล้ว</span>
+                    <span className="text-xs font-medium text-emerald-700" title="บอทกำลังสร้าง draft — ดูความคืบหน้าที่หน้าโปรแกรม SE-AutoKey บนเครื่องนี้ · เสร็จแล้วแถวนี้จะเปลี่ยนเป็น draft ค้าง">
+                      ✓ ส่งให้บอทเครื่องนี้แล้ว — กำลังสร้าง draft
+                    </span>
                   ) : approved ? (
                     autokey === 'ready' ? (
                       <button
                         onClick={() => sendToAutokey(c)}
                         disabled={busyId !== null}
-                        title="ส่งให้โปรแกรม SE-AutoKey บนเครื่องนี้นำเข้า EMCS"
+                        title="ส่งให้โปรแกรม SE-AutoKey บนเครื่องนี้สร้าง draft บน EMCS (ถามยืนยันก่อน)"
                         className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                       >
                         {busyId === c.id ? 'กำลังส่ง...' : '⚡ นำเข้า EMCS'}
