@@ -12,7 +12,7 @@
  *   - "ดึงเข้า" ทีละงานเสร็จ → เด้งไปหน้าเคสนั้นเลย · "ดึงทั้งหมด" ไม่เด้ง
  * หน้านี้ "สร้างเคส" อย่างเดียว — ไม่เขียนอะไรกลับ ISURVEY (งานที่นั่นสถานะเดิม)
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
@@ -27,6 +27,18 @@ type PullResult = { caseId?: number; warnings?: string[]; photos?: { added?: num
 
 const PENDING = 'รอตรวจข้อมูล';
 const ALL = '__all__';
+/**
+ * จำรายการที่โหลดล่าสุดไว้ในแท็บนี้ (sessionStorage) — เปลี่ยนเมนู/เด้งไปหน้าเคสแล้วกลับมาไม่ต้องโหลดใหม่
+ * (โหลดครั้งหนึ่ง 10 กว่าวินาที) · ปิดแท็บ = หาย · กด "โหลดรายการ" = ดึงสดทับ
+ */
+const CACHE_KEY = 'isurvey-pending-cache-v1';
+type Cache = { from: string; to: string; status: string; rows: Row[]; filter: Filter | null; loadedAt: string };
+const readCache = (): Cache | null => {
+  try { const raw = sessionStorage.getItem(CACHE_KEY); return raw ? (JSON.parse(raw) as Cache) : null; } catch { return null; }
+};
+const writeCache = (c: Cache | null) => {
+  try { if (c) sessionStorage.setItem(CACHE_KEY, JSON.stringify(c)); else sessionStorage.removeItem(CACHE_KEY); } catch { /* storage ปิด — ไม่เป็นไร */ }
+};
 const todayISO = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);   // วันตามเวลาไทย
 const errMsg = (e: unknown) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || (e as Error)?.message || 'เกิดข้อผิดพลาด';
@@ -47,8 +59,20 @@ export default function IsurveyPendingPage() {
   const [pulling, setPulling] = useState<Record<string, boolean>>({});
   const [results, setResults] = useState<Record<string, { ok: boolean; text: string; caseId?: number }>>({});
   const [bulk, setBulk] = useState(false);
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
 
   const key = (r: Row) => `${r.claim_no}|${r.survey_no}`;
+
+  // กลับมาที่หน้านี้ → เอารายการที่เคยโหลดในแท็บนี้ขึ้นมาก่อน (รวมธง "มีแล้ว #…" ของงานที่เพิ่งดึง)
+  useEffect(() => {
+    const c = readCache();
+    if (c && Array.isArray(c.rows)) {
+      setFrom(c.from); setTo(c.to); setRows(c.rows); setFilter(c.filter ?? null); setStatus(c.status || PENDING); setLoadedAt(c.loadedAt);
+    }
+  }, []);
+  useEffect(() => {
+    if (rows && loadedAt) writeCache({ from, to, status, rows, filter, loadedAt });
+  }, [rows, filter, status, from, to, loadedAt]);
 
   const load = async () => {
     setLoading(true); setError(''); setNeedAccount(false); setResults({});
@@ -57,12 +81,13 @@ export default function IsurveyPendingPage() {
       const cases = (r.data?.data?.cases ?? []) as Row[];
       setRows(cases);
       setFilter((r.data?.data?.filter ?? null) as Filter | null);
+      setLoadedAt(new Date().toISOString());
       // ค่าเริ่มต้นดู "รอตรวจข้อมูล" — ถ้าช่วงนี้ไม่มีเลยค่อยโชว์ทั้งหมด จะได้ไม่เจอตารางว่างทั้งที่มีงาน
       if (!cases.some((c) => c.status === PENDING)) setStatus(ALL); else setStatus(PENDING);
     } catch (e) {
       const code = (e as { response?: { status?: number } })?.response?.status;
       if (code === 412) setNeedAccount(true);
-      setError(errMsg(e)); setRows(null);
+      setError(errMsg(e)); setRows(null); setLoadedAt(null); writeCache(null);
     } finally { setLoading(false); }
   };
 
@@ -161,6 +186,11 @@ export default function IsurveyPendingPage() {
         </div>
       )}
 
+      {rows && loadedAt && (
+        <div className="mb-1 text-xs text-gray-500">
+          รายการที่โหลดเมื่อ {new Date(loadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })} — จำไว้ในแท็บนี้ กด &quot;โหลดรายการ&quot; เพื่อดึงสดใหม่
+        </div>
+      )}
       {rows && filter && (
         <div className="mb-2 text-xs text-gray-600">
           {filter.applied
