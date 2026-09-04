@@ -43,18 +43,34 @@ interface CaseListProps { cases: Case[]; basePath?: string; }
 // (เรียก http://127.0.0.1 จากหน้า https ได้ — เบราว์เซอร์ยกเว้น mixed-content ให้ loopback)
 const AUTOKEY_URL = 'http://127.0.0.1:8765';
 
-type AutokeyState = 'checking' | 'ready' | 'missing';
+type AutokeyState = 'checking' | 'ready' | 'missing' | 'blocked';
+
+/** Chrome 142+ ("Local network access"): เว็บ https ต้องได้รับอนุญาตจากผู้ใช้ก่อนจึงจะคุยกับ 127.0.0.1 ได้
+ *  → 'prompt' = Chrome จะเด้งถามตอนยิงครั้งแรก · 'denied' = ผู้ใช้เคยกดบล็อก (ต้องไปแก้ที่ตั้งค่าไซต์) · null = เบราว์เซอร์ไม่มีระบบนี้ */
+async function localNetworkPermission(): Promise<PermissionState | null> {
+  try {
+    const p = await navigator.permissions.query({ name: 'local-network-access' as PermissionName });
+    return p.state;
+  } catch {
+    return null;
+  }
+}
 
 /** เครื่องนี้มีโปรแกรม SE-AutoKey เปิดอยู่ไหม — ใช้ตัดสินว่าจะโชว์ปุ่ม "นำเข้า EMCS" หรือข้อความ "รอผู้นำเข้า"
  *  webui ทุกรุ่นตอบพร้อม CORS แม้เป็น 404 → fetch สำเร็จ = มีโปรแกรม · ต่อไม่ติด (ไม่ได้เปิด/ไม่ได้ติดตั้ง) = TypeError */
-async function probeAutokey(): Promise<boolean> {
+async function probeAutokey(): Promise<AutokeyState> {
+  const perm = await localNetworkPermission();
+  if (perm === 'denied') return 'blocked';
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 2000);
+  // ถ้า Chrome ต้องถามสิทธิ์ก่อน (prompt) ให้รอผู้ใช้กดตอบได้นานหน่อย — ไม่งั้นจะสรุปว่า "ไม่มีโปรแกรม" ทั้งที่ยังไม่ทันตอบ
+  const timer = setTimeout(() => ctl.abort(), perm === 'prompt' ? 20000 : 2000);
   try {
     await fetch(`${AUTOKEY_URL}/healthz`, { signal: ctl.signal, cache: 'no-store' });
-    return true;
+    return 'ready';
   } catch {
-    return false;
+    // ผู้ใช้กด "บล็อก" ตอน Chrome ถาม → สิทธิ์เพิ่งกลายเป็น denied หลัง fetch ล้ม
+    if ((await localNetworkPermission()) === 'denied') return 'blocked';
+    return 'missing';
   } finally {
     clearTimeout(timer);
   }
@@ -128,8 +144,8 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
     if (!needsAutokey) return;
     let alive = true;
     const check = async () => {
-      const ok = await probeAutokey();
-      if (alive) setAutokey(ok ? 'ready' : 'missing');
+      const st = await probeAutokey();
+      if (alive) setAutokey(st);
     };
     check();
     // เปิดโปรแกรมทีหลังแล้วสลับกลับมาหน้านี้ → ตรวจใหม่ ปุ่มโผล่เองไม่ต้องรีเฟรช
@@ -162,9 +178,9 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
       }
       setSentIds((prev) => new Set(prev).add(c.id));
     } catch {
-      // ผ่านการตรวจตอนเปิดหน้า แต่ตอนกดต่อไม่ติด = โปรแกรมเพิ่งถูกปิด → สลับเป็น "รอผู้นำเข้า" แล้วบอกสาเหตุ
-      setAutokey('missing');
-      alert('เชื่อมต่อโปรแกรม SE-AutoKey ไม่ได้ — โปรแกรมอาจถูกปิดไปแล้ว เปิดใหม่ (start-webui.bat) แล้วลองอีกครั้ง\n\nหรือรอผู้นำเข้า EMCS นำเข้าให้');
+      // ผ่านการตรวจตอนเปิดหน้า แต่ตอนกดต่อไม่ติด = โปรแกรมเพิ่งถูกปิด หรือ Chrome บล็อกการเข้าถึงเครือข่ายภายใน → ตรวจใหม่แล้วบอกสาเหตุ
+      void probeAutokey().then(setAutokey);
+      alert('เชื่อมต่อโปรแกรม SE-AutoKey ไม่ได้ — โปรแกรมอาจถูกปิดไปแล้ว เปิดใหม่ (start-webui.bat) แล้วลองอีกครั้ง\n\nถ้า Chrome ถามสิทธิ์ "เข้าถึงเครือข่ายภายใน" ให้กด อนุญาต (ถ้าเคยกดบล็อก ไปแก้ที่ตั้งค่าไซต์ข้างช่อง URL)\n\nหรือรอผู้นำเข้า EMCS นำเข้าให้');
     } finally {
       setBusyId(null);
     }
@@ -274,7 +290,16 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
                         {busyId === c.id ? 'กำลังส่ง...' : '⚡ นำเข้า EMCS'}
                       </button>
                     ) : autokey === 'checking' ? (
-                      <span className="text-xs text-gray-400">กำลังตรวจโปรแกรม SE-AutoKey…</span>
+                      <span className="text-xs text-gray-400"
+                            title="ถ้า Chrome ถามว่าจะให้เว็บนี้เข้าถึงอุปกรณ์ในเครือข่ายภายในไหม ให้กด อนุญาต — จำเป็นสำหรับคุยกับโปรแกรมบนเครื่องนี้">
+                        กำลังตรวจโปรแกรม SE-AutoKey… (ถ้า Chrome ถามสิทธิ์ ให้กด อนุญาต)
+                      </span>
+                    ) : autokey === 'blocked' ? (
+                      // ผู้ใช้เคยกด "บล็อก" ตอน Chrome ถาม — โปรแกรมอาจเปิดอยู่แต่เว็บคุยด้วยไม่ได้ ต้องแก้ที่ตั้งค่าไซต์
+                      <span className="text-xs text-red-600"
+                            title="Chrome ไม่อนุญาตให้เว็บนี้คุยกับโปรแกรมในเครื่อง — กดไอคอนข้างช่อง URL → การตั้งค่าไซต์ → อนุญาต &quot;การเข้าถึงเครือข่ายภายใน&quot; (Local network access) แล้วโหลดหน้าใหม่">
+                        Chrome บล็อกการเชื่อมต่อโปรแกรม — เปิดสิทธิ์ที่ตั้งค่าไซต์
+                      </span>
                     ) : (
                       // เครื่องนี้ไม่มีบอท — ให้คนที่มีบอท (ผู้นำเข้า EMCS) กดจากเครื่องเขา หรือติดตั้งบอทที่เครื่องนี้
                       <span className="text-xs text-gray-500"
