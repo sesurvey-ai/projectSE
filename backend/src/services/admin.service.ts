@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../config/database';
+import { staffGroupService } from './staffGroup.service';
 import { removeCapture } from './sebilling.service';
 import { env } from '../config/env';
 import { NotFoundError, AppError } from '../middleware/errorHandler';
@@ -102,10 +103,11 @@ export const adminService = {
       [id]
     );
     if (result.rows.length === 0) throw new NotFoundError('User not found');
-    return result.rows[0];
+    // ทีม/หัวหน้าของช่าง — หน้าแก้ไขต้องเห็นค่าปัจจุบัน
+    return { ...result.rows[0], staff_group_id: await staffGroupService.groupOfSurveyor(id) };
   },
 
-  async createUser(data: { username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number; code?: string; phone?: string }) {
+  async createUser(data: { staff_group_id?: number | null; username: string; password: string; first_name: string; last_name: string; role: string; supervisor_id?: number; code?: string; phone?: string }) {
     // เทียบแบบไม่สนตัวพิมพ์ — login ใช้ LOWER(username) จึงห้ามมีชื่อซ้ำต่างเคส (เช่น SE408 กับ se408)
     const existing = await db.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [data.username]);
     if (existing.rows.length > 0) throw new AppError(409, 'Username already exists');
@@ -113,6 +115,11 @@ export const adminService = {
     // กติกาเดียวกับตอนผู้ใช้เปลี่ยนรหัสเอง — ไม่งั้นแอดมินตั้งรหัสอ่อนให้ได้ตั้งแต่แรก
     // แล้วกติกาฝั่งผู้ใช้ก็ไม่มีความหมาย (คนส่วนใหญ่ไม่เคยเปลี่ยนรหัสที่แอดมินตั้งให้)
     assertStrongPassword(data.password, data.username);
+    // ช่างใหม่ต้องมีหัวหน้ากำกับตั้งแต่วันแรก (user เคาะ 04/09/69) — ไม่งั้นงานเขาจะไม่โผล่ให้หัวหน้าคนไหนเลย
+    // (หน้างานรอตรวจกรองตามทีม) · บทบาทอื่นไม่เกี่ยว
+    if (data.role === 'surveyor' && !data.staff_group_id) {
+      throw new AppError(400, 'ช่างสำรวจต้องระบุหัวหน้า/ทีมที่สังกัด');
+    }
     const hash = await bcrypt.hash(data.password, 10);
     const result = await db.query(
       `INSERT INTO users (username, password_hash, first_name, last_name, role, supervisor_id, code, phone)
@@ -121,10 +128,12 @@ export const adminService = {
       [data.username, hash, data.first_name, data.last_name, data.role, data.supervisor_id || null,
        data.code || null, data.phone || null]
     );
-    return result.rows[0];
+    const user = result.rows[0];
+    if (data.role === 'surveyor') await staffGroupService.setSurveyorGroup(user.id, data.staff_group_id ?? null);
+    return { ...user, staff_group_id: data.role === 'surveyor' ? data.staff_group_id ?? null : null };
   },
 
-  async updateUser(id: number, data: { first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string; code?: string | null; phone?: string | null }) {
+  async updateUser(id: number, data: { staff_group_id?: number | null; first_name?: string; last_name?: string; role?: string; supervisor_id?: number | null; is_active?: boolean; password?: string; code?: string | null; phone?: string | null }) {
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -147,16 +156,26 @@ export const adminService = {
       params.push(hash);
     }
 
-    if (fields.length === 0) throw new AppError(400, 'No fields to update');
+    if (fields.length === 0 && data.staff_group_id === undefined) throw new AppError(400, 'No fields to update');
 
-    params.push(id);
-    const result = await db.query(
-      `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}
-       RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, phone, created_at`,
-      params
-    );
-    if (result.rows.length === 0) throw new NotFoundError('User not found');
-    return result.rows[0];
+    let row: Record<string, unknown>;
+    if (fields.length > 0) {
+      params.push(id);
+      const result = await db.query(
+        `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}
+         RETURNING id, username, code, first_name, last_name, role, supervisor_id, is_active, phone, created_at`,
+        params
+      );
+      if (result.rows.length === 0) throw new NotFoundError('User not found');
+      row = result.rows[0];
+    } else {
+      row = await this.getUserById(id);
+    }
+    // ทีม/หัวหน้า — ตั้งหลังอัปเดตชื่อ/รหัส เพื่อให้ข้อความสมาชิกเป็นค่าล่าสุด · ส่ง null = เอาออกจากทีม
+    if (data.staff_group_id !== undefined) {
+      await staffGroupService.setSurveyorGroup(id, data.staff_group_id ?? null);
+    }
+    return { ...row, staff_group_id: await staffGroupService.groupOfSurveyor(id) };
   },
 
   async deleteUser(id: number, adminId: number) {

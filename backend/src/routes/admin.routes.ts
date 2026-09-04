@@ -27,6 +27,8 @@ const createUserSchema = z.object({
   // เบอร์โทรพนักงาน — EMCS บังคับช่อง "โทรศัพท์ผู้สำรวจภัย" (txtAcc_Tel) และเคสที่นำเข้า
   // จากไฟล์ระบบเก่าไม่มีเบอร์มาด้วย ระบบจึงหยิบจากทะเบียนนี้ไปเติมให้ (case.service)
   phone: z.string().max(20).optional(),
+  // ทีม/หัวหน้าของช่าง (staff_groups) — บังคับตอนสร้างช่างใหม่ (ตรวจใน service) ไม่ให้มีช่างที่ไม่มีหัวหน้ากำกับ
+  staff_group_id: z.number().int().positive().nullable().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -38,6 +40,7 @@ const updateUserSchema = z.object({
   password: z.string().min(8, 'รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร').optional(),
   code: z.string().max(16).nullable().optional(),
   phone: z.string().max(20).nullable().optional(),
+  staff_group_id: z.number().int().positive().nullable().optional(),
 });
 
 router.get('/users', adminController.getUsers);

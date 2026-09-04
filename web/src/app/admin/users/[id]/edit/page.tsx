@@ -17,7 +17,9 @@ export default function EditUserPage() {
     role: '',
     is_active: true,
     password: '',
+    staff_group_id: '',
   });
+  const [groups, setGroups] = useState<{ id: number; name: string; checker_username?: string | null }[]>([]);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,11 +38,13 @@ export default function EditUserPage() {
             role: u.role,
             is_active: u.is_active,
             password: '',
+            staff_group_id: u.staff_group_id ? String(u.staff_group_id) : '',
           });
         }
       })
       .catch(() => setError('ไม่พบผู้ใช้'))
       .finally(() => setLoading(false));
+    api.get('/api/staff-groups').then((r) => setGroups(r.data?.data ?? [])).catch(() => setGroups([]));
   }, [userId]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -56,6 +60,8 @@ export default function EditUserPage() {
         is_active: form.is_active,
       };
       if (form.password) payload.password = form.password;
+      // ทีม/หัวหน้า — ส่งเฉพาะช่าง (null = เอาออกจากทีม)
+      if (form.role === 'surveyor') payload.staff_group_id = form.staff_group_id ? Number(form.staff_group_id) : null;
 
       const res = await api.put(`/api/admin/users/${userId}`, payload);
       if (res.data.success) {
@@ -110,6 +116,17 @@ export default function EditUserPage() {
               <option value="checker">ผู้ตรวจสอบ</option>
             </select>
           </div>
+
+          {form.role === 'surveyor' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">หัวหน้า/ทีมที่สังกัด <span className="text-gray-400 font-normal">— ว่าง = ยังไม่มีหัวหน้ากำกับ งานจะไม่โผล่ให้หัวหน้าคนไหน</span></label>
+              <select value={form.staff_group_id} onChange={(e) => setForm({ ...form, staff_group_id: e.target.value })}
+                className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 ${form.staff_group_id ? 'border-gray-300' : 'border-amber-400 bg-amber-50'}`}>
+                <option value="">— ยังไม่มีหัวหน้า —</option>
+                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}{g.checker_username ? '' : ' (ยังไม่มีบัญชีผู้ตรวจ)'}</option>)}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่านใหม่ (เว้นว่างถ้าไม่ต้องการเปลี่ยน)</label>

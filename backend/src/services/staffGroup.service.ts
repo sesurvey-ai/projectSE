@@ -124,6 +124,35 @@ export const staffGroupService = {
   },
 
   /**
+   * ตั้งทีมให้ช่างจากทะเบียนพนักงาน (หน้าสร้าง/แก้ผู้ใช้ของแอดมิน) — ช่างอยู่ได้ทีมเดียว:
+   * ลบสมาชิกเดิมที่ชี้มาที่ผู้ใช้นี้ (หรือรหัสเดียวกัน) แล้วใส่ทีมใหม่ · groupId null = เอาออกจากทุกทีม
+   * ข้อความสมาชิกใช้รูปแบบเดียวกับ ISURVEY ("SE315 ชื่อ นามสกุล") เพื่อให้ตัวกรองงานรอตรวจจับด้วยรหัสได้
+   */
+  async setSurveyorGroup(userId: number, groupId: number | null): Promise<void> {
+    const u = await db.query('SELECT id, code, first_name, last_name FROM users WHERE id = $1', [userId]);
+    if (u.rows.length === 0) throw new NotFoundError('User not found');
+    const { code, first_name, last_name } = u.rows[0] as { code: string | null; first_name: string; last_name: string };
+    const upperCode = code ? String(code).trim().toUpperCase() : null;
+    await db.query(
+      `DELETE FROM staff_group_members WHERE surveyor_id = $1 OR ($2::text IS NOT NULL AND UPPER(staff_code) = $2)`,
+      [userId, upperCode]);
+    if (!groupId) return;
+    const g = await db.query('SELECT id FROM staff_groups WHERE id = $1', [groupId]);
+    if (g.rows.length === 0) throw new AppError(400, 'ไม่พบทีม/หัวหน้าที่เลือก');
+    const staffName = [upperCode, `${first_name ?? ''} ${last_name ?? ''}`.trim()].filter(Boolean).join(' ');
+    await db.query(
+      `INSERT INTO staff_group_members (group_id, staff_name, staff_code, surveyor_id) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (group_id, staff_name) DO UPDATE SET staff_code = EXCLUDED.staff_code, surveyor_id = EXCLUDED.surveyor_id`,
+      [groupId, staffName, upperCode, userId]);
+  },
+
+  /** ทีมปัจจุบันของช่าง (id) — null = ยังไม่มีหัวหน้ากำกับ */
+  async groupOfSurveyor(userId: number): Promise<number | null> {
+    const r = await db.query('SELECT group_id FROM staff_group_members WHERE surveyor_id = $1 LIMIT 1', [userId]);
+    return r.rows[0]?.group_id ?? null;
+  },
+
+  /**
    * ตัวกรองงาน ISURVEY ของบัญชีนี้ — null = ไม่กรอง (แอดมิน / ยังไม่ผูกทีม)
    * คืนฟังก์ชันตัดสินจาก "ชื่อพนักงานสำรวจ" ที่ ISURVEY ให้ (empcode: รหัส+ชื่อ หรือชื่อบริษัท OSS)
    */

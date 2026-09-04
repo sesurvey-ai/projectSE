@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -14,16 +14,23 @@ export default function NewUserPage() {
     first_name: '',
     last_name: '',
     role: 'surveyor',
+    staff_group_id: '',
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // ทีม/หัวหน้า (staff_groups) — ช่างใหม่ต้องเลือกตั้งแต่ตอนสร้าง (04/09/69) ไม่ให้มีช่างที่ไม่มีหัวหน้ากำกับ
+  const [groups, setGroups] = useState<{ id: number; name: string; checker_username?: string | null }[]>([]);
+  useEffect(() => {
+    api.get('/api/staff-groups').then((r) => setGroups(r.data?.data ?? [])).catch(() => setGroups([]));
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
     try {
-      const res = await api.post('/api/admin/users', form);
+      const payload: Record<string, unknown> = { ...form, staff_group_id: form.role === 'surveyor' && form.staff_group_id ? Number(form.staff_group_id) : undefined };
+      const res = await api.post('/api/admin/users', payload);
       if (res.data.success) {
         router.push('/admin/users');
       } else {
@@ -83,6 +90,18 @@ export default function NewUserPage() {
               <option value="checker">ผู้ตรวจสอบ</option>
             </select>
           </div>
+
+          {form.role === 'surveyor' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">หัวหน้า/ทีมที่สังกัด <span className="text-red-500">*</span> <span className="text-gray-400 font-normal">— หน้างานรอตรวจของหัวหน้าจะเห็นงานของช่างคนนี้</span></label>
+              <select value={form.staff_group_id} onChange={(e) => setForm({ ...form, staff_group_id: e.target.value })} required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900">
+                <option value="">— เลือกหัวหน้า —</option>
+                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}{g.checker_username ? '' : ' (ยังไม่มีบัญชีผู้ตรวจ)'}</option>)}
+              </select>
+              {groups.length === 0 && <p className="text-xs text-amber-700 mt-1">ยังไม่มีทีมในระบบ — สร้างที่เมนู &quot;จัดการทีมผู้ตรวจ&quot; ก่อน</p>}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <Link href="/admin/users" className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium">
