@@ -9,6 +9,8 @@ interface Case {
   id: number;
   customer_name: string;
   incident_location: string;
+  claim_no?: string | null;
+  survey_job_no?: string | null;
   status: string;
   surveyor_first_name?: string;
   surveyor_last_name?: string;
@@ -103,7 +105,7 @@ export default function AdminCasesPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 flex flex-wrap gap-4">
         <input
           type="text"
-          placeholder="ค้นหาชื่อลูกค้า, สถานที่..."
+          placeholder="ค้นหาชื่อลูกค้า, สถานที่, เลขเคลม, เลขเซอร์เวย์..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none flex-1 min-w-[200px]"
@@ -133,6 +135,7 @@ export default function AdminCasesPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">เลขเคลม / เลขเซอร์เวย์</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อลูกค้า</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานที่</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
@@ -145,6 +148,10 @@ export default function AdminCasesPage() {
               {cases.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">#{c.id}</td>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <div className="font-mono text-gray-800">{c.claim_no || '-'}</div>
+                    <div className="font-mono text-xs text-gray-500">{c.survey_job_no || '-'}</div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{c.customer_name}</td>
                   <td className="px-4 py-3 text-sm text-gray-700 max-w-[200px] truncate">{c.incident_location || '-'}</td>
                   <td className="px-4 py-3">

@@ -202,20 +202,27 @@ export const adminService = {
       params.push(status);
     }
     if (search) {
-      conditions.push(`(c.customer_name ILIKE $${idx} OR c.incident_location ILIKE $${idx})`);
+      // ค้นด้วยเลขเคลม/เลขเซอร์เวย์ได้ด้วย — แอดมินหาเคสจากเลขที่คนแจ้งมา ไม่ใช่ชื่อลูกค้า (user 04/09/69)
+      conditions.push(`(c.customer_name ILIKE $${idx} OR c.incident_location ILIKE $${idx}
+                        OR sr.claim_no ILIKE $${idx} OR sr.survey_job_no ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
+    // เลขเคลม/เลขเซอร์เวย์อยู่ที่ survey_reports (ปกติ 1 แถวต่อเคส — เอาแถวล่าสุดกันซ้ำ)
+    const reportJoin = `LEFT JOIN LATERAL (
+         SELECT sr.claim_no, sr.survey_job_no FROM survey_reports sr
+          WHERE sr.case_id = c.id ORDER BY sr.id DESC LIMIT 1) sr ON TRUE`;
 
     const [dataResult, countResult] = await Promise.all([
       db.query(
-        `SELECT c.*,
+        `SELECT c.*, sr.claim_no, sr.survey_job_no,
                 u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
                 cr.first_name AS creator_first_name, cr.last_name AS creator_last_name
          FROM cases c
+         ${reportJoin}
          LEFT JOIN users u ON c.assigned_to = u.id
          LEFT JOIN users cr ON c.created_by = cr.id
          ${where}
@@ -223,7 +230,7 @@ export const adminService = {
          LIMIT $${idx} OFFSET $${idx + 1}`,
         [...params, limit, offset]
       ),
-      db.query(`SELECT COUNT(*)::int AS total FROM cases c ${where}`, params),
+      db.query(`SELECT COUNT(*)::int AS total FROM cases c ${reportJoin} ${where}`, params),
     ]);
 
     return {
