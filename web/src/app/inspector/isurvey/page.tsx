@@ -139,7 +139,7 @@ export default function IsurveyPendingPage() {
   const notImported = visible.filter((r) => !r.imported_case_id && r.claim_no).length;
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">  {/* ตาราง 9 คอลัมน์กว้างกว่า max-w-6xl ปุ่ม "ดึงเข้า" เคยถูกตัดขอบขวา (04/09/69) */}
       <div className="flex flex-wrap items-end gap-3 mb-3">
         <div>
           <h1 className="text-xl font-bold text-gray-800">งานรอตรวจ (ISURVEY)</h1>
