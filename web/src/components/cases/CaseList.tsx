@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export interface Case {
@@ -42,6 +42,23 @@ interface CaseListProps { cases: Case[]; basePath?: string; }
 // — หน้าเว็บสั่ง EMCS ตรงไม่ได้ (คนละ origin) จึงส่งงานให้โปรแกรมบนเครื่องเป็นคนขับ EMCS แทน
 // (เรียก http://127.0.0.1 จากหน้า https ได้ — เบราว์เซอร์ยกเว้น mixed-content ให้ loopback)
 const AUTOKEY_URL = 'http://127.0.0.1:8765';
+
+type AutokeyState = 'checking' | 'ready' | 'missing';
+
+/** เครื่องนี้มีโปรแกรม SE-AutoKey เปิดอยู่ไหม — ใช้ตัดสินว่าจะโชว์ปุ่ม "นำเข้า EMCS" หรือข้อความ "รอผู้นำเข้า"
+ *  webui ทุกรุ่นตอบพร้อม CORS แม้เป็น 404 → fetch สำเร็จ = มีโปรแกรม · ต่อไม่ติด (ไม่ได้เปิด/ไม่ได้ติดตั้ง) = TypeError */
+async function probeAutokey(): Promise<boolean> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 2000);
+  try {
+    await fetch(`${AUTOKEY_URL}/healthz`, { signal: ctl.signal, cache: 'no-store' });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * ป้าย "ที่มา" ของงาน — สำคัญเพราะ **กติกาเงินต่างกันตามที่มา**
@@ -103,6 +120,31 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
   const [busyId, setBusyId] = useState<number | null>(null);
   const [sentIds, setSentIds] = useState<Set<number>>(new Set());
 
+  // ปุ่ม "นำเข้า EMCS" ใช้ได้เฉพาะเครื่องที่มีบอทเปิดอยู่ — เครื่องอื่นเห็น "รอผู้นำเข้า EMCS หรือติดตั้ง se-autokey"
+  // (user เคาะ 04/09/69: บอทอยู่บนเครื่องผู้ใช้ก่อน รันบนเซิร์ฟเวอร์ไว้เฟสถัดไป) · ตรวจเฉพาะเมื่อมีแถวที่ต้องใช้ปุ่ม
+  const needsAutokey = cases.some((c) => c.status === 'reviewed' && !c.emcs_imported_at);
+  const [autokey, setAutokey] = useState<AutokeyState>('checking');
+  useEffect(() => {
+    if (!needsAutokey) return;
+    let alive = true;
+    const check = async () => {
+      const ok = await probeAutokey();
+      if (alive) setAutokey(ok ? 'ready' : 'missing');
+    };
+    check();
+    // เปิดโปรแกรมทีหลังแล้วสลับกลับมาหน้านี้ → ตรวจใหม่ ปุ่มโผล่เองไม่ต้องรีเฟรช
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = setInterval(onVisible, 60000);
+    return () => {
+      alive = false;
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(timer);
+    };
+  }, [needsAutokey]);
+
   // ส่งเคสให้ SE-AutoKey นำเข้า EMCS (ตอนนี้ฝั่งโปรแกรมยัง dry-run — หยุดก่อนแตะ EMCS จริง)
   const sendToAutokey = async (c: Case) => {
     if (busyId !== null) return;
@@ -120,7 +162,9 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
       }
       setSentIds((prev) => new Set(prev).add(c.id));
     } catch {
-      alert('เชื่อมต่อโปรแกรม SE-AutoKey ไม่ได้ — เปิดโปรแกรมก่อน (start-webui.bat) แล้วลองใหม่\n\nหรือใช้ปุ่มดาวน์โหลด XML ในหน้ารายละเอียดเคสแล้วนำเข้า EMCS เอง');
+      // ผ่านการตรวจตอนเปิดหน้า แต่ตอนกดต่อไม่ติด = โปรแกรมเพิ่งถูกปิด → สลับเป็น "รอผู้นำเข้า" แล้วบอกสาเหตุ
+      setAutokey('missing');
+      alert('เชื่อมต่อโปรแกรม SE-AutoKey ไม่ได้ — โปรแกรมอาจถูกปิดไปแล้ว เปิดใหม่ (start-webui.bat) แล้วลองอีกครั้ง\n\nหรือรอผู้นำเข้า EMCS นำเข้าให้');
     } finally {
       setBusyId(null);
     }
@@ -220,14 +264,24 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
                   ) : sentIds.has(c.id) ? (
                     <span className="text-xs font-medium text-emerald-700">✓ ส่งเข้า AutoKey แล้ว</span>
                   ) : approved ? (
-                    <button
-                      onClick={() => sendToAutokey(c)}
-                      disabled={busyId !== null}
-                      title="ส่งให้โปรแกรม SE-AutoKey นำ XML เข้า EMCS (ต้องเปิดโปรแกรมบนเครื่องนี้ก่อน)"
-                      className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                    >
-                      {busyId === c.id ? 'กำลังส่ง...' : '⚡ นำเข้า EMCS'}
-                    </button>
+                    autokey === 'ready' ? (
+                      <button
+                        onClick={() => sendToAutokey(c)}
+                        disabled={busyId !== null}
+                        title="ส่งให้โปรแกรม SE-AutoKey บนเครื่องนี้นำเข้า EMCS"
+                        className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      >
+                        {busyId === c.id ? 'กำลังส่ง...' : '⚡ นำเข้า EMCS'}
+                      </button>
+                    ) : autokey === 'checking' ? (
+                      <span className="text-xs text-gray-400">กำลังตรวจโปรแกรม SE-AutoKey…</span>
+                    ) : (
+                      // เครื่องนี้ไม่มีบอท — ให้คนที่มีบอท (ผู้นำเข้า EMCS) กดจากเครื่องเขา หรือติดตั้งบอทที่เครื่องนี้
+                      <span className="text-xs text-gray-500"
+                            title="เครื่องนี้ไม่มีโปรแกรม SE-AutoKey เปิดอยู่ — ให้ผู้นำเข้า EMCS นำเข้าให้ หรือติดตั้ง/เปิดโปรแกรม (start-webui.bat) แล้วสลับกลับมาหน้านี้ ปุ่มจะขึ้นเอง">
+                        รอผู้นำเข้า EMCS หรือติดตั้ง se-autokey
+                      </span>
+                    )
                   ) : (
                     // ⛔ ยังไม่อนุมัติ = บอทดึงข้อมูลไม่ได้อยู่แล้ว (403 NOT_APPROVED)
                     // โชว์ปุ่มไว้เฉย ๆ จะทำให้กดแล้วเจอ error โดยไม่รู้สาเหตุ
