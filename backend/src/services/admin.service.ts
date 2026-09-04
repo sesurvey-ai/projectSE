@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { db } from '../config/database';
+import { removeCapture } from './sebilling.service';
 import { env } from '../config/env';
 import { NotFoundError, AppError } from '../middleware/errorHandler';
 import { assertStrongPassword } from './password';
@@ -263,6 +264,9 @@ export const adminService = {
   },
 
   async deleteCase(id: number) {
+    // แถวในบัญชี se-billing ของเคสนี้ (ถ้าเคยอนุมัติแล้วส่งไป) ต้องถอนก่อน — ลบเคสแล้วปล่อยแถวค้าง
+    // = ยอดผีในบัญชีที่ไม่มีเคสให้ย้อนดู (removeCapture ไม่ throw · ไม่ได้ตั้ง SEBILLING_URL = ข้าม)
+    await removeCapture(id);
     // Find related photos before deleting
     const surveyPhotos = await db.query(
       `SELECT sp.file_path FROM survey_photos sp
