@@ -352,7 +352,9 @@ const OPPONENT_FIELDS: FieldDef[] = [
   // ต้องเป็นตัวเลือก ไม่ใช่ช่องพิมพ์ — แอปเก็บ "รหัส" (BEV/HEV/…) และบอทเลือกด้วย
   // select_by_value แบบตรงตัว พิมพ์เองเพี้ยนนิดเดียว = บอทข้ามช่องนี้เงียบ ๆ
   { k: 'ev_type', label: 'ประเภทรถไฟฟ้า', options: EV_TYPE_OPTIONS.map((e) => e.value).filter(Boolean) },
-  { k: 'estimated_cost', label: 'ค่าเสียหายประมาณ' },
+  // ชื่อเดียวกับช่องของรถประกันและ EMCS — user หาช่องนี้ไม่เจอตอนชื่อ "ค่าเสียหายประมาณ" (04/09/69)
+  // ยอด = Σ(ค่าแรง+ค่าอะไหล่) จากตารางความเสียหายของคู่กรณี (ตัวแปลง ISURVEY คำนวณให้เหมือนรถประกัน)
+  { k: 'estimated_cost', label: 'ความเสียหายประมาณ (บาท)' },
   // dropdown ไม่ใช่ช่องพิมพ์ — บน EMCS ช่องนี้คือ ddlHave_Insurance และบอทเลือกด้วย
   // fuzzy_select · สะกดเองเพี้ยนนิดเดียว บอทข้ามช่องนี้เงียบ ๆ (ดู insurerOptions.ts)
   { k: 'insurer', label: 'มีประกันภัยที่ *', optionsFrom: (r) => insurerOptions(String(r.insurer ?? '')) },
