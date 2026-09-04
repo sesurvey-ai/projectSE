@@ -77,8 +77,9 @@ export const isurveyPullService = {
     const creds = await isurveyCredService.getPlain(userId);
     let rows: PendingRow[];
     try {
+      // status '' = ขอทุกสถานะ — หน้าเว็บให้ผู้ใช้เลือกสถานะเอง (ค่าเริ่มต้นบนหน้า = รอตรวจข้อมูล) user ขอ 04/09/69
       const r = await callService<{ cases: PendingRow[] }>('/pending',
-        { ...creds, date_from: dateFrom ?? '', date_to: dateTo ?? '' }, 150000);
+        { ...creds, date_from: dateFrom ?? '', date_to: dateTo ?? '', status: '' }, 150000);
       rows = r.cases ?? [];
       await isurveyCredService.markResult(userId, true);
     } catch (e) {
