@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import api, { getPhotoUrl } from '@/lib/api';
 
 export interface Case {
   id: number;
@@ -35,6 +36,15 @@ export interface Case {
   // ⚠️ "นำเข้าแล้ว" ≠ "ส่งงานแล้ว" — บอทสร้าง draft ให้เท่านั้น ปุ่ม "ส่งงานใหม่" คนกดเอง
   emcs_submitted_at?: string | null;  // ยืนยันแล้วว่าประกันรับงาน (null = ยังเป็น draft ค้าง)
   emcs_status_text?: string | null;   // ข้อความสถานะดิบจากหน้ารายการ EMCS
+  // คิวนำเข้า EMCS ของสถานีนำเข้า (migration 052) — งานล่าสุดของเคส
+  emcs_job_id?: number | null;
+  emcs_job_status?: string | null;      // queued | running | done | failed | cancelled
+  emcs_job_dry_run?: boolean | null;
+  emcs_job_station?: string | null;
+  emcs_job_error?: string | null;
+  emcs_job_screenshot?: string | null;
+  emcs_job_position?: number | string | null;
+  emcs_job_requested_at?: string | null;
 }
 interface CaseListProps { cases: Case[]; basePath?: string; }
 
@@ -135,10 +145,42 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
   const router = useRouter();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [sentIds, setSentIds] = useState<Set<number>>(new Set());
+  /** ผลกดคิวแบบทันที (ก่อนรายการโหลดใหม่ผ่าน socket) — key = case id */
+  const [queued, setQueued] = useState<Record<number, 'queued' | 'cancelled'>>({});
+  const [queueBusy, setQueueBusy] = useState<number | null>(null);
+  const [shotOpen, setShotOpen] = useState<number | null>(null);
+
+  /** ส่งเข้าคิวสถานีนำเข้า — กดจากเครื่องไหนก็ได้ ไม่ต้องมีบอทในเครื่อง (user ตัดสิน 04/09/69) */
+  const enqueue = async (c: Case) => {
+    if (queueBusy !== null) return;
+    if (!window.confirm(`ส่งเคส #${c.id}${c.claim_no ? ` (เคลม ${c.claim_no})` : ''} เข้าคิวให้สถานีสร้าง draft บน EMCS?`)) return;
+    setQueueBusy(c.id);
+    try {
+      await api.post(`/api/emcs-queue/cases/${c.id}`);
+      setQueued((m) => ({ ...m, [c.id]: 'queued' }));
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message || 'ส่งเข้าคิวไม่สำเร็จ');
+    } finally { setQueueBusy(null); }
+  };
+  const dequeue = async (c: Case) => {
+    if (queueBusy !== null) return;
+    setQueueBusy(c.id);
+    try {
+      const r = await api.delete(`/api/emcs-queue/cases/${c.id}`);
+      if (r.data?.data?.cancelled) setQueued((m) => ({ ...m, [c.id]: 'cancelled' }));
+      else alert(r.data?.data?.reason || 'ยกเลิกไม่ได้');
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message || 'ยกเลิกไม่สำเร็จ');
+    } finally { setQueueBusy(null); }
+  };
 
   // ปุ่ม "นำเข้า EMCS" ใช้ได้เฉพาะเครื่องที่มีบอทเปิดอยู่ — เครื่องอื่นเห็น "รอผู้นำเข้า EMCS หรือติดตั้ง se-autokey"
   // (user เคาะ 04/09/69: บอทอยู่บนเครื่องผู้ใช้ก่อน รันบนเซิร์ฟเวอร์ไว้เฟสถัดไป) · ตรวจเฉพาะเมื่อมีแถวที่ต้องใช้ปุ่ม
   const needsAutokey = cases.some((c) => c.status === 'reviewed' && !c.emcs_imported_at);
+  // รายการใหม่มาถึง (socket/โพล) = server รู้สถานะจริงแล้ว → เลิกใช้ผลที่กดในเครื่อง
+  useEffect(() => { setQueued({}); }, [cases]);
   const [autokey, setAutokey] = useState<AutokeyState>('checking');
   useEffect(() => {
     if (!needsAutokey) return;
@@ -285,35 +327,63 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
                     <span className="text-xs font-medium text-emerald-700" title="บอทกำลังสร้าง draft — ดูความคืบหน้าที่หน้าโปรแกรม SE-AutoKey บนเครื่องนี้ · เสร็จแล้วแถวนี้จะเปลี่ยนเป็น draft ค้าง">
                       ✓ ส่งให้บอทเครื่องนี้แล้ว — กำลังสร้าง draft
                     </span>
-                  ) : approved ? (
-                    autokey === 'ready' ? (
-                      <button
-                        onClick={() => sendToAutokey(c)}
-                        disabled={busyId !== null}
-                        title="ส่งให้โปรแกรม SE-AutoKey บนเครื่องนี้สร้าง draft บน EMCS (ถามยืนยันก่อน)"
-                        className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                      >
-                        {busyId === c.id ? 'กำลังส่ง...' : '⚡ นำเข้า EMCS'}
-                      </button>
-                    ) : autokey === 'checking' ? (
-                      <span className="text-xs text-gray-400"
-                            title="ถ้า Chrome ถามว่าจะให้เว็บนี้เข้าถึงอุปกรณ์ในเครือข่ายภายในไหม ให้กด อนุญาต — จำเป็นสำหรับคุยกับโปรแกรมบนเครื่องนี้">
-                        กำลังตรวจโปรแกรม SE-AutoKey… (ถ้า Chrome ถามสิทธิ์ ให้กด อนุญาต)
-                      </span>
-                    ) : autokey === 'blocked' ? (
-                      // ผู้ใช้เคยกด "บล็อก" ตอน Chrome ถาม — โปรแกรมอาจเปิดอยู่แต่เว็บคุยด้วยไม่ได้ ต้องแก้ที่ตั้งค่าไซต์
-                      <span className="text-xs text-red-600"
-                            title="Chrome ไม่อนุญาตให้เว็บนี้คุยกับโปรแกรมในเครื่อง — กดไอคอนข้างช่อง URL → การตั้งค่าไซต์ → อนุญาต &quot;การเข้าถึงเครือข่ายภายใน&quot; (Local network access) แล้วโหลดหน้าใหม่">
-                        Chrome บล็อกการเชื่อมต่อโปรแกรม — เปิดสิทธิ์ที่ตั้งค่าไซต์
-                      </span>
-                    ) : (
-                      // เครื่องนี้ไม่มีบอท — ให้คนที่มีบอท (ผู้นำเข้า EMCS) กดจากเครื่องเขา หรือติดตั้งบอทที่เครื่องนี้
-                      <span className="text-xs text-gray-500"
-                            title="เครื่องนี้ไม่มีโปรแกรม SE-AutoKey เปิดอยู่ — ให้ผู้นำเข้า EMCS นำเข้าให้ หรือติดตั้ง/เปิดโปรแกรม (start-webui.bat) แล้วสลับกลับมาหน้านี้ ปุ่มจะขึ้นเอง">
-                        รอผู้นำเข้า EMCS หรือติดตั้ง se-autokey
-                      </span>
-                    )
-                  ) : (
+                  ) : approved ? (() => {
+                    // สถานะคิวสถานี — ค่าจาก server ถูกทับด้วยผลที่เพิ่งกดในเครื่องจนกว่ารายการจะโหลดใหม่
+                    const local = queued[c.id];
+                    const st = local === 'queued' ? 'queued' : local === 'cancelled' ? 'cancelled' : (c.emcs_job_status ?? null);
+                    const err = c.emcs_job_error ?? '';
+                    if (st === 'queued') {
+                      return (
+                        <span className="text-xs text-blue-800" title={`ส่งเข้าคิวเมื่อ ${c.emcs_job_requested_at ?? 'เมื่อสักครู่'}`}>
+                          🕓 อยู่ในคิวสถานี{c.emcs_job_position && local !== 'queued' ? ` ลำดับ ${c.emcs_job_position}` : ''}{c.emcs_job_dry_run ? ' (ทดสอบ)' : ''}
+                          <button type="button" onClick={() => dequeue(c)} disabled={queueBusy !== null}
+                            className="ml-2 underline text-gray-500 hover:text-red-600 disabled:opacity-50">ยกเลิก</button>
+                        </span>
+                      );
+                    }
+                    if (st === 'running') {
+                      return (
+                        <span className="text-xs text-amber-700" title="บอทที่สถานีกำลังเปิด EMCS สร้าง draft — รอสักครู่ แถวนี้จะเปลี่ยนเอง">
+                          ⚙️ สถานี {c.emcs_job_station || ''} กำลังสร้าง draft…
+                        </span>
+                      );
+                    }
+                    return (
+                      <div className="flex flex-col items-start gap-1">
+                        {st === 'failed' && (
+                          <div className="text-xs text-red-600 max-w-[22rem]" title={err}>
+                            ❌ สถานี{c.emcs_job_station ? ` ${c.emcs_job_station}` : ''} นำเข้าไม่สำเร็จ: {err.length > 90 ? `${err.slice(0, 90)}…` : err}
+                            {c.emcs_job_screenshot && (
+                              <button type="button" onClick={() => setShotOpen(shotOpen === c.id ? null : c.id)}
+                                className="ml-1 underline text-gray-600">{shotOpen === c.id ? 'ซ่อนภาพ' : 'ดูภาพหน้าจอ'}</button>
+                            )}
+                            {shotOpen === c.id && c.emcs_job_screenshot && (
+                              <img src={getPhotoUrl(c.emcs_job_screenshot)} alt="ภาพหน้าจอตอนพัง" className="mt-1 border border-gray-300 max-w-[22rem]" />
+                            )}
+                          </div>
+                        )}
+                        {st === 'done' && c.emcs_job_dry_run && (
+                          <span className="text-xs text-emerald-700">✓ ทดสอบสถานีผ่าน (ไม่แตะ EMCS)</span>
+                        )}
+                        {st === 'cancelled' && <span className="text-xs text-gray-400">ยกเลิกคิวแล้ว</span>}
+                        <button
+                          type="button" onClick={() => enqueue(c)} disabled={queueBusy !== null}
+                          title="ส่งเข้าคิวให้เครื่องสถานีนำเข้า EMCS สร้าง draft (กดได้จากทุกเครื่อง ไม่ต้องมีบอทในเครื่อง)"
+                          className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {queueBusy === c.id ? 'กำลังส่ง...' : st === 'failed' ? '📤 ส่งเข้าคิวอีกครั้ง' : '📤 ส่งเข้าคิว EMCS'}
+                        </button>
+                        {autokey === 'ready' && (
+                          // ทางรอง: เครื่องนี้มีบอทเปิดอยู่ — สร้าง draft ด้วยตัวเองได้เลย (ถามยืนยันก่อน)
+                          <button type="button" onClick={() => sendToAutokey(c)} disabled={busyId !== null}
+                            title="ใช้บอทบนเครื่องนี้สร้าง draft เดี๋ยวนี้ (ไม่ผ่านคิว) — อย่ากดถ้าเครื่องนี้คือสถานีที่กำลังรับคิวอยู่"
+                            className="text-[0.7rem] text-indigo-700 underline hover:text-indigo-900 disabled:opacity-50">
+                            {busyId === c.id ? 'กำลังส่ง...' : 'หรือนำเข้าด้วยบอทเครื่องนี้'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })() : (
                     // ⛔ ยังไม่อนุมัติ = บอทดึงข้อมูลไม่ได้อยู่แล้ว (403 NOT_APPROVED)
                     // โชว์ปุ่มไว้เฉย ๆ จะทำให้กดแล้วเจอ error โดยไม่รู้สาเหตุ
                     <span className="text-xs text-gray-400">รออนุมัติก่อน</span>

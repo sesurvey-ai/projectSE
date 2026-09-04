@@ -6,6 +6,7 @@ import { env } from '../config/env';
 import { caseService } from '../services/case.service';
 import { uploadZipOnly } from '../config/multer';
 import { notifyCaseChanged } from '../services/caseEvents';
+import { emcsQueueService } from '../services/emcsQueue.service';
 
 // ── routes สำหรับเครื่องมือภายใน (se-autokey) — auth ด้วย service token ไม่ผูกบัญชีพนักงาน ──
 // เปิดใช้โดยตั้ง env INTEGRATION_TOKEN (ยาว ≥24 ตัว); ไม่ตั้ง = ทุก route ตอบ 401
@@ -353,6 +354,30 @@ router.get('/files', integrationAuth, asyncHandler(async (req: Request, res: Res
     return;
   }
   res.sendFile(full);
+}));
+
+// ───────────── คิวนำเข้า EMCS — ฝั่งสถานี (main.py --station) ─────────────
+// สถานีวนขอรับงาน → ทำ → รายงานผล · heartbeat ระหว่างทำ (ไม่มีเกิน 40 นาที = ถือว่าสถานีหาย งานกลับเข้าคิว)
+router.post('/emcs-queue/claim', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const station = String(req.body?.station ?? '').trim() || 'station';
+  const job = await emcsQueueService.claim(station);
+  res.json({ success: true, data: { job } });
+}));
+
+router.post('/emcs-queue/:jobId/heartbeat', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const jobId = parseInt(req.params.jobId as string);
+  const station = String(req.body?.station ?? '').trim() || 'station';
+  const ok = await emcsQueueService.heartbeat(jobId, station);
+  res.json({ success: true, data: { ok } });
+}));
+
+router.post('/emcs-queue/:jobId/result', integrationAuth, asyncHandler(async (req: Request, res: Response) => {
+  const jobId = parseInt(req.params.jobId as string);
+  const b = req.body ?? {};
+  const job = await emcsQueueService.report(jobId, {
+    ok: b.ok === true, error: b.error, esurvey_no: b.esurvey_no, log_tail: b.log_tail, screenshot_b64: b.screenshot_b64,
+  });
+  res.json({ success: true, data: job });
 }));
 
 export default router;

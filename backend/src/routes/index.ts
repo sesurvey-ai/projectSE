@@ -13,6 +13,7 @@ import dutyRoutes from './duty.routes';
 import integrationRoutes from './integration.routes';
 import isurveyRoutes from './isurvey.routes';
 import staffGroupRoutes from './staffGroup.routes';
+import emcsQueueRoutes from './emcsQueue.routes';
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.use('/attendance', attendanceRoutes);
 router.use('/duty', dutyRoutes);
 router.use('/isurvey', isurveyRoutes);
 router.use('/staff-groups', staffGroupRoutes);
+router.use('/emcs-queue', emcsQueueRoutes);        // คิวนำเข้า EMCS (สถานีนำเข้า) — checker/admin
 router.use('/integrations', integrationRoutes); // เครื่องมือภายใน (se-autokey) — service token
 
 export default router;

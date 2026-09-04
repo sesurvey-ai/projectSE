@@ -1052,12 +1052,22 @@ export const caseService = {
               (SELECT sp2.total FROM survey_pay sp2 WHERE sp2.case_id = c.id) AS pay_total,
               (SELECT se.service_fee_price IS NOT NULL
                  FROM survey_expenses se WHERE se.report_id = sr.id) AS has_insurer_bill,
-              ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count
+              ROW_NUMBER() OVER (PARTITION BY sr.claim_no ORDER BY c.created_at) AS visit_count,
+              -- คิวนำเข้า EMCS (สถานีนำเข้า, migration 052): งานล่าสุดของเคส + ลำดับถ้ายังรอ
+              ej.id AS emcs_job_id, ej.status AS emcs_job_status, ej.dry_run AS emcs_job_dry_run,
+              ej.station AS emcs_job_station, ej.error AS emcs_job_error, ej.screenshot_path AS emcs_job_screenshot,
+              to_char(ej.requested_at, 'HH24:MI') AS emcs_job_requested_at,
+              CASE WHEN ej.status = 'queued'
+                   THEN (SELECT COUNT(*) FROM emcs_import_jobs q2 WHERE q2.status = 'queued' AND q2.id <= ej.id)
+              END AS emcs_job_position
        FROM cases c
        LEFT JOIN users u ON c.assigned_to = u.id
        LEFT JOIN survey_reports sr ON sr.case_id = c.id
        LEFT JOIN reviews rv ON rv.case_id = c.id
        LEFT JOIN users ck ON ck.id = rv.checker_id
+       LEFT JOIN LATERAL (
+         SELECT j.* FROM emcs_import_jobs j WHERE j.case_id = c.id ORDER BY j.id DESC LIMIT 1
+       ) ej ON TRUE
        -- เคสที่ตีกลับไปแล้วสถานะเป็น 'assigned' — ต้องยังอยู่ในลิสต์นี้
        -- ไม่งั้นหัวหน้าตีกลับแล้วตามงานตัวเองต่อไม่ได้ และ "หัวหน้ายังแก้เองได้" ก็ทำไม่ได้จริง
        WHERE c.status IN ('surveyed', 'reviewed')

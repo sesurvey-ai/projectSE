@@ -215,6 +215,23 @@ export default function InspectorDashboard() {
         </div>
       </div>
 
+      {/* คิวสถานีนำเข้า EMCS (migration 052) — นับจากงานล่าสุดต่อเคสที่ติดมากับรายการ ไม่ต้องยิง API เพิ่ม */}
+      {(() => {
+        const q = cases.filter((c) => c.emcs_job_status === 'queued').length;
+        const r = cases.filter((c) => c.emcs_job_status === 'running').length;
+        const f = cases.filter((c) => c.emcs_job_status === 'failed' && !c.emcs_imported_at).length;
+        if (q + r + f === 0) return null;
+        return (
+          <div className={`mb-4 flex items-center gap-2 rounded-lg border px-4 py-2.5 ${f > 0 ? 'border-red-200 bg-red-50' : 'border-blue-200 bg-blue-50'}`}>
+            <span className="text-lg leading-none">🏭</span>
+            <span className={`text-sm ${f > 0 ? 'text-red-800' : 'text-blue-900'}`}>
+              คิวสถานีนำเข้า EMCS: รอ <strong>{q}</strong> · กำลังทำ <strong>{r}</strong>
+              {f > 0 ? <> · นำเข้าไม่สำเร็จ <strong>{f}</strong> (ดูสาเหตุในแท็บ &quot;อนุมัติแล้ว&quot; แล้วส่งเข้าคิวอีกครั้ง)</> : null}
+            </span>
+          </div>
+        );
+      })()}
+
       {pendingDrafts > 0 && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
           <span className="text-lg leading-none">⏳</span>
