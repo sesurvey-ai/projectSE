@@ -165,11 +165,8 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
   // user เปิดโหมดจริงจากเว็บ 04/09/69 · ถามยืนยันก่อนเพราะ draft ที่สร้างแล้วลบใน EMCS ไม่ได้ (ยกเลิกได้อย่างเดียว)
   const sendToAutokey = async (c: Case) => {
     if (busyId !== null) return;
-    if (!window.confirm(`สร้าง draft บน EMCS ของเคส #${c.id}${c.claim_no ? ` (เคลม ${c.claim_no})` : ''} ตอนนี้?
-
-`
-      + 'บอทบนเครื่องนี้จะเปิด EMCS แล้วกรอกให้จนถึง draft — ไม่กด "ส่งงานใหม่" ให้ ต้องตรวจแล้วกดส่งเอง
-'
+    if (!window.confirm(`สร้าง draft บน EMCS ของเคส #${c.id}${c.claim_no ? ` (เคลม ${c.claim_no})` : ''} ตอนนี้?\n\n`
+      + 'บอทบนเครื่องนี้จะเปิด EMCS แล้วกรอกให้จนถึง draft — ไม่กด "ส่งงานใหม่" ให้ ต้องตรวจแล้วกดส่งเอง\n'
       + 'draft ที่สร้างแล้วลบใน EMCS ไม่ได้ (ยกเลิกได้อย่างเดียว) กดตกลงเมื่อพร้อม')) return;
     setBusyId(c.id);
     try {
