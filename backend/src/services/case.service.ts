@@ -1339,6 +1339,50 @@ export const caseService = {
   },
 
   /**
+   * หมุนรูปแล้ว**เขียนทับไฟล์เดิม** — user สั่ง 04/09/69 "หมุนแล้วให้เป็นแบบนั้นเลย"
+   *
+   * เขียนทับไฟล์ (ไม่ใช่เก็บมุมไว้ใน DB) เพราะทุกทางที่ใช้รูปต่อ — หน้าเว็บ, บอทที่โหลดรูปไป
+   * ขึ้น EMCS, XML สำรอง — จะได้รูปที่หมุนแล้วโดยไม่ต้องรู้เรื่องมุมเลย · ชื่อไฟล์เดิมทำให้
+   * ตัวกันรูปซ้ำของบอท (ดูจากชื่อไฟล์) ไม่นับเป็นรูปใหม่ · กติกาล็อกเหมือนลบรูป: ก่อนอนุมัติเท่านั้น
+   * · sharp: .rotate() ไม่มีอาร์กิวเมนต์ = จัดตาม EXIF ก่อน แล้วค่อยหมุนตามที่สั่ง ไม่งั้นรูปมือถือ
+   *   ที่พึ่ง EXIF จะหมุนเพี้ยน · เขียนไฟล์ชั่วคราวแล้ว rename ทับ — ไม่มีจังหวะที่ไฟล์เขียนครึ่งเดียว
+   */
+  async rotateCasePhoto(caseId: number, photoId: number, deg: number) {
+    const fs = await import('fs');
+    const pathMod = await import('path');
+    if (![90, -90, 180].includes(deg)) throw new AppError(400, 'หมุนได้เฉพาะ 90 / -90 / 180 องศา');
+    await assertNotApproved(caseId);
+    const r = await db.query(
+      `SELECT sp.id, sp.file_path FROM survey_photos sp
+         JOIN survey_reports sr ON sp.report_id = sr.id
+        WHERE sp.id = $1 AND sr.case_id = $2`, [photoId, caseId]);
+    if (r.rows.length === 0) throw new NotFoundError('ไม่พบรูปนี้ในเคส');
+    const full = pathMod.default.resolve(env.UPLOAD_DIR, String(r.rows[0].file_path));
+    const root = pathMod.default.resolve(env.UPLOAD_DIR);
+    if (!full.startsWith(root + pathMod.default.sep) || !fs.default.existsSync(full)) {
+      throw new NotFoundError('ไม่พบไฟล์รูปบนเซิร์ฟเวอร์');
+    }
+    const sharp = (await import('sharp')).default;
+    const input = fs.default.readFileSync(full);
+    const meta = await sharp(input).metadata();
+    // ⛔ sharp หมุนได้ครั้งเดียวต่อ pipeline — `.rotate().rotate(deg)` จะทิ้งอันหนึ่งเงียบ ๆ (พิสูจน์แล้ว 04/09/69)
+    //    จึงจัดตาม EXIF ให้เสร็จเป็นรูปจริงก่อน (pass 1) แล้วค่อยหมุนตามที่สั่ง (pass 2)
+    const oriented = await sharp(input).rotate().toBuffer();
+    let pipe = sharp(oriented).rotate(deg).withMetadata();
+    // คงชนิดไฟล์เดิม · JPEG บีบใหม่ที่คุณภาพสูง — ค่าเริ่มต้นของ sharp (80) จะทำรูปหลักฐานหยาบลงทุกครั้งที่หมุน
+    if (meta.format === 'jpeg') pipe = pipe.jpeg({ quality: 92 });
+    else if (meta.format === 'png') pipe = pipe.png();
+    else if (meta.format === 'webp') pipe = pipe.webp({ quality: 92 });
+    else throw new AppError(400, `หมุนไฟล์ชนิด ${meta.format ?? 'ไม่ทราบ'} ไม่ได้`);
+    const out = await pipe.toBuffer();
+    const tmp = `${full}.rotating`;
+    fs.default.writeFileSync(tmp, out);
+    fs.default.renameSync(tmp, full);
+    const after = await sharp(out).metadata();
+    return { rotated: photoId, deg, width: after.width, height: after.height };
+  },
+
+  /**
    * แตก zip รูปเข้าเคส
    *
    * `skipExisting` — สำหรับ **ดึงรูปซ้ำจากต้นทางเดิม** (ISURVEY ทยอยอัปรูปหลังช่างส่งงาน:

@@ -101,6 +101,16 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  /** ผู้ตรวจสอบหมุนรูป (เขียนทับไฟล์ — ก่อนอนุมัติเท่านั้น) */
+  rotatePhoto: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const photoId = parseInt(req.params.photoId as string);
+    if (!Number.isFinite(photoId)) throw new AppError(400, 'photoId ไม่ถูกต้อง');
+    const deg = Number(req.body?.deg);
+    const result = await caseService.rotateCasePhoto(caseId, photoId, deg);
+    sendSuccess(res, result);
+  }),
+
   getDetail: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);
     const detail = await caseService.getDetail(caseId, req.user);

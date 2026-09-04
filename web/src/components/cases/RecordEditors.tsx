@@ -392,6 +392,8 @@ const OPPONENT_FIELDS: FieldDef[] = [
 
 /** คีย์ที่ editor นี้ดูแล — ใช้ตัดสินว่าการ์ด "ว่างทั้งใบ" ไหม โดยไม่นับ damage/kfk */
 const OPPONENT_KEYS = OPPONENT_FIELDS.map((f) => f.k);
+/** ช่องยอดความเสียหาย — วาดแยกจากกริด ไว้เหนือปุ่ม "ข้อมูลความเสียหาย" (ยังอยู่ใน OPPONENT_FIELDS ให้ KEYS ครบ) */
+const OPPONENT_COST_FIELD: FieldDef = OPPONENT_FIELDS.find((f) => f.k === 'estimated_cost')!;
 
 /** 8 ช่องที่ `vlidOpoCar` บล็อกทุกบริษัท — ใช้นับป้าย "ยังขาด N ช่องบังคับ" */
 export const OPPONENT_REQUIRED = [
@@ -450,7 +452,7 @@ export function OpponentEditor({ items, onChange }: {
               </button>
             </div>
             <div className="p-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-              {OPPONENT_FIELDS.map((f) => (
+              {OPPONENT_FIELDS.filter((f) => f.k !== OPPONENT_COST_FIELD.k).map((f) => (
                 <Field
                   key={f.k}
                   def={f.optionsFrom ? { ...f, options: f.optionsFrom(it) } : f}
@@ -459,9 +461,15 @@ export function OpponentEditor({ items, onChange }: {
                 />
               ))}
             </div>
+            {/* ยอดความเสียหายอยู่คู่กับรายการความเสียหาย (เหนือปุ่ม) — user 04/09/69: อยู่ในกริดรถแล้วหาไม่เจอ
+                ค่าจากงาน ISURVEY = Σ(ค่าแรง+ค่าอะไหล่) ของรายการด้านล่างนี้ */}
+            <div className="px-3 grid grid-cols-2 md:grid-cols-4 gap-x-4">
+              <Field def={OPPONENT_COST_FIELD} value={String(it[OPPONENT_COST_FIELD.k] ?? '')}
+                     onChange={(v) => set(i, OPPONENT_COST_FIELD.k, v)} />
+            </div>
             {/* ใต้ช่องสุดท้าย ("ที่อยู่ผู้ขับขี่") — user ขอย้ายลงมาจากหัวการ์ด 20/08/69
                 เพราะปุ่มขอบบางบนแถบหัวกลืนกับชื่อการ์ด หาไม่เจอ */}
-            <div className="px-3 pb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="px-3 pb-3 pt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               <button
                 type="button" onClick={() => setDmgFor(i)}
                 className="shrink-0 whitespace-nowrap px-3 py-1.5 text-sm border border-blue-300 rounded-none bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium"

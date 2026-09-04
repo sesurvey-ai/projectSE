@@ -73,12 +73,44 @@ export default function PhotoGallery(
   const [selected, setSelected] = useState<Photo | null>(null);
   const [zoom, setZoom] = useState(1);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [rotating, setRotating] = useState<number | null>(null);
+  /** รูปที่เพิ่งหมุน → เวลาที่หมุน · ต่อท้าย URL ให้เบราว์เซอร์โหลดไฟล์ใหม่ (ชื่อไฟล์เดิม แคชจะโชว์รูปเก่า) */
+  const [rev, setRev] = useState<Record<number, number>>({});
 
   const winRef = useRef<Window | null>(null);
 
   const catLabelOf = (c?: string | null) => (c && c.trim()) ? c.trim() : 'ไม่ระบุหมวด';
-  const srcOf = (p: Photo) => getPhotoUrl(p.file_path || p.filename || '');
+  const srcOf = (p: Photo) => {
+    const u = getPhotoUrl(p.file_path || p.filename || '');
+    return rev[p.id] ? `${u}${u.includes('?') ? '&' : '?'}r=${rev[p.id]}` : u;
+  };
   const viewerList = () => photos.map((x) => ({ id: x.id, src: srcOf(x), label: catLabelOf(x.category) }));
+  /** ส่งรายการรูปล่าสุดเข้าหน้าต่างดูรูป (ถ้ายังเปิดอยู่) */
+  const pushToViewer = () => {
+    const w = winRef.current;
+    if (!w || w.closed) return;
+    const fn = (w as unknown as { __seSetPhotos?: (l: unknown[]) => void }).__seSetPhotos;
+    if (typeof fn === 'function') fn(viewerList());
+  };
+
+  /**
+   * หมุนรูป 90° — เซิร์ฟเวอร์เขียนทับไฟล์เดิม จึง "เป็นแบบนั้นเลย" ทุกที่ที่ใช้รูปต่อ (user 04/09/69)
+   * เสร็จแล้วเปลี่ยน rev ให้ทุก <img> ของรูปนั้นโหลดใหม่ (แกลเลอรี, กล่องทับจอ, หน้าต่างดูรูป)
+   */
+  const rotatePhoto = async (p: Photo, deg: 90 | -90) => {
+    if (!caseId || rotating !== null) return;
+    setRotating(p.id);
+    try {
+      await api.post(`/api/cases/${caseId}/photos/${p.id}/rotate`, { deg }, { timeout: 60000 });
+      setRev((m) => ({ ...m, [p.id]: Date.now() }));
+    } catch (e) {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      window.alert(err.response?.status === 423
+        ? 'เคสนี้อนุมัติแล้ว — หมุนรูปไม่ได้จนกว่าแอดมินจะปลดล็อก'
+        : (err.response?.data?.message || 'หมุนรูปไม่สำเร็จ'));
+      pushToViewer();   // ปลดปุ่มในหน้าต่างดูรูป (มันรอรายการใหม่อยู่)
+    } finally { setRotating(null); }
+  };
 
   /**
    * ส่งรายการรูปล่าสุดเข้าไปในหน้าต่างดูรูปทุกครั้งที่รายการเปลี่ยน (ลบ/เพิ่มรูป)
@@ -87,12 +119,9 @@ export default function PhotoGallery(
    *    (หน้าเว็บแม่รีเฟรชเอง แต่หน้าต่างที่เปิดค้างไว้ไม่มีทางรู้)
    */
   useEffect(() => {
-    const w = winRef.current;
-    if (!w || w.closed) return;
-    const fn = (w as unknown as { __seSetPhotos?: (l: unknown[]) => void }).__seSetPhotos;
-    if (typeof fn === 'function') fn(viewerList());
+    pushToViewer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos]);
+  }, [photos, rev]);
 
   /** ลบรูปทีละใบ — ถามยืนยันก่อนเพราะกดแล้วไฟล์หายจริง ไม่มีถังขยะให้กู้ */
   const removePhoto = async (p: Photo, skipConfirm = false) => {
@@ -143,6 +172,11 @@ export default function PhotoGallery(
       const target = photos.find((x) => x.id === id);
       if (target) void removePhoto(target, true);
     };
+    // สะพานหมุนรูป — หน้าแม่ยิง API แล้วส่งรายการ (URL ใหม่) กลับเข้าหน้าต่างเหมือนตอนลบ
+    (window as unknown as { __seRotatePhoto?: (id: number, deg: 90 | -90) => void }).__seRotatePhoto = (id: number, deg: 90 | -90) => {
+      const target = photos.find((x) => x.id === id);
+      if (target) void rotatePhoto(target, deg);
+    };
 
     // ค่าที่ฝังลงหน้าต่างใหม่ผ่าน JSON.stringify ทั้งหมด — ไม่ต้อง escape HTML เอง
     const list = viewerList();
@@ -186,7 +220,8 @@ html,body{margin:0;height:100%;background:#111;color:#eee;font-family:system-ui,
 <div id="grip" title="ลากเพื่อปรับความกว้าง"></div>
 <div id="main">
 <div id="bar"><div id="lgrp"><button id="prev">‹ ก่อนหน้า</button><button id="next">ถัดไป ›</button>
-<button id="zout" title="ย่อ">−</button><span id="zlab">100%</span><button id="zin" title="ขยาย">+</button></div>
+<button id="zout" title="ย่อ">−</button><span id="zlab">100%</span><button id="zin" title="ขยาย">+</button>
+${canDelete ? '<button id="rotl" title="หมุนซ้าย 90° (ปุ่ม L) — บันทึกลงไฟล์เลย">↺ หมุนซ้าย</button><button id="rotr" title="หมุนขวา 90° (ปุ่ม R) — บันทึกลงไฟล์เลย">หมุนขวา ↻</button>' : ''}</div>
 <span id="cap"></span>
 <div id="rgrp">${canDelete ? '<button id="del">ลบรูปนี้</button>' : ''}</div></div>
 <div id="view"><img id="img" alt=""><span id="empty" style="display:none">ไม่มีรูปในหมวดนี้</span></div>
@@ -197,6 +232,11 @@ var img=document.getElementById('img'),cap=document.getElementById('cap'),empty=
 var prev=document.getElementById('prev'),next=document.getElementById('next');
 var strip=document.getElementById('strip'),filter=document.getElementById('filter');
 var del=document.getElementById('del');
+var rotl=document.getElementById('rotl'),rotr=document.getElementById('rotr');
+function setRot(on){if(rotl){rotl.disabled=!on;rotr.disabled=!on;}}
+function rot(d){if(!L.length||!rotl||rotl.disabled)return;setRot(false);cap.textContent='กำลังหมุน…';
+  try{window.opener.__seRotatePhoto(L[i].id,d);}catch(e){alert('หมุนไม่สำเร็จ — หน้าเว็บหลักถูกปิดไปแล้ว');setRot(true);}}
+if(rotl){rotl.onclick=function(){rot(-90);};rotr.onclick=function(){rot(90);};}
 function cats(){var o=[],k;for(k=0;k<ALL.length;k++){if(o.indexOf(ALL[k].label)<0)o.push(ALL[k].label);}return o;}
 function buildFilter(){var keep=cat,o='<option value="">ทั้งหมด ('+ALL.length+')</option>',c=cats(),k,n;
   for(k=0;k<c.length;k++){n=0;for(var j=0;j<ALL.length;j++)if(ALL[j].label===c[k])n++;
@@ -212,12 +252,12 @@ function mark(){var ts=strip.getElementsByTagName('img'),k;
   if(ts[i])ts[i].scrollIntoView({block:'nearest'});}
 function show(){
   if(!L.length){img.style.display='none';empty.style.display='';cap.textContent='0 / 0';
-    prev.disabled=next.disabled=true;if(del)del.disabled=true;document.title='รูปเคส';return;}
+    prev.disabled=next.disabled=true;if(del)del.disabled=true;setRot(false);document.title='รูปเคส';return;}
   if(i<0)i=0;if(i>L.length-1)i=L.length-1;
   var it=L[i];img.style.display='';empty.style.display='none';img.src=it.src;z=1;applyZoom();
   cap.textContent=it.label+' · '+(i+1)+' / '+L.length;
   document.title=it.label+' '+(i+1)+'/'+L.length;
-  prev.disabled=i<=0;next.disabled=i>=L.length-1;if(del)del.disabled=false;mark();}
+  prev.disabled=i<=0;next.disabled=i>=L.length-1;if(del)del.disabled=false;setRot(true);mark();}
 function applyFilter(keepId){
   L=cat?ALL.filter(function(x){return x.label===cat;}):ALL.slice();
   var at=-1,k;if(keepId!=null)for(k=0;k<L.length;k++)if(L[k].id===keepId)at=k;
@@ -255,7 +295,8 @@ grip.onmousedown=function(e){drag=true;grip.className='on';e.preventDefault();};
 document.onmousemove=function(e){if(drag)setW(e.clientX);};
 document.onmouseup=function(){if(drag){drag=false;grip.className='';}};
 document.onkeydown=function(e){if(e.key==='ArrowLeft')prev.onclick();
-  else if(e.key==='ArrowRight')next.onclick();else if(e.key==='Escape')window.close();};
+  else if(e.key==='ArrowRight')next.onclick();else if(e.key==='Escape')window.close();
+  else if(e.key==='r'||e.key==='R')rot(90);else if(e.key==='l'||e.key==='L')rot(-90);};
 buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
 <\/script></body></html>`);
     w.document.close();
@@ -273,7 +314,7 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
     );
   }
 
-  const getSrc = (p: Photo) => getPhotoUrl(p.file_path || p.filename || '');
+  const getSrc = srcOf;          // มี rev ต่อท้ายให้รูปที่เพิ่งหมุนโหลดใหม่
   const catLabel = (c?: string | null) => (c && c.trim()) ? c.trim() : 'ไม่ระบุหมวด';
 
   // จัดกลุ่มตามหมวด (ภาษาไทย) เรียงตามลำดับที่พบ — checker ดูรูปเป็นหมวดๆ ได้
@@ -345,6 +386,18 @@ buildFilter();applyFilter(ALL.length?ALL[Math.min(i,ALL.length-1)].id:null);
                     className="ml-3 rounded-none bg-red-600/80 px-2 py-0.5 text-xs hover:bg-red-600 disabled:opacity-50">
                     {deleting === selected.id ? 'กำลังลบ...' : 'ลบรูปนี้'}
                   </button>
+                ) : null}
+                {caseId ? (
+                  <>
+                    <button type="button" onClick={() => { void rotatePhoto(selected, -90); }} disabled={rotating !== null}
+                      title="หมุนซ้าย 90° — บันทึกลงไฟล์เลย"
+                      className="ml-3 rounded-none bg-white/20 px-2 py-0.5 text-xs hover:bg-white/30 disabled:opacity-50">↺ หมุนซ้าย</button>
+                    <button type="button" onClick={() => { void rotatePhoto(selected, 90); }} disabled={rotating !== null}
+                      title="หมุนขวา 90° — บันทึกลงไฟล์เลย"
+                      className="ml-1 rounded-none bg-white/20 px-2 py-0.5 text-xs hover:bg-white/30 disabled:opacity-50">
+                      {rotating === selected.id ? 'กำลังหมุน…' : 'หมุนขวา ↻'}
+                    </button>
+                  </>
                 ) : null}
               </div>
             </div>
