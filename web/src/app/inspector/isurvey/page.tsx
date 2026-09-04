@@ -204,15 +204,15 @@ export default function IsurveyPendingPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="px-3 py-2 text-left">ส่งงานเมื่อ</th>
-                <th className="px-3 py-2 text-left">เลขเคลม</th>
-                <th className="px-3 py-2 text-left">เลขเซอร์เวย์</th>
-                <th className="px-3 py-2 text-left">ผู้สำรวจ</th>
-                <th className="px-3 py-2 text-left">จังหวัด</th>
-                <th className="px-3 py-2 text-left">ทะเบียน</th>
-                <th className="px-3 py-2 text-left">สถานะ ISURVEY</th>
-                <th className="px-3 py-2 text-left">ในระบบเรา</th>
-                <th className="px-3 py-2 text-right"></th>
+                <th className="px-2 py-2 text-left">ส่งงานเมื่อ</th>
+                <th className="px-2 py-2 text-left">เลขเคลม</th>
+                <th className="px-2 py-2 text-left">เลขเซอร์เวย์</th>
+                <th className="px-2 py-2 text-left">ผู้สำรวจ</th>
+                <th className="px-2 py-2 text-left">จังหวัด</th>
+                <th className="px-2 py-2 text-left">ทะเบียน</th>
+                <th className="px-2 py-2 text-left">สถานะ ISURVEY</th>
+                <th className="px-2 py-2 text-left">ในระบบเรา</th>
+                <th className="px-2 py-2 text-right"></th>
               </tr>
             </thead>
             <tbody>
@@ -228,17 +228,17 @@ export default function IsurveyPendingPage() {
                 // key ของแถวต้องไม่ซ้ำ — ถ้าซ้ำ React ปล่อยแถวเก่าค้างในตารางตอนเปลี่ยนตัวกรองสถานะ (เจอจริง 04/09/69)
                 return (
                   <tr key={`${k}#${i}`} className="border-t border-gray-100 align-top">
-                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.finish_dt}</td>
-                    <td className="px-3 py-2 whitespace-nowrap font-mono">{r.claim_no}</td>
-                    <td className="px-3 py-2 whitespace-nowrap font-mono">{r.survey_no}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.surveyor_name}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.acc_province}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.plate_no}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap text-gray-600">{r.finish_dt}</td>
+                    <td className="px-2 py-2 whitespace-nowrap font-mono">{r.claim_no}</td>
+                    <td className="px-2 py-2 whitespace-nowrap font-mono">{r.survey_no}</td>
+                    <td className="px-2 py-2 min-w-[9rem]">{r.surveyor_name}</td>
+                    <td className="px-2 py-2 whitespace-nowrap">{r.acc_province}</td>
+                    <td className="px-2 py-2 whitespace-nowrap">{r.plate_no}</td>
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <span className={r.status === PENDING ? 'text-amber-700' : 'text-gray-700'}>{r.status || '-'}</span>
                       {r.emcs_sent && <span className="ml-1 text-[0.65rem] px-1 py-0.5 border border-green-300 text-green-700 bg-green-50">เข้า EMCS แล้ว</span>}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-2 py-2">
                       {r.imported_case_id ? (
                         <Link href={`/inspector/cases/${r.imported_case_id}`} className="text-green-700 hover:underline whitespace-nowrap">
                           มีแล้ว #{r.imported_case_id}{r.imported_status ? ` · ${STATUS_TH[r.imported_status] ?? r.imported_status}` : ''}
@@ -250,7 +250,7 @@ export default function IsurveyPendingPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <td className="px-2 py-2 text-right whitespace-nowrap">
                       <button type="button" disabled={busy || bulk || !r.claim_no} onClick={() => { if (confirmPull(r)) void pullOne(r, { navigate: true }); }}
                         className={`px-3 py-1 text-xs border ${r.imported_case_id ? 'border-gray-300 bg-white text-gray-700' : 'border-[var(--md-blue)] bg-[var(--md-blue)] text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
                         title={!r.claim_no ? 'ISURVEY ยังไม่มีเลขเคลมของงานนี้ — ดึงเข้าไม่ได้' : r.imported_case_id ? 'ดึงซ้ำ = สร้างเคสใหม่อีกเคส (ระวังซ้ำ)' : 'สร้างเคส + ดึงรูป แล้วเปิดหน้าเคส'}>
