@@ -126,7 +126,7 @@ export default function IsurveyPendingPage() {
   };
 
   const pullAll = async () => {
-    const todo = visible.filter((r) => !r.imported_case_id);
+    const todo = visible.filter((r) => !r.imported_case_id && r.claim_no);   // ไม่มีเลขเคลม = ดึงไม่ได้ ข้าม
     if (todo.length === 0) return;
     const label = status === ALL ? 'ทุกสถานะ' : `สถานะ "${status}"`;
     if (!window.confirm(`ดึงงานที่ยังไม่มีในระบบ (${label}) ทั้งหมด ${todo.length} เรื่อง? (ทีละเรื่อง ใช้เวลาประมาณ ${todo.length * 15} วินาที)`)) return;
@@ -136,7 +136,7 @@ export default function IsurveyPendingPage() {
     } finally { setBulk(false); }
   };
 
-  const notImported = visible.filter((r) => !r.imported_case_id).length;
+  const notImported = visible.filter((r) => !r.imported_case_id && r.claim_no).length;
 
   return (
     <div className="max-w-6xl">
@@ -221,12 +221,13 @@ export default function IsurveyPendingPage() {
                   {rows.length === 0 ? 'ไม่มีงานในช่วงวันที่นี้' : 'ไม่มีงานในสถานะที่เลือก — เปลี่ยนสถานะด้านบน'}
                 </td></tr>
               )}
-              {visible.map((r) => {
+              {visible.map((r, i) => {
                 const k = key(r);
                 const res = results[k];
                 const busy = Boolean(pulling[k]);
+                // key ของแถวต้องไม่ซ้ำ — ถ้าซ้ำ React ปล่อยแถวเก่าค้างในตารางตอนเปลี่ยนตัวกรองสถานะ (เจอจริง 04/09/69)
                 return (
-                  <tr key={k} className="border-t border-gray-100 align-top">
+                  <tr key={`${k}#${i}`} className="border-t border-gray-100 align-top">
                     <td className="px-3 py-2 whitespace-nowrap text-gray-600">{r.finish_dt}</td>
                     <td className="px-3 py-2 whitespace-nowrap font-mono">{r.claim_no}</td>
                     <td className="px-3 py-2 whitespace-nowrap font-mono">{r.survey_no}</td>
@@ -250,9 +251,9 @@ export default function IsurveyPendingPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
-                      <button type="button" disabled={busy || bulk} onClick={() => { if (confirmPull(r)) void pullOne(r, { navigate: true }); }}
+                      <button type="button" disabled={busy || bulk || !r.claim_no} onClick={() => { if (confirmPull(r)) void pullOne(r, { navigate: true }); }}
                         className={`px-3 py-1 text-xs border ${r.imported_case_id ? 'border-gray-300 bg-white text-gray-700' : 'border-[var(--md-blue)] bg-[var(--md-blue)] text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                        title={r.imported_case_id ? 'ดึงซ้ำ = สร้างเคสใหม่อีกเคส (ระวังซ้ำ)' : 'สร้างเคส + ดึงรูป แล้วเปิดหน้าเคส'}>
+                        title={!r.claim_no ? 'ISURVEY ยังไม่มีเลขเคลมของงานนี้ — ดึงเข้าไม่ได้' : r.imported_case_id ? 'ดึงซ้ำ = สร้างเคสใหม่อีกเคส (ระวังซ้ำ)' : 'สร้างเคส + ดึงรูป แล้วเปิดหน้าเคส'}>
                         {busy ? 'กำลังดึง…' : r.imported_case_id ? 'ดึงซ้ำ' : 'ดึงเข้า'}
                       </button>
                     </td>

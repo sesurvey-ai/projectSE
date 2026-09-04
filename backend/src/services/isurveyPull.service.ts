@@ -81,6 +81,15 @@ export const isurveyPullService = {
       const r = await callService<{ cases: PendingRow[] }>('/pending',
         { ...creds, date_from: dateFrom ?? '', date_to: dateTo ?? '', status: '' }, 150000);
       rows = r.cases ?? [];
+      // รายงาน ISURVEY บางทีคืนงานเดียวกันซ้ำ 2 แถว (ทุกช่องเหมือนกัน) → ตัดเหลือแถวเดียว
+      // ไม่งั้นหน้าเว็บได้ key ซ้ำ แถวค้างในตารางตอนเปลี่ยนตัวกรองสถานะ (เจอจริง 04/09/69)
+      const seen = new Set<string>();
+      rows = rows.filter((x) => {
+        const k = [x.claim_no, x.survey_no, x.finish_dt, x.status, x.surveyor_name].map((v) => String(v ?? '')).join('|');
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
       await isurveyCredService.markResult(userId, true);
     } catch (e) {
       await isurveyCredService.markResult(userId, false, e instanceof Error ? e.message : String(e));
