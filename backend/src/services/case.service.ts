@@ -20,6 +20,7 @@ import { staffGroupService } from './staffGroup.service';
 // ต้อง JSON.stringify ก่อน bind ไม่งั้นถูกตีความเป็น Postgres array literal แล้ว error
 const JSONB_FIELDS = new Set([
   'opposing_parties', 'injured_persons', 'damaged_property', 'insured_damage',
+  'policy_info',   // ข้อมูลกรมธรรม์ทั้งชุดจาก ISURVEY แท็บ 7 (migration 053) — แสดงอย่างเดียว
 ]);
 // ข้อความ placeholder ของ dropdown ในแอป — ต้องไม่ถูกบันทึกเป็นค่าจริง (เคยหลุดเข้า acc_province/
 // car_color → รหัสจังหวัดใน XML ที่ส่งเข้า EMCS ว่าง) → normalize เป็นค่าว่างที่ชั้น bind (กันทุกฟิลด์)

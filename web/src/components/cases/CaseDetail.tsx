@@ -12,6 +12,7 @@ import { DamageItem, DamageList, autoDamageDesc } from './DamageEditor';
 import DamageDialog from './DamageDialog';
 import { OPPONENT_REQUIRED, INJURED_REQUIRED, PROPERTY_REQUIRED } from './RecordEditors';
 import { InjuredEditor, PropertyEditor, OpponentEditor, dropEmptyRecords, dropEmptyOpponents, emcsBadChars, RecordItem, LooseRecord } from './RecordEditors';
+import PolicyInfoModal from './PolicyInfoModal';
 
 /** ค่าตอบแทนผู้สำรวจของเคส — `suggest` คือยอดที่ระบบคิดจากตารางเรท `saved` คือที่ผู้ตรวจบันทึกจริง
  *  แยกกันเพื่อให้เห็นว่าผู้ตรวจปรับจากยอดที่ระบบแนะนำไปเท่าไหร่ */
@@ -455,6 +456,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   // ประเภทรถ → ตัวเลือกยี่ห้อ (EMCS กรองลิสต์ยี่ห้อตามประเภทรถ; เดิมโชว์ชุดของ
   // 'เก๋งเอเชีย' ชุดเดียวกับทุกประเภท → กระบะ/มอเตอร์ไซค์เลือกยี่ห้อที่ EMCS ไม่รับ)
   const [carType, setCarType] = useState<string>(report.car_type || '0');
+  /** หน้าต่างข้อมูลกรมธรรม์ทั้งชุดจาก ISURVEY แท็บ 7 (report.policy_info, migration 053) — user ขอ 07/09/69 */
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const policyInfo = (report?.policy_info && typeof report.policy_info === 'object') ? report.policy_info as Record<string, string> : null;
   // จังหวัด → เขต/อำเภอ cascade (เดิมโชว์ 51 เขต กทม. กับทุกจังหวัด)
   const [accProv, setAccProv] = useState<string>(report.acc_province || '0');
   const [accDist, setAccDist] = useState<string>(report.acc_district || '-- เขต --');
@@ -1978,7 +1982,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
           {/* กรมธรรม์ — แบบตาราง */}
           <div data-section="policy" className="border border-[var(--md-line)] bg-white">
-          <SectionBar title="กรมธรรม์" gap={(gapSec ?? []).includes('policy')} />
+          <SectionBar title="กรมธรรม์" gap={(gapSec ?? []).includes('policy')}
+            right={policyInfo ? (
+              <button type="button" onClick={() => setPolicyOpen(true)}
+                title="ข้อมูลกรมธรรม์ทั้งชุดจาก ISURVEY แท็บ 7 (ทุนประกัน วงเงิน ร.ย. ผู้รับผลประโยชน์ เงื่อนไข) — แสดงอย่างเดียว"
+                className="text-xs font-semibold text-[#1E3E82] bg-white rounded-none px-2 py-0.5 hover:bg-blue-50">
+                📄 ข้อมูลกรมธรรม์ (ISURVEY)
+              </button>
+            ) : undefined} />
+          {policyOpen && policyInfo && (
+            <PolicyInfoModal info={policyInfo} claimNo={report?.claim_no} onClose={() => setPolicyOpen(false)} />
+          )}
           <div>
             <div className="bg-white p-4 grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3 text-sm">
               <F label="กรมธรรม์เลขที่" req={<Req of="policy_no" />}>
@@ -2027,7 +2041,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               </F>
               {/* ชื่ออู่/ศูนย์ซ่อม เป็นข้อความล้วน — ห้ามใส่ใน numericCols (ตัด comma จะกินชื่ออู่ที่มีลูกน้ำ)
                   maxLength ตรงกับ VARCHAR(200) — ยาวเกินแล้ว Postgres ไม่ตัดปลายให้ แต่ error จนบันทึกไม่ผ่านทั้งใบ */}
-              <F label="ซ่อมที่" span={4}>
+              {/* user 07/09/69: เล็กลงและอยู่ข้างค่าเสียหายส่วนแรก (เดิมกว้างเต็มแถว) */}
+              <F label="ซ่อมที่">
                 <input type="text" disabled={d} maxLength={200} name="repair_shop" defaultValue={report.repair_shop || ''} className={CTL(d)} />
               </F>
             </div>
