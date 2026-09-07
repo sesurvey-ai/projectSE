@@ -117,6 +117,18 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
         false;
   }
 
+  /// เขียนสำเนาดิจิทัลของใบลงโฟลเดอร์เคส — คืน path (ฟอร์มเอาไปเข้าหมวด "ใบแจ้งความเสียหาย")
+  Future<String> _writeCopy(List<int> png) async {
+    await Directory(widget.caseFolder).create(recursive: true);
+    final path = '${widget.caseFolder}/damage_notice_'
+        '${DateTime.now().millisecondsSinceEpoch}.png';
+    await File(path).writeAsBytes(png);
+    return path;
+  }
+
+  /// พิมพ์ + **เก็บสำเนาเข้าสำนวนเสมอ** — user 07/09/69: ออกใบทุกครั้งไม่ว่าแบบไหนต้องมีไฟล์ดิจิทัลในระบบ
+  /// (เดิมพิมพ์อย่างเดียวไม่เก็บ ต้องกด "บันทึกเข้าสำนวน" แยก → ใบที่พิมพ์แจกไปแล้วแต่ลืมกดบันทึกจะไม่มีร่องรอย)
+  /// พิมพ์สำเร็จ = เก็บสำเนาแล้วปิดหน้ากลับฟอร์ม (ใบเดียว = สำเนาเดียว; อนาคต user จะจำกัดพิมพ์ 1 ครั้ง)
   Future<void> _print() async {
     if (!await _confirmUnsigned('พิมพ์')) return;
     setState(() => _busy = true);
@@ -125,7 +137,12 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
       if (!await ThermalPrinter.connected && !await _connect()) return;
       final png = await captureSlipPng(_slipKey);
       final r = await ThermalPrinter.printPng(png);
-      _snack(r == 'OK' ? 'ส่งงานพิมพ์แล้ว' : 'พิมพ์ไม่สำเร็จ — $r');
+      if (r != 'OK') {
+        _snack('พิมพ์ไม่สำเร็จ — $r');
+        return;
+      }
+      final path = await _writeCopy(png);
+      if (mounted) Navigator.pop(context, path);   // ฟอร์มขึ้น "เก็บใบเข้าสำนวนแล้ว"
     } catch (e) {
       _snack('พิมพ์ไม่สำเร็จ: $e');
     } finally {
@@ -175,10 +192,7 @@ class _DamageNoticeScreenState extends State<DamageNoticeScreen> {
     setState(() => _busy = true);
     try {
       final png = await captureSlipPng(_slipKey);
-      await Directory(widget.caseFolder).create(recursive: true);
-      final path = '${widget.caseFolder}/damage_notice_'
-          '${DateTime.now().millisecondsSinceEpoch}.png';
-      await File(path).writeAsBytes(png);
+      final path = await _writeCopy(png);
       if (mounted) Navigator.pop(context, path);
     } catch (e) {
       _snack('บันทึกไม่สำเร็จ: $e');
