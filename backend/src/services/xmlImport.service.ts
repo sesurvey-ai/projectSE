@@ -18,6 +18,14 @@
  *  6. DAMAGE_LIST ว่างเสมอในไฟล์ ISURVEY (6/6) → ความเสียหายต้องให้คนกรอกบนเว็บ
  *  7. ตาราง lookup ของ xmlExport เป็น many-to-one (มี alias) → invert อัตโนมัติไม่ได้
  *     ต้องเลือกป้าย canonical เอง ให้ตรงกับ dropdown ของแอป/เว็บ ไม่งั้นกดบันทึกแล้วค่าหาย
+ *  8. ช่องความเห็นของ ISURVEY ชื่อไม่ตรงความหมาย (กติกา user 07/09/69 — ยึดปุ่ม "นำเข้า ISURVEY"
+ *     ของบอทเป็นแม่แบบ ให้ทุกทางลง EMCS เหมือนกัน): ACC_DETAIL ของ ISURVEY เป็นข้อความแม่แบบบริษัท
+ *     (ติดต่อสาขา/ห้ามแนะนำอู่) + ข้อมูลกรมธรรม์ ไม่ใช่รายละเอียดเหตุ → ไม่ใช้; "รายละเอียดการเกิดเหตุ"
+ *     เอาจาก SURV_COMMENT (ความคิดเห็นพนักงาน = รายงานเซอร์เวย์ฉบับเต็ม) แล้วปล่อยความเห็นของ
+ *     เซอร์เวย์ว่าง (ย้าย ไม่ก๊อปซ้ำ 2 ช่อง) · "ผลการดำเนินงาน" ควรเป็น "บันทึกความเห็นหัวหน้างาน"
+ *     แท็บ 1 แต่ XML ของ ISURVEY ไม่ส่งมา (ACC_RESULT ว่างทุกไฟล์) → หัวหน้ากรอกบนเว็บ
+ *     ⚠️ ใช้กับ source 'isurvey_xml' เท่านั้น — ไฟล์ emcs_extract สกัดจาก EMCS ที่กรอกตามกติกานี้
+ *     อยู่แล้ว จับคู่ตรงชื่อเหมือนเดิม (ต้องตรงกับ se-autokey: isurvey_to_sesurvey.build_case)
  */
 import { EMCS_DISTRICTS } from '../data/emcsDistricts';
 import { CAUSE, RELATION, LICENSE_TYPE } from './xmlExport.service';
@@ -290,7 +298,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     acc_place: txt(rep, 'ACC_PLACE').slice(0, 200),
     acc_province: PROVINCE_BY_CODE[accProvCode] ?? '',
     acc_district: districtName(accProvCode, txt(rep, 'ACC_DISTRICTID')),
-    acc_detail: txt(rep, 'ACC_DETAIL'),
+    // รายละเอียดการเกิดเหตุ — ไฟล์ ISURVEY จริง: ความคิดเห็นพนักงาน (SURV_COMMENT) ไม่ใช่ ACC_DETAIL
+    // ที่เป็นข้อความแม่แบบบริษัท (ดูกับดักข้อ 8) · emcs_extract จับคู่ตรงชื่อ
+    acc_detail: source === 'isurvey_xml' ? txt(rep, 'SURV_COMMENT') : txt(rep, 'ACC_DETAIL'),
     acc_fault: FAULT_BY_CODE[txt(rep, 'ACC_CAUSE')] ?? '',
     // ⚠️ ACC_CAUSE = "ผลคดี/ฝ่ายผิด" ส่วน CAUSE_CODE = "ลักษณะการเกิดเหตุ" — คนละช่องกัน
     acc_cause: CAUSE_BY_CODE[txt(rep, 'CAUSE_CODE')] ?? '',
@@ -333,7 +343,9 @@ export function parseIsurveyXml(xml: string): XmlImportResult {
     acc_claim_total_amount: txt(rep, 'OPO_RECOVERY_AMOUNT'),
     prb_number: txt(rep, 'PRB_NUMBER'),
     risk_code: txt(rep, 'RISK_CODE'),
-    surveyor_comment: txt(rep, 'SURV_COMMENT'),
+    // ความเห็นของเซอร์เวย์ — ไฟล์ ISURVEY จริง: ว่าง เพราะย้าย SURV_COMMENT ไปเป็นรายละเอียดการเกิดเหตุ
+    // แล้ว (กติกา 07/09/69 — ข้อความเดียวกันต้องไม่โผล่ 2 ช่องบน EMCS) · emcs_extract จับคู่ตรงชื่อ
+    surveyor_comment: source === 'isurvey_xml' ? '' : txt(rep, 'SURV_COMMENT'),
     // ⛔ ห้ามก๊อป SURV_COMMENT ลง notes อีก — เคยเขียนซ้ำคำต่อคำ (1,281 ตัวอักษรเท่ากันเป๊ะ)
     // "หมายเหตุ" เป็นช่องที่คนของเราเขียนเอง ไม่ใช่สำเนาความเห็นที่ติดมากับไฟล์ของประกัน
     // และฝั่งส่งออกเลิกใช้ notes เป็น fallback ของ SURV_COMMENT ไปแล้ว
