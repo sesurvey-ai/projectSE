@@ -267,6 +267,12 @@ class ApiService {
     return _dio.post('/api/cases/$caseId/decline');
   }
 
+  /// "เสร็จงาน" หน้างาน (07/09/69) — assigned → finished: รับงานถัดไปได้ ฟอร์มยังแก้/ส่งได้
+  /// server คืน survey_complete_date (dd/mm/yyyy|HH:mm) = เวลา "สำรวจเสร็จ" ที่เติมให้ (null = ช่างกรอกเองไว้แล้ว)
+  Future<Response> finishCase(int caseId) async {
+    return _dio.post('/api/cases/$caseId/finish');
+  }
+
   // FCM token
   Future<Response> updateFcmToken(String token) async {
     return _dio.put('/api/users/me/fcm-token', data: {

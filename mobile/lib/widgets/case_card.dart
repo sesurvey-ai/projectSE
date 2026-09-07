@@ -12,13 +12,15 @@ class CaseCard extends StatelessWidget {
   });
 
   // ⛔ ต้องครอบ **ทุกค่า** ของ case_status ที่ฐานข้อมูลมีจริง
-  //    (pending · assigned · surveyed · reviewed + declined)
+  //    (pending · assigned · finished · surveyed · reviewed + declined)
   //    เดิมแปลแค่ 4 ค่าที่ไม่ตรงกับของจริงเลย ('in_progress'/'completed' ไม่มีในระบบ)
   //    ค่าที่ตกหล่นจะหลุดไปโชว์เป็นภาษาอังกฤษดิบ ๆ บนหน้าจอช่าง (เจอจริง 18/08/69: 'surveyed')
   Color _statusColor(String status) {
     switch (status) {
       case 'assigned':
         return Colors.orange;
+      case 'finished': // เสร็จงานหน้างานแล้ว รอส่งรายงาน (07/09/69)
+        return Colors.teal;
       case 'surveyed':
         return Colors.blue;
       case 'reviewed':
@@ -35,6 +37,8 @@ class CaseCard extends StatelessWidget {
     switch (status) {
       case 'assigned':
         return 'มอบหมายแล้ว';
+      case 'finished':
+        return 'เสร็จงานแล้ว รอส่งรายงาน';
       case 'surveyed':
         return 'ส่งงานแล้ว';
       case 'reviewed':

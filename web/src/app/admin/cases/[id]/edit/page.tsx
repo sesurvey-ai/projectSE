@@ -103,6 +103,7 @@ export default function EditCasePage() {
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900">
               <option value="pending">รอดำเนินการ</option>
               <option value="assigned">มอบหมายแล้ว</option>
+              <option value="finished">เสร็จงานแล้ว (รอส่งรายงาน)</option>
               <option value="surveyed">สำรวจแล้ว</option>
               <option value="reviewed">ตรวจสอบแล้ว</option>
               <option value="declined">ปฏิเสธแล้ว</option>

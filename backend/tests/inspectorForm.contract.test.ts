@@ -221,8 +221,14 @@ check('ช่องยอดเงินอยู่ครบ (ขาดช่�
 check('⛔ ถอดช่องแล้วต้องส่งค่าเดิมกลับ ไม่ใช่ false',
       !/name="special_tumbon"/.test(src)
       && src.includes("payBody.special_tumbon = fd.has('special_tumbon') || Boolean(pay?.saved?.special_tumbon)"));
+/**
+ * ช่อง "ราคาต่อรูป" (photo_fee_price) ซ่อน**ถาวร**ไม่ใช่ตามจอ — ค่าที่เห็น/แก้คือช่องยอดรวม
+ * photo_fee_total แล้ว syncPhotoFee คัดลอกกลับมาให้ทุกครั้ง จึงยังถูกส่งครบทุกความกว้าง (07/09/69)
+ * ตัดช่องนี้ออกก่อนตรวจ — ช่องยอดเงินอื่นห้ามซ่อนเหมือนเดิม
+ */
+const payBlockShown = payBlock.replace(/<input[^>]*name="photo_fee_price"[^>]*>/g, '');
 check('ไม่มีช่องยอดเงินช่องไหนถูกซ่อนตามขนาดจอ',
-      payBlock.length > 0 && !/:hidden|className="hidden/.test(payBlock));
+      payBlock.length > 0 && !/:hidden|className="hidden/.test(payBlockShown));
 
 /**
  * -- ตีกลับให้ผู้สำรวจ --
@@ -245,7 +251,8 @@ check('ยิงไปที่ /send-back พร้อมเหตุผล', /
 // เทียบทั้งบรรทัดของช่องเหตุผล — สลับเป็น input/textarea หรือย้ายที่ก็ยังจับได้
 const sbLine = src.split('\n').find((l) => l.includes('value={sbReason}'));
 check('ช่องเหตุผลไม่มี name', Boolean(sbLine) && !/\bname=/.test(sbLine!));
-check('ตีกลับแล้วซ่อนปุ่ม (กันตีกลับซ้ำระหว่างรอช่าง)', /!waitingSurveyor && \(/.test(src));
+// 07/09/69: ซ่อนตอนช่างกด "เสร็จงาน" แล้วยังไม่ส่ง (finishedWaiting) ด้วย — งานยังอยู่กับช่างเหมือนกัน
+check('ตีกลับแล้วซ่อนปุ่ม (กันตีกลับซ้ำระหว่างรอช่าง)', /!waitingSurveyor && !finishedWaiting && \(/.test(src));
 
 const svc = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'services', 'case.service.ts'), 'utf8');

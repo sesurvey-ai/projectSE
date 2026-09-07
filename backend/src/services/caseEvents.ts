@@ -15,6 +15,7 @@ import { getIO } from '../socket';
  */
 export type CaseChangeReason =
   | 'submitted'      // ผู้สำรวจส่งงานเข้ามา
+  | 'finished'       // ผู้สำรวจกด "เสร็จงาน" หน้างาน (ยังไม่ส่ง — บอร์ดจ่ายงาน/คิวตรวจอัปเดตป้าย)
   | 'saved'          // ผู้ตรวจกดบันทึก
   | 'approved'       // อนุมัติ
   | 'sent_back'      // ตีกลับให้ผู้สำรวจ

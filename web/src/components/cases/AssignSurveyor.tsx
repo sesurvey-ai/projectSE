@@ -91,7 +91,7 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
    * `null` = ยังไม่รู้ (กำลังโหลด หรือโหลดไม่สำเร็จ) → **ถือว่าทุกคนว่าง ไม่ซ่อนใครทั้งนั้น**
    * ซ่อนคนเพราะข้อมูลที่เราไม่มี = คนจ่ายงานเห็นรายชื่อหาย แล้วจ่ายงานไม่ได้ทั้งที่คนว่างอยู่
    */
-  const [workload, setWorkload] = useState<Record<string, { assigned: number; surveyed: number }> | null>(null);
+  const [workload, setWorkload] = useState<Record<string, { assigned: number; finished: number; surveyed: number }> | null>(null);
   /** เผยคนที่ถืองานอยู่ — ค่าเริ่มต้นซ่อนไว้ ตามที่ user ขอ "แสดงเฉพาะคนที่ว่าง" */
   const [showBusy, setShowBusy] = useState(false);
   /**
@@ -123,10 +123,12 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
   const loadWorkload = useCallback(() => {
     api.get('/api/cases/workload')
       .then((res) => {
-        const rows = (res.data?.data ?? []) as { user_id: number | string; assigned?: number; surveyed?: number }[];
-        const map: Record<string, { assigned: number; surveyed: number }> = {};
+        const rows = (res.data?.data ?? []) as { user_id: number | string; assigned?: number; finished?: number; surveyed?: number }[];
+        const map: Record<string, { assigned: number; finished: number; surveyed: number }> = {};
         rows.forEach((w) => {
-          map[String(w.user_id)] = { assigned: Number(w.assigned) || 0, surveyed: Number(w.surveyed) || 0 };
+          map[String(w.user_id)] = {
+            assigned: Number(w.assigned) || 0, finished: Number(w.finished) || 0, surveyed: Number(w.surveyed) || 0,
+          };
         });
         setWorkload(map);
       })
@@ -283,6 +285,8 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
    *
    * งานที่ช่างส่งแล้วรอหัวหน้าตรวจ **ไม่นับว่าไม่ว่าง** — ช่างทำจบแล้ว รับงานใหม่ได้
    * (โชว์เป็นข้อมูลข้างชื่อแทน) · ยังไม่รู้ workload = ถือว่าว่างไว้ก่อน ไม่ซ่อนใคร
+   * 07/09/69: กด "เสร็จงาน" หน้างานแล้ว (finished) ก็ **ว่าง** เช่นกัน — นี่คือเหตุผลที่มีปุ่มนั้น
+   *   workload.assigned จาก server นับเฉพาะงานที่ยังไม่เสร็จหน้างานอยู่แล้ว
    */
   const jobsOf = (s: SurveyorLocation) => workload?.[String(s.user_id)] ?? null;
   const isFree = (s: SurveyorLocation) => (jobsOf(s)?.assigned ?? 0) === 0;
@@ -335,6 +339,12 @@ export default function AssignSurveyor({ caseId, onAssigned }: AssignSurveyorPro
           <p className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
             {s.province && <span>{s.province}</span>}
             {/* ส่งแล้วรอหัวหน้าตรวจ = ไม่นับว่าไม่ว่าง แสดงเป็นข้อมูลเฉย ๆ (กติกา user) */}
+            {/* เสร็จงานหน้างานแล้ว กำลังทำรายงาน = ว่าง รับงานใหม่ได้ — โชว์ให้รู้ว่ายังมีรายงานค้างส่ง */}
+            {(jobs?.finished ?? 0) > 0 && (
+              <span className="text-teal-600" title="กดเสร็จงานหน้างานแล้ว กำลังทำรายงาน — รับงานใหม่ได้ ไม่นับว่าไม่ว่าง">
+                เสร็จงานแล้ว รอส่งรายงาน {jobs!.finished} ใบ
+              </span>
+            )}
             {(jobs?.surveyed ?? 0) > 0 && (
               <span className="text-gray-400" title="ส่งงานแล้ว รอหัวหน้าตรวจ — ไม่นับว่าไม่ว่าง">
                 ส่งแล้วรอตรวจ {jobs!.surveyed} ใบ

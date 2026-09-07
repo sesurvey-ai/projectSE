@@ -207,6 +207,48 @@ class CaseProvider extends ChangeNotifier {
     }
   }
 
+  /// เวลา "สำรวจเสร็จ" ที่ server เติมให้ตอนกดเสร็จงานล่าสุด (dd/mm/yyyy|HH:mm) — ฟอร์มหยิบไปใส่ช่องไทม์ไลน์
+  String? lastFinishStamp;
+
+  /// กด "เสร็จงาน" หน้างาน — คืน null เมื่อสำเร็จ / ข้อความที่จะโชว์เมื่อไม่สำเร็จ
+  ///
+  /// สำเร็จแล้วเปลี่ยนสถานะในรายการทันที (ไม่รอโหลด) แล้วค่อยโหลดรายการจริงตามหลัง
+  /// ⛔ ต้องออนไลน์ — ไม่มีคิวออฟไลน์เหมือนส่งงาน เพราะความหมายคือ "ตอนนี้ว่างแล้ว" ส่งช้าไปก็ไร้ค่า
+  ///    (ไม่กดก็ไม่เสียอะไร: ส่งงานตามปกติได้ server เติมเวลาสำรวจเสร็จให้เองเหมือนเดิม)
+  Future<String?> finishCase(int caseId) async {
+    try {
+      final r = await _apiService.finishCase(caseId);
+      final body = r.data;
+      final d = body is Map ? body['data'] : null;
+      lastFinishStamp = d is Map ? d['survey_complete_date']?.toString() : null;
+      final i = _cases.indexWhere((c) => c.id == caseId);
+      if (i >= 0) {
+        _cases[i] = _cases[i].copyWith(
+          status: 'finished',
+          finishedAt: (d is Map ? d['finished_at']?.toString() : null) ?? DateTime.now().toUtc().toIso8601String(),
+        );
+        notifyListeners();
+      }
+      fetchMyCases(); // ไม่ await — รายการสดจาก server ตามมาเอง
+      return null;
+    } catch (e) {
+      if (e is DioException && e.response?.data is Map) {
+        final m = (e.response!.data as Map)['message'];
+        if (m != null) return m.toString();
+      }
+      final isNetwork = e is DioException &&
+          (e.response == null ||
+              e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout);
+      debugPrint('finishCase error: $e');
+      return isNetwork
+          ? 'ไม่มีสัญญาณเน็ต — กดเสร็จงานได้เมื่อออนไลน์ (ระหว่างนี้กรอกต่อได้ตามปกติ)'
+          : 'กดเสร็จงานไม่สำเร็จ ลองใหม่อีกครั้ง';
+    }
+  }
+
   Future<bool> updateSurvey(int caseId, Map<String, dynamic> data) async {
     if (_isSubmitting) return false; // กันกดซ้ำระหว่างกำลังบันทึก
     _isSubmitting = true;

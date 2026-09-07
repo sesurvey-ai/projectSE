@@ -898,6 +898,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const sentBack = Boolean(caseData?.sent_back_at);
   const waitingSurveyor = caseData?.status === 'assigned' && sentBack;
+  /**
+   * ── เสร็จงานหน้างาน (07/09/69) ── status 'finished' = ช่างกด "เสร็จงาน" แล้วแต่ยังไม่ส่งรายงาน
+   * งานยังอยู่กับช่าง (กรอกต่อที่บ้านได้) — หัวหน้าเปิดดูได้ แต่อนุมัติ/ตีกลับไม่ได้จนกว่าช่างจะส่ง
+   * (ฝั่ง server: review ต้อง 'surveyed' · send-back ตอบ "อยู่กับผู้สำรวจอยู่แล้ว")
+   */
+  const finishedWaiting = caseData?.status === 'finished';
+  const finishedAtText = (() => {
+    const t = new Date(String(caseData?.finished_at ?? ''));
+    return Number.isNaN(t.getTime()) ? ''
+      : ' ' + t.toLocaleString('th-TH', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
+  })();
   const [sbOpen, setSbOpen] = useState(false);
   const [sbReason, setSbReason] = useState('');
   const doSendBack = async () => {
@@ -1047,6 +1058,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const damageRows = damage.filter((x) => x.part && x.level).length;
 
   const approvalBlockers = [
+    ...(finishedWaiting ? ['ช่างเสร็จงานหน้างานแล้วแต่ยังไม่ส่งรายงาน — อนุมัติได้เมื่อช่างกดส่งงาน'] : []),
     ...(missing.length > 0 ? [`ช่องบังคับยังว่าง ${missing.length} ช่อง`] : []),
     ...(claimHl === 'red' ? ['ยังไม่ได้ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี"'] : []),
     ...(oppNoHl === 'red' ? ['ยังไม่ได้กรอก "คู่กรณีคันที่"'] : []),
@@ -1580,7 +1592,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       {/* ตีกลับให้ผู้สำรวจ — วางไว้ซ้ายสุดของแถบ ไกลจาก "อนุมัติ" ที่อยู่ขวาสุด
           และเป็นปุ่มขอบบาง ๆ ไม่ใช่ปุ่มทึบ เพราะเป็นการโยนงานออกจากมือ ไม่ใช่ทางลัดประจำวัน
           กดแล้วช่องเหตุผลจะกางออกใต้แถบ (ไม่ได้ตีกลับทันที) */}
-      {!waitingSurveyor && (
+      {!waitingSurveyor && !finishedWaiting && (
         <button type="button" onClick={() => setSbOpen(true)} disabled={saving || previewing}
           className="h-9 px-4 border border-[var(--md-purple)] text-[var(--md-purple)] bg-white text-sm font-bold hover:bg-[#f7effe] disabled:opacity-50 disabled:cursor-not-allowed transition">
           ตีกลับผู้สำรวจ
@@ -1732,6 +1744,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               ถ้าไม่สรุปไว้บนสุด ผู้ตรวจต้องเลื่อนหาเอง แล้วไปเจอตอนบอทนำเข้าไม่ผ่าน */}
           {/* ลำดับเวลาผิด — ต่างจากช่องว่างตรงที่ "มองด้วยตาไม่เห็น" แต่ละช่องดูปกติหมด
               ต้องเอามาเทียบกันถึงจะรู้ ถ้าไม่สรุปไว้บนสุดก็ไม่มีทางสังเกตเจอ */}
+          {/* เสร็จงานหน้างานแล้ว ยังไม่ส่งรายงาน — ต้องเห็นตั้งแต่เปิดหน้า: ข้อมูลยังไม่ครบ และช่างจะส่งทับสิ่งที่แก้ตอนนี้ */}
+          {finishedWaiting && (
+            <div className="rounded-none px-4 py-2 text-sm border flex items-center gap-2 flex-wrap bg-teal-50 border-teal-300 text-teal-900">
+              <span className="w-2 h-2 shrink-0 bg-teal-600" />
+              <span className="font-semibold">ช่างเสร็จงานหน้างานแล้ว{finishedAtText} — กำลังทำรายงาน รอกดส่งงาน</span>
+              <span className="text-teal-700"> · อนุมัติ/ตีกลับได้เมื่อช่างส่งงานแล้ว · แก้ตอนนี้อาจถูกทับตอนช่างส่ง</span>
+            </div>
+          )}
           {/* ตีกลับแล้ว — ต้องเห็นตั้งแต่เปิดหน้า ไม่งั้นหัวหน้านั่งแก้อยู่โดยไม่รู้ว่างานอยู่กับช่าง
               (เคสยังอยู่ในหน้าตรวจสอบโดยตั้งใจ หัวหน้าแก้เองได้ด้วย — user เคาะ 18/08/69) */}
           {sentBack && (

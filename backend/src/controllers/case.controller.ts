@@ -233,6 +233,13 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
+  /** ช่างกด "เสร็จงาน" หน้างาน — สถานะ finished (ยังไม่ส่ง ยังแก้ได้ รับงานใหม่ได้) ดู caseService.finishCase */
+  finishCase: asyncHandler(async (req: Request, res: Response) => {
+    const caseId = parseInt(req.params.id as string);
+    const result = await caseService.finishCase(caseId, req.user!.id);
+    sendSuccess(res, result);
+  }),
+
   /** เครื่องช่างยืนยันว่าแจ้งเตือนถึงเครื่องแล้ว (ยิงจาก native ทันทีที่ FCM เข้า) */
   ackPush: asyncHandler(async (req: Request, res: Response) => {
     const caseId = parseInt(req.params.id as string);

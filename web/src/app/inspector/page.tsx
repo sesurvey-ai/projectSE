@@ -6,7 +6,7 @@ import { useSocket } from '@/hooks/useSocket';
 import CaseList, { type Case } from '@/components/cases/CaseList';
 import { queueStats } from '@/components/cases/reviewQueue';
 
-type Tab = 'pending' | 'sentBack' | 'approved' | 'sent';
+type Tab = 'pending' | 'finished' | 'sentBack' | 'approved' | 'sent';
 
 export default function InspectorDashboard() {
   const [cases, setCases] = useState<Case[]>([]);
@@ -111,16 +111,18 @@ export default function InspectorDashboard() {
    * นำเข้าแล้ว (มี draft) ยังไม่ใช่ประกันได้รับงาน ต้องเห็นว่าค้างอยู่
    */
   const groups = useMemo(() => {
-    const pending: Case[] = [], sentBack: Case[] = [], approved: Case[] = [], sent: Case[] = [];
+    const pending: Case[] = [], finished: Case[] = [], sentBack: Case[] = [], approved: Case[] = [], sent: Case[] = [];
     for (const c of cases) {
       if (c.emcs_submitted_at) sent.push(c);
       else if (c.status === 'reviewed') approved.push(c);
       // ตีกลับไปแล้ว = งานอยู่กับช่าง ไม่ใช่คิวที่หัวหน้าต้องลงมือ — แยกแท็บ ไม่งั้น
       // ตัวเลข "รอตรวจ" จะบวมด้วยงานที่รออีกฝั่งอยู่ (แต่ยังเปิดแก้เองได้ตามที่ตกลงกันไว้)
       else if (c.status === 'assigned' && c.sent_back_at) sentBack.push(c);
+      // เสร็จงานหน้างานแล้ว ยังไม่ส่งรายงาน (07/09/69) — หัวหน้าเห็นว่างานภาคสนามจบแล้ว แต่ยังตรวจไม่ได้
+      else if (c.status === 'finished') finished.push(c);
       else pending.push(c);
     }
-    return { pending, sentBack, approved, sent };
+    return { pending, finished, sentBack, approved, sent };
   }, [cases]);
 
   /** งานที่กดอนุมัติไม่ได้จนกว่าจะเติมข้อมูล — ตัวเลขที่หัวหน้าต้องเห็นก่อนเปิดเคส
@@ -156,6 +158,7 @@ export default function InspectorDashboard() {
 
   const TABS: { key: Tab; label: string; n: number }[] = [
     { key: 'pending', label: 'รอตรวจ', n: groups.pending.length },
+    { key: 'finished', label: 'เสร็จงาน รอส่งรายงาน', n: groups.finished.length },
     { key: 'sentBack', label: 'ตีกลับแล้ว', n: groups.sentBack.length },
     { key: 'approved', label: 'อนุมัติแล้ว', n: groups.approved.length },
     { key: 'sent', label: 'ส่งประกันแล้ว', n: groups.sent.length },

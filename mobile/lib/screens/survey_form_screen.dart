@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/case_provider.dart';
+import '../models/case_model.dart';
 import '../providers/auth_provider.dart';
 import '../config/api_config.dart';
 import '../services/auth_token.dart';
@@ -1612,6 +1613,91 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
 
   /// ปุ่มออกใบเอกสารหน้างาน (ใบแจ้งความเสียหาย / ใบติดต่อ) — ใช้ข้อมูลที่กรอกอยู่ตอนนี้
   /// ไม่ต้องรอส่งงาน เพราะใบนี้ต้องยื่นให้คู่กรณีเซ็นตั้งแต่อยู่หน้างาน
+  // ── "เสร็จงาน" หน้างาน (user สั่ง 07/09/69) ─────────────────────────────────
+  // ไม่ใช่ส่งงาน: แค่บอกระบบว่าเสร็จหน้างานแล้ว → ศูนย์เห็นว่าว่าง จ่ายงานถัดไปได้ · หัวหน้าเห็น "รอส่งรายงาน"
+  // ฟอร์มยังแก้ต่อได้ (ที่บ้าน) จนกด "ตรวจสอบ & ส่ง" · งานที่ถูกตีกลับไม่ต้องกด (หน้างานเสร็จไปแล้ว)
+  bool _finishing = false;
+
+  Widget _finishButton() {
+    final cm = context.watch<CaseProvider>().getCaseById(widget.caseId);
+    if (cm == null || cm.isSentBack) return const SizedBox.shrink();
+    if (cm.isFinished) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(6, 12, 6, 0),
+        child: Row(children: [
+          const Icon(Icons.flag_circle_rounded, size: 20, color: _ok),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'เสร็จงานหน้างานแล้ว${_finishedAtText(cm)} — รับงานถัดไปได้ · กรอกต่อแล้วกด "ตรวจสอบ & ส่ง"',
+              style: const TextStyle(fontSize: 12.5, color: _muted),
+            ),
+          ),
+        ]),
+      );
+    }
+    if (cm.status != 'assigned') return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
+      child: OutlinedButton.icon(
+        onPressed: _finishing ? null : _finishOnSite,
+        icon: _finishing
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2))
+            : const Icon(Icons.flag_circle_outlined, size: 20),
+        label: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: Text('เสร็จงานหน้างาน — รับงานถัดไปได้'),
+        ),
+        style: OutlinedButton.styleFrom(foregroundColor: _ok, side: BorderSide(color: _ok.withValues(alpha: .6))),
+      ),
+    );
+  }
+
+  String _finishedAtText(CaseModel cm) {
+    final t = DateTime.tryParse(cm.finishedAt ?? '')?.toLocal();
+    if (t == null) return '';
+    return ' ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _finishOnSite() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('เสร็จงานหน้างาน?'),
+        content: const Text('ระบบจะบันทึกเวลา "สำรวจเสร็จ" ตอนนี้ และแจ้งศูนย์ว่าคุณรับงานถัดไปได้\n\n'
+            'รายงานนี้ยังแก้ต่อได้ทุกที่ (เช่น ที่บ้าน) แล้วค่อยกด "ตรวจสอบ & ส่ง" ให้หัวหน้าตรวจ'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ยังก่อน')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('เสร็จงาน')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _finishing = true);
+    final cp = context.read<CaseProvider>();
+    final err = await cp.finishCase(widget.caseId);
+    if (!mounted) return;
+    setState(() => _finishing = false);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: Colors.red));
+      return;
+    }
+    // เวลา "สำรวจเสร็จ" ที่ server เติมให้ → ใส่ช่องไทม์ไลน์ถ้ายังว่าง
+    // ไม่งั้นตอนส่งงาน ค่าว่างจากฟอร์มจะทับ แล้ว server เติมเป็นเวลาส่งงานแทน (ไม่ตรงความจริง)
+    final stamp = cp.lastFinishStamp ?? '';
+    if (stamp.contains('|') && _accSurveyCompleteDateCtl.text.trim().isEmpty) {
+      final p = stamp.split('|');
+      _accSurveyCompleteDateCtl.text = p[0];
+      if (p.length > 1) _accSurveyCompleteTimeCtl.text = p[1];
+      _autosave();
+    }
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('บันทึกเสร็จงานแล้ว — รับงานถัดไปได้ กรอกรายงานต่อแล้วกดส่งเมื่อพร้อม'),
+      backgroundColor: Colors.green,
+      duration: Duration(seconds: 4),
+    ));
+  }
+
   Widget _slipButton() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: OutlinedButton.icon(
@@ -2328,6 +2414,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               (v) => _hasProperty = v),
           const SizedBox(height: 8),
           _slipButton(),
+          _finishButton(),
         ],
       ),
     );

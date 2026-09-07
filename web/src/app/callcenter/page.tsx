@@ -29,6 +29,7 @@ interface CaseRow {
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   pending:   { label: 'รอมอบหมาย',   color: 'text-gray-700',   bg: 'bg-gray-100' },
   assigned:  { label: 'มอบหมายแล้ว', color: 'text-orange-700', bg: 'bg-orange-100' },
+  finished:  { label: 'เสร็จงานแล้ว', color: 'text-teal-700',   bg: 'bg-teal-100' },
   surveyed:  { label: 'สำรวจแล้ว',   color: 'text-blue-700',   bg: 'bg-blue-100' },
   reviewed:  { label: 'ตรวจสอบแล้ว', color: 'text-green-700',  bg: 'bg-green-100' },
   declined:  { label: 'ปฏิเสธแล้ว',  color: 'text-red-700',    bg: 'bg-red-100' },
@@ -70,6 +71,8 @@ export default function CallcenterDashboard() {
   const cards = [
     { key: 'pending',  label: 'รอมอบหมาย',   icon: '📋', gradient: 'from-gray-500 to-gray-600' },
     { key: 'assigned', label: 'มอบหมายแล้ว', icon: '🔄', gradient: 'from-orange-500 to-orange-600' },
+    // เสร็จงานหน้างานแล้ว รอช่างส่งรายงาน (07/09/69) — ช่างกลุ่มนี้รับงานใหม่ได้แล้ว
+    { key: 'finished', label: 'เสร็จงาน รอส่งรายงาน', icon: '🏁', gradient: 'from-teal-500 to-teal-600' },
     { key: 'surveyed', label: 'สำรวจแล้ว',   icon: '🔍', gradient: 'from-blue-500 to-blue-600' },
     { key: 'reviewed', label: 'ตรวจสอบแล้ว', icon: '✅', gradient: 'from-green-500 to-green-600' },
   ];
@@ -103,7 +106,7 @@ export default function CallcenterDashboard() {
       ) : (
         <>
           {/* Stats cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             {cards.map((c) => (
               <div key={c.key} className={`bg-gradient-to-br ${c.gradient} rounded-xl p-5 text-white shadow-sm`}>
                 <div className="flex items-center justify-between mb-3">

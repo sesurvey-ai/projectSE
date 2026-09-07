@@ -321,7 +321,7 @@ export const caseService = {
     // กันกดซ้ำ/กดพร้อมกัน — ถ้ามีงานของเคลมนี้ที่ยังไม่เริ่มค้างอยู่ ให้ใช้ใบนั้นแทน
     const pendingDup = await db.query(
       `SELECT c.id FROM cases c JOIN survey_reports sr ON sr.case_id = c.id
-        WHERE sr.claim_no = $1 AND c.status IN ('pending','assigned') LIMIT 1`,
+        WHERE sr.claim_no = $1 AND c.status IN ('pending','assigned','finished') LIMIT 1`,
       [claimNo]
     );
     if (pendingDup.rows.length > 0) {
@@ -514,6 +514,11 @@ export const caseService = {
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
     const caseData = caseResult.rows[0];
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
+    // ปฏิเสธได้เฉพาะงานที่ยังไม่ได้ลงมือ — กด "เสร็จงาน"/ส่งงานไปแล้ว ปฏิเสธ = ข้อมูลหน้างานหายไปกับเจ้าของงาน
+    // (เดิมไม่มี guard เลย เพิ่งมีสถานะ finished 07/09/69 จึงต้องกัน)
+    if (caseData.status !== 'assigned') {
+      throw new ForbiddenError('งานนี้เสร็จงาน/ส่งงานไปแล้ว ปฏิเสธไม่ได้');
+    }
 
     /**
      * เหตุผลที่ปฏิเสธ — ไม่ล็อกไว้แค่ 4 ข้อที่แอปมีวันนี้ (เพิ่มตัวเลือกทีหลังจะได้ไม่ต้องแก้ 2 ที่)
@@ -537,6 +542,75 @@ export const caseService = {
     return result.rows[0];
   },
 
+  /**
+   * "เสร็จงาน" — ช่างกดในแอปตอนเสร็จหน้างาน ก่อนออกจากที่เกิดเหตุ (user สั่งทำ 07/09/69)
+   *
+   * ⛔ ไม่ใช่ "ส่งงาน": ฟอร์มยังแก้ต่อได้ (ที่บ้าน/ที่สะดวก) จนกว่าจะกดส่งให้หัวหน้าตรวจ
+   *    updateSurvey/submitSurvey จึงรับทั้ง 'assigned' และ 'finished'
+   *
+   * สิ่งที่สถานะนี้ให้:
+   *   - บอร์ดจ่ายงานรู้ว่าช่างว่างแล้ว (activeWorkload นับ finished แยกจาก assigned → isFree ไม่นับ)
+   *   - หัวหน้าเห็นในรายการงานว่า "เสร็จงานแล้ว รอส่งรายงาน" (getForReview รวม finished)
+   *   - เวลา "สำรวจเสร็จ" ในไทม์ไลน์ = เวลาที่กดจริง ไม่ใช่เวลากดส่งงานอีกหลายชั่วโมงถัดมา
+   *     (submitSurvey ยังเติมให้เองถ้าช่างไม่เคยกดเสร็จงาน — ของเดิม ไม่แตะ)
+   *
+   * idempotent: กดซ้ำ/แอป retry ตอนเป็น finished อยู่แล้ว = คืนค่าเดิม ไม่ error ไม่ขยับเวลา
+   * งานที่ถูกตีกลับ (sent_back_at) ไม่ต้องกด — หน้างานเสร็จไปตั้งแต่ครั้งก่อน แก้แล้วส่งได้เลย
+   */
+  async finishCase(caseId: number, surveyorId: number) {
+    const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
+    if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
+    const caseData = caseResult.rows[0];
+    if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
+
+    if (caseData.status === 'finished') {
+      const t = await db.query('SELECT acc_survey_complete_date FROM survey_reports WHERE case_id = $1', [caseId]);
+      return { ...caseData, already: true, survey_complete_date: t.rows[0]?.acc_survey_complete_date ?? null };
+    }
+    if (caseData.status !== 'assigned') {
+      throw new AppError(409, 'งานนี้ส่งไปแล้ว กดเสร็จงานไม่ได้');
+    }
+    if (caseData.sent_back_at) {
+      throw new AppError(409, 'งานที่ถูกตีกลับ แก้แล้วกดส่งงานได้เลย ไม่ต้องกดเสร็จงาน');
+    }
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      // guard สถานะใน UPDATE — กดพร้อมกัน 2 เครื่อง/ส่งงานคั่นกลาง → 0 แถว → ไม่ตอบว่าสำเร็จ
+      const st = await client.query(
+        `UPDATE cases SET status = 'finished', finished_at = NOW()
+          WHERE id = $1 AND status = 'assigned' RETURNING *`,
+        [caseId]
+      );
+      if (st.rowCount === 0) throw new AppError(409, 'สถานะงานเพิ่งเปลี่ยน — โหลดใหม่แล้วลองอีกครั้ง');
+
+      // "สำรวจเสร็จ" (acc_survey_complete_date) = ตอนนี้ — รูปแบบ/เวลาไทยชุดเดียวกับ submitSurvey
+      // เขียนเฉพาะตอนยังว่าง (ช่างอาจพิมพ์เองไว้แล้ว) · คืนค่าให้แอปเอาไปใส่ช่องไทม์ไลน์ในฟอร์ม
+      // ไม่งั้นตอนส่งงาน ค่าว่างจากฟอร์มจะทับ แล้ว submitSurvey เติมเป็นเวลาส่งงานแทน (ผิดความจริง)
+      const t = await client.query(
+        `UPDATE survey_reports
+            SET acc_survey_complete_date =
+                  to_char(n, 'FMDD/FMMM/') || (EXTRACT(YEAR FROM n)::int + 543)
+                  || '|' || to_char(n, 'HH24:MI')
+           FROM (SELECT NOW() AT TIME ZONE 'Asia/Bangkok' AS n) s
+          WHERE case_id = $1
+            AND COALESCE(TRIM(acc_survey_complete_date), '') = ''
+          RETURNING acc_survey_complete_date`,
+        [caseId]
+      );
+      await client.query('COMMIT');
+      // บอร์ดจ่ายงาน/คิวตรวจต้องเห็นว่าช่างว่างแล้วทันที
+      notifyCaseChanged(caseId, 'finished', surveyorId);
+      return { ...st.rows[0], already: false, survey_complete_date: t.rows[0]?.acc_survey_complete_date ?? null };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   async updateSurvey(caseId: number, surveyorId: number, data: Record<string, unknown>) {
     const caseResult = await db.query('SELECT * FROM cases WHERE id = $1', [caseId]);
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
@@ -548,7 +622,8 @@ export const caseService = {
     // เดิมตรวจแค่ assigned_to → แอปที่เปิดฟอร์มค้างไว้เขียนทับงานที่ส่งไปแล้ว /
     // ที่ผู้ตรวจแก้บนเว็บแล้ว / ที่นำเข้าระบบประกันไปแล้ว ได้เงียบ ๆ ไม่มีสัญญาณเลย
     // (submitSurvey กับ confirmArrival มี guard นี้อยู่แล้ว ตกหล่นเฉพาะ endpoint นี้)
-    if (caseData.status !== 'assigned') {
+    // 'finished' (เสร็จงานหน้างาน 07/09/69) ยังอยู่กับช่าง — กรอกต่อ/บันทึกได้จนกว่าจะกดส่งงาน
+    if (!['assigned', 'finished'].includes(String(caseData.status))) {
       throw new AppError(409, 'งานนี้ส่งไปแล้ว แก้ไขจากแอปไม่ได้ — ให้ผู้ตรวจแก้บนเว็บแทน');
     }
     if (caseData.emcs_imported_at) {
@@ -808,7 +883,10 @@ export const caseService = {
     if (caseResult.rows.length === 0) throw new NotFoundError('Case not found');
 
     const caseData = caseResult.rows[0];
-    if (caseData.status !== 'assigned') throw new ForbiddenError('Case is not in assigned status');
+    // ส่งได้จากทั้ง 'assigned' และ 'finished' (เสร็จงานหน้างานแล้ว กรอกต่อที่บ้านแล้วค่อยส่ง — 07/09/69)
+    if (!['assigned', 'finished'].includes(String(caseData.status))) {
+      throw new ForbiddenError('Case is not in assigned status');
+    }
     if (caseData.assigned_to !== surveyorId) throw new ForbiddenError('Case is not assigned to you');
 
     // เลขเซอร์เวย์ห้ามซ้ำข้ามเคส (อ้างอิงเบิกเงิน) — เช็คก่อนเขียน กันแก้เลขในฟอร์มไปชนเคสอื่น
@@ -965,7 +1043,7 @@ export const caseService = {
 
       // guard status ใน UPDATE (idempotent) — ถ้าถูก submit คู่ขนานจน status เปลี่ยนไปแล้ว → 0 rows → rollback
       const st = await client.query(
-        `UPDATE cases SET status = 'surveyed' WHERE id = $1 AND status = 'assigned' RETURNING id`,
+        `UPDATE cases SET status = 'surveyed' WHERE id = $1 AND status IN ('assigned','finished') RETURNING id`,
         [caseId]
       );
       if (st.rowCount === 0) throw new ForbiddenError('Case is not in assigned status');
@@ -1074,6 +1152,8 @@ export const caseService = {
        -- ไม่งั้นหัวหน้าตีกลับแล้วตามงานตัวเองต่อไม่ได้ และ "หัวหน้ายังแก้เองได้" ก็ทำไม่ได้จริง
        WHERE c.status IN ('surveyed', 'reviewed')
           OR (c.status = 'assigned' AND c.sent_back_at IS NOT NULL)
+          -- เสร็จงานหน้างานแล้ว ยังไม่ส่งรายงาน (07/09/69) — หัวหน้าต้องเห็นว่างานภาคสนามจบแล้ว เหลือแค่รายงาน
+          OR c.status = 'finished'
        ORDER BY c.created_at DESC`
     );
     // กรองตามทีมของหัวหน้า (staff_groups) ให้เห็นชุดเดียวกับหน้า "งานรอตรวจ (ISURVEY)" — user 07/09/69
@@ -1629,7 +1709,7 @@ export const caseService = {
     if (status === 'reviewed') {
       throw new ForbiddenError('เคสนี้อนุมัติแล้ว — ต้องให้แอดมินปลดล็อกก่อนจึงจะตีกลับได้');
     }
-    if (status === 'assigned') throw new ForbiddenError('เคสนี้อยู่กับผู้สำรวจอยู่แล้ว');
+    if (status === 'assigned' || status === 'finished') throw new ForbiddenError('เคสนี้อยู่กับผู้สำรวจอยู่แล้ว');
     if (status !== 'surveyed') throw new ForbiddenError('ตีกลับได้เฉพาะงานที่ส่งเข้ามาให้ตรวจแล้ว');
     if (!assigned_to) {
       throw new ForbiddenError(
@@ -1843,20 +1923,23 @@ export const caseService = {
 
   // จำนวนงานที่ "ถืออยู่" ของแต่ละพนักงานสำรวจ — ใช้ 2 ที่คนละนิยาม จึงคืนมาทั้งคู่
   //
-  //   active   = assigned + surveyed (ยังไม่ปิดเรื่อง) — บอร์ดเข้างานใช้ตัวนี้ ห้ามเปลี่ยนความหมาย
-  //   assigned = **ยังไม่ได้ส่งงาน** — หน้าจ่ายงานใช้ตัวนี้ตัดสินว่า "ว่าง" หรือไม่
+  //   active   = assigned + finished + surveyed (ยังไม่ปิดเรื่อง) — บอร์ดเข้างานใช้ตัวนี้ ห้ามเปลี่ยนความหมาย
+  //   assigned = **ยังไม่เสร็จหน้างาน** — หน้าจ่ายงานใช้ตัวนี้ตัดสินว่า "ว่าง" หรือไม่
+  //   finished = เสร็จงานหน้างานแล้ว ยังไม่ส่งรายงาน (07/09/69) — **รับงานใหม่ได้** โชว์เป็นข้อมูล
   //   surveyed = ส่งงานแล้วรอหัวหน้าตรวจ — งานในมือที่ช่างทำจบแล้ว
   //
   // นิยาม "ว่าง" ที่ user เคาะไว้ 24/08/69 = **ยังไม่ได้รับมอบหมายงาน** ·
   // เคสที่ส่งงานแล้วรอตรวจ = แสดงเป็นข้อมูล **ไม่นับว่าไม่ว่าง** (ช่างรับงานใหม่ได้)
+  // 07/09/69 เพิ่ม: กด "เสร็จงาน" แล้ว = ว่างเหมือนกัน (นี่คือเหตุผลหลักที่มีสถานะนี้)
   async activeWorkload() {
     const { rows } = await db.query(
       `SELECT u.id AS user_id, u.code,
               COUNT(c.id)::int                                          AS active,
               COUNT(c.id) FILTER (WHERE c.status = 'assigned')::int     AS assigned,
+              COUNT(c.id) FILTER (WHERE c.status = 'finished')::int     AS finished,
               COUNT(c.id) FILTER (WHERE c.status = 'surveyed')::int     AS surveyed
          FROM users u
-         LEFT JOIN cases c ON c.assigned_to = u.id AND c.status IN ('assigned','surveyed')
+         LEFT JOIN cases c ON c.assigned_to = u.id AND c.status IN ('assigned','finished','surveyed')
         WHERE u.role = 'surveyor'
         GROUP BY u.id, u.code`
     );
@@ -1868,6 +1951,7 @@ export const caseService = {
       SELECT
         COUNT(*) FILTER (WHERE status = 'pending') AS pending,
         COUNT(*) FILTER (WHERE status = 'assigned') AS assigned,
+        COUNT(*) FILTER (WHERE status = 'finished') AS finished,
         COUNT(*) FILTER (WHERE status = 'surveyed') AS surveyed,
         COUNT(*) FILTER (WHERE status = 'reviewed') AS reviewed,
         COUNT(*) AS total

@@ -13,6 +13,8 @@ class CaseModel {
   final String? sentBackAt;
   final String? sentBackReason;
   final int sentBackCount;
+  /// เสร็จงานหน้างาน (migration 054, 07/09/69) — status 'finished': รับงานถัดไปได้ ยังกรอก/ส่งรายงานได้
+  final String? finishedAt;
 
   CaseModel({
     required this.id,
@@ -27,10 +29,31 @@ class CaseModel {
     this.sentBackAt,
     this.sentBackReason,
     this.sentBackCount = 0,
+    this.finishedAt,
   });
 
   /// งานที่หัวหน้าตีกลับมาให้แก้ และยังไม่ได้ส่งกลับไป
   bool get isSentBack => (sentBackAt ?? '').isNotEmpty && status == 'assigned';
+
+  /// กด "เสร็จงาน" หน้างานแล้ว ยังไม่ส่งรายงาน
+  bool get isFinished => status == 'finished';
+
+  /// อัปเดตสถานะในรายการทันทีหลังกด "เสร็จงาน" โดยไม่ต้องรอโหลดรายการใหม่
+  CaseModel copyWith({String? status, String? finishedAt}) => CaseModel(
+        id: id,
+        customerName: customerName,
+        incidentLocation: incidentLocation,
+        incidentLat: incidentLat,
+        incidentLng: incidentLng,
+        assignedTo: assignedTo,
+        status: status ?? this.status,
+        createdAt: createdAt,
+        claimNo: claimNo,
+        sentBackAt: sentBackAt,
+        sentBackReason: sentBackReason,
+        sentBackCount: sentBackCount,
+        finishedAt: finishedAt ?? this.finishedAt,
+      );
 
   factory CaseModel.fromJson(Map<String, dynamic> json) => CaseModel(
         id: json['id'],
@@ -50,5 +73,6 @@ class CaseModel {
         sentBackReason: json['sent_back_reason']?.toString(),
         sentBackCount:
             int.tryParse(json['sent_back_count']?.toString() ?? '') ?? 0,
+        finishedAt: json['finished_at']?.toString(),
       );
 }

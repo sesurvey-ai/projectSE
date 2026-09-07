@@ -23,6 +23,7 @@ interface CaseRow {
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   pending:  { label: 'รอมอบหมาย',   color: 'text-gray-700',   bg: 'bg-gray-100' },
   assigned: { label: 'มอบหมายแล้ว', color: 'text-orange-700', bg: 'bg-orange-100' },
+  finished: { label: 'เสร็จงานแล้ว', color: 'text-teal-700',   bg: 'bg-teal-100' },
   surveyed: { label: 'สำรวจแล้ว',   color: 'text-blue-700',   bg: 'bg-blue-100' },
   reviewed: { label: 'ตรวจสอบแล้ว', color: 'text-green-700',  bg: 'bg-green-100' },
   declined: { label: 'ปฏิเสธแล้ว',  color: 'text-red-700',    bg: 'bg-red-100' },
@@ -182,6 +183,7 @@ export default function CallcenterCasesPage() {
           <option value="">ทุกสถานะ</option>
           <option value="pending">รอมอบหมาย</option>
           <option value="assigned">มอบหมายแล้ว</option>
+          <option value="finished">เสร็จงานแล้ว (รอส่งรายงาน)</option>
           <option value="surveyed">สำรวจแล้ว</option>
           <option value="reviewed">ตรวจสอบแล้ว</option>
           <option value="declined">ปฏิเสธแล้ว</option>

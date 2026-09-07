@@ -32,6 +32,8 @@ export interface Case {
   sent_back_at?: string | null;
   sent_back_reason?: string | null;
   sent_back_count?: number | null;
+  /** เสร็จงานหน้างานแล้ว (migration 054, 07/09/69) — status 'finished' ยังไม่ส่งรายงาน ช่างรับงานใหม่ได้ */
+  finished_at?: string | null;
   emcs_imported_at?: string | null; // สร้าง draft ใน EMCS แล้วเมื่อ (null = ยัง) — กันกดซ้ำถาวรข้ามเครื่อง
   // ⚠️ "นำเข้าแล้ว" ≠ "ส่งงานแล้ว" — บอทสร้าง draft ให้เท่านั้น ปุ่ม "ส่งงานใหม่" คนกดเอง
   emcs_submitted_at?: string | null;  // ยืนยันแล้วว่าประกันรับงาน (null = ยังเป็น draft ค้าง)
@@ -129,15 +131,23 @@ export function moneyGaps(c: Case): string[] {
   return gaps;
 }
 
+/** เวลาไทย "7/9 10:15" จาก ISO — ใช้ป้ายเล็กในแถว (เทียบวันเวลาด้วยเวลา UTC จะเพี้ยนช่วงหัวค่ำ) */
+function bkkTime(iso: string): string {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return '';
+  return t.toLocaleString('th-TH', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
+}
+
 function getStatusBadge(status: string) {
   const styles: Record<string, string> = {
     pending: 'bg-gray-100 text-gray-700',
     assigned: 'bg-orange-100 text-orange-700',
+    finished: 'bg-teal-100 text-teal-700',
     surveyed: 'bg-blue-100 text-blue-700',
     reviewed: 'bg-green-100 text-green-700',
     declined: 'bg-red-100 text-red-700',
   };
-  const labels: Record<string, string> = { pending: 'รอมอบหมาย', assigned: 'มอบหมายแล้ว', surveyed: 'สำรวจแล้ว', reviewed: 'ตรวจสอบแล้ว', declined: 'ปฏิเสธแล้ว' };
+  const labels: Record<string, string> = { pending: 'รอมอบหมาย', assigned: 'มอบหมายแล้ว', finished: 'เสร็จงานแล้ว', surveyed: 'สำรวจแล้ว', reviewed: 'ตรวจสอบแล้ว', declined: 'ปฏิเสธแล้ว' };
   return <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || styles.pending}`}>{labels[status] || status}</span>;
 }
 
@@ -299,6 +309,12 @@ export default function CaseList({ cases, basePath = '/inspector' }: CaseListPro
                 {c.status === 'assigned' && c.sent_back_at && (
                   <div className="text-xs text-orange-700 mt-1" title={String(c.sent_back_reason ?? '')}>
                     ตีกลับแล้ว — รอช่างส่งใหม่
+                  </div>
+                )}
+                {/* เสร็จงานหน้างานแล้ว (07/09/69) — งานภาคสนามจบ เหลือช่างทำรายงานแล้วกดส่ง ยังไม่ใช่คิวของหัวหน้า */}
+                {c.status === 'finished' && (
+                  <div className="text-xs text-teal-700 mt-1" title="ช่างกด &quot;เสร็จงาน&quot; หน้างานแล้ว กำลังทำรายงาน — ยังไม่ส่งให้ตรวจ · ช่างรับงานใหม่ได้แล้ว">
+                    เสร็จงานแล้ว — รอช่างส่งรายงาน{c.finished_at ? ` (${bkkTime(c.finished_at)})` : ''}
                   </div>
                 )}
                 {(c.unlocked_count ?? 0) > 0 && (

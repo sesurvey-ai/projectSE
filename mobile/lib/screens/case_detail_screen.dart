@@ -533,8 +533,15 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
                 const SizedBox(height: 24),
 
+                // เสร็จงานหน้างานแล้ว (finished, 07/09/69) — ไม่ต้องยืนยันถึงที่เกิดเหตุอีก
+                // เหลือกรอกรายงานต่อ (ที่ไหนก็ได้) แล้วกดส่ง · รับงานถัดไปได้แล้ว
+                if (caseModel.isFinished) ...[
+                  _finishedCard(caseModel),
+                  const SizedBox(height: 12),
+                  _surveyButton(caseModel, 'กรอกรายงานต่อ / ส่งงาน', Icons.edit_note),
+                ]
                 // Arrival confirmation + Survey button
-                if (caseModel.status == 'assigned') ...[
+                else if (caseModel.status == 'assigned') ...[
                   // ระหว่างเช็คสถานะรูปยืนยัน แสดง loader กันปุ่มกระพริบ (ถ่ายรูปยืนยัน → เริ่มสำรวจ)
                   if (_checkingArrival)
                     const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
@@ -632,29 +639,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          // สร้างโฟลเดอร์บนเครื่อง
-                          await _getCaseFolder();
-                          // สร้างโฟลเดอร์บน server
-                          try {
-                            final apiService = ApiService();
-                            await apiService.createCaseFolder(caseModel.id);
-                          } catch (_) {}
-                          if (mounted) context.go('/cases/${caseModel.id}/survey');
-                        },
-                        icon: const Icon(Icons.assignment),
-                        label: const Text('เริ่มสำรวจ', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2F6BD8),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                    ),
+                    _surveyButton(caseModel, 'เริ่มสำรวจ', Icons.assignment),
                   ],
                 ],
               ],
@@ -662,6 +647,64 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
           );
         },
       ),
+    );
+  }
+
+  /// ปุ่มเข้าฟอร์มสำรวจ — ใช้ทั้ง "เริ่มสำรวจ" (assigned) และ "กรอกรายงานต่อ" (finished)
+  Widget _surveyButton(CaseModel caseModel, String label, IconData icon) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          // สร้างโฟลเดอร์บนเครื่อง
+          await _getCaseFolder();
+          // สร้างโฟลเดอร์บน server
+          try {
+            final apiService = ApiService();
+            await apiService.createCaseFolder(caseModel.id);
+          } catch (_) {}
+          if (mounted) context.go('/cases/${caseModel.id}/survey');
+        },
+        icon: Icon(icon),
+        label: Text(label, style: const TextStyle(fontSize: 16)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2F6BD8),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+
+  /// การ์ด "เสร็จงานหน้างานแล้ว" (status finished) — รับงานถัดไปได้ · กรอกรายงานต่อที่ไหนก็ได้ · ยังไม่ส่ง
+  Widget _finishedCard(CaseModel caseModel) {
+    String when = '';
+    final t = DateTime.tryParse(caseModel.finishedAt ?? '')?.toLocal();
+    if (t != null) {
+      when = ' ${t.day}/${t.month}/${t.year + 543} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.teal.shade200),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.flag_circle_rounded, color: Colors.teal.shade700, size: 24),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('เสร็จงานหน้างานแล้ว$when',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.teal.shade800)),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text('รับงานถัดไปได้แล้ว · กรอกรายงานต่อได้ทุกที่ แล้วกด "ตรวจสอบ & ส่ง" ให้หัวหน้าตรวจ',
+            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700)),
+      ]),
     );
   }
 
