@@ -2817,7 +2817,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2">
                       {/* ช่องที่เห็น = ยอดค่ารูปที่เรียกเก็บ (จำนวนรูป × ราคาต่อรูป) — user 07/09/69: คอลัมน์ "ราคาประกัน" ต้องเป็นเงินที่เก็บจริง (50)
                           ไม่ใช่ราคาต่อรูป (5) · ที่บันทึกยังเป็น "ราคาต่อรูป" ใน photo_fee_price (hidden) — syncPhotoFee คิดให้ทั้งสองทาง */}
-                      <input type="hidden" name="photo_fee_price" defaultValue={photoUnitDefault} />
+                      {/* ⛔ ห้ามใช้ type="hidden" — input hidden ใช้ value แบบ "default mode": React รีเรนเดอร์ทีไร (setLiveSum) จะเซ็ต defaultValue กลับ
+                          ทำให้ค่าที่ syncPhotoFee เพิ่งคำนวณหายกลับเป็นค่าเดิม (เจอจริง 07/09/69: พิมพ์ 60 แล้วต่อรูปยังเป็น 5) → ใช้ text ที่ซ่อนด้วย CSS แทน */}
+                      <input type="text" name="photo_fee_price" defaultValue={photoUnitDefault} className="hidden" tabIndex={-1} aria-hidden="true" />
                       <input type="text" disabled={previewing} name="photo_fee_total" defaultValue={photoTotalDefault} title={`ยอดค่ารูปที่เรียกเก็บประกัน = จำนวนรูป × ราคาต่อรูป — พิมพ์ยอดรวม ระบบคิดราคาต่อรูปให้${photoFee?.reason ? ` · ${photoFee.reason}` : ''}`} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" />
                       {liveSum.photo > 0 && (
                         <div className="text-[0.6875rem] text-right text-blue-900/70 tabular-nums">{liveSum.photoCount} รูป × {baht(liveSum.photoUnit)} ต่อรูป</div>
