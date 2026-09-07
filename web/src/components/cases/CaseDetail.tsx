@@ -2823,7 +2823,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     </tr>
                   )}
                   <tr className="border-b border-gray-100">
-                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่ารูปถ่าย</td>
+                    <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">
+                      ค่ารูปถ่าย
+                      {liveSum.photo > 0 && (
+                        <div className="text-[0.6875rem] text-gray-500 tabular-nums whitespace-nowrap">{liveSum.photoCount} รูป × {baht(liveSum.photoUnit)} ต่อรูป</div>
+                      )}
+                    </td>
                     <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="photo_fee_count" defaultValue={exV.photo_fee_count || (photoFee?.count ? String(photoFee.count) : '')} title={photoFee?.reason} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">รูป</span></div></td>
                     {/* ⛔ ล็อกถาวร — **พนักงานไม่มีค่ารูป** ค่ารูปเป็นของฝั่งเรียกเก็บประกันเท่านั้น
                         (user เคาะ 20/08/69) · disabled = ไม่ติดไปกับ FormData ด้วย
@@ -2836,9 +2841,6 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           ทำให้ค่าที่ syncPhotoFee เพิ่งคำนวณหายกลับเป็นค่าเดิม (เจอจริง 07/09/69: พิมพ์ 60 แล้วต่อรูปยังเป็น 5) → ใช้ text ที่ซ่อนด้วย CSS แทน */}
                       <input type="text" name="photo_fee_price" defaultValue={photoUnitDefault} className="hidden" tabIndex={-1} aria-hidden="true" />
                       <input type="text" disabled={previewing} name="photo_fee_total" defaultValue={photoTotalDefault} title={`ยอดค่ารูปที่เรียกเก็บประกัน = จำนวนรูป × ราคาต่อรูป — พิมพ์ยอดรวม ระบบคิดราคาต่อรูปให้${photoFee?.reason ? ` · ${photoFee.reason}` : ''}`} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" />
-                      {liveSum.photo > 0 && (
-                        <div className="text-[0.6875rem] text-right text-blue-900/70 tabular-nums">{liveSum.photoCount} รูป × {baht(liveSum.photoUnit)} ต่อรูป</div>
-                      )}
                     </td>
                   </tr>
                   {/* บอกที่มาของตัวเลขที่เติมให้ — ไม่งั้นหัวหน้าเห็น 10/5 โผล่มาเองแล้วไม่รู้ว่ามาจากไหน
