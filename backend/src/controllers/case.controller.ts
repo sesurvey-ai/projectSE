@@ -70,8 +70,8 @@ export const caseController = {
     sendSuccess(res, result);
   }),
 
-  getForReview: asyncHandler(async (_req: Request, res: Response) => {
-    const cases = await caseService.getForReview();
+  getForReview: asyncHandler(async (req: Request, res: Response) => {
+    const cases = await caseService.getForReview(req.user ? { id: req.user.id, role: req.user.role } : undefined);
     sendSuccess(res, cases);
   }),
 

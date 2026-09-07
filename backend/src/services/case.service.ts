@@ -14,6 +14,7 @@ import { tumbonOptions } from './billingRates.service';
 import { districtCentroid } from './geoDistrict';
 import { recordMoneyChanges } from './moneyAudit';
 import { getIO } from '../socket';
+import { staffGroupService } from './staffGroup.service';
 
 // คอลัมน์ JSONB บน survey_reports (ข้อมูล 1:N) — node-pg ไม่ serialize array ให้เอง
 // ต้อง JSON.stringify ก่อน bind ไม่งั้นถูกตีความเป็น Postgres array literal แล้ว error
@@ -1040,7 +1041,7 @@ export const caseService = {
    *
    * ⛔ นับรูปด้วย subquery ไม่ใช่ JOIN — join แล้วแถวเคสจะซ้ำตามจำนวนรูป
    */
-  async getForReview() {
+  async getForReview(user?: { id: number; role: string }) {
     const result = await db.query(
       `SELECT c.*, u.first_name AS surveyor_first_name, u.last_name AS surveyor_last_name,
               u.code AS surveyor_code,
@@ -1074,7 +1075,16 @@ export const caseService = {
           OR (c.status = 'assigned' AND c.sent_back_at IS NOT NULL)
        ORDER BY c.created_at DESC`
     );
-    return result.rows;
+    // กรองตามทีมของหัวหน้า (staff_groups) ให้เห็นชุดเดียวกับหน้า "งานรอตรวจ (ISURVEY)" — user 07/09/69
+    // admin / หัวหน้าที่ยังไม่ผูกทีม = เห็นทั้งหมด · งานที่ตัวเองดึง/สร้าง เห็นเสมอ (แม้ช่างอยู่นอกทีม)
+    if (!user) return result.rows;
+    const team = await staffGroupService.filterFor(user.id, user.role);
+    if (!team) return result.rows;
+    const memberIds = new Set((team.group.members ?? []).map((m) => m.surveyor_id).filter((x): x is number => Boolean(x)));
+    return result.rows.filter((r) =>
+      r.created_by === user.id
+      || (r.assigned_to && memberIds.has(r.assigned_to))
+      || team.match(`${r.surveyor_code ?? ''} ${r.surveyor_first_name ?? ''} ${r.surveyor_last_name ?? ''}`.trim()));
   },
 
   async getDetail(caseId: number, user?: CaseUser) {

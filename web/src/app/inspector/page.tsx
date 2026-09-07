@@ -10,6 +10,14 @@ type Tab = 'pending' | 'sentBack' | 'approved' | 'sent';
 
 export default function InspectorDashboard() {
   const [cases, setCases] = useState<Case[]>([]);
+  /** ทีมของหัวหน้า (staff_groups) — รายการงานถูกกรองตามทีมที่ backend แล้ว ตรงนี้แค่บอกให้รู้ว่ากรองอยู่ (07/09/69) */
+  const [team, setTeam] = useState<{ name: string; member_count?: number } | null>(null);
+  useEffect(() => {
+    api.get('/api/staff-groups/mine').then((r) => {
+      const g = r.data?.data;
+      setTeam(g && (g.member_count ?? (g.members?.length ?? 0)) > 0 ? { name: g.name, member_count: g.member_count ?? g.members?.length } : null);
+    }).catch(() => setTeam(null));
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [from, setFrom] = useState('');
@@ -164,6 +172,11 @@ export default function InspectorDashboard() {
               ไม่งั้นคนยังกด F5 เผื่อไว้ (และไม่มีทางรู้เลยถ้าการอัปเดตเงียบไป) */}
           <p className="text-gray-500 mt-1 flex items-center gap-2">
             <span>งานที่รอการตรวจสอบและอนุมัติ</span>
+            {team && (
+              <span className="ml-2 text-xs text-blue-800" title="กรองตามรายชื่อลูกทีมที่แอดมินตั้งไว้ · งานที่คุณดึง/สร้างเองแสดงด้วยเสมอ · ดูรายชื่อที่เมนู ลูกทีมของฉัน">
+                · เฉพาะงานของทีม {team.name}{team.member_count ? ` (${team.member_count} รายชื่อ)` : ''}
+              </span>
+            )}
             {freshAt && (
               <span className="text-xs text-gray-400">
                 · อัปเดตเมื่อ {freshAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.
