@@ -216,14 +216,15 @@ function RecordList({
   fields: FieldDef[];
   cardTitle: (i: number) => string;
   addLabel: string;
-  emptyHint: string;
+  /** ข้อความตอนยังไม่มีรายการ — ไม่ส่ง = ไม่แสดงกล่องเหลือง (user ถอดของผู้บาดเจ็บ/ทรัพย์สิน 07/09/69) */
+  emptyHint?: string;
 }) {
   const set = (i: number, k: string, v: string) =>
     onChange(items.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
 
   return (
     <div className="space-y-4">
-      {items.length === 0 && (
+      {items.length === 0 && emptyHint && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{emptyHint}</p>
       )}
 
@@ -302,7 +303,6 @@ export function InjuredEditor({ items, onChange }: { items: RecordItem[]; onChan
       items={items} onChange={onChange} fields={INJURED_FIELDS}
       cardTitle={(i) => `ผู้บาดเจ็บคนที่ ${i + 1}`}
       addLabel="+ เพิ่มผู้บาดเจ็บ"
-      emptyHint="ยังไม่มีผู้บาดเจ็บ — เคสที่นำเข้าจากไฟล์ XML อาจได้ข้อมูลส่วนนี้มาไม่ครบ กรอกเพิ่มได้ที่นี่"
     />
   );
 }
@@ -313,7 +313,6 @@ export function PropertyEditor({ items, onChange }: { items: RecordItem[]; onCha
       items={items} onChange={onChange} fields={PROPERTY_FIELDS}
       cardTitle={(i) => `รายการที่ ${i + 1}`}
       addLabel="+ เพิ่มทรัพย์สิน"
-      emptyHint="ยังไม่มีทรัพย์สินเสียหาย — เคสที่นำเข้าจากไฟล์ XML อาจได้ข้อมูลส่วนนี้มาไม่ครบ กรอกเพิ่มได้ที่นี่"
     />
   );
 }
