@@ -20,6 +20,7 @@ import api from '@/lib/api';
 type Row = {
   claim_no: string; survey_no: string; surveyor_name: string; acc_province: string;
   plate_no: string; finish_dt: string; status: string; emcs_sent: boolean;
+  dispatch_dt?: string; send_report_dt?: string;   // จ่ายงานเวลา / ส่งรายงานเวลา (user ขอ 07/09/69)
   imported_case_id?: number | null; imported_status?: string | null;
 };
 type Filter = { applied: boolean; group_name: string | null; members: number; hidden: number };
@@ -31,7 +32,7 @@ const ALL = '__all__';
  * จำรายการที่โหลดล่าสุดไว้ในแท็บนี้ (sessionStorage) — เปลี่ยนเมนู/เด้งไปหน้าเคสแล้วกลับมาไม่ต้องโหลดใหม่
  * (โหลดครั้งหนึ่ง 10 กว่าวินาที) · ปิดแท็บ = หาย · กด "โหลดรายการ" = ดึงสดทับ
  */
-const CACHE_KEY = 'isurvey-pending-cache-v1';
+const CACHE_KEY = 'isurvey-pending-cache-v2';   // v2: เพิ่มคอลัมน์เวลาจ่ายงาน/ส่งรายงาน — รายการเก่าในแท็บไม่มีค่า
 type Cache = { from: string; to: string; status: string; rows: Row[]; filter: Filter | null; loadedAt: string };
 const readCache = (): Cache | null => {
   try { const raw = sessionStorage.getItem(CACHE_KEY); return raw ? (JSON.parse(raw) as Cache) : null; } catch { return null; }
@@ -204,7 +205,8 @@ export default function IsurveyPendingPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="px-2 py-2 text-left">ส่งงานเมื่อ</th>
+                <th className="px-2 py-2 text-left">จ่ายงานเวลา</th>
+                <th className="px-2 py-2 text-left">ส่งรายงานเวลา</th>
                 <th className="px-2 py-2 text-left">เลขเคลม</th>
                 <th className="px-2 py-2 text-left">เลขเซอร์เวย์</th>
                 <th className="px-2 py-2 text-left">ผู้สำรวจ</th>
@@ -217,7 +219,7 @@ export default function IsurveyPendingPage() {
             </thead>
             <tbody>
               {visible.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-6 text-center text-gray-500">
+                <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-500">
                   {rows.length === 0 ? 'ไม่มีงานในช่วงวันที่นี้' : 'ไม่มีงานในสถานะที่เลือก — เปลี่ยนสถานะด้านบน'}
                 </td></tr>
               )}
@@ -228,7 +230,9 @@ export default function IsurveyPendingPage() {
                 // key ของแถวต้องไม่ซ้ำ — ถ้าซ้ำ React ปล่อยแถวเก่าค้างในตารางตอนเปลี่ยนตัวกรองสถานะ (เจอจริง 04/09/69)
                 return (
                   <tr key={`${k}#${i}`} className="border-t border-gray-100 align-top">
-                    <td className="px-2 py-2 whitespace-nowrap text-gray-600">{r.finish_dt}</td>
+                    <td className="px-2 py-2 whitespace-nowrap text-gray-600">{r.dispatch_dt || '-'}</td>
+                    {/* เดิมโชว์ finish_dt (สำรวจเสร็จ) ในชื่อ "ส่งงานเมื่อ" — user 07/09/69 ให้ใช้เวลาส่งรายงาน (sendReport_dt) แทน */}
+                    <td className="px-2 py-2 whitespace-nowrap text-gray-600" title={r.finish_dt ? `สำรวจเสร็จ ${r.finish_dt}` : undefined}>{r.send_report_dt || '-'}</td>
                     <td className="px-2 py-2 whitespace-nowrap font-mono">{r.claim_no}</td>
                     <td className="px-2 py-2 whitespace-nowrap font-mono">{r.survey_no}</td>
                     <td className="px-2 py-2 min-w-[9rem]">{r.surveyor_name}</td>

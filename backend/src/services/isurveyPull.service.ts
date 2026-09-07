@@ -16,6 +16,8 @@ import { staffGroupService } from './staffGroup.service';
 export interface PendingRow {
   claim_no: string; survey_no: string; surveyor_name: string; acc_province: string;
   plate_no: string; finish_dt: string; status: string; emcs_sent: boolean;
+  /** เวลาจ่ายงาน / ส่งรายงาน จากรายงาน ISURVEY (dispatch_dt / sendReport_dt) — หน้าเว็บโชว์ 2 คอลัมน์แรก (07/09/69) */
+  dispatch_dt?: string; send_report_dt?: string;
   /** เคสที่มีอยู่แล้วในระบบเรา (เลขเคลม+เซอร์เวย์เดียวกัน) — กันดึงซ้ำ */
   imported_case_id?: number | null; imported_status?: string | null;
 }
