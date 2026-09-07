@@ -689,6 +689,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const photoFeeUnset = !exV.photo_fee_count && !Number(exV.photo_fee_price ?? 0);
   const photoFee = (!previewing && photoFeeSuggest && photoFeeUnset) ? photoFeeSuggest : null;
+  // ค่ารูป: ที่บันทึก = "ราคาต่อรูป" (photo_fee_price) แต่ช่องที่เห็นในคอลัมน์ "ราคาประกัน" = ยอดรวม (user 07/09/69)
+  const photoUnitDefault = zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '');
+  const photoCountDefault = Number(exV.photo_fee_count || photoFee?.count || 0) || 1;
+  const photoTotalDefault = photoUnitDefault
+    ? (Math.round(Number(photoUnitDefault) * photoCountDefault * 100) / 100).toFixed(2) : '';
   /**
    * ── เรทฝั่งเรียกเก็บประกัน ── (user สั่งเปิดใช้ 01/09/69)
    *
@@ -780,7 +785,29 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    *    (บอทกรอกแต่ช่องรายแถวฝั่งเสนอ แล้วกด Tab ให้ EMCS รวมเอง — user ย้ำ 01/09/69)
    */
   const [liveSum, setLiveSum] = useState(
-    { pay: 0, ins: 0, area: 0, hours: 0, deduct: 0, reasoned: false, photo: 0 });
+    { pay: 0, ins: 0, area: 0, hours: 0, deduct: 0, reasoned: false, photo: 0, photoCount: 0, photoUnit: 0 });
+  /**
+   * ค่ารูป 2 ช่องต้องสอดคล้องกัน: ช่องที่เห็น photo_fee_total (ยอดรวม) · ช่องที่บันทึก photo_fee_price (ต่อรูป, hidden)
+   * พิมพ์ยอดรวม → ต่อรูป = ยอด ÷ จำนวน · แก้จำนวนรูป → ยอดรวม = ต่อรูป × จำนวน (คงราคาต่อรูป เช่น 5 บาท/รูป)
+   * ที่ไม่เปลี่ยนไปเก็บยอดรวมตรง ๆ: XML (SUR_PHOTO=ต่อรูป×จำนวน) / se-billing / ใบเบิก / ตัวแปลง ISURVEY คูณ-หารด้วยจำนวนรูปกันอยู่แล้ว
+   */
+  const syncPhotoFee = useCallback((e?: Event) => {
+    const root = railRef.current;
+    if (!root) return;
+    const el = (n: string) => root.querySelector<HTMLInputElement>(`[name="${n}"]`);
+    const total = el('photo_fee_total'), unit = el('photo_fee_price'), cnt = el('photo_fee_count');
+    if (!total || !unit) return;
+    const num = (v: string | undefined) => Number(String(v ?? '').replace(/,/g, '')) || 0;
+    const n = num(cnt?.value) || 1;
+    const target = (e?.target as HTMLInputElement | null)?.name;
+    if (target === 'photo_fee_count') {
+      const u = num(unit.value);
+      if (u > 0) total.value = String(Math.round(u * n * 100) / 100);
+    } else if (target === 'photo_fee_total' || !target) {
+      const t = num(total.value);
+      unit.value = t > 0 ? String(Math.round((t / n) * 100) / 100) : '';
+    }
+  }, []);
   const recalcSums = useCallback(() => {
     const root = railRef.current;
     if (!root) return;
@@ -798,7 +825,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     const r2 = (v: number) => Math.round(v * 100) / 100;
     // ค่ารูปในช่องคือ "ราคาต่อรูป" (5) — ยอดจริงที่เรียกเก็บ = × จำนวนรูป (10 × 5 = 50) เหมือนที่ XML/se-billing/ใบเบิกคูณอยู่แล้ว
     // เดิมบวกแค่ 5 → รวมยอดบนจอน้อยกว่ายอดที่ส่งออกจริง (user ทัก 04/09/69)
-    const photo = r2(num('photo_fee_price') * (num('photo_fee_count') || 1));
+    const photo = r2(num('photo_fee_total'));
+    const photoCount = num('photo_fee_count') || 1;
+    const photoUnit = r2(num('photo_fee_price'));
     const ins = r2(INS_MONEY_INPUTS.reduce((t, k) => t + (k === 'photo_fee_price' ? photo : num(k)), 0));
     const area = on('out_of_area') ? amt('out_of_area_amt', OUT_OF_AREA_AMT) : 0;
     const hours = on('out_of_hours') ? amt('out_of_hours_amt', OUT_OF_HOURS_AMT) : 0;
@@ -807,8 +836,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     const reasoned = on('deduct_late') || on('deduct_docs') || txt('deduct_reason') !== '';
     const pay = r2(PAY_MONEY_INPUTS.reduce((t, k) => t + num(k), 0) + area + hours - deduct);
     setLiveSum((prev) => (prev.pay === pay && prev.ins === ins && prev.area === area
-      && prev.hours === hours && prev.deduct === deduct && prev.reasoned === reasoned && prev.photo === photo)
-      ? prev : { pay, ins, area, hours, deduct, reasoned, photo });
+      && prev.hours === hours && prev.deduct === deduct && prev.reasoned === reasoned && prev.photo === photo
+      && prev.photoCount === photoCount && prev.photoUnit === photoUnit)
+      ? prev : { pay, ins, area, hours, deduct, reasoned, photo, photoCount, photoUnit });
   }, []);
   /**
    * พิมพ์ที่ช่องไหนในรางขวาก็คิดใหม่ — ฟังที่รางทั้งราง ไม่ต้องแขวน onChange ทีละช่อง
@@ -820,14 +850,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   useEffect(() => {
     const root = railRef.current;
     if (!root) return;
-    const h = () => recalcSums();
+    const h = (e: Event) => { syncPhotoFee(e); recalcSums(); };
     root.addEventListener('input', h);
     root.addEventListener('change', h);
     return () => {
       root.removeEventListener('input', h);
       root.removeEventListener('change', h);
     };
-  }, [recalcSums, viewVisit]);
+  }, [recalcSums, syncPhotoFee, viewVisit]);
   /**
    * ค่าที่โหลดมาทีหลัง (ยอดเงินเป็น async) ไม่ยิง event ใด ๆ — ต้องคิดเองหลัง render
    * ⛔ setLiveSum ต้องคืนตัวเดิมเมื่อยอดไม่เปลี่ยน (ดูข้างบน) ไม่งั้น effect ที่ผูกกับ
@@ -2785,10 +2815,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         ยอดเก่าที่เคยกรอกผิดไว้จึงถูกล้างเป็นค่าว่างตอนบันทึกครั้งถัดไป */}
                     <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled name="pay_photo_fee" defaultValue="" title="พนักงานไม่มีค่ารูป — ค่ารูปเบิกได้เฉพาะฝั่งประกัน" className="w-full border rounded-none px-2 py-1 text-sm text-right bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed" /></td>
                     <td className="px-3 min-[1500px]:px-2 py-2">
-                      {/* ช่องนี้คือ "ราคาต่อรูป" — บอกยอดที่เรียกเก็บจริง (× จำนวนรูป) ไว้ใต้ช่อง ไม่งั้นเห็น 5 แล้วนึกว่าเก็บประกันแค่ 5 (user ทัก 04/09/69) */}
-                      <input type="text" disabled={previewing} name="photo_fee_price" defaultValue={zeroBlank(exV.photo_fee_price) || (photoFee?.price ? String(photoFee.price) : '')} title={`ราคาต่อรูป — ยอดที่เรียกเก็บ = จำนวนรูป × ราคาต่อรูป${photoFee?.reason ? ` · ${photoFee.reason}` : ''}`} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" />
+                      {/* ช่องที่เห็น = ยอดค่ารูปที่เรียกเก็บ (จำนวนรูป × ราคาต่อรูป) — user 07/09/69: คอลัมน์ "ราคาประกัน" ต้องเป็นเงินที่เก็บจริง (50)
+                          ไม่ใช่ราคาต่อรูป (5) · ที่บันทึกยังเป็น "ราคาต่อรูป" ใน photo_fee_price (hidden) — syncPhotoFee คิดให้ทั้งสองทาง */}
+                      <input type="hidden" name="photo_fee_price" defaultValue={photoUnitDefault} />
+                      <input type="text" disabled={previewing} name="photo_fee_total" defaultValue={photoTotalDefault} title={`ยอดค่ารูปที่เรียกเก็บประกัน = จำนวนรูป × ราคาต่อรูป — พิมพ์ยอดรวม ระบบคิดราคาต่อรูปให้${photoFee?.reason ? ` · ${photoFee.reason}` : ''}`} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right" />
                       {liveSum.photo > 0 && (
-                        <div className="text-[0.6875rem] text-right text-blue-900/70 tabular-nums">ต่อรูป · รวม {baht(liveSum.photo)}</div>
+                        <div className="text-[0.6875rem] text-right text-blue-900/70 tabular-nums">{liveSum.photoCount} รูป × {baht(liveSum.photoUnit)} ต่อรูป</div>
                       )}
                     </td>
                   </tr>
