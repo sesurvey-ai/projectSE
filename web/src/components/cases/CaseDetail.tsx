@@ -1239,6 +1239,39 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       setPayHl(moneyTick && (!amt || !total) ? 'red' : 'none');
       setPayOver(Boolean(moneyTick && amt && total && Number(amt) > Number(total)));
 
+      /**
+       * ── ค่าเรียกร้องเติมให้เอง (user เคาะ 08/09/69) ──
+       * ติ๊ก "รับเงินจำนวน" + กรอกยอด + "ผู้สำรวจภัย" ขึ้นต้น SE (พนักงานเรา รวม SEC ต่างจังหวัด)
+       *   → ช่อง % = 5 และ "ราคาพนักงาน" ของค่าเรียกร้อง = ยอด × 5% (กติกาเดียวกับ extension se-billing)
+       * ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่แตะ · ช่างนอก (ไม่ขึ้นต้น SE) ไม่เติมให้ กรอกเองเหมือนเดิม
+       * เขียนทับเฉพาะช่องว่างหรือค่าที่ระบบเติมไว้เอง (จำไว้ใน data-auto) — หัวหน้าพิมพ์ทับแล้วระบบไม่แย่งคืน
+       * เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม · เติมแล้วต้องคิดยอดรวมใหม่เอง (event ไหลผ่านรางไปแล้ว)
+       */
+      {
+        const surveyor = val('input[name="acc_surveyor"]');
+        const amtNum = Number(amt);
+        const auto = /^SE/i.test(surveyor) && moneyTick && Number.isFinite(amtNum) && amtNum > 0
+          ? { claim_fee_percent: '5', pay_claim_fee: String(Math.round(amtNum * 0.05 * 100) / 100) }
+          : null;
+        let touched = false;
+        const targets: Array<[string, string | undefined]> = [
+          ['claim_fee_percent', auto?.claim_fee_percent],
+          ['pay_claim_fee', auto?.pay_claim_fee],
+        ];
+        for (const [nm, next] of targets) {
+          const el = form.querySelector(`input[name="${nm}"]`) as HTMLInputElement | null;
+          if (!el || el.disabled) continue;
+          const cur = el.value.trim();
+          const mine = cur === '' || (el.dataset.auto !== undefined && cur === el.dataset.auto);
+          if (next !== undefined) {
+            if (mine && cur !== next) { el.value = next; el.dataset.auto = next; touched = true; }
+          } else if (el.dataset.auto !== undefined && cur === el.dataset.auto) {
+            el.value = ''; delete el.dataset.auto; touched = true;
+          }
+        }
+        if (touched) recalcSums();
+      }
+
       // ── ลำดับเวลา (กติกาของระบบประกัน) ──
       // วันที่บนฟอร์มเป็น พ.ศ. รูปแบบ วว/ดด/ปปปป — อ่านไม่ออกก็ข้าม ไม่เดา
       const stamp = (dn: string, hn: string, mn: string): number | null => {
@@ -1342,7 +1375,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       form.removeEventListener('change', schedule);
     };
     // pay โหลดทีหลัง (async) — ไม่ใส่ไว้ ตัวเช็ค "ยังไม่กรอกราคาพนักงาน" จะค้างที่ผลก่อนโหลด
-  }, [report, isEditing, saveMsg, pay, payRequired]);
+  }, [report, isEditing, saveMsg, pay, payRequired, recalcSums]);
 
   /**
    * ── เส้นใต้บอกสถานะช่อง: เข้ม = กรอกแล้ว · จาง = ยังว่าง ──

@@ -528,5 +528,18 @@ console.log('\n── ตัวสลับฟอนต์ ──');
   }
 }
 
+console.log('\n── ค่าเรียกร้อง: เติม % และราคาพนักงานให้เอง (user เคาะ 08/09/69) ──');
+/**
+ * กติกาเดียวกับ extension se-billing บน ISURVEY: ผู้สำรวจภัยขึ้นต้น SE = พนักงานเรา → 5% ของ "รับเงินจำนวน"
+ * ฝั่งเรียกเก็บประกันไม่เติม (user สั่ง) · ช่างนอกไม่เติม
+ */
+check('ผู้สำรวจภัยขึ้นต้น SE + ติ๊กรับเงินจำนวน + มียอด → % = 5',
+      ui.includes('/^SE/i.test(surveyor) && moneyTick') && ui.includes("claim_fee_percent: '5'"));
+check('ราคาพนักงาน = ยอด × 5% ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * 0.05 * 100) / 100'));
+check('⛔ ไม่ทับค่าที่หัวหน้าพิมพ์เอง (จำค่าที่ระบบเติมใน data-auto)', ui.includes('cur === el.dataset.auto'));
+check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่ถูกเติม', !ui.includes("['claim_fee_price', auto"));
+check('เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม', ui.includes("el.value = ''; delete el.dataset.auto; touched = true;"));
+check('เติมแล้วคิดยอดรวมใหม่', ui.includes('if (touched) recalcSums();'));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
