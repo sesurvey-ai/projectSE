@@ -383,7 +383,7 @@ async function renderChecklistPng(c: Checklist, footer: string): Promise<Blob> {
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#F5A623'; ctx.fillRect(0, 0, W, 10);
   ctx.textBaseline = 'middle';
-  const xLabel = 90, xOpt = 560, gap = 250;
+  const xLabel = 90, xOpt = 560;
   let y = 240;
   const tick = (x: number, yy: number) => {
     ctx.lineWidth = 3; ctx.strokeStyle = '#111';
@@ -392,12 +392,16 @@ async function renderChecklistPng(c: Checklist, footer: string): Promise<Blob> {
   };
   for (const row of CHECKLIST_ROWS) {
     ctx.fillStyle = '#222'; ctx.font = font(24); ctx.fillText(row.label, xLabel, y);
-    row.options.forEach((o, i) => {
-      const x = xOpt + i * gap; const sel = c[row.key] === o.code;
+    // วางตัวเลือกต่อกันตามความกว้างจริงของข้อความ — ระยะคงที่ทำให้ "ใบรับรองความเสียหาย" ทับ "บัตรติดต่อ" (เจอตอนวาดทดลอง 08/09/69)
+    let x = xOpt;
+    for (const o of row.options) {
+      const sel = c[row.key] === o.code;
       if (sel) tick(x, y);
       ctx.fillStyle = sel ? '#111' : '#777'; ctx.font = font(22, sel);
-      ctx.fillText(o.label, x + (sel ? 44 : 0), y);
-    });
+      const tx = x + (sel ? 44 : 0);
+      ctx.fillText(o.label, tx, y);
+      x = tx + ctx.measureText(o.label).width + 70;
+    }
     y += 60;
   }
   ctx.fillStyle = '#222'; ctx.font = font(24); ctx.fillText('อื่นๆ', xLabel, y);
