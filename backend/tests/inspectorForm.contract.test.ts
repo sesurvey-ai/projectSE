@@ -254,6 +254,19 @@ check('ช่องเหตุผลไม่มี name', Boolean(sbLine) && !
 // 07/09/69: ซ่อนตอนช่างกด "เสร็จงาน" แล้วยังไม่ส่ง (finishedWaiting) ด้วย — งานยังอยู่กับช่างเหมือนกัน
 check('ตีกลับแล้วซ่อนปุ่ม (กันตีกลับซ้ำระหว่างรอช่าง)', /!waitingSurveyor && !finishedWaiting && \(/.test(src));
 
+/**
+ * -- รูป "รายการตรวจสอบ" ตอนอนุมัติ (08/09/69) --
+ * api instance ตั้ง Content-Type: application/json เป็นค่าเริ่มต้น → อัป FormData ต้องบอก multipart เองทุกครั้ง
+ * ไม่งั้น server ไม่เห็นไฟล์ แล้วอนุมัติไม่ผ่านด้วย "กรุณาเลือกรูปอย่างน้อย 1 ไฟล์" (เจอจริงเคลม 2026013074059)
+ */
+console.log('
+-- หน้าตรวจเคส: รูปรายการตรวจสอบตอนอนุมัติ --');
+const chkFn = src.slice(src.indexOf('const prepareChecklistImage'), src.indexOf('const actionBar = approved'));
+check('มีตัววาด/อัปรูปรายการตรวจสอบ', chkFn.length > 100 && chkFn.includes("fd.append('category', 'รูปรถประกัน')"));
+check('อัปรูปบอก multipart เอง (ไม่ใช้ค่าเริ่มต้น JSON ของ api)', /'Content-Type':\s*'multipart\/form-data'/.test(chkFn));
+check('วาดรูปก่อนบันทึก แล้วส่ง id รูปไปกับการบันทึกครั้งเดียว (ไม่บันทึก 2 รอบ)',
+      /const chk = await prepareChecklistImage\(\);[\s\S]{0,200}saveWith\(chk \? \{ checklist: chk \} : \{\}\)/.test(src));
+
 const svc = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'services', 'case.service.ts'), 'utf8');
 const sbSvcStart = svc.indexOf('async sendBackToSurveyor');

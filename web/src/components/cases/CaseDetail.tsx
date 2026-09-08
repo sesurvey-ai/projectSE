@@ -1653,7 +1653,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const fd = new FormData();
       fd.append('photos', blob, `checklist_${caseData.id}.png`);
       fd.append('category', 'รูปรถประกัน');
-      const r = await api.post(`/api/cases/${caseData.id}/photos`, fd, { timeout: 60000 });
+      // ⛔ ต้องบอก multipart เอง — api instance ตั้ง Content-Type: application/json เป็นค่าเริ่มต้น
+      //    ไม่งั้น FormData ถูกส่งแบบไม่มี boundary → server มองไม่เห็นไฟล์ "กรุณาเลือกรูปอย่างน้อย 1 ไฟล์" (เจอจริง 08/09/69 เคลม 2026013074059)
+      const r = await api.post(`/api/cases/${caseData.id}/photos`, fd,
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 });
       const newId = Number(r.data?.data?.ids?.[0]) || null;
       const next = { ...checklist, image_photo_id: newId };
       setChecklist(next);
