@@ -1535,6 +1535,29 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     } finally { setSaving(false); }
   };
 
+  /**
+   * ปิดงานบน ISURVEY แทนหัวหน้า (กด "ยืนยันการตรวจสอบ" → จบงาน) — เฉพาะเคสที่ดึงจาก ISURVEY, อนุมัติแล้ว (08/09/69)
+   * ปกติระบบยิงให้เองตอนอนุมัติ ปุ่มนี้ไว้ลองใหม่/สั่งเองสำหรับเคสที่อนุมัติก่อนมีระบบ · server ตัดสินว่าเป็นโหมดทดลองหรือยิงจริง
+   */
+  const closeIsurvey = async () => {
+    setSaving(true); setSaveMsg('');
+    try {
+      const r = await api.post(`/api/cases/${caseData.id}/isurvey-close`, {});
+      const d = r.data?.data as { live?: boolean; dry_run?: boolean; message?: string; skipped?: string;
+                                  summary?: { fields?: number; comment_len?: number; ins_total?: string; sur_total?: string } };
+      if (d?.skipped === 'already') setSaveMsg('งานนี้ปิดบน ISURVEY ไปแล้ว');
+      else if (d?.dry_run) setSaveMsg(`ISURVEY โหมดทดลอง: ประกอบคำสั่ง ${d.summary?.fields ?? '?'} ช่อง (ความเห็น ${d.summary?.comment_len ?? 0} ตัวอักษร · ประกัน ${d.summary?.ins_total ?? '-'} · พนักงาน ${d.summary?.sur_total ?? '-'}) — ยังไม่ยิงจริง`);
+      else setSaveMsg(`ปิดงานบน ISURVEY แล้ว — ${d?.message ?? 'สำเร็จ'}`);
+      onReviewSubmitted();
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setSaveMsg('ปิดงาน ISURVEY ไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด'));
+      onReviewSubmitted();   // ป้าย error ถูกจดไว้ที่เคสแล้ว — โหลดใหม่ให้เห็น
+    } finally { setSaving(false); }
+  };
+  const fromIsurvey = String(caseData?.source ?? '').startsWith('isurvey');
+  const bkk16 = (v: unknown) => (v ? new Date(String(v)).toLocaleString('th-TH', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) : '');
+
   const actionBar = approved ? (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">อนุมัติแล้ว · ล็อก</span>
@@ -1561,6 +1584,32 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         className="px-3 py-1 border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
         {caseData.billing_capture_id && !caseData.billing_error ? 'ส่งซ้ำ se-billing' : 'ส่งเข้า se-billing'}
       </button>
+      {/* เขียนกลับ ISURVEY — ระบบกด "ยืนยันการตรวจสอบ" (ปิดงาน → จบงาน) แทนหัวหน้าตอนอนุมัติ (08/09/69) · เฉพาะเคสที่ดึงจาก ISURVEY */}
+      {fromIsurvey && (
+        <>
+          {caseData.isurvey_close_error ? (
+            <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 max-w-[22rem] truncate"
+              title={String(caseData.isurvey_close_error)}>ISURVEY ✗ {String(caseData.isurvey_close_error)}</span>
+          ) : caseData.isurvey_closed_at ? (
+            <span className="text-xs text-green-700 whitespace-nowrap"
+              title={`ปิดงานบน ISURVEY (จบงาน) เมื่อ ${bkk16(caseData.isurvey_closed_at)}`}>
+              ISURVEY ✓ ปิดงานแล้ว {bkk16(caseData.isurvey_closed_at)}
+            </span>
+          ) : caseData.isurvey_close_dry_at ? (
+            <span className="text-xs text-amber-700 whitespace-nowrap"
+              title={`โหมดทดลอง ${bkk16(caseData.isurvey_close_dry_at)}: ประกอบคำสั่งปิดงานแล้วแต่ยังไม่ยิงจริง (รอเปิดใช้)`}>
+              ISURVEY (ทดลอง) เตรียมคำสั่งแล้ว
+            </span>
+          ) : (
+            <span className="text-xs text-gray-500 whitespace-nowrap">ยังไม่ได้ปิดงานบน ISURVEY</span>
+          )}
+          <button type="button" disabled={saving} onClick={closeIsurvey}
+            title="กด &quot;ยืนยันการตรวจสอบ&quot; บน ISURVEY แทนหัวหน้า ด้วยบัญชี ISURVEY ของคุณ — ปกติระบบทำให้เองตอนอนุมัติ"
+            className="px-3 py-1 border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+            {caseData.isurvey_closed_at ? 'ปิดงาน ISURVEY อีกครั้ง' : caseData.isurvey_close_error ? 'ลองปิดงาน ISURVEY ใหม่' : 'ปิดงานบน ISURVEY'}
+          </button>
+        </>
+      )}
       {isAdmin ? (
         <button type="button" disabled={saving} onClick={async () => {
           // ปลดล็อกแล้วต้องอนุมัติใหม่ — ถามก่อนเพราะเป็นการถอนลายเซ็นของคนอื่น

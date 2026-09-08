@@ -12,6 +12,7 @@ import { env } from '../config/env';
 import { AppError } from '../middleware/errorHandler';
 import { isurveyCredService } from './isurveyCred.service';
 import { staffGroupService } from './staffGroup.service';
+import { notifyCaseChanged } from './caseEvents';
 
 export interface PendingRow {
   claim_no: string; survey_no: string; surveyor_name: string; acc_province: string;
@@ -49,6 +50,39 @@ async function callService<T>(path: string, body: Record<string, unknown>, timeo
     throw new AppError(res.status === 401 ? 502 : 502, String(j.error || `service ตอบ ${res.status}: ${text.slice(0, 200)}`));
   }
   return j as T;
+}
+
+/**
+ * ตารางค่าสำรวจที่จะเขียนลง ISURVEY แท็บ 1 — ยอดรวมของแต่ละแถว (ไม่ใช่ราคาต่อหน่วย)
+ *   sur (ฝั่งพนักงาน) ← survey_pay · "อื่น ๆ" รวมนอกพื้นที่/นอกเวลาเหมือนสูตร se-billing (sebilling.service)
+ *   ins (ฝั่งประกัน) ← survey_expenses · ราคาต่อหน่วย × จำนวน (ค่ารูป 5 × 10 = 50 ตรงกับที่ ISURVEY เก็บเป็นยอดรวม)
+ * ไม่มีข้อมูลฝั่งไหน = ไม่ส่งฝั่งนั้น (service คงค่าเดิมของ ISURVEY ไว้) · ไม่มีทั้งคู่ = undefined
+ */
+function buildIsurveyRates(r: Record<string, unknown>): Record<string, Record<string, unknown>> | undefined {
+  const num = (v: unknown): number => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const out: Record<string, Record<string, unknown>> = {};
+  if (r.pay_case_id) {
+    const oa = r.out_of_area ? (r.out_of_area_amt == null ? 50 : num(r.out_of_area_amt)) : 0;
+    const oh = r.out_of_hours ? (r.out_of_hours_amt == null ? 100 : num(r.out_of_hours_amt)) : 0;
+    out.sur = {
+      invest: num(r.service_fee), trans: num(r.travel_fee), photo: num(r.photo_fee), tel: num(r.phone_fee),
+      insure: num(r.bail_fee), claim: num(r.claim_fee), daily: num(r.daily_fee),
+      other: num(r.other_fee) + oa + oh, deduct: Math.abs(num(r.deduct_fee)),
+    };
+  }
+  if (r.exp_id) {
+    const cnt = (c: unknown, price: number) => { const n = num(c); return n > 0 ? n : (price > 0 ? 1 : 0); };
+    const svcP = num(r.service_fee_price), trvP = num(r.travel_fee_price), phoP = num(r.photo_fee_price);
+    const svcN = cnt(r.service_fee_count, svcP), trvN = cnt(r.travel_fee_count, trvP), phoN = cnt(r.photo_fee_count, phoP);
+    const daily = num(r.daily_record_fee);
+    out.ins = {
+      invest: svcP * svcN, invest_num: svcN, trans: trvP * trvN, trans_num: trvN,
+      photo: phoP * phoN, photo_num: phoN, tel: num(r.ins_phone_fee), insure: num(r.ins_bail_fee),
+      claim: num(r.claim_fee_price), daily, daily_num: daily > 0 ? 1 : 0,
+      other: num(r.other_fee_price), other_desc: String(r.other_fee_detail ?? ''),
+    };
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 export const isurveyPullService = {
@@ -121,6 +155,103 @@ export const isurveyPullService = {
     return { cases, filter };
   },
 
+  /**
+   * ปิดงานบน ISURVEY แทนหัวหน้า — "ยืนยันการตรวจสอบ" (รอตรวจข้อมูล → จบงาน) หลังอนุมัติบนเว็บ (user เคาะ 08/09/69)
+   *
+   * ส่งไปกับคำสั่ง: "ผลการดำเนินงาน" (survey_result) → ช่องความเห็นหัวหน้าแท็บ 1 · ตารางค่าสำรวจ 2 ฝั่ง
+   * (survey_pay = ฝั่งพนักงาน, survey_expenses = ฝั่งประกัน — แทน extension se-billing ที่ user ถอด) · "ปิดการตรวจสอบ"
+   * ทำด้วยบัญชี ISURVEY ของ **คนที่อนุมัติ** → ISURVEY ลงชื่อหัวหน้าตรวจถูกคน
+   *
+   * โหมด: ENV ISURVEY_CLOSE_LIVE='1' = ยิงจริง · ไม่ตั้ง/opts.dryRun = ทดลอง (service ประกอบคำสั่งคืนมา จดไว้ ไม่ยิง)
+   * ผลจดที่ cases.isurvey_* (migration 055) — ไม่ throw ตอนเรียกอัตโนมัติ (closeAfterApprove) แต่ throw ตอนกดเอง
+   * ครั้งเดียวต่อเคส: ปิดแล้ว (isurvey_closed_at) ไม่ยิงซ้ำ เว้นแต่ force (ปุ่มลองใหม่ — ISURVEY เองก็ปฏิเสธถ้าปิดไปแล้ว)
+   */
+  async closeCase(caseId: number, userId: number, opts: { dryRun?: boolean; force?: boolean } = {}):
+    Promise<Record<string, unknown>> {
+    const q = await db.query(
+      `SELECT c.id, c.source, c.status, c.isurvey_closed_at,
+              sr.claim_no, sr.survey_job_no, sr.survey_result,
+              sp.case_id AS pay_case_id, sp.service_fee, sp.travel_fee, sp.photo_fee, sp.phone_fee, sp.bail_fee,
+              sp.claim_fee, sp.daily_fee, sp.other_fee, sp.out_of_area, sp.out_of_area_amt,
+              sp.out_of_hours, sp.out_of_hours_amt, sp.deduct_fee,
+              se.id AS exp_id, se.service_fee_count, se.service_fee_price, se.travel_fee_count, se.travel_fee_price,
+              se.photo_fee_count, se.photo_fee_price, se.phone_fee AS ins_phone_fee, se.bail_fee AS ins_bail_fee,
+              se.claim_fee_price, se.daily_record_fee, se.other_fee_detail, se.other_fee_price
+         FROM cases c
+         LEFT JOIN survey_reports sr ON sr.case_id = c.id
+         LEFT JOIN survey_pay sp ON sp.case_id = c.id
+         LEFT JOIN LATERAL (
+           SELECT * FROM survey_expenses x WHERE x.report_id = sr.id ORDER BY x.id DESC LIMIT 1
+         ) se ON TRUE
+        WHERE c.id = $1`, [caseId]);
+    if (q.rows.length === 0) throw new AppError(404, 'Case not found');
+    const row = q.rows[0];
+    if (!String(row.source ?? '').startsWith('isurvey')) throw new AppError(400, 'เคสนี้ไม่ได้มาจาก ISURVEY — ไม่มีงานต้นทางให้ปิด');
+    if (row.status !== 'reviewed') throw new AppError(403, 'ปิดงานบน ISURVEY ได้เฉพาะเคสที่อนุมัติแล้ว');
+    const claim = String(row.claim_no ?? '').trim();
+    if (!claim) throw new AppError(400, 'เคสนี้ไม่มีเลขเคลม จึงหางานบน ISURVEY ไม่ได้');
+    if (row.isurvey_closed_at && !opts.force) {
+      return { ok: true, skipped: 'already', closed_at: row.isurvey_closed_at };
+    }
+    const live = String(env.ISURVEY_CLOSE_LIVE ?? '').trim() === '1' && !opts.dryRun;
+
+    const fail = async (msg: string) => {
+      await db.query('UPDATE cases SET isurvey_close_error = $2 WHERE id = $1', [caseId, msg.slice(0, 500)]);
+      notifyCaseChanged(caseId, 'isurvey', userId);
+    };
+    let creds: { username: string; password: string };
+    try {
+      creds = await isurveyCredService.getPlain(userId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await fail(`หัวหน้าที่อนุมัติยังไม่ได้ตั้งบัญชี ISURVEY — ${msg}`);
+      throw e;
+    }
+    const rates = buildIsurveyRates(row);
+    try {
+      const r = await callService<{ result: Record<string, unknown> }>('/close', {
+        ...creds, claim, survey_no: String(row.survey_job_no ?? '').trim(),
+        comment: String(row.survey_result ?? ''), rates, dry_run: !live,
+      }, 240000);
+      const result = r.result ?? {};
+      const payload = (result.payload ?? null) as Record<string, string> | null;
+      if (result.dry_run) {
+        await db.query(
+          `UPDATE cases SET isurvey_close_dry_at = NOW(), isurvey_close_payload = $2, isurvey_close_error = NULL WHERE id = $1`,
+          [caseId, payload ? JSON.stringify(payload) : null]);
+      } else {
+        await db.query(
+          `UPDATE cases SET isurvey_closed_at = NOW(), isurvey_close_by = $2, isurvey_close_payload = $3,
+                            isurvey_close_error = NULL WHERE id = $1`,
+          [caseId, userId, payload ? JSON.stringify(payload) : null]);
+      }
+      await isurveyCredService.markResult(userId, true);
+      notifyCaseChanged(caseId, 'isurvey', userId);
+      const p = payload ?? {};
+      return {
+        ok: true, live: !result.dry_run, dry_run: Boolean(result.dry_run), message: result.message,
+        case: result.case, rates_sent: rates ? Object.keys(rates) : [],
+        summary: { fields: Object.keys(p).length, comment_len: String(p.accident_summary ?? '').length,
+                   sur_total: p['tab1_SUR_TOTAL-inputEl'], ins_total: p['tab1_INS_TOTAL-inputEl'],
+                   ins_net: p['tab1_INS_TOTAL_NET-inputEl'] },
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await fail(msg);
+      throw e;
+    }
+  },
+  /** เรียกตอนอนุมัติ — เฉพาะเคสจาก ISURVEY · ไม่ throw ไม่รอ (ผลไปโผล่ที่ป้ายบนหน้าเคส) */
+  async closeAfterApprove(caseId: number, checkerId: number): Promise<void> {
+    try {
+      if (!this.enabled()) return;
+      const c = await db.query('SELECT source FROM cases WHERE id = $1', [caseId]);
+      if (!String(c.rows[0]?.source ?? '').startsWith('isurvey')) return;
+      await this.closeCase(caseId, checkerId);
+    } catch (e) {
+      console.warn(`[isurvey-close] เคส #${caseId}:`, e instanceof Error ? e.message : e);
+    }
+  },
   /** ดึง 1 งานเข้าเป็นเคส (+รูป) — เจ้าของเคส = คนที่กด */
   async pull(userId: number, claim: string, surveyNo: string): Promise<Record<string, unknown>> {
     const c = String(claim ?? '').trim();

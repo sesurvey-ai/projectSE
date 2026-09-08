@@ -16,6 +16,7 @@ import { db } from '../config/database';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { notifyCaseChanged } from './caseEvents';
 import { removeCapture, sendCapture } from './sebilling.service';
+import { isurveyPullService } from './isurveyPull.service';
 
 export const reviewService = {
   async submitReview(caseId: number, checkerId: number, data: { comment?: string; proposed_fee?: number; approved_fee?: number }) {
@@ -53,6 +54,9 @@ export const reviewService = {
       // ท่อ se-billing — หลัง COMMIT เท่านั้น และไม่ทำให้การอนุมัติล้ม (sendCapture ไม่ throw)
       // รอผลเพื่อบอกหน้าจอว่าส่งถึงหรือไม่ (ช้าสุด 8 วิ ถ้า se-billing ไม่ตอบ)
       const billing = await sendCapture(caseId);
+      // เขียนกลับ ISURVEY (กด "ยืนยันการตรวจสอบ" แทนหัวหน้า) — เฉพาะเคสที่ดึงจาก ISURVEY · ไม่รอผล ไม่ทำให้อนุมัติล้ม
+      // (ISURVEY ตอบช้าได้เป็นนาที) ผลไปโผล่เป็นป้ายบนหน้าเคสผ่านสัญญาณ case_changed (08/09/69)
+      void isurveyPullService.closeAfterApprove(caseId, checkerId);
       return { ...reviewResult.rows[0], billing };
     } catch (err) {
       await client.query('ROLLBACK');

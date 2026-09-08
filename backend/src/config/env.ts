@@ -33,6 +33,9 @@ const envSchema = z.object({
   // ใช้เข้ารหัสรหัสผ่าน ISURVEY ที่ผู้ใช้ฝากไว้ — เปลี่ยนแล้วทุกคนต้องกรอกใหม่
   ISURVEY_SERVICE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   ISURVEY_SERVICE_TOKEN: z.string().optional(),
+  // เขียนกลับ ISURVEY หลังอนุมัติ (ปิดงาน "ยืนยันการตรวจสอบ" แทนหัวหน้า, 08/09/69) — '1' = ยิงจริง · อื่น ๆ = โหมดทดลอง
+  // (ประกอบคำสั่งแล้วจดไว้ที่เคส ไม่ส่ง) · ต้องเปิดเองหลัง user ดูผลทดลองแล้ว
+  ISURVEY_CLOSE_LIVE: z.string().optional(),
   CRED_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
