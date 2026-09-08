@@ -1354,9 +1354,26 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
       const mm: string[] = [];
-      if (payRequired) {
-        if (pay && !(Number(pay.saved?.total ?? 0) > 0)) mm.push('ยังไม่ได้กรอก "ราคาพนักงาน"');
-        if (!val('input[name="service_fee_price"]')) mm.push('ยังไม่ได้กรอก "ราคาประกัน" (ค่าบริการ)');
+      // ยอดพนักงานดูจากช่องสด ๆ ด้วย — พิมพ์แล้วกรอบแดงต้องหายทันที ไม่ต้องรอบันทึก
+      const livePay = PAY_MONEY_INPUTS.some((k) => Number(val(`input[name="${k}"]`).replace(/,/g, '')) > 0)
+        || Boolean(form.querySelector('input[name=out_of_area]:checked'))
+        || Boolean(form.querySelector('input[name=out_of_hours]:checked'));
+      const payMissing = payRequired && Boolean(pay) && !(Number(pay?.saved?.total ?? 0) > 0) && !livePay;
+      const insMissing = payRequired && !val('input[name="service_fee_price"]');
+      if (payMissing) mm.push('ยังไม่ได้กรอก "ราคาพนักงาน" (ค่าบริการ)');
+      if (insMissing) mm.push('ยังไม่ได้กรอก "ราคาประกัน" (ค่าบริการ)');
+      /**
+       * ทาแดงที่ช่องจริง — user ทัก 09/09/69: ป้ายบอก "ยังอนุมัติไม่ได้ 2 ข้อ" แต่ไม่มีช่องไหนแดง
+       * คนหาไม่เจอว่าอยู่ตรงไหน · ช่องเงินมีขอบสีของตัวเอง (ฟ้า) ต้องถอดออกตอนทาแดง ไม่งั้นสีตีกัน
+       */
+      for (const [nm, on] of [['pay_service_fee', payMissing], ['service_fee_price', insMissing]] as const) {
+        const el = form.querySelector(`input[name="${nm}"]`) as HTMLInputElement | null;
+        if (!el) continue;
+        if (!el.dataset.bg0) el.dataset.bg0 = BG_ORIG.find((c) => el.classList.contains(c)) || 'bg-white';
+        if (!el.dataset.border0) el.dataset.border0 = ['border-gray-300', 'border-blue-300', 'border-blue-600'].find((c) => el.classList.contains(c)) || 'border-gray-300';
+        el.classList.toggle(el.dataset.bg0, !on);
+        el.classList.toggle(el.dataset.border0, !on);
+        RING.forEach((c) => el.classList.toggle(c, on));
       }
       setList(setMoneyMissing, mm);
     };
@@ -1791,7 +1808,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     // ทุกช่องพิมพ์ได้ตลอด จึงไม่มีปุ่ม "แก้ไขทั้งหมด" / "ยกเลิก" อีกแล้ว
     <div className="flex items-center gap-2">
       {approvalBlockers.length > 0 && (
-        <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-2 py-1 whitespace-nowrap">
+        <span title={approvalBlockers.join('\n')} className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-2 py-1 whitespace-nowrap">
           ยังอนุมัติไม่ได้ {approvalBlockers.length} ข้อ
         </span>
       )}
@@ -1978,6 +1995,16 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <span> · ให้แก้: {String(caseData.sent_back_reason)}</span>
               )}
               {waitingSurveyor && <span className="text-orange-700"> · หัวหน้ายังแก้เองได้ตามปกติ</span>}
+            </div>
+          )}
+          {/* แจกแจงทุกข้อที่กันไม่ให้อนุมัติ — ป้ายบนหัวบอกแค่จำนวน คนหาไม่เจอว่าอยู่ตรงไหน (user ทัก 09/09/69)
+              รายการเดียวกับที่ปุ่ม "อนุมัติ" ใช้ตัดสิน จึงตรงกับตัวเลขบนป้ายเสมอ */}
+          {approvalBlockers.length > 0 && (
+            <div className="bg-amber-50 border border-amber-300 rounded-none px-4 py-2 text-sm text-amber-900">
+              <span className="font-semibold">ยังอนุมัติไม่ได้ {approvalBlockers.length} ข้อ</span>
+              <ol className="list-decimal ml-5 mt-1 space-y-0.5 text-amber-800">
+                {approvalBlockers.map((b, i) => <li key={i}>{b}</li>)}
+              </ol>
             </div>
           )}
           {/* สรุปสั้น ๆ พอให้รู้ว่ามีปัญหา — รายละเอียดไปอ่านที่จังหวะนั้นในการ์ดลำดับเวลา */}

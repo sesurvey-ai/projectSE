@@ -172,7 +172,7 @@ console.log('\n── หน้าตรวจเคส: ป้าย "ยัง
 const gapBlock = /useEffect\(\(\) => \{[\s\S]*?setGapSec\([\s\S]*?\}, \[([^\]]*)\]\);/.exec(src);
 // เทียบด้วย "ตำแหน่ง" ไม่ใช่ regex คร่อม — `[\s\S]*?` ลากข้ามขอบเขตฟังก์ชันได้
 // (เขียนแบบ regex ครั้งแรกแล้วมันไปเจอ setGapSec ของ effect ตัวถัดไป = ฟ้องผิด)
-const paintEnd = src.indexOf('}, [report, isEditing, saveMsg, pay, payRequired]);');
+const paintEnd = src.indexOf('}, [report, isEditing, saveMsg, pay, payRequired, recalcSums]);');   // 08/09/69 เพิ่ม recalcSums (ค่าเรียกร้องเติมเอง)
 check('นับป้ายอยู่นอก effect ของ paint',
       paintEnd > 0 && src.indexOf('setGapSec(') > paintEnd
       && src.split('setGapSec(').length - 1 === 1);

@@ -551,5 +551,16 @@ check('ฝั่งประกันโชว์ 10% เป็น placeholder �
 check('เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม', ui.includes("el.value = ''; delete el.dataset.auto; touched = true;"));
 check('เติมแล้วคิดยอดรวมใหม่', ui.includes('if (touched) recalcSums();'));
 
+console.log('\n── ยังอนุมัติไม่ได้: บอกให้เห็นว่าข้อไหน ช่องไหน (user ทัก 09/09/69) ──');
+/**
+ * ป้าย "ยังอนุมัติไม่ได้ 2 ข้อ" เคยบอกแค่จำนวน — ช่องราคาที่ขาดไม่แดง และไม่มีรายการให้ดู คนหาไม่เจอ
+ */
+check('แจกแจงทุกข้อเป็นรายการ (ชุดเดียวกับที่ปุ่มอนุมัติใช้ตัดสิน)',
+      ui.includes('{approvalBlockers.map((b, i) => <li key={i}>{b}</li>)}'));
+check('ช่องราคาที่ยังขาดทาแดงที่ช่องจริง (ค่าบริการ ฝั่งพนักงาน / ฝั่งประกัน)',
+      ui.includes("[['pay_service_fee', payMissing], ['service_fee_price', insMissing]] as const"));
+check('⛔ ถอดขอบสีเดิมของช่องเงิน (ฟ้า) ตอนทาแดง ไม่งั้นสีตีกัน', ui.includes("el.classList.toggle(el.dataset.border0, !on);"));
+check('พิมพ์ยอดพนักงานแล้วกรอบแดงหายทันที ไม่ต้องรอบันทึก', ui.includes('const livePay = PAY_MONEY_INPUTS.some('));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
