@@ -4,18 +4,22 @@
  * งานรอตรวจ (ISURVEY) — ดึงงานของฉันจาก ISURVEY เข้ามาเป็นเคสบนเว็บนี้ (04/09/69)
  *
  *   ช่างส่งงานบน ISURVEY → หัวหน้ากดดึงที่นี่ (บัญชี ISURVEY ของตัวเอง) → ได้เคส "รอตรวจ" + รูป
- *   → ตรวจ/แก้/ใส่เรทที่หน้าเคส → อนุมัติ → บอทยกเข้า EMCS
+ *   → ตรวจ/แก้/ใส่เรทที่หน้าเคส → อนุมัติ → บอทยกเข้า EMCS (+ ระบบปิดงานบน ISURVEY ให้เอง 08/09/69)
  *
  * กติกาที่ user เคาะหลังใช้จริง (04/09/69):
  *   - วันที่เริ่มที่ "วันนี้" ทั้งคู่ ผู้ใช้เลือกช่วงเอง · ไม่โหลดอัตโนมัติ (บางบัญชีงานค้างมาก ช้า) กด "โหลดรายการ" เอง
  *   - โหลดมาทุกสถานะ แล้วเลือกสถานะที่จะดูได้ (ค่าเริ่มต้น "รอตรวจข้อมูล")
+ *     08/09/69: เลือกได้หลายสถานะพร้อมกัน (ติ๊ก checkbox เช่น "เสร็จงาน" + "ถึงที่ตรวจสอบ") · ไม่ติ๊กเลย = ทั้งหมด
  *   - "ดึงเข้า" ทีละงานเสร็จ → เด้งไปหน้าเคสนั้นเลย · "ดึงทั้งหมด" ไม่เด้ง
- * หน้านี้ "สร้างเคส" อย่างเดียว — ไม่เขียนอะไรกลับ ISURVEY (งานที่นั่นสถานะเดิม)
+ *   - 08/09/69: งานที่อนุมัติแล้วบนเว็บเรา **หายจากรายการ "รอตรวจข้อมูล" เอง** ไม่ต้องกด "โหลดรายการ" —
+ *     หน้านี้ถามสถานะ "ในระบบเรา" ใหม่ (endpoint เร็ว ไม่แตะ ISURVEY) เมื่อมีสัญญาณเคสเปลี่ยน/กลับมาที่แท็บ
+ * หน้านี้ "สร้างเคส" อย่างเดียว — ไม่เขียนอะไรกลับ ISURVEY (การปิดงานทำตอนอนุมัติที่หน้าเคส)
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { useSocket } from '@/hooks/useSocket';
 
 type Row = {
   claim_no: string; survey_no: string; surveyor_name: string; acc_province: string;
@@ -27,13 +31,13 @@ type Filter = { applied: boolean; group_name: string | null; members: number; hi
 type PullResult = { caseId?: number; warnings?: string[]; photos?: { added?: number; error?: string; note?: string } };
 
 const PENDING = 'รอตรวจข้อมูล';
-const ALL = '__all__';
+const NO_STATUS = '(ไม่ระบุ)';
 /**
  * จำรายการที่โหลดล่าสุดไว้ในแท็บนี้ (sessionStorage) — เปลี่ยนเมนู/เด้งไปหน้าเคสแล้วกลับมาไม่ต้องโหลดใหม่
  * (โหลดครั้งหนึ่ง 10 กว่าวินาที) · ปิดแท็บ = หาย · กด "โหลดรายการ" = ดึงสดทับ
  */
-const CACHE_KEY = 'isurvey-pending-cache-v2';   // v2: เพิ่มคอลัมน์เวลาจ่ายงาน/ส่งรายงาน — รายการเก่าในแท็บไม่มีค่า
-type Cache = { from: string; to: string; status: string; rows: Row[]; filter: Filter | null; loadedAt: string };
+const CACHE_KEY = 'isurvey-pending-cache-v3';   // v3: ตัวกรองสถานะเป็นหลายค่า (statuses) — v2 เก็บค่าเดียว
+type Cache = { from: string; to: string; statuses: string[]; rows: Row[]; filter: Filter | null; loadedAt: string };
 const readCache = (): Cache | null => {
   try { const raw = sessionStorage.getItem(CACHE_KEY); return raw ? (JSON.parse(raw) as Cache) : null; } catch { return null; }
 };
@@ -44,16 +48,23 @@ const todayISO = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0,
 const errMsg = (e: unknown) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || (e as Error)?.message || 'เกิดข้อผิดพลาด';
 const STATUS_TH: Record<string, string> = {
-  surveyed: 'รอตรวจ', reviewed: 'อนุมัติแล้ว', assigned: 'ตีกลับ/มอบหมาย', pending: 'รอมอบหมาย',
+  surveyed: 'รอตรวจ', reviewed: 'อนุมัติแล้ว', assigned: 'ตีกลับ/มอบหมาย', finished: 'เสร็จงาน', pending: 'รอมอบหมาย',
 };
+const statusOf = (r: Row) => r.status || NO_STATUS;
 
 export default function IsurveyPendingPage() {
   const router = useRouter();
+  const { socket } = useSocket();
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
   const [rows, setRows] = useState<Row[] | null>(null);
   const [filter, setFilter] = useState<Filter | null>(null);
-  const [status, setStatus] = useState<string>(PENDING);
+  /** สถานะ ISURVEY ที่เลือกดู — ว่าง = ทั้งหมด (เลือกได้หลายค่า 08/09/69) */
+  const [statuses, setStatuses] = useState<string[]>([PENDING]);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusBoxRef = useRef<HTMLDivElement | null>(null);
+  /** งานที่อนุมัติแล้วในระบบเรา ซ่อนจากมุมมอง "รอตรวจข้อมูล" — กดโชว์ได้ */
+  const [showApproved, setShowApproved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [needAccount, setNeedAccount] = useState(false);
@@ -61,6 +72,8 @@ export default function IsurveyPendingPage() {
   const [results, setResults] = useState<Record<string, { ok: boolean; text: string; caseId?: number }>>({});
   const [bulk, setBulk] = useState(false);
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const key = (r: Row) => `${r.claim_no}|${r.survey_no}`;
 
@@ -68,12 +81,23 @@ export default function IsurveyPendingPage() {
   useEffect(() => {
     const c = readCache();
     if (c && Array.isArray(c.rows)) {
-      setFrom(c.from); setTo(c.to); setRows(c.rows); setFilter(c.filter ?? null); setStatus(c.status || PENDING); setLoadedAt(c.loadedAt);
+      setFrom(c.from); setTo(c.to); setRows(c.rows); setFilter(c.filter ?? null);
+      setStatuses(Array.isArray(c.statuses) ? c.statuses : [PENDING]); setLoadedAt(c.loadedAt);
     }
   }, []);
   useEffect(() => {
-    if (rows && loadedAt) writeCache({ from, to, status, rows, filter, loadedAt });
-  }, [rows, filter, status, from, to, loadedAt]);
+    if (rows && loadedAt) writeCache({ from, to, statuses, rows, filter, loadedAt });
+  }, [rows, filter, statuses, from, to, loadedAt]);
+
+  // ปิดกล่องเลือกสถานะเมื่อคลิกนอกกล่อง
+  useEffect(() => {
+    if (!statusOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (statusBoxRef.current && !statusBoxRef.current.contains(e.target as Node)) setStatusOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [statusOpen]);
 
   const load = async () => {
     setLoading(true); setError(''); setNeedAccount(false); setResults({});
@@ -83,8 +107,9 @@ export default function IsurveyPendingPage() {
       setRows(cases);
       setFilter((r.data?.data?.filter ?? null) as Filter | null);
       setLoadedAt(new Date().toISOString());
+      setSyncedAt(null); setShowApproved(false);
       // ค่าเริ่มต้นดู "รอตรวจข้อมูล" — ถ้าช่วงนี้ไม่มีเลยค่อยโชว์ทั้งหมด จะได้ไม่เจอตารางว่างทั้งที่มีงาน
-      if (!cases.some((c) => c.status === PENDING)) setStatus(ALL); else setStatus(PENDING);
+      setStatuses(cases.some((c) => c.status === PENDING) ? [PENDING] : []);
     } catch (e) {
       const code = (e as { response?: { status?: number } })?.response?.status;
       if (code === 412) setNeedAccount(true);
@@ -92,13 +117,64 @@ export default function IsurveyPendingPage() {
     } finally { setLoading(false); }
   };
 
+  /**
+   * ถามสถานะ "ในระบบเรา" ของงานที่โหลดไว้ใหม่ (เร็ว ไม่แตะ ISURVEY) — งานที่เพิ่งอนุมัติจะเปลี่ยนเป็น "อนุมัติแล้ว"
+   * และหายจากมุมมอง "รอตรวจข้อมูล" เอง (user ขอ 08/09/69 — เดิมต้องกด "โหลดรายการ" ซึ่งช้า 10 กว่าวินาที)
+   */
+  const syncImported = useCallback(async (list: Row[] | null) => {
+    if (!list || list.length === 0) return;
+    try {
+      const r = await api.post('/api/isurvey/imported-status',
+        { rows: list.map((x) => ({ claim_no: x.claim_no, survey_no: x.survey_no })) }, { timeout: 30000 });
+      const st = (r.data?.data?.statuses ?? {}) as Record<string, { id: number; status: string }>;
+      setRows((rs) => (rs ?? []).map((x) => {
+        const hit = st[`${x.claim_no}|${x.survey_no}`];
+        return hit ? { ...x, imported_case_id: hit.id, imported_status: hit.status } : x;
+      }));
+      setSyncedAt(new Date().toISOString());
+    } catch { /* เช็คไม่ได้ = คงค่าเดิมในตาราง ไม่ต้องรบกวน */ }
+  }, []);
+  // โหลดจาก cache แล้ว / กลับมาที่แท็บ / มีสัญญาณเคสเปลี่ยน → ซิงก์ (รวบสัญญาณติด ๆ กันเป็นครั้งเดียว)
+  const rowsRef = useRef<Row[] | null>(null);
+  rowsRef.current = rows;
+  const scheduleSync = useCallback(() => {
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => { void syncImported(rowsRef.current); }, 500);
+  }, [syncImported]);
+  useEffect(() => { if (loadedAt) scheduleSync(); }, [loadedAt, scheduleSync]);
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === 'visible') scheduleSync(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onVis);
+    return () => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onVis); };
+  }, [scheduleSync]);
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('case_changed', scheduleSync);
+    return () => { socket.off('case_changed', scheduleSync); if (syncTimer.current) clearTimeout(syncTimer.current); };
+  }, [socket, scheduleSync]);
+
   // สถานะที่มีในรายการที่โหลดมา + จำนวน — ไว้ทำตัวเลือก
   const statusCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of rows ?? []) m.set(r.status || '(ไม่ระบุ)', (m.get(r.status || '(ไม่ระบุ)') ?? 0) + 1);
+    for (const r of rows ?? []) m.set(statusOf(r), (m.get(statusOf(r)) ?? 0) + 1);
     return Array.from(m.entries()).sort((a, b) => (a[0] === PENDING ? -1 : b[0] === PENDING ? 1 : b[1] - a[1]));
   }, [rows]);
-  const visible = useMemo(() => (rows ?? []).filter((r) => status === ALL || (r.status || '(ไม่ระบุ)') === status), [rows, status]);
+  const isAll = statuses.length === 0;
+  const byStatus = useMemo(() => (rows ?? []).filter((r) => isAll || statuses.includes(statusOf(r))), [rows, statuses, isAll]);
+  /**
+   * งานที่อนุมัติแล้วในระบบเรา ไม่ใช่ "รอตรวจ" อีกต่อไป (ระบบปิดงานบน ISURVEY ให้ตอนอนุมัติ) —
+   * ซ่อนจากมุมมองที่มี "รอตรวจข้อมูล" จนกว่าจะกด "โหลดรายการ" ซึ่ง ISURVEY จะบอกสถานะใหม่เอง · ดูทั้งหมด/สถานะอื่น = ไม่ซ่อน
+   */
+  const hideApproved = !isAll && statuses.includes(PENDING) && !showApproved;
+  const visible = useMemo(() => byStatus.filter((r) => !(hideApproved && r.status === PENDING && r.imported_status === 'reviewed')),
+    [byStatus, hideApproved]);
+  const hiddenApproved = byStatus.length - visible.length;
+  const toggleStatus = (s: string) =>
+    setStatuses((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  const statusLabel = isAll ? `ทั้งหมด (${rows?.length ?? 0})`
+    : statuses.length === 1 ? `${statuses[0]} (${statusCounts.find(([s]) => s === statuses[0])?.[1] ?? 0})`
+    : `${statuses.length} สถานะ (${byStatus.length})`;
 
   const pullOne = async (r: Row, opts: { navigate: boolean }): Promise<boolean> => {
     const k = key(r);
@@ -129,7 +205,7 @@ export default function IsurveyPendingPage() {
   const pullAll = async () => {
     const todo = visible.filter((r) => !r.imported_case_id && r.claim_no);   // ไม่มีเลขเคลม = ดึงไม่ได้ ข้าม
     if (todo.length === 0) return;
-    const label = status === ALL ? 'ทุกสถานะ' : `สถานะ "${status}"`;
+    const label = isAll ? 'ทุกสถานะ' : `สถานะ "${statuses.join('", "')}"`;
     if (!window.confirm(`ดึงงานที่ยังไม่มีในระบบ (${label}) ทั้งหมด ${todo.length} เรื่อง? (ทีละเรื่อง ใช้เวลาประมาณ ${todo.length * 15} วินาที)`)) return;
     setBulk(true);
     try {
@@ -156,12 +232,29 @@ export default function IsurveyPendingPage() {
             {loading ? 'กำลังโหลด…' : 'โหลดรายการ'}
           </button>
           {rows && (
-            <label className="flex flex-col text-xs text-gray-600">สถานะ
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="border border-gray-300 px-2 py-1 text-sm">
-                {statusCounts.map(([s, n]) => <option key={s} value={s}>{s} ({n})</option>)}
-                <option value={ALL}>ทั้งหมด ({rows.length})</option>
-              </select>
-            </label>
+            /* ตัวกรองสถานะ ISURVEY — ติ๊กได้หลายค่าพร้อมกัน (user ขอ 08/09/69) · ไม่ติ๊กเลย = ทั้งหมด */
+            <div ref={statusBoxRef} className="relative flex flex-col text-xs text-gray-600">สถานะ
+              <button type="button" onClick={() => setStatusOpen((o) => !o)}
+                className="border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 text-left min-w-[12rem] flex items-center justify-between gap-2">
+                <span className="truncate">{statusLabel}</span><span className="text-gray-500">▾</span>
+              </button>
+              {statusOpen && (
+                <div className="absolute z-20 top-full left-0 mt-1 w-64 bg-white border border-gray-300 shadow-lg p-2 text-sm text-gray-800">
+                  <label className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" checked={isAll} onChange={() => setStatuses([])} />
+                    <span className="font-semibold">ทั้งหมด</span><span className="text-gray-500">({rows.length})</span>
+                  </label>
+                  <div className="border-t border-gray-100 my-1" />
+                  {statusCounts.map(([s, n]) => (
+                    <label key={s} className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-gray-50">
+                      <input type="checkbox" checked={!isAll && statuses.includes(s)} onChange={() => toggleStatus(s)} />
+                      <span className={s === PENDING ? 'text-amber-700' : ''}>{s}</span><span className="text-gray-500">({n})</span>
+                    </label>
+                  ))}
+                  <div className="text-[0.6875rem] text-gray-500 px-1 pt-1">ติ๊กได้หลายสถานะ · ไม่ติ๊กเลย = ทั้งหมด</div>
+                </div>
+              )}
+            </div>
           )}
           {rows && (
             <button type="button" onClick={pullAll} disabled={loading || bulk || notImported === 0}
@@ -190,6 +283,7 @@ export default function IsurveyPendingPage() {
       {rows && loadedAt && (
         <div className="mb-1 text-xs text-gray-500">
           รายการที่โหลดเมื่อ {new Date(loadedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })} — จำไว้ในแท็บนี้ กด &quot;โหลดรายการ&quot; เพื่อดึงสดใหม่
+          {syncedAt && <> · สถานะในระบบเราอัปเดต {new Date(syncedAt).toLocaleTimeString('th-TH', { timeStyle: 'short' })}</>}
         </div>
       )}
       {rows && filter && (
@@ -197,6 +291,13 @@ export default function IsurveyPendingPage() {
           {filter.applied
             ? <>แสดงเฉพาะงานของลูกทีม <span className="font-semibold">{filter.group_name}</span> ({filter.members} รายชื่อ) — ซ่อนงานของทีมอื่น {filter.hidden} เรื่อง · <Link href="/inspector/team" className="text-blue-700 hover:underline">ดูรายชื่อทีม</Link></>
             : <>แสดงงานทั้งบริษัท (บัญชีนี้ยังไม่ได้ผูกทีม — แอดมินผูกได้ที่ &quot;จัดการทีมผู้ตรวจ&quot;)</>}
+        </div>
+      )}
+      {rows && (hiddenApproved > 0 || showApproved) && !isAll && statuses.includes(PENDING) && (
+        <div className="mb-2 text-xs text-gray-600">
+          {showApproved
+            ? <>กำลังแสดงงานที่อนุมัติแล้วในระบบเราด้วย · <button type="button" className="text-blue-700 hover:underline" onClick={() => setShowApproved(false)}>ซ่อน</button></>
+            : <>ซ่อนงานที่อนุมัติแล้วในระบบเรา {hiddenApproved} เรื่อง (ระบบปิดงานบน ISURVEY ให้แล้ว) · <button type="button" className="text-blue-700 hover:underline" onClick={() => setShowApproved(true)}>แสดง</button></>}
         </div>
       )}
 
@@ -220,7 +321,9 @@ export default function IsurveyPendingPage() {
             <tbody>
               {visible.length === 0 && (
                 <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-500">
-                  {rows.length === 0 ? 'ไม่มีงานในช่วงวันที่นี้' : 'ไม่มีงานในสถานะที่เลือก — เปลี่ยนสถานะด้านบน'}
+                  {rows.length === 0 ? 'ไม่มีงานในช่วงวันที่นี้'
+                    : hiddenApproved > 0 ? 'งานในสถานะที่เลือกอนุมัติแล้วทั้งหมด — กด "แสดง" ด้านบนถ้าต้องการดู'
+                    : 'ไม่มีงานในสถานะที่เลือก — เปลี่ยนสถานะด้านบน'}
                 </td></tr>
               )}
               {visible.map((r, i) => {
@@ -270,7 +373,7 @@ export default function IsurveyPendingPage() {
       )}
 
       <p className="text-xs text-gray-500 mt-3">
-        ดึงแล้วงานบน ISURVEY ยังสถานะเดิม (ยังไม่ปิดสถานะให้) · รูปที่ช่างทยอยอัปหลังจากนี้จะยังไม่ตามมา — กด &quot;ดึงซ้ำ&quot; จะได้เคสใหม่ ไม่ใช่เติมรูปเคสเดิม
+        ดึงแล้วงานบน ISURVEY ยังสถานะเดิม จนกว่าจะกด &quot;อนุมัติ&quot; ที่หน้าเคส (ระบบปิดงานบน ISURVEY ให้เอง) · รูปที่ช่างทยอยอัปหลังจากนี้จะยังไม่ตามมา — กด &quot;ดึงซ้ำ&quot; จะได้เคสใหม่ ไม่ใช่เติมรูปเคสเดิม
       </p>
     </div>
   );

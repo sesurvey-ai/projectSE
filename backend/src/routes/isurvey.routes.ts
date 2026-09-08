@@ -55,6 +55,13 @@ router.get('/pending', ...guard, asyncHandler(async (req: Request, res: Response
   sendSuccess(res, out);
 }));
 
+// สถานะ "ในระบบเรา" ของงานที่โหลดไว้ในหน้า — อ่าน DB เราอย่างเดียว ไม่แตะ ISURVEY (ไว้ให้รายการอัปเดตเองหลังอนุมัติ, 08/09/69)
+router.post('/imported-status', ...guard, asyncHandler(async (req: Request, res: Response) => {
+  const rows = Array.isArray(req.body?.rows) ? (req.body.rows as { claim_no?: string; survey_no?: string }[]) : [];
+  const clean = rows.slice(0, 2000).map((x) => ({ claim_no: String(x.claim_no ?? ''), survey_no: String(x.survey_no ?? '') }));
+  sendSuccess(res, { statuses: await isurveyPullService.importedStatus(clean) });
+}));
+
 router.post('/pull', ...guard, asyncHandler(async (req: Request, res: Response) => {
   const { claim_no, survey_no } = (req.body ?? {}) as { claim_no?: string; survey_no?: string };
   const result = await isurveyPullService.pull(req.user!.id, String(claim_no ?? ''), String(survey_no ?? ''));

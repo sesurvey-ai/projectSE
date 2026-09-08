@@ -137,8 +137,22 @@ export const isurveyPullService = {
     const filter = { applied: Boolean(team), group_name: team?.group.name ?? null,
                      members: team?.group.members?.length ?? 0, hidden: before - rows.length };
     if (rows.length === 0) return { cases: rows, filter };
-    // เคสที่มีในระบบแล้ว — จับด้วยเลขเคลม + เลขเซอร์เวย์ (เลขเคลมซ้ำได้ข้ามครั้ง แต่คู่กับเซอร์เวย์ไม่ซ้ำ)
-    const claims = [...new Set(rows.map((r) => r.claim_no).filter(Boolean))];
+    const hits = await this.importedStatus(rows);
+    const cases = rows.map((r) => {
+      const hit = hits[`${r.claim_no}|${r.survey_no}`];
+      return { ...r, imported_case_id: hit?.id ?? null, imported_status: hit?.status ?? null };
+    });
+    return { cases, filter };
+  },
+  /**
+   * งานเหล่านี้ "มีในระบบเราแล้วหรือยัง / สถานะอะไร" — อ่านจาก DB เราอย่างเดียว ไม่แตะ ISURVEY (เร็ว)
+   * จับด้วยเลขเคลม + เลขเซอร์เวย์ (เลขเคลมซ้ำได้ข้ามครั้ง แต่คู่กับเซอร์เวย์ไม่ซ้ำ) · ไม่ตรงเซอร์เวย์ = ถอยไปเลขเคลมอย่างเดียว
+   * หน้างานรอตรวจเรียกซ้ำเมื่อมีสัญญาณเคสเปลี่ยน — งานที่อนุมัติแล้วจะได้หายจากรายการโดยไม่ต้องกด "โหลดรายการ" (user ขอ 08/09/69)
+   */
+  async importedStatus(rows: { claim_no: string; survey_no?: string }[]):
+    Promise<Record<string, { id: number; status: string }>> {
+    const claims = [...new Set(rows.map((r) => String(r.claim_no ?? '').trim()).filter(Boolean))];
+    if (claims.length === 0) return {};
     const ex = await db.query(
       `SELECT sr.claim_no, sr.survey_job_no, c.id, c.status
          FROM survey_reports sr JOIN cases c ON c.id = sr.case_id
@@ -148,11 +162,12 @@ export const isurveyPullService = {
       byKey.set(`${x.claim_no}|${x.survey_job_no ?? ''}`, { id: x.id, status: x.status });
       if (!byKey.has(`${x.claim_no}|`)) byKey.set(`${x.claim_no}|`, { id: x.id, status: x.status });
     }
-    const cases = rows.map((r) => {
-      const hit = byKey.get(`${r.claim_no}|${r.survey_no}`) ?? byKey.get(`${r.claim_no}|`);
-      return { ...r, imported_case_id: hit?.id ?? null, imported_status: hit?.status ?? null };
-    });
-    return { cases, filter };
+    const out: Record<string, { id: number; status: string }> = {};
+    for (const r of rows) {
+      const hit = byKey.get(`${r.claim_no}|${r.survey_no ?? ''}`) ?? byKey.get(`${r.claim_no}|`);
+      if (hit) out[`${r.claim_no}|${r.survey_no ?? ''}`] = hit;
+    }
+    return out;
   },
 
   /**
