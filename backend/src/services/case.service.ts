@@ -21,6 +21,7 @@ import { staffGroupService } from './staffGroup.service';
 const JSONB_FIELDS = new Set([
   'opposing_parties', 'injured_persons', 'damaged_property', 'insured_damage',
   'policy_info',   // ข้อมูลกรมธรรม์ทั้งชุดจาก ISURVEY แท็บ 7 (migration 053) — แสดงอย่างเดียว
+  'checklist',     // รายการตรวจสอบของหัวหน้า (migration 057) — ส่งกลับ ISURVEY เป็น chk_* + วาดเป็นรูปตอนอนุมัติ
 ]);
 // ข้อความ placeholder ของ dropdown ในแอป — ต้องไม่ถูกบันทึกเป็นค่าจริง (เคยหลุดเข้า acc_province/
 // car_color → รหัสจังหวัดใน XML ที่ส่งเข้า EMCS ว่าง) → normalize เป็นค่าว่างที่ชั้น bind (กันทุกฟิลด์)
@@ -1395,18 +1396,20 @@ export const caseService = {
     fs.default.mkdirSync(dir, { recursive: true });
 
     let added = 0;
+    const ids: number[] = [];   // id ของรูปที่เพิ่ม — หน้าเว็บจำรูป "รายการตรวจสอบ" ไว้แทนที่ตอนอนุมัติซ้ำ (08/09/69)
     for (const f of files || []) {
       // ชื่อไฟล์ตั้งเองทั้งหมด — ห้ามเชื่อ originalname (path traversal + ชนกับรูปที่มีอยู่)
       const ext = (pathMod.default.extname(f.originalname || '').toLowerCase()
                    .replace(/[^.a-z0-9]/g, '')) || '.jpg';
       const name = `web_${Date.now()}_${added}${ext}`;
       fs.default.writeFileSync(pathMod.default.join(dir, name), f.buffer);
-      await db.query(
-        'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3)',
+      const ins = await db.query(
+        'INSERT INTO survey_photos (report_id, file_path, category) VALUES ($1, $2, $3) RETURNING id',
         [reportId, `case_${caseId}/job_${caseId}/${name}`, category]);
+      ids.push(Number(ins.rows[0].id));
       added++;
     }
-    return { added, category };
+    return { added, category, ids };
   },
 
   /**

@@ -170,7 +170,7 @@ export const isurveyPullService = {
     Promise<Record<string, unknown>> {
     const q = await db.query(
       `SELECT c.id, c.source, c.status, c.isurvey_closed_at,
-              sr.claim_no, sr.survey_job_no, sr.survey_result,
+              sr.claim_no, sr.survey_job_no, sr.survey_result, sr.checklist,
               sp.case_id AS pay_case_id, sp.service_fee, sp.travel_fee, sp.photo_fee, sp.phone_fee, sp.bail_fee,
               sp.claim_fee, sp.daily_fee, sp.other_fee, sp.out_of_area, sp.out_of_area_amt,
               sp.out_of_hours, sp.out_of_hours_amt, sp.deduct_fee,
@@ -212,6 +212,8 @@ export const isurveyPullService = {
       const r = await callService<{ result: Record<string, unknown> }>('/close', {
         ...creds, claim, survey_no: String(row.survey_job_no ?? '').trim(),
         comment: String(row.survey_result ?? ''), rates, dry_run: !live,
+        // รายการตรวจสอบที่หัวหน้าติ๊กบนหน้าเคส → chk_* ของ ISURVEY (รหัสเดียวกัน, migration 057)
+        checklist: row.checklist && typeof row.checklist === 'object' ? row.checklist : null,
       }, 240000);
       const result = r.result ?? {};
       const payload = (result.payload ?? null) as Record<string, string> | null;

@@ -352,6 +352,70 @@ function F({ label, req, span, right, children }: {
  *    อย่าใส่ rounded-none กลับมาเฉพาะจุด จะกลายเป็นหน้าเดียวมี 2 ภาษา
  * ⛔ ป้าย "ยังกรอกไม่ครบ" ต้องอ่านออกบนพื้นเข้ม — ใช้พื้นขาวตัวแดง ไม่ใช่ตัวแดงบนดำ
  */
+/**
+ * "รายการตรวจสอบ" ของหัวหน้า — ชุดเดียวกับ ISURVEY แท็บ 1 (user ขอ 08/09/69)
+ * เก็บ JSONB survey_reports.checklist (migration 057) · รหัสตรงกับ inputValue ของ ISURVEY (chk_*) จึงส่งกลับตอนปิดงานได้ตรง ๆ
+ * ตอนอนุมัติ วาดเป็นรูปแบบเดียวกับใบพิมพ์ ISURVEY เข้าหมวด "รูปรถประกัน" → ไหลเข้า EMCS ทางท่อรูปเหมือนใบแจ้งความเสียหายของแอป
+ */
+type Checklist = { claimform: string; chassis: string; driver_license: string; document: string; other: string; image_photo_id?: number | null };
+const CHECKLIST_ROWS: { key: 'claimform' | 'chassis' | 'driver_license' | 'document'; label: string; options: { code: string; label: string }[] }[] = [
+  { key: 'claimform', label: 'เอกสารเคลมฟอร์ม ([บันทึกถ้อยคำลูกค้า])', options: [{ code: 'Y', label: 'มี' }, { code: 'N', label: 'ไม่มี' }] },
+  { key: 'chassis', label: 'เลขตัวถัง', options: [{ code: 'Y', label: 'ตรง' }, { code: 'N', label: 'ไม่ตรง' }] },
+  { key: 'driver_license', label: 'ใบขับขี่รถประกัน', options: [{ code: 'Y', label: 'มี' }, { code: 'N', label: 'ไม่มี' }] },
+  { key: 'document', label: 'สำเนาใบรับรองความเสียหาย / บัตรติดต่อ',
+    options: [{ code: 'D', label: 'ใบรับรองความเสียหาย' }, { code: 'C', label: 'บัตรติดต่อ' }, { code: 'N', label: 'ไม่ออกเอกสาร' }] },
+];
+const toChecklist = (v: unknown): Checklist => {
+  const o = (v && typeof v === 'object') ? v as Record<string, unknown> : {};
+  const t = (k: string) => String(o[k] ?? '');
+  return { claimform: t('claimform'), chassis: t('chassis'), driver_license: t('driver_license'), document: t('document'),
+           other: t('other'), image_photo_id: o.image_photo_id ? Number(o.image_photo_id) : null };
+};
+const checklistHasAny = (c: Checklist) => Boolean(c.claimform || c.chassis || c.driver_license || c.document || c.other.trim());
+
+/** วาดรูป "รายการตรวจสอบ" แบบใบพิมพ์ของ ISURVEY: กระดาษขาว แถบส้มบน ☑ หน้าข้อที่เลือก ข้อที่ไม่เลือกเป็นตัวจาง → PNG A4 */
+async function renderChecklistPng(c: Checklist, footer: string): Promise<Blob> {
+  const W = 1240, H = 1754;
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('เบราว์เซอร์นี้วาดรูปไม่ได้');
+  try { await document.fonts.load('24px Sarabun'); } catch { /* ไม่มี Sarabun → ฟอนต์สำรอง */ }
+  const font = (px: number, bold = false) => `${bold ? '600 ' : ''}${px}px Sarabun, Tahoma, "Noto Sans Thai", sans-serif`;
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#F5A623'; ctx.fillRect(0, 0, W, 10);
+  ctx.textBaseline = 'middle';
+  const xLabel = 90, xOpt = 560, gap = 250;
+  let y = 240;
+  const tick = (x: number, yy: number) => {
+    ctx.lineWidth = 3; ctx.strokeStyle = '#111';
+    ctx.strokeRect(x, yy - 16, 32, 32);
+    ctx.beginPath(); ctx.moveTo(x + 7, yy + 1); ctx.lineTo(x + 14, yy + 10); ctx.lineTo(x + 27, yy - 10); ctx.stroke();
+  };
+  for (const row of CHECKLIST_ROWS) {
+    ctx.fillStyle = '#222'; ctx.font = font(24); ctx.fillText(row.label, xLabel, y);
+    row.options.forEach((o, i) => {
+      const x = xOpt + i * gap; const sel = c[row.key] === o.code;
+      if (sel) tick(x, y);
+      ctx.fillStyle = sel ? '#111' : '#777'; ctx.font = font(22, sel);
+      ctx.fillText(o.label, x + (sel ? 44 : 0), y);
+    });
+    y += 60;
+  }
+  ctx.fillStyle = '#222'; ctx.font = font(24); ctx.fillText('อื่นๆ', xLabel, y);
+  const other = c.other.trim();
+  if (other) {
+    ctx.fillStyle = '#111'; ctx.font = font(22);
+    // ตัดบรรทัดตามความกว้างจริง (ข้อความไทยไม่มีช่องว่างมาก ตัดทีละตัวอักษร)
+    let line = ''; let yy = y;
+    for (const ch of other.replace(/\r/g, '')) {
+      if (ch === '\n' || ctx.measureText(line + ch).width > 620) { ctx.fillText(line, xOpt, yy); yy += 36; line = ch === '\n' ? '' : ch; }
+      else line += ch;
+    }
+    if (line) ctx.fillText(line, xOpt, yy);
+  }
+  ctx.fillStyle = '#999'; ctx.font = font(20); ctx.fillText(footer, xLabel, H - 80);
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('สร้างไฟล์รูปไม่สำเร็จ'))), 'image/png'));
+}
+
 function SectionBar({ title, gap, right }: { title: string; gap: boolean; right?: React.ReactNode }) {
   return (
     <div
@@ -585,6 +649,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         Object.fromEntries(Object.entries(x ?? {}).map(([k, val]) => [k, val == null ? '' : String(val)]))));
   const [injured, setInjured] = useState<RecordItem[]>(() => toRecords(report?.injured_persons));
   const [property, setProperty] = useState<RecordItem[]>(() => toRecords(report?.damaged_property));
+  /** รายการตรวจสอบ 5 ข้อ (ดู CHECKLIST_ROWS) — เก็บ JSONB report.checklist · ส่งไปกับบันทึก/อนุมัติ */
+  const [checklist, setChecklist] = useState<Checklist>(() => toChecklist(report?.checklist));
   // คู่กรณีเก็บดิบ ไม่ผ่าน toRecords — มี `damage` (อาเรย์) กับ `kfk` (บูลีน) ที่แปลงเป็นสตริงแล้วพัง
   const [opponents, setOpponents] = useState<LooseRecord[]>(
     () => (Array.isArray(report?.opposing_parties)
@@ -1399,7 +1465,11 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     };
   }, []);
 
-  const handleSave = async (): Promise<boolean> => {
+  /**
+   * บันทึกฟอร์ม — `extra` ทับค่าในชุดข้อมูลได้ (ใช้ตอนอนุมัติ: ใส่ checklist.image_photo_id ของรูปที่เพิ่งสร้าง
+   * ให้ไปกับการบันทึกครั้งเดียวกัน — บันทึก 2 รอบติดกันไม่ได้ เพราะ base_rev ใน closure ยังเป็นรุ่นเก่า)
+   */
+  const saveWith = async (extra: Record<string, unknown> = {}): Promise<boolean> => {
     if (!formRef.current) return false;
     /**
      * ⛔ ด่านสุดท้ายกันเขียนข้ามเคส — ระหว่างดู "ครั้งที่" อื่น ช่องในรางขวาถูก disabled
@@ -1437,7 +1507,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         payload.injured_persons = dropEmptyRecords(injured);
         payload.damaged_property = dropEmptyRecords(property);
         payload.opposing_parties = dropEmptyOpponents(opponents);
+        payload.checklist = checklist;
       }
+      Object.assign(payload, extra);
       // ยอดจ่ายพนักงานอยู่คนละตาราง (survey_pay) → ส่งแยก
       // ยิงก่อนบันทึกรายงาน เพื่อให้ถ้าพังจะพังทั้งคู่ ไม่เหลือสถานะครึ่ง ๆ
       // ยอดทุกช่องส่งเหมือนกันหมดทุกที่มาของงาน — ที่มาไม่ใช่ตัวตัดสินว่ากรอกได้ไหมอีกแล้ว
@@ -1515,6 +1587,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     }
     finally { setSaving(false); }
   };
+  const handleSave = () => saveWith();
 
   /**
    * แถบปุ่ม — เดิมอยู่ท้ายหน้า ต้องเลื่อนผ่าน ~200 ช่องกว่าจะถึง
@@ -1557,6 +1630,36 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     } finally { setSaving(false); }
   };
   const fromIsurvey = String(caseData?.source ?? '').startsWith('isurvey');
+  /**
+   * วาดรายการตรวจสอบเป็นรูปแล้วเก็บเข้าหมวด "รูปรถประกัน" (ไหลเข้า EMCS ทางท่อรูป)
+   * คืน: undefined = ไม่ได้ติ๊กอะไร ไม่สร้าง · Checklist ใหม่ (มี image_photo_id) = สำเร็จ · null = ล้มเหลว
+   * อนุมัติซ้ำหลังปลดล็อก: ลบรูปเดิมตาม id ที่จำไว้ก่อน แล้วสร้างใหม่ — ไม่งั้น EMCS ได้รูปซ้ำ
+   */
+  const prepareChecklistImage = async (): Promise<Checklist | null | undefined> => {
+    if (!checklistHasAny(checklist)) return undefined;
+    try {
+      const claim = String(report?.claim_no ?? '');
+      const d = new Date();
+      const footer = `รายการตรวจสอบ · เคลม ${claim} · ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543}`;
+      const blob = await renderChecklistPng(checklist, footer);
+      const oldId = checklist.image_photo_id;
+      if (oldId && (photos ?? []).some((x: { id: number }) => Number(x.id) === Number(oldId))) {
+        await api.delete(`/api/cases/${caseData.id}/photos/${oldId}`);
+      }
+      const fd = new FormData();
+      fd.append('photos', blob, `checklist_${caseData.id}.png`);
+      fd.append('category', 'รูปรถประกัน');
+      const r = await api.post(`/api/cases/${caseData.id}/photos`, fd, { timeout: 60000 });
+      const newId = Number(r.data?.data?.ids?.[0]) || null;
+      const next = { ...checklist, image_photo_id: newId };
+      setChecklist(next);
+      return next;
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message || (e as Error)?.message;
+      setSaveMsg('สร้างรูปรายการตรวจสอบไม่สำเร็จ: ' + (msg || 'เกิดข้อผิดพลาด') + ' — ยังไม่อนุมัติ');
+      return null;
+    }
+  };
   const bkk16 = (v: unknown) => (v ? new Date(String(v)).toLocaleString('th-TH', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) : '');
 
   const actionBar = approved ? (
@@ -1661,7 +1764,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         }
         // อนุมัติ = ล็อกเคส ถอยเองไม่ได้ ต้องให้แอดมินปลด — ถามก่อนเสมอ
         if (!window.confirm('อนุมัติเคสนี้?\nอนุมัติแล้วจะล็อก แก้เองไม่ได้ ต้องให้แอดมินปลดล็อก\nและบอทจะยกเคสนี้เข้า EMCS')) return;
-        const ok = await handleSave();
+        // รูป "รายการตรวจสอบ" → หมวดรูปรถประกัน (user ขอ 08/09/69) — ต้องทำก่อนอนุมัติ เพราะอนุมัติแล้วเพิ่มรูปไม่ได้ (423)
+        const chk = await prepareChecklistImage();
+        if (chk === null) return;   // ล้มเหลว (ขึ้นข้อความแล้ว) — ไม่อนุมัติทั้งที่สำนวนขาดรูป
+        const ok = await saveWith(chk ? { checklist: chk } : {});
         if (!ok) return; // บันทึกไม่ผ่าน → อย่าอนุมัติทับด้วยข้อมูลเก่า
         try {
           const r = await api.post(`/api/cases/${caseData.id}/review`, {});
@@ -2678,6 +2784,41 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             <SectionBar title={`ทรัพย์สินเสียหาย · ${property.length} ชิ้น`} gap={(gapSec ?? []).includes('prop')} />
             <div className="bg-white overflow-hidden text-sm">
               <div className="p-4"><PropertyEditor items={property} onChange={setProperty} /></div>
+            </div>
+          </div>
+
+          {/* ===== รายการตรวจสอบ (user ขอ 08/09/69) — ชุดเดียวกับ ISURVEY แท็บ 1 · เก็บ JSONB checklist (migration 057)
+              ⛔ ช่องไม่มี name — ค่าไปกับ payload.checklist ตอนบันทึก (ไม่ผ่าน FormData) · ล็อกตามอนุมัติเหมือนหมวดอื่น
+              ตอนอนุมัติวาดเป็นรูปเข้าหมวด "รูปรถประกัน" (prepareChecklistImage) และส่งกลับ ISURVEY เป็น chk_* ตอนปิดงาน */}
+          <div data-section="chk" className="border border-[var(--md-line)] bg-white">
+            <SectionBar title="รายการตรวจสอบ" gap={false}
+              right={checklist.image_photo_id ? <span className="text-xs text-white/80">มีรูปในหมวดรูปรถประกันแล้ว</span> : undefined} />
+            <div className="bg-white text-sm p-4 space-y-2.5">
+              {CHECKLIST_ROWS.map((row, i) => (
+                <div key={row.key} className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                  <span className="w-80 shrink-0 text-gray-700">{i + 1}. {row.label}:</span>
+                  {row.options.map((o) => (
+                    <label key={o.code} className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input type="radio" disabled={previewing || approved} checked={checklist[row.key] === o.code}
+                        onChange={() => setChecklist({ ...checklist, [row.key]: o.code })} />
+                      <span>{o.label}</span>
+                    </label>
+                  ))}
+                  {checklist[row.key] && !approved && !previewing && (
+                    <button type="button" onClick={() => setChecklist({ ...checklist, [row.key]: '' })}
+                      className="text-xs text-gray-400 hover:text-gray-600">ล้าง</button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-start gap-x-6">
+                <span className="w-80 shrink-0 text-gray-700 pt-1">5. อื่นๆ:</span>
+                <textarea disabled={previewing || approved} value={checklist.other} rows={2}
+                  onChange={(e) => setChecklist({ ...checklist, other: e.target.value })}
+                  className="flex-1 max-w-xl border border-gray-300 rounded-none px-2 py-1 text-sm" />
+              </div>
+              <div className="text-[0.6875rem] text-gray-500">
+                กด "อนุมัติ" แล้วระบบจะวาดรายการที่เลือกเป็นรูปเข้าหมวด "รูปรถประกัน" ให้เอง และส่งค่ากลับ ISURVEY ตอนปิดงาน
+              </div>
             </div>
           </div>
 
