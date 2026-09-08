@@ -534,7 +534,9 @@ console.log('\n── ค่าเรียกร้อง: เติม % แ�
  * ช่างนอก (ชื่ออื่น) → 10% (user สั่งเพิ่ม 08/09/69) · ช่องผู้สำรวจภัยว่าง → ไม่เติม · ฝั่งเรียกเก็บประกันไม่เติม (user สั่ง)
  */
 check('ผู้สำรวจภัยขึ้นต้น SE → 5% · ช่างนอก → 10% · ว่าง → ไม่เติม',
-      ui.includes('const pct = /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;'));
+      ui.includes('const pct = company2 ? 5 : /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;'));
+check('บริษัท 2 (เลขเซอร์เวย์ SETP/SEMS) → 5% เสมอ ไม่ว่าช่างใคร',
+      ui.includes("const company2 = /^(SETP|SEMS)/i.test(String(report?.survey_job_no ?? '').trim());"));
 check('เติมเมื่อติ๊กรับเงินจำนวน + มียอด เท่านั้น', ui.includes('pct !== null && moneyTick && Number.isFinite(amtNum) && amtNum > 0'));
 check('ราคาพนักงาน = ยอด × % ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * pct) / 100'));
 check('⛔ ไม่ทับค่าที่หัวหน้าพิมพ์เอง (จำค่าที่ระบบเติมใน data-auto)', ui.includes('cur === el.dataset.auto'));
