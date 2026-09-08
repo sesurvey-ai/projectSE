@@ -2517,6 +2517,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                  }>
                 <textarea disabled={d} name="acc_detail" defaultValue={report.acc_detail || ''} className={`${CTL(d)} min-h-[5rem]`} rows={4} />
               </F>
+              {/* "หมายเหตุ" จาก ISURVEY แท็บ 2 (ค่าพาหนะ/นัดหมาย/เงื่อนไขที่ช่างจด) — user ขอ 08/09/69
+                  ⛔ แสดงอย่างเดียว ไม่มี name จึงไม่ถูกบันทึกทับ และไม่ไหลเข้า XML/EMCS (คอลัมน์ source_remark, migration 056) */}
+              {String(report?.source_remark ?? '').trim() && (
+                <div className="col-span-full -mt-1">
+                  <div className="text-[0.6875rem] font-semibold text-gray-500">หมายเหตุจาก ISURVEY <span className="font-normal">· แสดงอย่างเดียว ไม่ส่งเข้า EMCS</span></div>
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800 bg-amber-50 border border-amber-200 rounded-none px-2 py-1.5">{String(report.source_remark)}</pre>
+                </div>
+              )}
             </div>
           </div>
 
