@@ -215,6 +215,17 @@ export const isurveyPullService = {
       }, 240000);
       const result = r.result ?? {};
       const payload = (result.payload ?? null) as Record<string, string> | null;
+      if (result.skipped === 'already_closed') {
+        // หัวหน้าปิดมือไปก่อน / ยิงซ้ำ — จดว่าปิดแล้วตามเวลาของ ISURVEY (เวลาไทย) ไม่ใช่ error
+        await db.query(
+          `UPDATE cases SET isurvey_closed_at = COALESCE(($2::text)::timestamp AT TIME ZONE 'Asia/Bangkok', NOW()),
+                            isurvey_close_payload = $3, isurvey_close_error = NULL WHERE id = $1`,
+          [caseId, String(result.close_datetime ?? '').trim() || null,
+           JSON.stringify({ skipped: 'already_closed', close_datetime: result.close_datetime ?? null, case: result.case ?? null })]);
+        await isurveyCredService.markResult(userId, true);
+        notifyCaseChanged(caseId, 'isurvey', userId);
+        return { ok: true, live: false, dry_run: false, skipped: 'already_closed', message: result.message, case: result.case };
+      }
       if (result.dry_run) {
         await db.query(
           `UPDATE cases SET isurvey_close_dry_at = NOW(), isurvey_close_payload = $2, isurvey_close_error = NULL WHERE id = $1`,

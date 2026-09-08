@@ -1546,6 +1546,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const d = r.data?.data as { live?: boolean; dry_run?: boolean; message?: string; skipped?: string;
                                   summary?: { fields?: number; comment_len?: number; ins_total?: string; sur_total?: string } };
       if (d?.skipped === 'already') setSaveMsg('งานนี้ปิดบน ISURVEY ไปแล้ว');
+      else if (d?.skipped === 'already_closed') setSaveMsg(d?.message || 'งานนี้ปิดบน ISURVEY ไปก่อนแล้ว (หัวหน้าปิดมือ) — จดสถานะให้แล้ว');
       else if (d?.dry_run) setSaveMsg(`ISURVEY โหมดทดลอง: ประกอบคำสั่ง ${d.summary?.fields ?? '?'} ช่อง (ความเห็น ${d.summary?.comment_len ?? 0} ตัวอักษร · ประกัน ${d.summary?.ins_total ?? '-'} · พนักงาน ${d.summary?.sur_total ?? '-'}) — ยังไม่ยิงจริง`);
       else setSaveMsg(`ปิดงานบน ISURVEY แล้ว — ${d?.message ?? 'สำเร็จ'}`);
       onReviewSubmitted();
