@@ -12,12 +12,15 @@
  *  - ไม่ตั้ง SEBILLING_URL = ปิดท่อ · SEBILLING_TOKEN = API_TOKEN ของ se-billing server
  *
  * การแปลงยอด — ให้สูตรสรุปของ se-billing คืนยอดเดียวกับ "รวมพนักงาน" ของเรา
- *  se-billing สรุป: base = sur − นอกพื้นที่ − นอกเวลา + dedInSur · รวม = base + นอกพื้นที่ + นอกเวลา − dedInSur + other
- *  → รวม = sur_invest + other_expense_amt เสมอ (dedInSur หักล้างกันเอง)
- *  จึงส่ง sur_invest = รายรับพนักงานทุกช่อง + นอกพื้นที่ + นอกเวลา (ยังไม่หัก)
- *       other_expense_amt = −หักเงิน (กติกา "เว็บใหม่" ของ se-billing: ติดลบ = ยอดหัก)
- *       deduct_amt เฉพาะเมื่อมีเหตุผลมาตรฐาน (ส่งช้า/เอกสาร) — server ปฏิเสธ 400 ถ้าส่งยอดหักโดยไม่มี
- *  ฝั่งเรียกเก็บประกัน: ins_invest/ins_trans/ins_photo = survey_expenses (ค่าบริการ/เดินทาง/รูป)
+ *  (08/09/69 user ขอเก็บ ค่าเรียกร้อง / ค่าคัดประจำวัน / ค่าใช้จ่ายอื่นๆ แยกคอลัมน์ — แถวละช่องเหมือนตารางของ ISURVEY)
+ *  se-billing สรุปแถว mode "sesurvey": รวมพนักงาน = sur_invest + นอกพื้นที่/นอกเวลา(อยู่ใน sur แล้ว) − deduct_amt
+ *                                                    + other_expense_amt + sur_claim + sur_daily
+ *  จึงส่ง sur_invest = ฐาน (ค่าบริการ/เดินทาง/รูป/โทรศัพท์/ประกันตัว) + นอกพื้นที่ + นอกเวลา (ยังไม่หัก)
+ *       sur_claim = ค่าเรียกร้อง · sur_daily = ค่าคัดประจำวัน · daily_check = ผลคัด · recv_claim_amt = "รับเงินจำนวน"
+ *       other_expense_amt = ค่าใช้จ่ายอื่นๆ (รายจ่ายจริง บวก) · deduct_amt = หักเงิน (se-billing ยกเว้นกฎ
+ *       "ต้องติ๊กส่งช้า/เอกสาร" ให้ mode sesurvey เพราะเหตุผลอยู่ในเว็บเรา — ส่งไปใน raw.deduct_reason)
+ *  ฝั่งเรียกเก็บประกัน: ins_invest/ins_trans/ins_photo/ins_claim/ins_daily/ins_other(+other_detail) = survey_expenses
+ *  ⛔ se-billing รุ่นก่อน 09/2569 ปฏิเสธ deduct_amt ที่ไม่มีเหตุผลมาตรฐาน — ต้อง deploy se-billing ก่อน backend
  *  ใบเบิกเงิน (payExport) ใช้คู่คอลัมน์เดียวกัน — แก้ที่หนึ่งต้องดูอีกที่
  */
 import { db } from '../config/database';
@@ -86,12 +89,14 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
             COALESCE(to_char(c.assigned_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD"T"HH24:MI:SS'),
                      to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS')) || '+07:00' AS dispatch_iso,
             sr.claim_no, sr.survey_job_no, sr.acc_province, sr.acc_district, sr.acc_subdistrict,
-            sr.acc_surveyor, sr.claim_type,
+            sr.acc_surveyor, sr.claim_type, sr.acc_claim_amount,
             se.service_fee_price AS ins_service, se.travel_fee_price AS ins_travel,
+            se.claim_fee_price AS ins_claim, se.daily_record_fee AS ins_daily,
+            se.other_fee_price AS ins_other, se.other_fee_detail,
             -- photo_fee_price = ราคาต่อรูป → ยอดรวม = × จำนวนรูป (se-billing/ISURVEY เก็บค่ารูปเป็นยอดรวม)
             se.photo_fee_price * COALESCE(NULLIF(se.photo_fee_count, 0), 1) AS ins_photo,
             sp.service_fee, sp.travel_fee, sp.photo_fee, sp.phone_fee, sp.bail_fee, sp.claim_fee,
-            sp.daily_fee, sp.other_fee, sp.other_reason,
+            sp.daily_fee, sp.daily_check, sp.other_fee, sp.other_reason,
             sp.out_of_area, sp.out_of_area_amt, sp.out_of_hours, sp.out_of_hours_amt,
             sp.deduct_fee, sp.deduct_late, sp.deduct_docs, sp.deduct_reason, sp.total,
             sp.rate_snapshot, sp.priced_at,
@@ -123,9 +128,13 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
   const tid = tumbonCode(s('acc_province'), s('acc_district'), s('acc_subdistrict')) ?? snapId('tumbon_id');
 
   // ฝั่งจ่ายพนักงาน — สูตรเดียวกับ saveCasePay: รวม = รายรับทุกช่อง + ตัวปรับ − หักเงิน
-  const earn = PAY_MONEY_FIELDS.reduce((sum, f) => sum + (num(r[f]) ?? 0), 0);
+  // แต่ส่งแยกช่อง: ฐาน (sur_invest) · ค่าเรียกร้อง · ค่าคัดประจำวัน · ค่าใช้จ่ายอื่นๆ — se-billing บวกกลับให้เท่ากัน
+  const SPLIT_FIELDS = ['claim_fee', 'daily_fee', 'other_fee'];
+  const earn = PAY_MONEY_FIELDS.filter((f) => !SPLIT_FIELDS.includes(f))
+    .reduce((sum, f) => sum + (num(r[f]) ?? 0), 0);
   const anyEarning = PAY_MONEY_FIELDS.some((f) => num(r[f]) !== null)
     || Boolean(r.out_of_area) || Boolean(r.out_of_hours);
+  const otherFee = num(r.other_fee);
   const oaAmt = r.out_of_area ? (num(r.out_of_area_amt) ?? 50) : null;
   const ohAmt = r.out_of_hours ? (num(r.out_of_hours_amt) ?? 100) : null;
   const ded = Math.abs(num(r.deduct_fee) ?? 0);
@@ -157,11 +166,20 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
     out_of_area_amt: oaAmt,
     out_of_hours: Boolean(r.out_of_hours),
     out_of_hours_amt: ohAmt,
-    deduct_amt: ded > 0 && stdReason ? ded : null,
-    other_expense_amt: ded > 0 ? -ded : null,
+    deduct_amt: ded > 0 ? ded : null,
+    other_expense_amt: otherFee ? round2(otherFee) : null,
     late_submit: Boolean(r.deduct_late),
     incomplete_docs: Boolean(r.deduct_docs),
     mode: 'sesurvey',
+    // แถวแยกตามตาราง ISURVEY (09/2569) — ฝั่งพนักงาน (survey_pay) / ฝั่งบริษัท (survey_expenses)
+    recv_claim_amt: num(r.acc_claim_amount),
+    sur_claim: num(r.claim_fee),
+    ins_claim: num(r.ins_claim),
+    daily_check: s('daily_check'),
+    sur_daily: num(r.daily_fee),
+    ins_daily: num(r.ins_daily),
+    ins_other: num(r.ins_other),
+    other_detail: s('other_fee_detail'),
     // ของดิบไว้ตรวจย้อนหลัง — หน้า captures ไม่โชว์ แต่ export/DB มี
     raw: {
       source: 'se-survey', case_id: caseId,
@@ -169,7 +187,7 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
       priced_at: r.priced_at ?? null,
       pay: Object.fromEntries(PAY_MONEY_FIELDS.map((f) => [f, num(r[f])])),
       total: num(r.total), deduct: ded || null,
-      deduct_reason: s('deduct_reason'), other_reason: s('other_reason'),
+      deduct_reason: s('deduct_reason'), deduct_std_reason: stdReason, other_reason: s('other_reason'),
       area_text: { province: s('acc_province'), district: s('acc_district'), subdistrict: s('acc_subdistrict') },
     },
   };
