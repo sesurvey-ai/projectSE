@@ -1241,17 +1241,19 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
       /**
        * ── ค่าเรียกร้องเติมให้เอง (user เคาะ 08/09/69) ──
-       * ติ๊ก "รับเงินจำนวน" + กรอกยอด + "ผู้สำรวจภัย" ขึ้นต้น SE (พนักงานเรา รวม SEC ต่างจังหวัด)
-       *   → ช่อง % = 5 และ "ราคาพนักงาน" ของค่าเรียกร้อง = ยอด × 5% (กติกาเดียวกับ extension se-billing)
-       * ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่แตะ · ช่างนอก (ไม่ขึ้นต้น SE) ไม่เติมให้ กรอกเองเหมือนเดิม
+       * ติ๊ก "รับเงินจำนวน" + กรอกยอด → ช่อง % และ "ราคาพนักงาน" ของค่าเรียกร้อง = ยอด × %
+       *   "ผู้สำรวจภัย" ขึ้นต้น SE (พนักงานเรา รวม SEC ต่างจังหวัด) = 5% · ช่างนอก (OSS ชื่ออื่น) = 10%
+       *   (กติกาเดียวกับ extension se-billing บน ISURVEY) · ช่องผู้สำรวจภัยว่าง = ไม่รู้ว่าใคร ไม่เติม
+       * ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่แตะ (user สั่ง)
        * เขียนทับเฉพาะช่องว่างหรือค่าที่ระบบเติมไว้เอง (จำไว้ใน data-auto) — หัวหน้าพิมพ์ทับแล้วระบบไม่แย่งคืน
        * เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม · เติมแล้วต้องคิดยอดรวมใหม่เอง (event ไหลผ่านรางไปแล้ว)
        */
       {
         const surveyor = val('input[name="acc_surveyor"]');
         const amtNum = Number(amt);
-        const auto = /^SE/i.test(surveyor) && moneyTick && Number.isFinite(amtNum) && amtNum > 0
-          ? { claim_fee_percent: '5', pay_claim_fee: String(Math.round(amtNum * 0.05 * 100) / 100) }
+        const pct = /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;
+        const auto = pct !== null && moneyTick && Number.isFinite(amtNum) && amtNum > 0
+          ? { claim_fee_percent: String(pct), pay_claim_fee: String(Math.round(amtNum * pct) / 100) }
           : null;
         let touched = false;
         const targets: Array<[string, string | undefined]> = [

@@ -531,11 +531,12 @@ console.log('\n── ตัวสลับฟอนต์ ──');
 console.log('\n── ค่าเรียกร้อง: เติม % และราคาพนักงานให้เอง (user เคาะ 08/09/69) ──');
 /**
  * กติกาเดียวกับ extension se-billing บน ISURVEY: ผู้สำรวจภัยขึ้นต้น SE = พนักงานเรา → 5% ของ "รับเงินจำนวน"
- * ฝั่งเรียกเก็บประกันไม่เติม (user สั่ง) · ช่างนอกไม่เติม
+ * ช่างนอก (ชื่ออื่น) → 10% (user สั่งเพิ่ม 08/09/69) · ช่องผู้สำรวจภัยว่าง → ไม่เติม · ฝั่งเรียกเก็บประกันไม่เติม (user สั่ง)
  */
-check('ผู้สำรวจภัยขึ้นต้น SE + ติ๊กรับเงินจำนวน + มียอด → % = 5',
-      ui.includes('/^SE/i.test(surveyor) && moneyTick') && ui.includes("claim_fee_percent: '5'"));
-check('ราคาพนักงาน = ยอด × 5% ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * 0.05 * 100) / 100'));
+check('ผู้สำรวจภัยขึ้นต้น SE → 5% · ช่างนอก → 10% · ว่าง → ไม่เติม',
+      ui.includes('const pct = /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;'));
+check('เติมเมื่อติ๊กรับเงินจำนวน + มียอด เท่านั้น', ui.includes('pct !== null && moneyTick && Number.isFinite(amtNum) && amtNum > 0'));
+check('ราคาพนักงาน = ยอด × % ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * pct) / 100'));
 check('⛔ ไม่ทับค่าที่หัวหน้าพิมพ์เอง (จำค่าที่ระบบเติมใน data-auto)', ui.includes('cur === el.dataset.auto'));
 check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่ถูกเติม', !ui.includes("['claim_fee_price', auto"));
 check('เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม', ui.includes("el.value = ''; delete el.dataset.auto; touched = true;"));
