@@ -27,9 +27,12 @@ console.log('\n── งานในมือ: 2 นิยาม 2 ที่ใ
  *    ถ้าเผลอแก้ให้เหลือ assigned อย่างเดียว ป้าย "N งาน" บนบอร์ดจะลดลงเงียบ ๆ
  *    โดยไม่มีอะไรฟ้อง — คนดูบอร์ดจะเข้าใจว่าคนว่างกว่าความจริง
  */
-check('ยังคืน active = assigned + surveyed ไว้ให้บอร์ดเข้างาน',
+// 07/09/69: เพิ่มสถานะ 'finished' (เสร็จงานหน้างาน) — active ของบอร์ดเข้างานยังนับรวม (งานยังไม่ปิด)
+// แต่หน้าจ่ายงานถือว่า "ว่าง" (นับแยกใน finished ไม่ปนกับ assigned)
+check('ยังคืน active = assigned + finished + surveyed ไว้ให้บอร์ดเข้างาน',
       /COUNT\(c\.id\)\)?::int\s+AS active/.test(caseSvc)
-      && /c\.status IN \('assigned','surveyed'\)/.test(caseSvc));
+      && /c\.status IN \('assigned','finished','surveyed'\)/.test(caseSvc)
+      && /FILTER \(WHERE c\.status = 'finished'\)::int\s+AS finished/.test(caseSvc));
 check('บอร์ดเข้างานยังอ่าน active ตัวเดิม', board.includes('Number(w.active)'));
 /** นิยาม "ว่าง" ที่ user เคาะ = ยังไม่ได้รับมอบหมาย → ต้องแยก assigned ออกมาต่างหาก */
 check('แยก assigned (ยังไม่ส่งงาน) ออกมาให้หน้าจ่ายงาน',
@@ -153,8 +156,9 @@ check('หน้าแอดมินฟังสัญญาณแล้วโ�
         fn.includes("['surveyed', 'reviewed'].includes(String(row.status))"));
   check('ไม่มีเลขเคลม = เปิดไม่ได้ (ผูกงานเข้ากับเคลมเดิมไม่ได้)',
         fn.includes('เคสนี้ไม่มีเลขเคลม'));
+  // 07/09/69: งานที่กด "เสร็จงาน" แล้วแต่ยังไม่ส่ง (finished) ก็ยังค้างอยู่ — ห้ามเปิดครั้งถัดไปซ้อน
   check('กันกดซ้ำ: มีงานของเคลมนี้ค้างอยู่ = ไม่สร้างใบใหม่',
-        fn.includes("c.status IN ('pending','assigned')"));
+        fn.includes("c.status IN ('pending','assigned','finished')"));
   check('หน้ารายการเคสมีปุ่มเปิดงานครั้งถัดไป',
         read('..', 'web', 'src', 'app', 'callcenter', 'cases', 'page.tsx').includes('handleFollowup'));
 }
