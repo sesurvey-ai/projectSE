@@ -540,7 +540,14 @@ check('บริษัท 2 (เลขเซอร์เวย์ SETP/SEMS) →
 check('เติมเมื่อติ๊กรับเงินจำนวน + มียอด เท่านั้น', ui.includes('pct !== null && moneyTick && Number.isFinite(amtNum) && amtNum > 0'));
 check('ราคาพนักงาน = ยอด × % ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * pct) / 100'));
 check('⛔ ไม่ทับค่าที่หัวหน้าพิมพ์เอง (จำค่าที่ระบบเติมใน data-auto)', ui.includes('cur === el.dataset.auto'));
-check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่ถูกเติม', !ui.includes("['claim_fee_price', auto"));
+check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่ถูกเติมเป็นค่าจริง', !ui.includes("['claim_fee_price', auto"));
+/**
+ * user เคาะ 08/09/69: โชว์ 10% ฝั่งประกันเป็นตัวจาง ๆ ให้เห็นว่ามียอด แต่ห้ามรวมยอดฝั่งประกัน
+ * → ใส่เป็น placeholder (ไม่ใช่ value) จึงไม่ถูกรวม ไม่ถูกบันทึก ไม่ไป XML/se-billing
+ */
+check('ฝั่งประกันโชว์ 10% เป็น placeholder สีเทา ไม่ใช่ค่าจริง',
+      ui.includes('insEl.placeholder = hint') && ui.includes('Math.round(amtNum * 10) / 100')
+      && ui.includes('text-right placeholder:text-gray-400"'));
 check('เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม', ui.includes("el.value = ''; delete el.dataset.auto; touched = true;"));
 check('เติมแล้วคิดยอดรวมใหม่', ui.includes('if (touched) recalcSums();'));
 
