@@ -259,8 +259,7 @@ check('ตีกลับแล้วซ่อนปุ่ม (กันตี�
  * api instance ตั้ง Content-Type: application/json เป็นค่าเริ่มต้น → อัป FormData ต้องบอก multipart เองทุกครั้ง
  * ไม่งั้น server ไม่เห็นไฟล์ แล้วอนุมัติไม่ผ่านด้วย "กรุณาเลือกรูปอย่างน้อย 1 ไฟล์" (เจอจริงเคลม 2026013074059)
  */
-console.log('
--- หน้าตรวจเคส: รูปรายการตรวจสอบตอนอนุมัติ --');
+console.log('\n-- หน้าตรวจเคส: รูปรายการตรวจสอบตอนอนุมัติ --');
 const chkFn = src.slice(src.indexOf('const prepareChecklistImage'), src.indexOf('const actionBar = approved'));
 check('มีตัววาด/อัปรูปรายการตรวจสอบ', chkFn.length > 100 && chkFn.includes("fd.append('category', 'รูปรถประกัน')"));
 check('อัปรูปบอก multipart เอง (ไม่ใช้ค่าเริ่มต้น JSON ของ api)', /'Content-Type':\s*'multipart\/form-data'/.test(chkFn));
