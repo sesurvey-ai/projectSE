@@ -2014,12 +2014,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <span className="text-red-600"> — ระบบประกันไม่รับ ดูรายละเอียดที่การ์ด "ลำดับเวลา" ด้านล่าง</span>
             </div>
           )}
-          {moneyMissing.length > 0 && (
-            <div className="bg-amber-50 border border-amber-300 rounded-none px-4 py-2 text-sm text-amber-900">
-              <span className="font-semibold">งานจากแอปมือถือ — ยังไม่ได้กรอกยอดเงิน</span>
-              <span className="text-amber-700"> · {moneyMissing.join(' · ')}</span>
-            </div>
-          )}
+          {/* แถบ "งานจากแอปมือถือ — ยังไม่ได้กรอกยอดเงิน" ตัดออกแล้ว (user ทัก 09/09/69) — ซ้ำกับข้อในกล่องรายการด้านบน
+              moneyMissing ยังอยู่ใน approvalBlockers และช่องที่ขาดทาแดงในตารางค่าใช้จ่ายอยู่แล้ว */}
           {missing.length > 0 ? (
             <div className="bg-red-50 border border-red-200 rounded-none px-4 py-2.5 text-sm text-red-800 flex items-center gap-2">
               <span className="font-semibold">ยังขาดช่องบังคับ {missing.length} ช่อง</span>
