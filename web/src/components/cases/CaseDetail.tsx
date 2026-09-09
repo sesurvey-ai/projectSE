@@ -1361,11 +1361,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
       // ── ยอดเงินของงานจากแอปมือถือ ──
       const mm: string[] = [];
-      // ยอดพนักงานดูจากช่องสด ๆ ด้วย — พิมพ์แล้วกรอบแดงต้องหายทันที ไม่ต้องรอบันทึก
-      const livePay = PAY_MONEY_INPUTS.some((k) => Number(val(`input[name="${k}"]`).replace(/,/g, '')) > 0)
-        || Boolean(form.querySelector('input[name=out_of_area]:checked'))
-        || Boolean(form.querySelector('input[name=out_of_hours]:checked'));
-      const payMissing = payRequired && Boolean(pay) && !(Number(pay?.saved?.total ?? 0) > 0) && !livePay;
+      // ดูที่ "ค่าบริการ" ฝั่งพนักงานโดยเฉพาะ (ช่องสด + ที่บันทึกไว้) — user เจอ 09/09/69: ค่าเรียกร้องที่ระบบเติมให้
+      // ทำให้กรอบแดงค่าบริการหายทั้งที่ยังไม่ได้กรอก เพราะเดิมนับ "มีเงินช่องไหนก็ได้"
+      const liveService = Number(val('input[name=pay_service_fee]').replace(/,/g, '')) > 0;
+      const payMissing = payRequired && Boolean(pay) && !(Number(pay?.saved?.service_fee ?? 0) > 0) && !liveService;
       const insMissing = payRequired && !val('input[name="service_fee_price"]');
       if (payMissing) mm.push('ยังไม่ได้กรอก "ราคาพนักงาน" (ค่าบริการ)');
       if (insMissing) mm.push('ยังไม่ได้กรอก "ราคาประกัน" (ค่าบริการ)');

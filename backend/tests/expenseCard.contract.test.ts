@@ -561,7 +561,10 @@ check('แจกแจงทุกข้อเป็นรายการ (ช�
 check('ช่องราคาที่ยังขาดทาแดงที่ช่องจริง (ค่าบริการ ฝั่งพนักงาน / ฝั่งประกัน)',
       ui.includes("[['pay_service_fee', payMissing], ['service_fee_price', insMissing]] as const"));
 check('⛔ ถอดขอบสีเดิมของช่องเงิน (ฟ้า) ตอนทาแดง ไม่งั้นสีตีกัน', ui.includes("el.classList.toggle(el.dataset.border0, !on);"));
-check('พิมพ์ยอดพนักงานแล้วกรอบแดงหายทันที ไม่ต้องรอบันทึก', ui.includes('const livePay = PAY_MONEY_INPUTS.some('));
+check('พิมพ์ค่าบริการพนักงานแล้วกรอบแดงหายทันที ไม่ต้องรอบันทึก', ui.includes("const liveService = Number(val('input[name=pay_service_fee]')"));
+/** user เจอ 09/09/69: ค่าเรียกร้องที่ระบบเติมให้ทำกรอบแดงค่าบริการหาย → ต้องดูช่องค่าบริการเอง ไม่ใช่ "มีเงินช่องไหนก็ได้" */
+check('⛔ กรอบแดงค่าบริการดูเฉพาะช่องค่าบริการ ไม่หายเพราะช่องเงินอื่น (เช่น ค่าเรียกร้องที่เติมให้)',
+      ui.includes("!(Number(pay?.saved?.service_fee ?? 0) > 0) && !liveService") && !ui.includes('const livePay ='));
 
 console.log('\n── กล่องติ๊ก "รับเงินจำนวน": มียอดแต่ยังไม่ติ๊ก → กรอบแดง (user ขอ 09/09/69) ──');
 check('มียอดแต่ยังไม่ติ๊ก → tickHl แดง', ui.includes("setTickHl(!moneyTick && Number(amt) > 0 ? 'red' : 'none');"));
