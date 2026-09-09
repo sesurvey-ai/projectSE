@@ -196,7 +196,16 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  * แยก "แนะนำ" ออกจาก "บันทึกแล้ว" เพราะผู้ตรวจต้องเห็นว่าตัวเองแก้จากค่าที่ระบบคิดไปเท่าไหร่
  * — ถ้ากลืนเป็นค่าเดียวกันจะไม่มีใครรู้ว่ายอดถูกปรับมือหรือเปล่า
  */
-export async function getCasePay(caseId: number) {
+/**
+ * พื้นที่/ประเภทเคลม "ที่กำลังเลือกบนหน้า" ใช้แทนค่าที่บันทึกไว้ — หน้าเคสส่งมาตอนหัวหน้าเปลี่ยนจังหวัด/อำเภอ/ตำบล
+ * (user เจอ #252 09/09/69: เลือกตำบลบ่อวินแล้วเรทแนะนำยังเป็นของอำเภอ เพราะคิดจากรายงานที่บันทึกไว้ก่อนหน้า
+ * → ต้องพิมพ์ 500/600 เอง) · ค่าว่าง = ใช้ที่บันทึกไว้
+ */
+export interface PayLocationOverride {
+  province?: string | null; district?: string | null; subdistrict?: string | null; claim_type?: string | null;
+}
+
+export async function getCasePay(caseId: number, override: PayLocationOverride = {}) {
   const saved = (await db.query('SELECT * FROM survey_pay WHERE case_id = $1', [caseId])).rows[0] ?? null;
 
   const r = (await db.query(
@@ -211,19 +220,28 @@ export async function getCasePay(caseId: number) {
 
   if (!r) return { saved, suggest: null, area: null };
 
-  const province = provinceCode(r.acc_province);
-  const amphur = amphurCode(r.acc_province, r.acc_district);
+  const pick = (o?: string | null, fallback?: string | null): string | undefined => {
+    const v = String(o ?? '').trim();
+    return v ? v : (fallback ?? undefined);
+  };
+  const accProvince = pick(override.province, r.acc_province);
+  const accDistrict = pick(override.district, r.acc_district);
+  const accSubdistrict = pick(override.subdistrict, r.acc_subdistrict);
+  const claimType = pick(override.claim_type, r.claim_type);
+
+  const province = provinceCode(accProvince);
+  const amphur = amphurCode(accProvince, accDistrict);
   /**
    * ตำบลพิเศษ (บ่อวิน / พลูตาหลวง — เรทรายทีมสูงกว่าอำเภอแม่) — เดิมไม่เคยส่ง tumbonId ให้ calcPay
    * แม้ตารางเรทมีข้อมูลและ computePay รองรับ → ระบบแนะนำเรทอำเภอ 400 ทั้งที่บ่อวินทีมศรีราชาต้อง 500
    * (user เจอเคส #252 09/09/69 หลังเลือกตำบลบ่อวินแล้วเรทไม่เปลี่ยน) · จับคู่จากชื่อตำบลในรายงาน
    */
-  const tumbon = tumbonCode(r.acc_province, r.acc_district, r.acc_subdistrict);
+  const tumbon = tumbonCode(accProvince, accDistrict, accSubdistrict);
   const team = r.acc_surveyor ? await teamOfSurveyor(r.acc_surveyor) : null;
 
   // ประเภทเคลมในระบบเราเป็นตัวอักษร (F/D/A/C) แต่ตารางเรทคิดตามเลข 1-4 ของระบบเดิม
   // F = เคลมสด · D = เคลมแห้ง · ที่เหลือถือเป็นกลุ่มติดตาม/อื่น ๆ
-  const mtypeId = ({ F: '1', D: '2', A: '3', C: '4' } as Record<string, string>)[r.claim_type ?? ''] ?? '1';
+  const mtypeId = ({ F: '1', D: '2', A: '3', C: '4' } as Record<string, string>)[claimType ?? ''] ?? '1';
 
   const pay = await calcPay({
     provinceId: province, amphurId: amphur, tumbonId: tumbon, mtypeId, team,
@@ -264,8 +282,8 @@ export async function getCasePay(caseId: number) {
     },
     area: {
       province_code: province, amphur_code: amphur, tumbon_code: tumbon, team,
-      province_name: r.acc_province ?? null, district_name: r.acc_district ?? null,
-      subdistrict_name: r.acc_subdistrict ?? null,
+      province_name: accProvince ?? null, district_name: accDistrict ?? null,
+      subdistrict_name: accSubdistrict ?? null,
       // แปลงพื้นที่ไม่ได้ = หาเรทไม่เจอ → หน้าเว็บต้องบอกให้ไปแก้ชื่อจังหวัด/อำเภอก่อน
       resolved: Boolean(amphur || province),
       photo_count: Number(r.photo_count ?? 0),
@@ -348,7 +366,13 @@ export async function saveCasePay(
   // snapshot ต้องสะท้อน "สิ่งที่กรอกรอบนี้" ไม่ใช่แถวเก่าที่ยังไม่ทันอัปเดต —
   // getCasePay อ่านตัวปรับจากแถวที่บันทึกไว้ก่อนหน้า จึงได้ค่าเก่า/ว่างเสมอในครั้งแรก
   // ตัว snapshot มีหน้าที่อธิบายว่ายอดนี้มาจากอะไร ถ้าบอกตัวปรับผิดก็หมดประโยชน์
-  const { suggest } = await getCasePay(caseId);
+  // snapshot คิดจากพื้นที่ที่กำลังบันทึกรอบนี้ (หน้าเว็บส่ง acc_* มาใน body) — ยอดเงินถูกยิงก่อนรายงาน
+  // ถ้าอ่านจากรายงานที่บันทึกไว้จะได้พื้นที่เก่าไป 1 รอบ (เช่น เพิ่งเปลี่ยนเป็นบ่อวิน แต่ snapshot ยังเป็นเรทอำเภอ)
+  const str = (k: string) => (typeof input[k] === 'string' ? (input[k] as string) : null);
+  const { suggest } = await getCasePay(caseId, {
+    province: str('acc_province'), district: str('acc_district'),
+    subdistrict: str('acc_subdistrict'), claim_type: str('claim_type'),
+  });
   const snapshot = {
     ...(suggest?.snapshot ?? {}),
     out_of_area: areaAmt,

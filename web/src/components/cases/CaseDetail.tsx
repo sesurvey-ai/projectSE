@@ -1491,6 +1491,65 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   }, [caseData.id]);
 
   /**
+   * ── เรทแนะนำต้องตาม "พื้นที่ที่กำลังเลือก" ไม่ใช่ที่บันทึกไว้ (user เจอ #252 09/09/69) ──
+   * เปลี่ยนจังหวัด/อำเภอ/ตำบลบนหน้า → ขอเรทใหม่ด้วยพื้นที่นั้นทันที (หน่วง 350 ms กันยิงถี่)
+   * เดิมคิดครั้งเดียวตอนโหลดจากรายงานที่บันทึกไว้ → เลือกตำบลบ่อวินแล้วยังแนะนำเรทอำเภอ หัวหน้าต้องพิมพ์เอง
+   */
+  const suggestReqRef = useRef(0);
+  const suggestMountedRef = useRef(false);
+  useEffect(() => {
+    if (!suggestMountedRef.current) { suggestMountedRef.current = true; return; }   // โหลดแรกมี effect ข้างบนแล้ว
+    if (previewing) return;
+    const id = ++suggestReqRef.current;
+    const t = setTimeout(() => {
+      const params: Record<string, string> = {};
+      if (accProv && accProv !== '0') params.province = accProv;
+      if (accDist && !/^--/.test(accDist)) params.district = accDist;
+      if (accTumbon) params.subdistrict = accTumbon;
+      api.get(`/api/cases/${caseData.id}/pay`, { params })
+        .then((r) => {
+          if (id !== suggestReqRef.current || !r.data?.success) return;
+          const d = r.data.data as PayData;
+          setPay((prev) => (prev ? { ...prev, suggest: d.suggest, area: d.area } : d));
+        })
+        .catch(() => {});
+    }, 350);
+    return () => clearTimeout(t);
+  }, [accProv, accDist, accTumbon, caseData.id, previewing]);
+
+  /**
+   * เรทแนะนำเปลี่ยน → เติมช่องให้ทันที เฉพาะช่องที่ "ว่าง" หรือ "ยังเป็นค่าที่ระบบเติมไว้" (จำใน data-auto /
+   * เท่ากับเรทแนะนำรอบก่อน) — ค่าที่หัวหน้าพิมพ์เองไม่ถูกทับ · ครอบ 3 ช่อง: ค่าบริการฝั่งประกัน · ค่าเดินทางฝั่งประกัน ·
+   * ค่าบริการฝั่งพนักงาน (เดิมฝั่งพนักงานมีแค่ข้อความ "ระบบแนะนำ" ให้พิมพ์ตาม → เติมให้เลย)
+   */
+  const lastSuggestRef = useRef<Record<string, number | null>>({});
+  useEffect(() => {
+    const sg = pay?.suggest;
+    const form = formRef.current;
+    if (!sg || !form || previewing) return;
+    const map: Array<[string, number | null | undefined]> = [
+      ['service_fee_price', sg.ins_service_fee],
+      ['travel_fee_price', sg.ins_travel_fee],
+      ['pay_service_fee', sg.service_fee],
+    ];
+    let touched = false;
+    for (const [nm, v] of map) {
+      const el = form.querySelector(`input[name="${nm}"]`) as HTMLInputElement | null;
+      if (!el || el.disabled) { lastSuggestRef.current[nm] = typeof v === 'number' ? v : null; continue; }
+      const cur = el.value.trim();
+      const curNum = Number(cur.replace(/,/g, ''));
+      const prev = lastSuggestRef.current[nm];
+      const mine = cur === '' || (el.dataset.auto !== undefined && cur === el.dataset.auto)
+        || (prev != null && curNum === prev);
+      if (typeof v === 'number' && v > 0 && mine && curNum !== v) {
+        el.value = String(v); el.dataset.auto = String(v); touched = true;
+      }
+      lastSuggestRef.current[nm] = typeof v === 'number' ? v : null;
+    }
+    if (touched) recalcSums();
+  }, [pay?.suggest, previewing, recalcSums]);
+
+  /**
    * โหลดเคสใหม่ (onReviewSubmitted) แล้ว rev ที่ถืออยู่ต้องเดินตามด้วย
    * ไม่งั้นหลังกดโหลดใหม่จะยังส่ง rev เก่าไป = ชนซ้ำวนไปเรื่อย ๆ แก้อะไรไม่ได้เลย
    */
@@ -1611,6 +1670,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           deduct_reason: data['deduct_reason'] || null,
           other_reason: data['other_fee_detail'] ?? null,
           daily_check: (data['daily_check'] || '') || null,
+          // พื้นที่/ประเภทเคลมที่กำลังบันทึก — ให้ snapshot เรทคิดจากรอบนี้ (ยอดเงินยิงก่อนรายงาน)
+          acc_province: data['acc_province'] ?? null, acc_district: data['acc_district'] ?? null,
+          acc_subdistrict: data['acc_subdistrict'] ?? null, claim_type: data['claim_type'] ?? null,
         };
         for (const k of Object.keys(data)) {
           if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;

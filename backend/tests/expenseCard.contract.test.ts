@@ -585,8 +585,20 @@ console.log('\n── เรทตำบลพิเศษ (บ่อวิน/�
 {
   const pay = read('src', 'services', 'pay.service.ts');
   check('getCasePay ส่ง tumbonId ที่จับคู่จากชื่อตำบลในรายงานให้ calcPay',
-        pay.includes('tumbonCode(r.acc_province, r.acc_district, r.acc_subdistrict)') && pay.includes('tumbonId: tumbon,'));
+        pay.includes('tumbonCode(accProvince, accDistrict, accSubdistrict)') && pay.includes('tumbonId: tumbon,'));
   check('หน้าเคสบอกว่าเรทมาจากตำบลพิเศษ', ui.includes("rate_from === 'tumbon_by_team'"));
+}
+
+console.log('\n── เรทแนะนำตามพื้นที่ที่กำลังเลือก ไม่ใช่ที่บันทึกไว้ (user เจอ #252 09/09/69) ──');
+{
+  const pay = read('src', 'services', 'pay.service.ts');
+  const ctl = read('src', 'controllers', 'case.controller.ts');
+  check('getCasePay รับ override จังหวัด/อำเภอ/ตำบล/ประเภทเคลม', pay.includes('override: PayLocationOverride = {}') && pay.includes('tumbonCode(accProvince, accDistrict, accSubdistrict)'));
+  check('GET /pay รับ ?province=&district=&subdistrict=', ctl.includes("q('subdistrict')"));
+  check('snapshot ตอนบันทึกคิดจากพื้นที่ที่ส่งมารอบนี้', pay.includes("subdistrict: str('acc_subdistrict')"));
+  check('หน้าเคส: เปลี่ยนตำบลแล้วขอเรทใหม่ (หน่วง 350ms)', ui.includes('params.subdistrict = accTumbon') && ui.includes('}, 350);'));
+  check('หน้าเคส: เรทใหม่เติมทับเฉพาะช่องว่าง/ค่าที่ระบบเติมไว้ (ไม่ทับที่พิมพ์เอง)', ui.includes('lastSuggestRef') && ui.includes("['pay_service_fee', sg.service_fee]"));
+  check('บันทึกส่งพื้นที่ไปกับยอดเงิน', ui.includes("acc_subdistrict: data['acc_subdistrict'] ?? null, claim_type: data['claim_type'] ?? null"));
 }
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
