@@ -127,6 +127,11 @@ function zeroBlank(v: unknown): string {
   const t = String(v ?? '').trim();
   return Number(t) === 0 ? '' : t;
 }
+/** เปอร์เซ็นต์ค่าเรียกร้อง — DB คืน "10.00" ช่องแคบเห็นเป็น "10.0" (user ทัก 09/09/69) → โชว์ "10" มีเศษค่อยโชว์ไม่เกิน 2 ตำแหน่ง */
+function pctBlank(v: unknown): string {
+  const n = Number(String(v ?? '').trim());
+  return Number.isFinite(n) && n !== 0 ? String(Math.round(n * 100) / 100) : '';
+}
 /** ยอดนอกพื้นที่/นอกเวลาในช่องแก้เอง — DB คืน "100.00" → โชว์ "100" (ค่าตั้งต้นตอนติ๊กก็โชว์ "100" อยู่แล้ว
  *  สองแบบปนกันดูเหมือนคนละช่อง) จำนวนเต็มไม่ใส่ทศนิยม มีเศษค่อยโชว์ไม่เกิน 2 ตำแหน่ง */
 /** ผลจากท่อ se-billing ที่ backend แนบมากับผลอนุมัติ/ส่งซ้ำ (ดู backend sebilling.service) */
@@ -1261,10 +1266,13 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         const surveyor = val('input[name="acc_surveyor"]');
         const amtNum = Number(amt);
         const company2 = /^(SETP|SEMS)/i.test(String(report?.survey_job_no ?? '').trim());
-        const pct = company2 ? 5 : /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;
-        const auto = pct !== null && Number.isFinite(amtNum) && amtNum > 0
-          ? { claim_fee_percent: String(pct), pay_claim_fee: String(Math.round(amtNum * pct) / 100) }
-          : null;
+        const isSE = /^SE/i.test(surveyor);
+        const pct = company2 ? 5 : isSE ? 5 : surveyor ? 10 : null;
+        const hasAmt = pct !== null && Number.isFinite(amtNum) && amtNum > 0;
+        const feeStr = hasAmt ? String(Math.round(amtNum * pct) / 100) : '';
+        // เติมเป็นค่าจริง (เข้ารวมยอด บันทึก) เฉพาะพนักงาน SE — ช่างนอกได้แค่ตัวเทา (placeholder) ไม่นับรวม
+        // เหมือนฝั่งประกัน (user เคาะ 09/09/69: ช่างนอกไม่ได้รับเงินผ่านใบเบิกนี้)
+        const auto = hasAmt && isSE ? { claim_fee_percent: String(pct), pay_claim_fee: feeStr } : null;
         let touched = false;
         const targets: Array<[string, string | undefined]> = [
           ['claim_fee_percent', auto?.claim_fee_percent],
@@ -1281,13 +1289,17 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             el.value = ''; delete el.dataset.auto; touched = true;
           }
         }
-        {
-          const insEl = form.querySelector('input[name="claim_fee_price"]') as HTMLInputElement | null;
-          if (insEl) {
-            const hint = auto ? String(Math.round(amtNum * 10) / 100) : '';
-            if (insEl.placeholder !== hint) insEl.placeholder = hint;
-            insEl.title = hint ? `10% ของยอดเรียกร้อง (ยังไม่นับรวม) — พิมพ์ทับถ้าต้องการเรียกเก็บ` : '';
-          }
+        // ตัวเทา (placeholder = ไม่ใช่ค่า ไม่รวมยอด ไม่บันทึก): ฝั่งประกัน 10% ทุกงาน · ฝั่งพนักงาน + ช่อง % เฉพาะช่างนอก
+        const hints: Array<[string, string, string]> = [
+          ['claim_fee_price', hasAmt ? String(Math.round(amtNum * 10) / 100) : '', '10% ของยอดเรียกร้อง (ยังไม่นับรวม) — พิมพ์ทับถ้าต้องการเรียกเก็บ'],
+          ['pay_claim_fee', hasAmt && !isSE ? feeStr : '', `${pct}% ของยอดเรียกร้อง (ช่างนอก ยังไม่นับรวม) — พิมพ์ทับถ้าต้องการจ่าย`],
+          ['claim_fee_percent', hasAmt && !isSE ? String(pct) : '', 'เปอร์เซ็นต์แนะนำสำหรับช่างนอก — ยังไม่บันทึก'],
+        ];
+        for (const [nm, hint, tip] of hints) {
+          const el = form.querySelector(`input[name="${nm}"]`) as HTMLInputElement | null;
+          if (!el) continue;
+          if (el.placeholder !== hint) el.placeholder = hint;
+          el.title = hint ? tip : '';
         }
         if (touched) recalcSums();
       }
@@ -3159,8 +3171,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าเรียกร้อง</td>
                     {/* 0.00 ในช่องเปอร์เซ็นต์ = ยังไม่ได้กำหนด ไม่ใช่ "ศูนย์เปอร์เซ็นต์" — โชว์ว่างไว้
                         ส่วนใหญ่พิมพ์ทับด้วย 5 หรือ 10 อยู่แล้ว (user แจ้ง 18/08/69) */}
-                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={zeroBlank(exV.claim_fee_percent)} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">%</span></div></td>
-                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(payV?.saved?.claim_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="claim_fee_price" defaultValue={zeroBlank(exV.claim_fee_price)} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right placeholder:text-gray-400" /></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5"><input type="text" disabled={previewing} name="claim_fee_percent" defaultValue={pctBlank(exV.claim_fee_percent)} className="w-[3.125rem] max-w-full min-[1500px]:w-[2.75rem] border border-gray-300 rounded-none px-2 py-1 text-gray-800 bg-white text-sm text-center placeholder:text-gray-400" /><span className="text-gray-500 w-[1.875rem] min-[1500px]:w-[1.75rem]">%</span></div></td>
+                    <td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={dPay} name="pay_claim_fee" defaultValue={zeroBlank(payV?.saved?.claim_fee)} className={`w-full border rounded-none px-2 py-1 text-sm text-right placeholder:text-gray-400 ${dPay ? 'bg-gray-100 border-gray-300 text-gray-800' : 'bg-white border-blue-300 text-blue-800'}`} /></td><td className="px-3 min-[1500px]:px-2 py-2"><input type="text" disabled={previewing} name="claim_fee_price" defaultValue={zeroBlank(exV.claim_fee_price)} className="w-full border border-blue-600 rounded-none px-2 py-1 text-blue-950 bg-white text-sm text-right placeholder:text-gray-400" /></td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-3 min-[1500px]:px-2 py-2 text-gray-700">ค่าคัดประจำวัน</td>

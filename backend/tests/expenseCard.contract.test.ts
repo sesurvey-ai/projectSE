@@ -534,11 +534,16 @@ console.log('\n── ค่าเรียกร้อง: เติม % แ�
  * ช่างนอก (ชื่ออื่น) → 10% (user สั่งเพิ่ม 08/09/69) · ช่องผู้สำรวจภัยว่าง → ไม่เติม · ฝั่งเรียกเก็บประกันไม่เติม (user สั่ง)
  */
 check('ผู้สำรวจภัยขึ้นต้น SE → 5% · ช่างนอก → 10% · ว่าง → ไม่เติม',
-      ui.includes('const pct = company2 ? 5 : /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;'));
+      ui.includes('const pct = company2 ? 5 : isSE ? 5 : surveyor ? 10 : null;'));
+/** user เคาะ 09/09/69: ช่างนอกไม่ได้รับเงินผ่านใบเบิกนี้ → ฝั่งพนักงานของช่างนอกเป็นตัวเทา ไม่รวมยอด ไม่บันทึก */
+check('เติมเป็นค่าจริงเฉพาะพนักงาน SE', ui.includes('const auto = hasAmt && isSE ? { claim_fee_percent: String(pct), pay_claim_fee: feeStr } : null;'));
+check('ช่างนอก → ราคาพนักงาน + % เป็น placeholder สีเทา',
+      ui.includes("['pay_claim_fee', hasAmt && !isSE ? feeStr : ''") && ui.includes("['claim_fee_percent', hasAmt && !isSE ? String(pct) : ''"));
+check('ช่อง % โชว์ "10" ไม่ใช่ "10.00" (pctBlank)', ui.includes('defaultValue={pctBlank(exV.claim_fee_percent)}'));
 check('บริษัท 2 (เลขเซอร์เวย์ SETP/SEMS) → 5% เสมอ ไม่ว่าช่างใคร',
       ui.includes("const company2 = /^(SETP|SEMS)/i.test(String(report?.survey_job_no ?? '').trim());"));
 check('เติมเมื่อมียอดรับเงินจำนวน (ไม่ต้องรอติ๊กกล่อง — user เจอ 09/09/69 พิมพ์ยอดแล้ว % ไม่ขึ้น)',
-      ui.includes('const auto = pct !== null && Number.isFinite(amtNum) && amtNum > 0'));
+      ui.includes('const hasAmt = pct !== null && Number.isFinite(amtNum) && amtNum > 0;'));
 check('ราคาพนักงาน = ยอด × % ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * pct) / 100'));
 check('⛔ ไม่ทับค่าที่หัวหน้าพิมพ์เอง (จำค่าที่ระบบเติมใน data-auto)', ui.includes('cur === el.dataset.auto'));
 check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่ถูกเติมเป็นค่าจริง', !ui.includes("['claim_fee_price', auto"));
@@ -547,7 +552,7 @@ check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_
  * → ใส่เป็น placeholder (ไม่ใช่ value) จึงไม่ถูกรวม ไม่ถูกบันทึก ไม่ไป XML/se-billing
  */
 check('ฝั่งประกันโชว์ 10% เป็น placeholder สีเทา ไม่ใช่ค่าจริง',
-      ui.includes('insEl.placeholder = hint') && ui.includes('Math.round(amtNum * 10) / 100')
+      ui.includes("['claim_fee_price', hasAmt ? String(Math.round(amtNum * 10) / 100) : ''")
       && ui.includes('text-right placeholder:text-gray-400"'));
 check('เลิกติ๊ก/ล้างยอด → ล้างเฉพาะค่าที่ระบบเติม', ui.includes("el.value = ''; delete el.dataset.auto; touched = true;"));
 check('เติมแล้วคิดยอดรวมใหม่', ui.includes('if (touched) recalcSums();'));
