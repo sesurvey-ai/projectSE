@@ -330,6 +330,20 @@ void main() {
           b.subjectsOf(typeOf('prop_evidence')));
     });
 
+    /// ใบรถคู่กรณีต้องมีกรมธรรม์ของ**รถประกัน** (เดิมดึงของคู่กรณีเองซึ่งว่าง — เคส #248 09/09/69)
+    /// และหัวใบต่อลำดับ "ที่N" เสมอ เคสหลายคู่กรณีจะได้แยกใบกัน
+    test('opponent slip: insured policy + ordinal subtitle', () {
+      expect(lineOf('opp_damage', 'เลขกรมธรรม์'), report['policy_no']);
+      expect(lineOf('opp_damage', 'ประเภทกรมธรรม์'), report['policy_type']);
+      expect(builder().build(typeOf('opp_damage')).subtitle, 'รถคู่กรณี ที่1');
+      expect(builder().build(typeOf('opp_damage'), index: 1).subtitle, 'รถคู่กรณี ที่2');
+      expect(builder().build(typeOf('opp_contact')).subtitle, 'รถคู่กรณี ที่1');
+      // ประกันของคู่กรณีเอง (ถ้ากรอก) ยังอยู่ แยกบรรทัด ไม่ปนกับกรมธรรม์รถประกัน
+      expect(lineOf('opp_damage', 'ประกันคู่กรณี'), contains('P-1'));
+      // ใบรถประกันไม่ต่อลำดับ
+      expect(builder().build(typeOf('ins_damage')).subtitle, 'รถประกัน');
+    });
+
     test('ป้ายตัวเลือกชี้ตัวได้', () {
       expect(DamageNoticeBuilder.subjectLabel(SlipSubject.injured,
           {'name': 'นายพงษ์ดนัย อินคุ้ม'}, 0), contains('นายพงษ์ดนัย'));

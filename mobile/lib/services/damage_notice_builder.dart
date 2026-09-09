@@ -188,16 +188,21 @@ class DamageNoticeBuilder {
           SlipField('เหตุเกิดที่', _s('acc_place')),
         ]);
       case SlipSubject.opponentCar:
+        // กรมธรรม์บนใบนี้ = **ของรถประกัน** (ใบออกภายใต้กรมธรรม์ของเรา ให้คู่กรณีใช้อ้างอิงตอนติดต่อ
+        // บริษัท) — เดิมดึงกรมธรรม์ของคู่กรณีเองซึ่งส่วนใหญ่ว่าง → ใบไม่มีเลข/ประเภทกรมธรรม์
+        // ทั้งที่ใบรถประกันมี (user เจอเคส #248 09/09/69) · ประกันของคู่กรณีเอง (ถ้ากรอก) แยกบรรทัดไว้ท้าย
+        final oppInsurer = [o('insurer'), o('policy_no')].where((x) => x.isNotEmpty).join(' ');
         fields.addAll([
           printedLine,
           SlipField('เลขที่อุบัติเหตุ', _s('claim_no')),
           SlipField('เลขเรื่อง Survey', _s('survey_job_no')),
-          SlipField('เลขกรมธรรม์', o('policy_no')),
-          SlipField('ประเภทกรมธรรม์', o('policy_type')),
+          SlipField('เลขกรมธรรม์', _s('policy_no')),
+          SlipField('ประเภทกรมธรรม์', _s('policy_type')),
           SlipField('รถคู่กรณีทะเบียน', o('plate')),
           SlipField('จังหวัด', o('province')),
           SlipField('ยี่ห้อ/รุ่น', '${o('car_brand')}/${o('car_model')}'),
           SlipField('สีรถ', o('car_color')),
+          if (oppInsurer.isNotEmpty) SlipField('ประกันคู่กรณี', oppInsurer),
         ]);
       case SlipSubject.insuredCar:
         fields.addAll([
@@ -220,9 +225,13 @@ class DamageNoticeBuilder {
     final ded = _money(report['deductible']);
     final showDed = type.showDeductible && ded != null && ded > 0;
 
+    // หัวใบของคู่กรณีต่อลำดับ "ที่N" เสมอ (แม้มีคันเดียว) — เคสหลายคู่กรณีจะได้แยกใบออกจากกัน
+    // ("ใบแจ้งความเสียหาย รถคู่กรณี ที่1", "…ที่2" — user ขอ 09/09/69)
+    final subtitle = isOpponent ? '${type.subtitle} ที่${index + 1}' : type.subtitle;
+
     return DamageNoticeData(
       title: type.title,
-      subtitle: type.subtitle,
+      subtitle: subtitle,
       fields: fields,
       damages: type.showDamages
           ? _damages(isOpponent ? item['damage'] : report['insured_damage'])
