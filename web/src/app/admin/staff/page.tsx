@@ -7,7 +7,8 @@
  * (username / บทบาท / เวอร์ชันแอป) ส่วนหน้านี้ดูแล **ตัวพนักงาน** ที่ฝ่ายบุคคลคุมอยู่
  * และเป็นต้นทางของ "เบอร์ผู้สำรวจภัย" ที่ระบบเติมให้เคสอัตโนมัติ (EMCS บังคับช่องนี้)
  *
- * นำเข้าจากไฟล์ Excel ของฝ่ายบุคคลได้ตรง ๆ — **ดูแผนก่อนเสมอ** แล้วค่อยเลือกว่าจะทำหมวดไหน
+ * 09/09/69: แก้เบอร์ทีละคนในตารางได้ (กด "แก้" ที่ช่องเบอร์) — user ทักว่าเดิมกรอกเบอร์ไม่ได้ มีแต่ทางนำเข้า Excel
+ * นำเข้าจากไฟล์ Excel ของฝ่ายบุคคลได้ตรง ๆ — **ดูแผนก่อนเสมอ** แล้วค่อยเลือกวาจะทำหมวดไหน
  */
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
@@ -47,6 +48,29 @@ export default function AdminStaffPage() {
   const [msg, setMsg] = useState('');
   const [pw, setPw] = useState('');
   const [pick, setPick] = useState({ phone: true, name: true, supervisor: true, create: false, deactivate: false });
+
+  // แก้เบอร์ทีละคนในตาราง (บันทึกผ่าน PUT /api/admin/users/:id {phone} — ตัวเดียวกับหน้าผู้ใช้)
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editVal, setEditVal] = useState('');
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const startEdit = (r: Staff) => { setEditId(r.id); setEditVal((r.phone || '').replace(/\D/g, '')); setMsg(''); };
+  const savePhone = async (r: Staff) => {
+    const digits = editVal.replace(/\D/g, '');
+    if (digits && (digits.length < 9 || digits.length > 10)) {
+      setMsg('ไม่สำเร็จ: เบอร์ต้องเป็นตัวเลข 9–10 หลัก (เช่น 0812345678)');
+      return;
+    }
+    setSavingId(r.id);
+    try {
+      const res = await api.put(`/api/admin/users/${r.id}`, { phone: digits || null });
+      const saved = (res.data?.data?.phone ?? digits ?? null) as string | null;
+      setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, phone: saved } : x)));
+      setMsg(digits ? `บันทึกเบอร์ของ ${r.code || ''} ${r.first_name} แล้ว (${fmtPhone(digits)})` : `ลบเบอร์ของ ${r.code || ''} ${r.first_name} แล้ว`);
+      setEditId(null);
+    } catch (e) {
+      setMsg('ไม่สำเร็จ: ' + ((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'บันทึกเบอร์ไม่ได้'));
+    } finally { setSavingId(null); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,7 +255,27 @@ export default function AdminStaffPage() {
                   <tr key={r.id} className="border-t border-gray-100">
                     <td className="px-4 py-2 font-mono text-gray-700">{r.code}</td>
                     <td className="px-4 py-2 text-gray-800">{`${r.first_name} ${r.last_name}`.trim()}</td>
-                    <td className={`px-4 py-2 ${(r.phone || '').trim() ? 'text-gray-800' : 'text-red-600'}`}>{fmtPhone(r.phone)}</td>
+                    <td className={`px-4 py-2 ${(r.phone || '').trim() ? 'text-gray-800' : 'text-red-600'}`}>
+                      {editId === r.id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <input type="tel" value={editVal} autoFocus disabled={savingId === r.id}
+                            onChange={(e) => setEditVal(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void savePhone(r); } if (e.key === 'Escape') setEditId(null); }}
+                            placeholder="0812345678"
+                            className="w-32 border border-blue-400 rounded px-2 py-0.5 text-sm text-gray-800 bg-white" />
+                          <button type="button" onClick={() => void savePhone(r)} disabled={savingId === r.id}
+                            className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded disabled:opacity-50">บันทึก</button>
+                          <button type="button" onClick={() => setEditId(null)} disabled={savingId === r.id}
+                            className="px-2 py-0.5 text-xs border border-gray-300 rounded text-gray-600">ยกเลิก</button>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          <span>{fmtPhone(r.phone)}</span>
+                          <button type="button" onClick={() => startEdit(r)} title="แก้เบอร์"
+                            className="px-1.5 py-0.5 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-100">แก้</button>
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-gray-600">{sup ? `${sup.first_name} ${sup.last_name}`.trim() : '—'}</td>
                     <td className="px-4 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
