@@ -27,7 +27,7 @@ interface PayData {
   } | null;
   area: {
     province_code: string | null; amphur_code: string | null; team: string | null;
-    province_name: string | null; district_name: string | null;
+    province_name: string | null; district_name: string | null; subdistrict_name?: string | null; tumbon_code?: string | null;
     resolved: boolean; photo_count: number;
   } | null;
 }
@@ -3324,6 +3324,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                         {pay?.area && (pay.area.resolved ? (
                           <div className="mt-2 text-xs text-gray-500">
                             เรทของ {pay.area.province_name} / {pay.area.district_name}
+                            {pay.suggest?.snapshot?.rate_from === 'tumbon_by_team' ? ` / ตำบลพิเศษ ${pay.area.subdistrict_name ?? ''}` : ''}
                             {pay.area.team ? ` · ทีม${pay.area.team}` : ''}
                             {pay.suggest?.service_fee != null ? ` · ระบบแนะนำค่าบริการ ${pay.suggest.service_fee} บาท` : ''}
                             {pay.saved?.total != null ? ` · รวมที่บันทึกไว้ ${pay.saved.total} บาท` : ''}

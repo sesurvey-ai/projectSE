@@ -581,5 +581,13 @@ check('กรอบแดงอยู่ที่ label ของกล่อง
 check('นับเป็นข้อที่ยังอนุมัติไม่ได้ + ป้ายไม่ช้า 1 จังหวะ (อยู่ใน deps)',
       ui.includes("tickHl === 'red' ? ['กรอกยอด \"รับเงินจำนวน\" แล้วแต่ยังไม่ติ๊กกล่อง']") && ui.includes('payHl, tickHl, payOver'));
 
+console.log('\n── เรทตำบลพิเศษ (บ่อวิน/พลูตาหลวง) ต้องถูกใช้ (user เจอ #252 09/09/69) ──');
+{
+  const pay = read('src', 'services', 'pay.service.ts');
+  check('getCasePay ส่ง tumbonId ที่จับคู่จากชื่อตำบลในรายงานให้ calcPay',
+        pay.includes('tumbonCode(r.acc_province, r.acc_district, r.acc_subdistrict)') && pay.includes('tumbonId: tumbon,'));
+  check('หน้าเคสบอกว่าเรทมาจากตำบลพิเศษ', ui.includes("rate_from === 'tumbon_by_team'"));
+}
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
