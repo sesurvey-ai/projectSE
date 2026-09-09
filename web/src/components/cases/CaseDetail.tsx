@@ -1241,7 +1241,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
 
       /**
        * ── ค่าเรียกร้องเติมให้เอง (user เคาะ 08/09/69) ──
-       * ติ๊ก "รับเงินจำนวน" + กรอกยอด → ช่อง % และ "ราคาพนักงาน" ของค่าเรียกร้อง = ยอด × %
+       * กรอกยอด "รับเงินจำนวน" (> 0) → ช่อง % และ "ราคาพนักงาน" ของค่าเรียกร้อง = ยอด × %
+       *   ⛔ ไม่ผูกกับกล่องติ๊ก "รับเงินจำนวน" — user เจอจริง 09/09/69 (#241) พิมพ์ยอดแล้วแต่ยังไม่ติ๊ก % ไม่ขึ้น งง
+       *      extension บน ISURVEY ก็ดูแค่ยอดอย่างเดียว
        *   "ผู้สำรวจภัย" ขึ้นต้น SE (พนักงานเรา รวม SEC ต่างจังหวัด) = 5% · ช่างนอก (OSS ชื่ออื่น) = 10%
        *   บริษัท 2 (เลขเซอร์เวย์ขึ้นต้น SETP ไทยไพบูลย์ / SEMS MSIG) = 5% เสมอไม่ว่าช่างใคร
        *   (กติกาเดียวกับ extension se-billing บน ISURVEY: COMPANY2_CLAIM_SUR_PCT) · ช่องผู้สำรวจภัยว่าง = ไม่รู้ว่าใคร ไม่เติม
@@ -1255,7 +1257,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         const amtNum = Number(amt);
         const company2 = /^(SETP|SEMS)/i.test(String(report?.survey_job_no ?? '').trim());
         const pct = company2 ? 5 : /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;
-        const auto = pct !== null && moneyTick && Number.isFinite(amtNum) && amtNum > 0
+        const auto = pct !== null && Number.isFinite(amtNum) && amtNum > 0
           ? { claim_fee_percent: String(pct), pay_claim_fee: String(Math.round(amtNum * pct) / 100) }
           : null;
         let touched = false;

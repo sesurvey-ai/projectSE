@@ -537,7 +537,8 @@ check('ผู้สำรวจภัยขึ้นต้น SE → 5% · ช�
       ui.includes('const pct = company2 ? 5 : /^SE/i.test(surveyor) ? 5 : surveyor ? 10 : null;'));
 check('บริษัท 2 (เลขเซอร์เวย์ SETP/SEMS) → 5% เสมอ ไม่ว่าช่างใคร',
       ui.includes("const company2 = /^(SETP|SEMS)/i.test(String(report?.survey_job_no ?? '').trim());"));
-check('เติมเมื่อติ๊กรับเงินจำนวน + มียอด เท่านั้น', ui.includes('pct !== null && moneyTick && Number.isFinite(amtNum) && amtNum > 0'));
+check('เติมเมื่อมียอดรับเงินจำนวน (ไม่ต้องรอติ๊กกล่อง — user เจอ 09/09/69 พิมพ์ยอดแล้ว % ไม่ขึ้น)',
+      ui.includes('const auto = pct !== null && Number.isFinite(amtNum) && amtNum > 0'));
 check('ราคาพนักงาน = ยอด × % ปัดทศนิยม 2 ตำแหน่ง', ui.includes('Math.round(amtNum * pct) / 100'));
 check('⛔ ไม่ทับค่าที่หัวหน้าพิมพ์เอง (จำค่าที่ระบบเติมใน data-auto)', ui.includes('cur === el.dataset.auto'));
 check('⛔ ฝั่งเรียกเก็บประกัน (claim_fee_price) ไม่ถูกเติมเป็นค่าจริง', !ui.includes("['claim_fee_price', auto"));
