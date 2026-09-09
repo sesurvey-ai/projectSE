@@ -241,9 +241,11 @@ router.get('/cases/:id', integrationAuth, asyncHandler(async (req: Request, res:
   const caseId = parseInt(req.params.id as string);
   const { db } = await import('../config/database');
   // meta ไม่กั้นด้วยการอนุมัติ (บอทใช้เช็คกันซ้ำ/หาเหตุผลก่อนเริ่ม) แต่บอก approved มาด้วย
+  // source (mobile / isurvey_xml / isurvey_live / emcs_extract) — บอทโหมด "นำเข้า + ส่งงานใหม่" ใช้ตัดสิน
+  // ว่าหลังส่ง EMCS ต้องแจ้ง ISURVEY ว่าคีย์แล้วไหม (เฉพาะเคสที่มาจาก ISURVEY; งานมือถือไม่มีในนั้น)
   // เพื่อให้ webui ขึ้นเหตุผลได้ตรง ๆ ว่า "ยังไม่อนุมัติ" แทนที่จะไปเจอ 403 ตอนดึงข้อมูล
   const r = await db.query(
-    `SELECT c.id, c.status, sr.claim_no, sr.survey_job_no, sr.insurance_company, sr.insurance_branch,
+    `SELECT c.id, c.status, c.source, sr.claim_no, sr.survey_job_no, sr.insurance_company, sr.insurance_branch,
             to_char(c.emcs_imported_at, 'YYYY-MM-DD HH24:MI') AS emcs_imported_at, c.emcs_esurvey_no,
             (c.status = 'reviewed') AS approved,
             to_char(rv.reviewed_at, 'YYYY-MM-DD HH24:MI') AS approved_at,
