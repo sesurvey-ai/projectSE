@@ -1698,18 +1698,46 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
     ));
   }
 
-  Widget _slipButton() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: OutlinedButton.icon(
-          onPressed: _openSlip,
-          icon: const Icon(Icons.receipt_long_outlined, size: 20),
-          label: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text('ออกใบเอกสารหน้างาน'
-                '${_photoCountOf(_kSlipCat) > 0 ? '  (ออกแล้ว ${_photoCountOf(_kSlipCat)} ใบ)' : ''}'),
+  /// การ์ด "ออกใบเอกสารหน้างาน" — หน้าตาเดียวกับการ์ดหมวด 1-8 ด้านบน (ไอคอนในกล่อง + หัวข้อ + บรรทัดย่อย + ลูกศร)
+  /// เดิมเป็นปุ่มขอบมนแบบ OutlinedButton ข้อความตัดบรรทัด ดูแปลกแยกจากการ์ดอื่น (user ขอ 09/09/69)
+  Widget _slipButton() {
+    final n = _photoCountOf(_kSlipCat);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: _openSlip,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _line),
+              boxShadow: [BoxShadow(color: const Color(0xFF141E3C).withValues(alpha: 0.035), blurRadius: 20, offset: const Offset(0, 6))],
+            ),
+            child: Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.receipt_long_outlined, size: 21, color: _primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('ออกใบเอกสารหน้างาน', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+                const SizedBox(height: 2),
+                Text(n > 0 ? 'ออกแล้ว $n ใบ' : 'พิมพ์ใบให้ลูกค้า/คู่กรณีเซ็นหน้างาน',
+                    style: TextStyle(fontSize: 12, color: n > 0 ? _primary : _muted)),
+              ])),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: _muted2),
+            ]),
           ),
         ),
-      );
+      ),
+    );
+  }
 
   static const _kSlipCat = 'ใบแจ้งความเสียหาย';
 
@@ -2412,7 +2440,6 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> with WidgetsBinding
               (v) => _hasInjured = v),
           _hubToggleCard(Icons.category, '8. ทรัพย์สิน', _SView.property, _hasProperty, _property.length, _property, 'ทรัพย์สิน',
               (v) => _hasProperty = v),
-          const SizedBox(height: 8),
           _slipButton(),
           _finishButton(),
         ],
