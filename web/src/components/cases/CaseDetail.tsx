@@ -1080,6 +1080,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const [oppNoHl, setOppNoHl] = useState<'red' | 'none'>('none');
   const [payHl, setPayHl] = useState<'red' | 'none'>('none');
+  /** กรอกยอด "รับเงินจำนวน" แล้วแต่ยังไม่ติ๊กกล่อง — กรอบแดงที่กล่องติ๊ก (user ขอ 09/09/69 หลังเจอเคส #241) */
+  const [tickHl, setTickHl] = useState<'red' | 'none'>('none');
   const [payOver, setPayOver] = useState(false);
   /**
    * ลำดับเวลา — กฎอีกชนิดที่ระบบประกันตรวจ และเราไม่เคยตรวจเลย
@@ -1133,6 +1135,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     ...(claimHl === 'red' ? ['ยังไม่ได้ติ๊ก "การเรียกร้องค่าเสียหายจากคู่กรณี"'] : []),
     ...(oppNoHl === 'red' ? ['ยังไม่ได้กรอก "คู่กรณีคันที่"'] : []),
     ...(payHl === 'red' ? ['ติ๊ก "รับเงินจำนวน" แล้วแต่ยังไม่กรอกยอด'] : []),
+    ...(tickHl === 'red' ? ['กรอกยอด "รับเงินจำนวน" แล้วแต่ยังไม่ติ๊กกล่อง'] : []),
     ...(payOver ? ['"รับเงินจำนวน" มากกว่ายอดเรียกร้องทั้งหมด'] : []),
     ...timeErrs.map((e) => `"${TL_LABEL[e.at] ?? e.at}" ${e.msg}`),
     ...(recordGaps > 0 ? [`คู่กรณี/ผู้บาดเจ็บ/ทรัพย์สิน ยังขาด ${recordGaps} ช่องบังคับ`] : []),
@@ -1238,6 +1241,8 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       const total = val('input[name="acc_claim_total_amount"]').replace(/,/g, '');
       setPayHl(moneyTick && (!amt || !total) ? 'red' : 'none');
       setPayOver(Boolean(moneyTick && amt && total && Number(amt) > Number(total)));
+      // กลับด้าน: มียอดแต่ยังไม่ติ๊ก — ข้อมูลไม่สอดคล้อง (EMCS มีกล่องติ๊กคู่กับช่องเงิน) ทาแดงที่กล่องติ๊ก
+      setTickHl(!moneyTick && Number(amt) > 0 ? 'red' : 'none');
 
       /**
        * ── ค่าเรียกร้องเติมให้เอง (user เคาะ 08/09/69) ──
@@ -1459,7 +1464,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
       if (sec.querySelector('.' + RING[0])) gs.push(sec.getAttribute('data-section') || '');
     });
     setGapSec((prev) => (JSON.stringify(prev) === JSON.stringify(gs) ? prev : gs));
-  }, [missing, badNames, claimHl, oppNoHl, payHl, payOver, timeErrs, moneyMissing, opponents, injured, property, damage]);
+  }, [missing, badNames, claimHl, oppNoHl, payHl, tickHl, payOver, timeErrs, moneyMissing, opponents, injured, property, damage]);
 
   useEffect(() => {
     let alive = true;
@@ -2737,7 +2742,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
               <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับหลักฐานจากคู่กรณีผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับหลักฐานจากคู่')} className="w-3.5 h-3.5" /> รับหลักฐานจากคู่กรณีผิด</label>
               <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บันทึกยอมรับผิด" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บันทึกยอมรับ')} className="w-3.5 h-3.5" /> บันทึกยอมรับผิด</label>
               <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="บัตรติดต่อ" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('บัตรติดต่อ')} className="w-3.5 h-3.5" /> บัตรติดต่อ</label>
-              <label className="flex items-center gap-1"><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
+              <label className={`flex items-center gap-1 ${tickHl === 'red' ? `px-1 border rounded-none ${HL_CLS.red}` : ''}`}><input type="checkbox" name="acc_claim_opponent" value="รับเงิน" disabled={d} defaultChecked={report.acc_claim_opponent?.includes('รับเงิน')} className="w-3.5 h-3.5" /> รับเงินจำนวน</label>
               {/* ติ๊ก "รับเงินจำนวน" เมื่อไหร่ ช่องเงินคู่นี้บังคับทันที (กติกา EMCS) */}
               <input type="text" name="acc_claim_amount" disabled={d} defaultValue={money2(report.acc_claim_amount)}
                 className={`w-[6.25rem] ml-1 border rounded-none px-2 py-1 text-gray-800 text-sm ${

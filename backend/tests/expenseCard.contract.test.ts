@@ -563,5 +563,12 @@ check('ช่องราคาที่ยังขาดทาแดงที�
 check('⛔ ถอดขอบสีเดิมของช่องเงิน (ฟ้า) ตอนทาแดง ไม่งั้นสีตีกัน', ui.includes("el.classList.toggle(el.dataset.border0, !on);"));
 check('พิมพ์ยอดพนักงานแล้วกรอบแดงหายทันที ไม่ต้องรอบันทึก', ui.includes('const livePay = PAY_MONEY_INPUTS.some('));
 
+console.log('\n── กล่องติ๊ก "รับเงินจำนวน": มียอดแต่ยังไม่ติ๊ก → กรอบแดง (user ขอ 09/09/69) ──');
+check('มียอดแต่ยังไม่ติ๊ก → tickHl แดง', ui.includes("setTickHl(!moneyTick && Number(amt) > 0 ? 'red' : 'none');"));
+check('กรอบแดงอยู่ที่ label ของกล่องติ๊ก (ตัวกล่องเล็กเกินจะเห็น)',
+      ui.includes("${tickHl === 'red' ? `px-1 border rounded-none ${HL_CLS.red}` : ''}"));
+check('นับเป็นข้อที่ยังอนุมัติไม่ได้ + ป้ายไม่ช้า 1 จังหวะ (อยู่ใน deps)',
+      ui.includes("tickHl === 'red' ? ['กรอกยอด \"รับเงินจำนวน\" แล้วแต่ยังไม่ติ๊กกล่อง']") && ui.includes('payHl, tickHl, payOver'));
+
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
 process.exit(failed === 0 ? 0 : 1);
