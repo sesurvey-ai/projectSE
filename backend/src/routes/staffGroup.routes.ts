@@ -1,7 +1,9 @@
 /**
  * /api/staff-groups — ทีมของหัวหน้าผู้ตรวจ (04/09/69)
  *
- *   GET    /mine                      ทีมของฉัน (checker/admin) — อ่านอย่างเดียว
+ *   GET    /mine                      ทีมของฉัน (checker/admin)
+ *   POST   /mine/members              {staff_name} หัวหน้าเพิ่มลูกทีมเอง (checker/admin) — user เคาะ 09/09/69
+ *   DELETE /mine/members/:memberId    หัวหน้าเอาลูกทีมออกเอง (เฉพาะสมาชิกของทีมตัวเอง)
  *   GET    /                          ทุกทีม (admin)
  *   POST   /                          {name, checker_id?} สร้างทีม (admin)
  *   PUT    /:id                       {name?, checker_id?} แก้ชื่อ/ผูกบัญชีผู้ตรวจ (admin)
@@ -15,12 +17,32 @@ import { requireRole } from '../middleware/role';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess } from '../utils/response';
 import { staffGroupService } from '../services/staffGroup.service';
+import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
 const num = (v: unknown) => parseInt(String(v), 10);
 
 router.get('/mine', auth, requireRole('checker', 'admin'), asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await staffGroupService.mine(req.user!.id));
+}));
+
+/**
+ * ทีมของฉัน — หัวหน้าเพิ่ม/เอาสมาชิกออกเองได้ (user เคาะ 09/09/69 · เดิม 04/09/69 ให้แก้ได้แค่แอดมิน)
+ * ขอบเขต: ทำได้เฉพาะทีมที่ผูกกับบัญชีตัวเอง · ผูก/สร้าง/ลบทีมยังเป็นของแอดมิน ·
+ * รายชื่อที่อยู่ทีมอื่นอยู่แล้วเพิ่มไม่ได้ (409 จาก addMember) — ต้องให้ทีมเดิม/แอดมินเอาออกก่อน
+ */
+const NO_TEAM = 'บัญชีของคุณยังไม่ได้ผูกกับทีม — แจ้งแอดมินผูกทีมก่อนที่ "จัดการทีมผู้ตรวจ"';
+router.post('/mine/members', auth, requireRole('checker', 'admin'), asyncHandler(async (req: Request, res: Response) => {
+  const g = await staffGroupService.mine(req.user!.id);
+  if (!g) throw new AppError(400, NO_TEAM);
+  const b = (req.body ?? {}) as { staff_name?: string };
+  sendSuccess(res, await staffGroupService.addMember(g.id, String(b.staff_name ?? '')), 201);
+}));
+router.delete('/mine/members/:memberId', auth, requireRole('checker', 'admin'), asyncHandler(async (req: Request, res: Response) => {
+  const g = await staffGroupService.mine(req.user!.id);
+  if (!g) throw new AppError(400, NO_TEAM);
+  // removeMember ลบด้วย (id, group_id) → แตะได้เฉพาะสมาชิกของทีมตัวเอง
+  sendSuccess(res, await staffGroupService.removeMember(g.id, num(req.params.memberId)));
 }));
 
 router.use(auth, requireRole('admin'));
