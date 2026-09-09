@@ -585,7 +585,7 @@ console.log('\n── เรทตำบลพิเศษ (บ่อวิน/�
 {
   const pay = read('src', 'services', 'pay.service.ts');
   check('getCasePay ส่ง tumbonId ที่จับคู่จากชื่อตำบลในรายงานให้ calcPay',
-        pay.includes('tumbonCode(accProvince, accDistrict, accSubdistrict)') && pay.includes('tumbonId: tumbon,'));
+        pay.includes('tumbonCode(rateProvince, rateDistrict, rateSubdistrict)') && pay.includes('tumbonId: tumbon,'));
   check('หน้าเคสบอกว่าเรทมาจากตำบลพิเศษ', ui.includes("rate_from === 'tumbon_by_team'"));
 }
 
@@ -593,12 +593,35 @@ console.log('\n── เรทแนะนำตามพื้นที่ท�
 {
   const pay = read('src', 'services', 'pay.service.ts');
   const ctl = read('src', 'controllers', 'case.controller.ts');
-  check('getCasePay รับ override จังหวัด/อำเภอ/ตำบล/ประเภทเคลม', pay.includes('override: PayLocationOverride = {}') && pay.includes('tumbonCode(accProvince, accDistrict, accSubdistrict)'));
+  check('getCasePay รับ override จังหวัด/อำเภอ/ตำบล/ประเภทเคลม', pay.includes('override: PayLocationOverride = {}') && pay.includes('tumbonCode(rateProvince, rateDistrict, rateSubdistrict)'));
   check('GET /pay รับ ?province=&district=&subdistrict=', ctl.includes("q('subdistrict')"));
-  check('snapshot ตอนบันทึกคิดจากพื้นที่ที่ส่งมารอบนี้', pay.includes("subdistrict: str('acc_subdistrict')"));
-  check('หน้าเคส: เปลี่ยนตำบลแล้วขอเรทใหม่ (หน่วง 350ms)', ui.includes('params.subdistrict = accTumbon') && ui.includes('}, 350);'));
+  check('snapshot ตอนบันทึกคิดจากพื้นที่ที่ส่งมารอบนี้', pay.includes("acc_subdistrict: str('acc_subdistrict')"));
+  check('หน้าเคส: เปลี่ยนตำบลแล้วขอเรทใหม่ (หน่วง 350ms)', ui.includes('params.subdistrict = tb;') && ui.includes('}, 350);'));
   check('หน้าเคส: เรทใหม่เติมทับเฉพาะช่องว่าง/ค่าที่ระบบเติมไว้ (ไม่ทับที่พิมพ์เอง)', ui.includes('lastSuggestRef') && ui.includes("['pay_service_fee', sg.service_fee]"));
   check('บันทึกส่งพื้นที่ไปกับยอดเงิน', ui.includes("acc_subdistrict: data['acc_subdistrict'] ?? null, claim_type: data['claim_type'] ?? null"));
+}
+
+console.log('\n── เรทคิดจาก "สถานที่ออกตรวจสอบ" ก่อนสถานที่เกิดเหตุ (user ขอ 09/09/69 เคลม 2026013072661) ──');
+{
+  const pay = read('src', 'services', 'pay.service.ts');
+  const ctl = read('src', 'controllers', 'case.controller.ts');
+  const bill = read('src', 'services', 'sebilling.service.ts');
+  const mig = read('src', 'db', 'migrations', '058_survey_location.sql');
+  check('migration 058 เพิ่ม 4 คอลัมน์สถานที่ออกตรวจสอบ',
+        ['survey_place', 'survey_province', 'survey_district', 'survey_subdistrict'].every((c) => mig.includes(`ADD COLUMN IF NOT EXISTS ${c} TEXT`)));
+  check('getCasePay อ่าน survey_province/district/subdistrict จากรายงาน', pay.includes('sr.survey_province, sr.survey_district, sr.survey_subdistrict'));
+  check('มีจังหวัดที่ตรวจสอบ = ใช้ชุดนั้นทั้งชุด ไม่มีค่อยถอยไปสถานที่เกิดเหตุ', pay.includes("from: 'survey' }") && pay.includes("from: 'accident' }"));
+  check('หน้าเว็บส่งจังหวัดมา = ใช้ชุดที่ส่งมาทั้งชุด (อำเภอ/ตำบลว่างได้ ไม่ผสมกับที่บันทึกไว้)', pay.includes('fromPage ? cleanArea(override.district) : savedLoc.district'));
+  check('area บอกที่มาของพื้นที่ (rate_location)', pay.includes('rate_location: rateLocation'));
+  check('snapshot ตอนบันทึกใช้ชุดเดียวกัน + จดที่มา', pay.includes("survey_province: str('survey_province')") && pay.includes('rate_location: loc.from'));
+  check('GET /pay รับ ?location=', ctl.includes("location: q('location')"));
+  check('captures se-billing ใช้พื้นที่ชุดเดียวกับเรท', bill.includes('rateLocationOf({') && !bill.includes("provinceCode(s('acc_province'))"));
+  check('หน้าเคสมีช่องสถานที่ออกตรวจสอบ 4 ช่องใต้สถานที่เกิดเหตุ',
+        ['name="survey_place"', 'name="survey_province"', 'name="survey_district"', 'name="survey_subdistrict"'].every((n) => ui.includes(n)));
+  check('หน้าเคส: เรทแนะนำตามชุดที่ตรวจสอบก่อน', ui.includes('const useSurvey = isProv(survProv);') && ui.includes("params.location = useSurvey ? 'survey' : 'accident';"));
+  check('หน้าเคส: เอาติ๊กตำบลออกแล้วส่งค่าว่างไป (ไม่ค้างของที่บันทึกไว้)', ui.includes("params.district = isDist(dd) ? dd : '';"));
+  check('หน้าเคส: บันทึกส่งสถานที่ออกตรวจสอบไปกับยอดเงิน', ui.includes("survey_subdistrict: data['survey_subdistrict'] ?? null"));
+  check('บรรทัดเรทบอกว่าคิดจากสถานที่ออกตรวจสอบหรือที่เกิดเหตุ', ui.includes("rate_location === 'survey'"));
 }
 
 console.log(failed === 0 ? '\n✅ ผ่านทั้งหมด' : `\n❌ ไม่ผ่าน ${failed} ข้อ`);

@@ -203,18 +203,49 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  */
 export interface PayLocationOverride {
   province?: string | null; district?: string | null; subdistrict?: string | null; claim_type?: string | null;
+  /** ชุดที่ส่งมาคือ 'survey' (สถานที่ออกตรวจสอบ) หรือ 'accident' (สถานที่เกิดเหตุ) — ใช้บอกในบรรทัดเรทเท่านั้น */
+  location?: string | null;
+}
+
+export type RateLocation = 'survey' | 'accident';
+
+/** ค่าจาก select ที่ยังไม่เลือก ('-- ระบุ --' / '-- เขต --' / '0') ถือเป็นว่าง */
+const cleanArea = (v?: string | null): string | undefined => {
+  const s = String(v ?? '').trim();
+  return !s || s === '0' || s.startsWith('--') ? undefined : s;
+};
+
+/**
+ * พื้นที่ที่ใช้หาเรท = **สถานที่ออกตรวจสอบ** ก่อน (survey_province/district/subdistrict — ISURVEY "จังหวัด/เขต-อำเภอ/ตำบล
+ * ที่ตรวจสอบ" ชุดเดียวกับที่ extension se-billing ใช้หาเรทบน ISURVEY) ไม่มีค่อยถอยไปใช้สถานที่เกิดเหตุ
+ * (งานมือถือ/XML ไม่มีสถานที่ออกตรวจสอบ) — ใช้ทั้งชุด ไม่ผสมจังหวัดชุดหนึ่งกับอำเภออีกชุด
+ * (user เคาะ 09/09/69 กับเคลม 2026013072661: เกิดเหตุ กทม./สวนหลวง แต่ช่างออกตรวจที่ ชลบุรี/บางละมุง → เรทต้องเป็นของบางละมุง)
+ */
+export function rateLocationOf(r: {
+  survey_province?: string | null; survey_district?: string | null; survey_subdistrict?: string | null;
+  acc_province?: string | null; acc_district?: string | null; acc_subdistrict?: string | null;
+}): { province?: string; district?: string; subdistrict?: string; from: RateLocation } {
+  if (cleanArea(r.survey_province)) {
+    return { province: cleanArea(r.survey_province), district: cleanArea(r.survey_district),
+             subdistrict: cleanArea(r.survey_subdistrict), from: 'survey' };
+  }
+  return { province: cleanArea(r.acc_province), district: cleanArea(r.acc_district),
+           subdistrict: cleanArea(r.acc_subdistrict), from: 'accident' };
 }
 
 export async function getCasePay(caseId: number, override: PayLocationOverride = {}) {
   const saved = (await db.query('SELECT * FROM survey_pay WHERE case_id = $1', [caseId])).rows[0] ?? null;
 
   const r = (await db.query(
-    `SELECT sr.acc_province, sr.acc_district, sr.acc_subdistrict, sr.acc_surveyor, sr.claim_type, c.source,
+    `SELECT sr.acc_province, sr.acc_district, sr.acc_subdistrict,
+            sr.survey_province, sr.survey_district, sr.survey_subdistrict,
+            sr.acc_surveyor, sr.claim_type, c.source,
             (SELECT count(*) FROM survey_photos sp WHERE sp.report_id = sr.id) AS photo_count
        FROM survey_reports sr
        JOIN cases c ON c.id = sr.case_id
       WHERE sr.case_id = $1`, [caseId])).rows[0] as
-    | { acc_province?: string; acc_district?: string; acc_subdistrict?: string; acc_surveyor?: string;
+    | { acc_province?: string; acc_district?: string; acc_subdistrict?: string;
+        survey_province?: string; survey_district?: string; survey_subdistrict?: string; acc_surveyor?: string;
         claim_type?: string; photo_count?: string; source?: string }
     | undefined;
 
@@ -224,19 +255,27 @@ export async function getCasePay(caseId: number, override: PayLocationOverride =
     const v = String(o ?? '').trim();
     return v ? v : (fallback ?? undefined);
   };
-  const accProvince = pick(override.province, r.acc_province);
-  const accDistrict = pick(override.district, r.acc_district);
-  const accSubdistrict = pick(override.subdistrict, r.acc_subdistrict);
+  /**
+   * ชุดพื้นที่ที่ใช้หาเรท — หน้าเว็บส่งจังหวัดมา = ใช้ชุดที่ส่งมา**ทั้งชุด** (อำเภอ/ตำบลว่างได้) ไม่ผสมกับที่บันทึกไว้
+   * (เดิมเติมทีละช่อง → เอาติ๊กตำบลออกบนหน้าแล้วเรทยังเป็นตำบลเดิมจนกว่าจะบันทึก) · ไม่ส่งมา = ที่บันทึกไว้
+   * โดยเอาสถานที่ออกตรวจสอบก่อน สถานที่เกิดเหตุรอง (rateLocationOf — user เคาะ 09/09/69)
+   */
+  const fromPage = Boolean(cleanArea(override.province));
+  const savedLoc = rateLocationOf(r);
+  const rateProvince = fromPage ? cleanArea(override.province) : savedLoc.province;
+  const rateDistrict = fromPage ? cleanArea(override.district) : savedLoc.district;
+  const rateSubdistrict = fromPage ? cleanArea(override.subdistrict) : savedLoc.subdistrict;
+  const rateLocation: RateLocation = fromPage ? (override.location === 'survey' ? 'survey' : 'accident') : savedLoc.from;
   const claimType = pick(override.claim_type, r.claim_type);
 
-  const province = provinceCode(accProvince);
-  const amphur = amphurCode(accProvince, accDistrict);
+  const province = provinceCode(rateProvince);
+  const amphur = amphurCode(rateProvince, rateDistrict);
   /**
    * ตำบลพิเศษ (บ่อวิน / พลูตาหลวง — เรทรายทีมสูงกว่าอำเภอแม่) — เดิมไม่เคยส่ง tumbonId ให้ calcPay
    * แม้ตารางเรทมีข้อมูลและ computePay รองรับ → ระบบแนะนำเรทอำเภอ 400 ทั้งที่บ่อวินทีมศรีราชาต้อง 500
    * (user เจอเคส #252 09/09/69 หลังเลือกตำบลบ่อวินแล้วเรทไม่เปลี่ยน) · จับคู่จากชื่อตำบลในรายงาน
    */
-  const tumbon = tumbonCode(accProvince, accDistrict, accSubdistrict);
+  const tumbon = tumbonCode(rateProvince, rateDistrict, rateSubdistrict);
   const team = r.acc_surveyor ? await teamOfSurveyor(r.acc_surveyor) : null;
 
   // ประเภทเคลมในระบบเราเป็นตัวอักษร (F/D/A/C) แต่ตารางเรทคิดตามเลข 1-4 ของระบบเดิม
@@ -282,8 +321,10 @@ export async function getCasePay(caseId: number, override: PayLocationOverride =
     },
     area: {
       province_code: province, amphur_code: amphur, tumbon_code: tumbon, team,
-      province_name: accProvince ?? null, district_name: accDistrict ?? null,
-      subdistrict_name: accSubdistrict ?? null,
+      province_name: rateProvince ?? null, district_name: rateDistrict ?? null,
+      subdistrict_name: rateSubdistrict ?? null,
+      // พื้นที่นี้มาจากไหน — 'survey' = สถานที่ออกตรวจสอบ · 'accident' = สถานที่เกิดเหตุ (เคสไม่มีสถานที่ออกตรวจสอบ)
+      rate_location: rateLocation,
       // แปลงพื้นที่ไม่ได้ = หาเรทไม่เจอ → หน้าเว็บต้องบอกให้ไปแก้ชื่อจังหวัด/อำเภอก่อน
       resolved: Boolean(amphur || province),
       photo_count: Number(r.photo_count ?? 0),
@@ -369,12 +410,20 @@ export async function saveCasePay(
   // snapshot คิดจากพื้นที่ที่กำลังบันทึกรอบนี้ (หน้าเว็บส่ง acc_* มาใน body) — ยอดเงินถูกยิงก่อนรายงาน
   // ถ้าอ่านจากรายงานที่บันทึกไว้จะได้พื้นที่เก่าไป 1 รอบ (เช่น เพิ่งเปลี่ยนเป็นบ่อวิน แต่ snapshot ยังเป็นเรทอำเภอ)
   const str = (k: string) => (typeof input[k] === 'string' ? (input[k] as string) : null);
+  // ชุดเดียวกับตอนเปิดหน้า: สถานที่ออกตรวจสอบก่อน ไม่มีค่อยสถานที่เกิดเหตุ (หน้าเว็บส่งทั้งสองชุดมาใน body)
+  const loc = rateLocationOf({
+    survey_province: str('survey_province'), survey_district: str('survey_district'),
+    survey_subdistrict: str('survey_subdistrict'),
+    acc_province: str('acc_province'), acc_district: str('acc_district'), acc_subdistrict: str('acc_subdistrict'),
+  });
   const { suggest } = await getCasePay(caseId, {
-    province: str('acc_province'), district: str('acc_district'),
-    subdistrict: str('acc_subdistrict'), claim_type: str('claim_type'),
+    province: loc.province, district: loc.district, subdistrict: loc.subdistrict,
+    location: loc.from, claim_type: str('claim_type'),
   });
   const snapshot = {
     ...(suggest?.snapshot ?? {}),
+    // จดไว้ว่าเรทรอบนี้คิดจากสถานที่ออกตรวจสอบหรือสถานที่เกิดเหตุ
+    rate_location: loc.from,
     out_of_area: areaAmt,
     out_of_hours: hoursAmt,
     special_tumbon: input.special_tumbon ? true : null,

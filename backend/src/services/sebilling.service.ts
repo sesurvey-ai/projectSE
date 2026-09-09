@@ -27,7 +27,7 @@ import { db } from '../config/database';
 import { env } from '../config/env';
 import { TH_AMPHURS, TH_PROVINCES, TH_TUMBONS } from '../data/thaiAreaCodes';
 import { amphurCode, provinceCode, tumbonCode } from './areaCode.service';
-import { PAY_MONEY_FIELDS } from './pay.service';
+import { PAY_MONEY_FIELDS, rateLocationOf } from './pay.service';
 
 export type BillingResult =
   | { ok: true; id: number }
@@ -89,6 +89,7 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
             COALESCE(to_char(c.assigned_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD"T"HH24:MI:SS'),
                      to_char(c.created_at, 'YYYY-MM-DD"T"HH24:MI:SS')) || '+07:00' AS dispatch_iso,
             sr.claim_no, sr.survey_job_no, sr.acc_province, sr.acc_district, sr.acc_subdistrict,
+            sr.survey_province, sr.survey_district, sr.survey_subdistrict,
             sr.acc_surveyor, sr.claim_type, sr.acc_claim_amount,
             se.service_fee_price AS ins_service, se.travel_fee_price AS ins_travel,
             se.claim_fee_price AS ins_claim, se.daily_record_fee AS ins_daily,
@@ -123,9 +124,15 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
   // ถ้าแปลงไม่ได้ค่อยใช้รหัสที่ตอนคิดเงินเคยหาไว้ (rate_snapshot)
   const snap = (r.rate_snapshot ?? {}) as Row;
   const snapId = (k: string) => (typeof snap[k] === 'string' && snap[k] ? String(snap[k]) : null);
-  const pid = provinceCode(s('acc_province')) ?? snapId('province_id');
-  const aid = amphurCode(s('acc_province'), s('acc_district')) ?? snapId('amphur_id');
-  const tid = tumbonCode(s('acc_province'), s('acc_district'), s('acc_subdistrict')) ?? snapId('tumbon_id');
+  // พื้นที่ของแถว captures = พื้นที่ที่ใช้หาเรท: สถานที่ออกตรวจสอบก่อน ไม่มีค่อยสถานที่เกิดเหตุ
+  // (ชุดเดียวกับที่ extension ส่งจาก ISURVEY "จังหวัด/อำเภอที่ตรวจสอบ" — 09/09/69)
+  const loc = rateLocationOf({
+    survey_province: s('survey_province'), survey_district: s('survey_district'), survey_subdistrict: s('survey_subdistrict'),
+    acc_province: s('acc_province'), acc_district: s('acc_district'), acc_subdistrict: s('acc_subdistrict'),
+  });
+  const pid = provinceCode(loc.province) ?? snapId('province_id');
+  const aid = amphurCode(loc.province, loc.district) ?? snapId('amphur_id');
+  const tid = tumbonCode(loc.province, loc.district, loc.subdistrict) ?? snapId('tumbon_id');
 
   // ฝั่งจ่ายพนักงาน — สูตรเดียวกับ saveCasePay: รวม = รายรับทุกช่อง + ตัวปรับ − หักเงิน
   // แต่ส่งแยกช่อง: ฐาน (sur_invest) · ค่าเรียกร้อง · ค่าคัดประจำวัน · ค่าใช้จ่ายอื่นๆ — se-billing บวกกลับให้เท่ากัน
@@ -145,11 +152,11 @@ export async function buildCapture(caseId: number): Promise<{ payload: Record<st
     ts: new Date().toISOString(),
     dispatch_date: bkkStamp(r.dispatch_iso),
     province_id: pid,
-    province_name: (pid && TH_PROVINCES[pid]) || s('acc_province'),
+    province_name: (pid && TH_PROVINCES[pid]) || loc.province || null,
     amphur_id: aid,
-    amphur_name: (aid && TH_AMPHURS[aid]) || s('acc_district'),
+    amphur_name: (aid && TH_AMPHURS[aid]) || loc.district || null,
     tumbon_id: tid,
-    tumbon_name: (tid && TH_TUMBONS[tid]) || s('acc_subdistrict'),
+    tumbon_name: (tid && TH_TUMBONS[tid]) || loc.subdistrict || null,
     mtype_id: MTYPE_ID[s('claim_type') ?? ''] ?? null,
     claim_no: s('claim_no'),
     survey_no: s('survey_job_no'),

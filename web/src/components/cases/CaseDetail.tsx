@@ -28,6 +28,8 @@ interface PayData {
   area: {
     province_code: string | null; amphur_code: string | null; team: string | null;
     province_name: string | null; district_name: string | null; subdistrict_name?: string | null; tumbon_code?: string | null;
+    /** พื้นที่ที่ใช้หาเรทมาจาก 'survey' = สถานที่ออกตรวจสอบ · 'accident' = สถานที่เกิดเหตุ (เคสไม่มีสถานที่ออกตรวจสอบ) */
+    rate_location?: 'survey' | 'accident' | null;
     resolved: boolean; photo_count: number;
   } | null;
 }
@@ -117,6 +119,9 @@ const DRIVER_LICENSE_TYPES = [
  * "ศรีราชา"/"กรุงเทพฯ" · ตัดคำนำหน้ากับช่องว่าง/ฯ ออกก่อนเทียบ ไม่งั้นไม่มีวันตรงกัน
  */
 const areaKey = (v: unknown) => String(v ?? '').replace(/^(อำเภอ|เขต|จังหวัด)/, '').replace(/[s ฯ]/g, '').trim();
+/** select จังหวัด/อำเภอที่ยังไม่เลือก ('0' / '-- ระบุ --' / '-- เขต --') = ว่าง */
+const isProv = (v: string) => Boolean(v) && v !== '0' && !/^--/.test(v);
+const isDist = (v: string) => Boolean(v) && !/^--/.test(v);
 
 function withCurrent(list: string[], current: unknown, placeholder = '-- ระบุ --'): string[] {
   const cur = String(current ?? '').trim();
@@ -536,6 +541,15 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
   const [accProv, setAccProv] = useState<string>(report.acc_province || '0');
   const [accDist, setAccDist] = useState<string>(report.acc_district || '-- เขต --');
   const [accTumbon, setAccTumbon] = useState<string>(report.acc_subdistrict || '');
+  /**
+   * ── สถานที่ออกตรวจสอบ ── (user ขอ 09/09/69 กับเคลม 2026013072661)
+   * ISURVEY แยก "สถานที่ออกตรวจสอบ / จังหวัด / เขต-อำเภอ / ตำบล ที่ตรวจสอบ" ออกจากสถานที่เกิดเหตุ
+   * (เกิดเหตุ กทม./สวนหลวง แต่ช่างออกตรวจที่ ชลบุรี/บางละมุง) และเรทค่าบริการต้องคิดจาก**ที่ออกตรวจ** ไม่ใช่ที่เกิดเหตุ
+   * — ชุดเดียวกับที่ extension se-billing ใช้หาเรทบน ISURVEY · ว่าง = คิดจากสถานที่เกิดเหตุ (งานมือถือ/XML ไม่มีข้อมูลนี้)
+   */
+  const [survProv, setSurvProv] = useState<string>(report.survey_province || '-- ระบุ --');
+  const [survDist, setSurvDist] = useState<string>(report.survey_district || '-- เขต --');
+  const [survTumbon, setSurvTumbon] = useState<string>(report.survey_subdistrict || '');
 
   /**
    * ── กล่องเขียนความเห็นแบบเต็มจอ ── (user ขอ 01/09/69)
@@ -582,6 +596,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    */
   const tumbonChoices = (tumbonOptions ?? [])
     .filter((t) => areaKey(t.province) === areaKey(accProv) && areaKey(t.district) === areaKey(accDist))
+    .map((t) => t.tumbon);
+  const survTumbonChoices = (tumbonOptions ?? [])
+    .filter((t) => areaKey(t.province) === areaKey(survProv) && areaKey(t.district) === areaKey(survDist))
     .map((t) => t.tumbon);
   const [driverProv, setDriverProv] = useState<string>(report.driver_province || '0');
   const [driverDist, setDriverDist] = useState<string>(report.driver_district || '-- เขต --');
@@ -1494,6 +1511,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
    * ── เรทแนะนำต้องตาม "พื้นที่ที่กำลังเลือก" ไม่ใช่ที่บันทึกไว้ (user เจอ #252 09/09/69) ──
    * เปลี่ยนจังหวัด/อำเภอ/ตำบลบนหน้า → ขอเรทใหม่ด้วยพื้นที่นั้นทันที (หน่วง 350 ms กันยิงถี่)
    * เดิมคิดครั้งเดียวตอนโหลดจากรายงานที่บันทึกไว้ → เลือกตำบลบ่อวินแล้วยังแนะนำเรทอำเภอ หัวหน้าต้องพิมพ์เอง
+   * 09/09/69: พื้นที่ที่ส่ง = สถานที่ออกตรวจสอบก่อน (มีจังหวัดที่ตรวจสอบ) ไม่มีค่อยส่งสถานที่เกิดเหตุ — ดู rateLocationOf ฝั่ง backend
    */
   const suggestReqRef = useRef(0);
   const suggestMountedRef = useRef(false);
@@ -1503,9 +1521,14 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
     const id = ++suggestReqRef.current;
     const t = setTimeout(() => {
       const params: Record<string, string> = {};
-      if (accProv && accProv !== '0') params.province = accProv;
-      if (accDist && !/^--/.test(accDist)) params.district = accDist;
-      if (accTumbon) params.subdistrict = accTumbon;
+      // เรทคิดจาก "สถานที่ออกตรวจสอบ" ก่อน — มีจังหวัดที่ตรวจสอบ = ส่งชุดนั้นทั้งชุด ไม่มีค่อยส่งสถานที่เกิดเหตุ
+      // ส่งอำเภอ/ตำบลไปแม้ว่าง (เอาติ๊กตำบลออก = เรทต้องกลับเป็นของอำเภอทันที ไม่ใช่ค้างของที่บันทึกไว้)
+      const useSurvey = isProv(survProv);
+      const [p, dd, tb] = useSurvey ? [survProv, survDist, survTumbon] : [accProv, accDist, accTumbon];
+      if (isProv(p)) params.province = p;
+      params.district = isDist(dd) ? dd : '';
+      params.subdistrict = tb;
+      params.location = useSurvey ? 'survey' : 'accident';
       api.get(`/api/cases/${caseData.id}/pay`, { params })
         .then((r) => {
           if (id !== suggestReqRef.current || !r.data?.success) return;
@@ -1515,7 +1538,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         .catch(() => {});
     }, 350);
     return () => clearTimeout(t);
-  }, [accProv, accDist, accTumbon, caseData.id, previewing]);
+  }, [accProv, accDist, accTumbon, survProv, survDist, survTumbon, caseData.id, previewing]);
 
   /**
    * เรทแนะนำเปลี่ยน → เติมช่องให้ทันที เฉพาะช่องที่ "ว่าง" หรือ "ยังเป็นค่าที่ระบบเติมไว้" (จำใน data-auto /
@@ -1673,6 +1696,9 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
           // พื้นที่/ประเภทเคลมที่กำลังบันทึก — ให้ snapshot เรทคิดจากรอบนี้ (ยอดเงินยิงก่อนรายงาน)
           acc_province: data['acc_province'] ?? null, acc_district: data['acc_district'] ?? null,
           acc_subdistrict: data['acc_subdistrict'] ?? null, claim_type: data['claim_type'] ?? null,
+          // สถานที่ออกตรวจสอบ — มีจังหวัด = backend ใช้ชุดนี้หาเรทแทนสถานที่เกิดเหตุ (09/09/69)
+          survey_province: data['survey_province'] ?? null, survey_district: data['survey_district'] ?? null,
+          survey_subdistrict: data['survey_subdistrict'] ?? null,
         };
         for (const k of Object.keys(data)) {
           if (k.startsWith('pay_')) payBody[k.slice(4)] = data[k].replace(/,/g, '') || null;
@@ -2719,6 +2745,42 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                 <input type="hidden" disabled={d} name="acc_subdistrict" value={accTumbon} />
               </F>
 
+              {/* ── สถานที่ออกตรวจสอบ ── (user ขอ 09/09/69 กับเคลม 2026013072661: เกิดเหตุ กทม./สวนหลวง แต่ออกตรวจ ชลบุรี/บางละมุง)
+                  ISURVEY แยก "สถานที่ออกตรวจสอบ + จังหวัด/เขต-อำเภอ/ตำบล ที่ตรวจสอบ" ออกจากสถานที่เกิดเหตุ ตัวดึงงานเอามาให้
+                  · เรทค่าบริการคิดจากชุดนี้ก่อน (ชุดเดียวกับ extension se-billing บน ISURVEY) ว่าง = ถอยไปคิดจากสถานที่เกิดเหตุ
+                  · ไม่บังคับกรอก (งานมือถือ/XML ไม่มีข้อมูลนี้) · ไม่เข้า XML/EMCS · คอลัมน์ survey_* (migration 058) */}
+              <F label="สถานที่ออกตรวจสอบ" span={2}>
+                <input type="text" disabled={d} name="survey_place" defaultValue={report.survey_place || ''}
+                  placeholder="ว่าง = ใช้สถานที่เกิดเหตุคิดเรท" className={CTL(d)} />
+              </F>
+              <F label="จังหวัดที่ตรวจสอบ">
+                <select disabled={d} name="survey_province" value={survProv} onChange={e => { setSurvProv(e.target.value); setSurvDist('-- เขต --'); setSurvTumbon(''); }} className={CTL(d)}>
+                  {withCurrent(PROVINCE_OPTIONS, survProv).map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </F>
+              <F label="เขต / อำเภอที่ตรวจสอบ">
+                <select disabled={d} name="survey_district" value={survDist} onChange={e => { setSurvDist(e.target.value); setSurvTumbon(''); }} className={CTL(d)}>
+                  {districtOptions(survProv, survProv === report.survey_province ? report.survey_district : '').map(dt => <option key={dt} value={dt}>{dt}</option>)}
+                </select>
+                {survTumbonChoices.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {survTumbonChoices.map((t) => (
+                      <label key={t} className="flex items-center gap-1.5 text-sm text-gray-700">
+                        <input type="checkbox" disabled={d} checked={survTumbon === t}
+                          onChange={e => setSurvTumbon(e.target.checked ? t : '')} />
+                        ตำบล{t}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {/* ตำบลที่ ISURVEY ระบุมาแต่ไม่ใช่ตำบลพิเศษ (ไม่มีช่องติ๊ก) — โชว์ให้รู้ว่ามีค่า ไม่งั้นหายไปเงียบ ๆ ทั้งที่ยังถูกบันทึกอยู่ */}
+                {survTumbon && !survTumbonChoices.includes(survTumbon) && (
+                  <div className="mt-1 text-xs text-gray-500">ตำบล{survTumbon} (จาก ISURVEY)</div>
+                )}
+                {/* ช่องซ่อนส่ง "" เมื่อเอาติ๊กออก — เหตุผลเดียวกับ acc_subdistrict ข้างบน */}
+                <input type="hidden" disabled={d} name="survey_subdistrict" value={survTumbon} />
+              </F>
+
               <F label="ลักษณะการเกิดเหตุ" req={<Req of="acc_cause" />}>
                 <select disabled={d} name="acc_cause" defaultValue={report.acc_cause || '-- ระบุ --'} className={CTL(d)}>
                   {withCurrent(ACC_CAUSE_OPTIONS, report.acc_cause).map(c => <option key={c} value={c}>{c}</option>)}
@@ -3387,6 +3449,7 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
                           <div className="mt-2 text-xs text-gray-500">
                             เรทของ {pay.area.province_name} / {pay.area.district_name}
                             {pay.suggest?.snapshot?.rate_from === 'tumbon_by_team' ? ` / ตำบลพิเศษ ${pay.area.subdistrict_name ?? ''}` : ''}
+                            {pay.area.rate_location === 'survey' ? ' (สถานที่ออกตรวจสอบ)' : pay.area.rate_location === 'accident' ? ' (สถานที่เกิดเหตุ — เคสนี้ไม่มีสถานที่ออกตรวจสอบ)' : ''}
                             {pay.area.team ? ` · ทีม${pay.area.team}` : ''}
                             {pay.suggest?.service_fee != null ? ` · ระบบแนะนำค่าบริการ ${pay.suggest.service_fee} บาท` : ''}
                             {pay.saved?.total != null ? ` · รวมที่บันทึกไว้ ${pay.saved.total} บาท` : ''}
