@@ -540,6 +540,9 @@ check('เติมเป็นค่าจริงเฉพาะพนัก�
 check('ช่างนอก → ราคาพนักงาน + % เป็น placeholder สีเทา',
       ui.includes("['pay_claim_fee', hasAmt && !isSE ? feeStr : ''") && ui.includes("['claim_fee_percent', hasAmt && !isSE ? String(pct) : ''"));
 check('ช่อง % โชว์ "10" ไม่ใช่ "10.00" (pctBlank)', ui.includes('defaultValue={pctBlank(exV.claim_fee_percent)}'));
+/** #241: รุ่นก่อนเติม 10% เป็นค่าจริงแล้วบันทึกไว้ (300) → รุ่นใหม่ต้องล้างค่าที่เท่ากับตัวเทาเป๊ะ ไม่งั้นยังรวมยอดอยู่ */
+check('ช่างนอก: ค่าที่บันทึกไว้เท่ากับตัวเทาเป๊ะ → ล้างให้เป็นตัวเทา (ค่าที่ต่างออกไป = ตั้งใจจ่าย ปล่อยไว้)',
+      ui.includes("!isSE && ossHint !== '' && cur !== '' && Number(cur.replace(/,/g, '')) === Number(ossHint)"));
 check('บริษัท 2 (เลขเซอร์เวย์ SETP/SEMS) → 5% เสมอ ไม่ว่าช่างใคร',
       ui.includes("const company2 = /^(SETP|SEMS)/i.test(String(report?.survey_job_no ?? '').trim());"));
 check('เติมเมื่อมียอดรับเงินจำนวน (ไม่ต้องรอติ๊กกล่อง — user เจอ 09/09/69 พิมพ์ยอดแล้ว % ไม่ขึ้น)',

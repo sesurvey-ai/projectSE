@@ -1274,11 +1274,12 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
         // เหมือนฝั่งประกัน (user เคาะ 09/09/69: ช่างนอกไม่ได้รับเงินผ่านใบเบิกนี้)
         const auto = hasAmt && isSE ? { claim_fee_percent: String(pct), pay_claim_fee: feeStr } : null;
         let touched = false;
-        const targets: Array<[string, string | undefined]> = [
-          ['claim_fee_percent', auto?.claim_fee_percent],
-          ['pay_claim_fee', auto?.pay_claim_fee],
+        // [ชื่อช่อง, ค่าจริงที่จะเติม (SE), ตัวเทาของช่างนอก]
+        const targets: Array<[string, string | undefined, string]> = [
+          ['claim_fee_percent', auto?.claim_fee_percent, hasAmt ? String(pct) : ''],
+          ['pay_claim_fee', auto?.pay_claim_fee, feeStr],
         ];
-        for (const [nm, next] of targets) {
+        for (const [nm, next, ossHint] of targets) {
           const el = form.querySelector(`input[name="${nm}"]`) as HTMLInputElement | null;
           if (!el || el.disabled) continue;
           const cur = el.value.trim();
@@ -1287,6 +1288,10 @@ export default function CaseDetail({ caseData, report, photos, review, visitCoun
             if (mine && cur !== next) { el.value = next; el.dataset.auto = next; touched = true; }
           } else if (el.dataset.auto !== undefined && cur === el.dataset.auto) {
             el.value = ''; delete el.dataset.auto; touched = true;
+          } else if (!isSE && ossHint !== '' && cur !== '' && Number(cur.replace(/,/g, '')) === Number(ossHint)) {
+            // ช่างนอกแต่มีค่าจริงเท่ากับตัวเทาเป๊ะ (เช่น 300 = 10% ของ 3000) = ระบบรุ่นก่อนเติมไว้แล้วบันทึก
+            // (user เจอ #241 09/09/69) → ล้างให้เป็นตัวเทา ไม่รวมยอด · ค่าที่ต่างจากตัวเทา = พิมพ์เองตั้งใจจ่าย ปล่อยไว้
+            el.value = ''; touched = true;
           }
         }
         // ตัวเทา (placeholder = ไม่ใช่ค่า ไม่รวมยอด ไม่บันทึก): ฝั่งประกัน 10% ทุกงาน · ฝั่งพนักงาน + ช่อง % เฉพาะช่างนอก
